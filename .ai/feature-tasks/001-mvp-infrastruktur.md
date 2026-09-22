@@ -1,0 +1,225 @@
+# 001 – MVP-Umfang & Infrastruktur-Entscheidung
+
+## Kontext & Ziel
+
+WorldCraft ist eine selbst gehostete Webapp für D&D-Gruppen, die einen Teil der Funktionen von World Anvil abbildet: Welten, Artikel, interaktive Karten, Quests, Charaktere und Chat.
+
+**Ziel dieses Plans** ist es, eine geeignete technische Infrastruktur auszuwählen, zu verproben und als Projektnorm festzuhalten. Am Ende steht:
+
+1. je eine dokumentierte Entscheidung (ADR) für Backend, Frontend, Karten-Bibliothek und Editor,
+2. lauffähige Prototypen (Spikes), die die riskantesten MVP-Funktionen auf dem echten Server beweisen,
+3. ein Datenmodell-Entwurf für alle MVP-Funktionen,
+4. Projektnormen im `.ai`-Ordner, auf denen die Folgepläne aufbauen.
+
+**Nicht Ziel dieses Plans:**
+- die vollständige Umsetzung der MVP-Funktionen (eigener Folgeplan),
+- der MCP-Server für Claude (eigener Plan `002`, siehe Abgrenzung). Dieser Plan stellt lediglich sicher, dass die gewählte Infrastruktur ihn später trägt.
+
+### Rahmenbedingungen
+
+- Betrieb auf dem eigenen Server des Projektinhabers, Bereitstellung über **Coolify**.
+- Anmeldung ausschließlich über **Discord-Login** (keine eigenen Passwörter).
+- Nutzerkreis: private D&D-Gruppe(n), keine öffentliche Registrierung mit großem Nutzeraufkommen.
+
+### MVP-Funktionsumfang
+
+Die folgenden Funktionen definieren, was die Infrastruktur tragen können muss. Umgesetzt werden sie erst im Folgeplan für die MVP-Funktionen. Das **fachliche Datenmodell** mit allen Eigenschaften, Regeln und Löschregeln steht in `.ai/architecture/datenmodell-fachlich.md`. Bei Abweichungen gilt das fachliche Datenmodell.
+
+| # | Funktion | Kurzbeschreibung |
+|---|---|---|
+| F1 | **Welten & Universen** | Die **Welt** ist der oberste Container. Zu ihr gehören Mitgliedschaften, Artikel, Quests, Chat und Universen. Der Benutzer, der eine Welt erstellt, ist ihr **Game Master**. Eine Welt enthält ein oder mehrere **Universen**. Ein Universum hat einen Namen, eine Beschreibung und im MVP genau eine Karte; das Datenmodell erlaubt aber mehrere Karten pro Universum. Ein Benutzer kann mehrere Welten erstellen und Mitglied in mehreren Welten sein. |
+| F2 | **Artikel** | Ein Artikel besteht aus Titel, optionalem **Titelbild** und formatiertem Text. Der Text wird mit dem **Artikel-Editor** bearbeitet und kann andere Artikel, Charaktere und Quests per **Erwähnung** (`@Name`, mit Teilwortsuche und Kategorie-Anzeige) verlinken. Jede Erwähnung wird als **Relation** gespeichert. Zusätzlich kann die Spielleitung **manuelle Relationen** mit eigener Bezeichnung anlegen (z. B. „ist verfeindet mit“). Jeder Artikel, jede Quest, jeder Pin und jeder Charakter zeigt seine **verknüpften Elemente**; ein Klick auf einen verknüpften Pin öffnet die Karte an dessen Position. |
+| F3 | **Artikel-Vorlagen** | Vordefinierte Artikeltypen, die dem Artikel zusätzliche strukturierte Felder geben. Konkrete Typen und Felder legt der Folgeplan fest. Dieser Plan stellt nur sicher, dass das Datenmodell typabhängige Zusatzfelder unterstützt (siehe T-006). |
+| F4 | **Karten** | Hochgeladenes Kartenbild als Hintergrund einer frei zoom- und verschiebbaren Fläche („Whiteboard“). Jede Karte gehört zu genau einem Universum. Im MVP hat jedes Universum genau eine Karte (siehe F1). |
+| F5 | **Pins & Charakter-Marker** | **Pins** sind Markierungen auf einer Karte mit einem der 12 **Pin-Typen**. Sie sind per Drag & Drop frei verschiebbar und haben einen Titel (Klartext, Pflicht) und eine Beschreibung (Rich-Text, darf leer sein). Nur die Beschreibung enthält Erwähnungen, die den Pin mit beliebig vielen Artikeln, Quests und Charakteren verknüpfen. **Charakter-Marker** (Profilbild und Name) zeigen aktive Charaktere auf einer Karte. Sie werden vom Besitzer oder der Spielleitung platziert und sind für alle Mitglieder sichtbar. Änderungen an Pins und Markern sind für alle gleichzeitig Anwesenden live sichtbar. |
+| F6 | **Mitglieder & Rollen** | Jedes Mitglied einer Welt hat genau eine **Rolle**: Game Master, Master oder Player. Die Rolle hängt am Benutzer, nicht an einem Charakter. Game Master ist immer der Ersteller der Welt; es gibt genau einen, und die Rolle ist im MVP nicht übertragbar. Der Game Master lädt per Einladungslink ein. Jeder Benutzer mit gültigem Einladungslink darf der Welt beitreten und wird dabei Player. Der Game Master kann Player zu Master ernennen. |
+| F7 | **Quests** | Eigene Inhaltsart mit Titel, Beschreibung (Rich-Text mit Erwähnungen), Status (offen / aktiv / abgeschlossen / gescheitert) und beteiligten Charakteren. Auftraggeber, Orte usw. werden über Erwähnungen oder manuelle Relationen verknüpft. |
+| F8 | **Charaktere** | Ein Charakter gehört genau einem Benutzer und existiert **unabhängig von Welten**. Der Benutzer kann ihn in eine oder mehrere Welten **mitbringen**. In jeder Welt legt er fest, welcher seiner mitgebrachten Charaktere dort gerade **aktiv** ist. Ein Charakter hat einen **Charakterbogen ohne Kampfwerte**: Name, Profilbild, Klasse (Freitext), die sechs Attribute, die 18 Fertigkeiten (ungeübt / geübt / Expertise), Persönlichkeitsmerkmale, Ideale, Bindungen, Makel, Bio (Rich-Text) und bis zu 10 Bildanhänge. |
+| F9 | **Tagebuch / Geheimnisse** | Einträge eines Charakters, jeweils **einer Welt zugeordnet**, in die der Charakter mitgebracht wurde. Die Sichtbarkeit ist **pro Eintrag** wählbar: `privat` (nur der Besitzer des Charakters) oder `mit Spielleitung geteilt` (Besitzer + Game Master + Master dieser Welt). |
+| F10 | **Chat mit Würfeln** | Gruppenchat pro Welt zwischen allen Mitgliedern, live. Würfelbefehle (z. B. `/roll 2d6+3`) werden serverseitig ausgewertet, und das Ergebnis erscheint für alle im Chat. Nachrichten erscheinen unter dem Benutzer, sind nicht bearbeitbar und können vom Autor bzw. von der Spielleitung gelöscht werden, Würfelwürfe nie. |
+
+### Rechtematrix (MVP, pro Welt)
+
+Grundsatz: Master dürfen alles, was der Game Master darf, **außer Personen hinzuzufügen**. Player dürfen Inhalte der Welt nur ansehen und verwalten lediglich ihre eigenen Charaktere, Tagebucheinträge und Chat-Beiträge.
+
+| Aktion | Game Master | Master | Player |
+|---|:-:|:-:|:-:|
+| Welt löschen | ✅ | – | – |
+| Einladungslinks erstellen und widerrufen (Personen hinzufügen) | ✅ | – | – |
+| Player zu Master ernennen, Master zu Player zurückstufen | ✅ | ✅ | – |
+| Mitglieder entfernen (außer den Game Master) | ✅ | ✅ | – |
+| Welt-Einstellungen, Universen, Karten, Artikel, Quests, Pins, manuelle Relationen erstellen, bearbeiten, löschen | ✅ | ✅ | – |
+| Veröffentlichte Artikel, Quests, Universen, Karten und Pins ansehen (bei Karten und Pins nur, wenn auch alle übergeordneten Ebenen veröffentlicht sind) | ✅ | ✅ | ✅ |
+| Inhalte mit Status `nur Spielleitung` ansehen | ✅ | ✅ | – |
+| In die Welt mitgebrachte Charaktere mit Charakterbogen ansehen und ihre Marker auf der Karte sehen | ✅ | ✅ | ✅ |
+| Eigene Charaktere anlegen, bearbeiten, in die Welt mitbringen und aktiv setzen | ✅ | ✅ | ✅ |
+| Marker des eigenen aktiven Charakters auf einer sichtbaren Karte platzieren, verschieben, entfernen | ✅ | ✅ | ✅ |
+| Marker fremder Charaktere platzieren, verschieben, entfernen | ✅ | ✅ | – |
+| Tagebucheinträge `mit Spielleitung geteilt` fremder Charaktere dieser Welt lesen | ✅ | ✅ | – |
+| Tagebucheinträge `privat` fremder Charaktere lesen | – | – | – |
+| Chat lesen & schreiben, würfeln, eigene Nachrichten löschen (außer Würfelwürfe) | ✅ | ✅ | ✅ |
+| Fremde Chat-Nachrichten löschen (außer Würfelwürfe) | ✅ | ✅ | – |
+
+### Artikel-Editor (festgelegt)
+
+- **Titelbild:** höchstens ein Bild pro Artikel, außerhalb des Textes, über dem Artikel angezeigt. Formate JPG, PNG, WebP, maximal 10 MB.
+- **Text:** Rich-Text **ohne Bilder im Text**. Erlaubte Formatierungen: Überschriften (Ebene 2 und 3), fett, kursiv, unterstrichen, durchgestrichen, Aufzählung, nummerierte Liste, Zitat, Trennlinie, externer Link, Erwähnung (`@Name`).
+- **Nicht erlaubt:** Bilder, Tabellen und eingebettete Medien im Text. Beim Einfügen aus der Zwischenablage werden solche Elemente verworfen.
+- **Bibliothek:** TipTap (siehe T-005).
+
+### Abgrenzung (nicht in diesem Plan bzw. nicht im MVP)
+
+- **MCP-Server für Claude:** eigener Plan `002`, direkt im Anschluss an diesen Plan zu erstellen. Dieser Plan berücksichtigt ihn nur über das Bewertungskriterium *MCP-Tauglichkeit* in T-002 und über explizit gespeicherte Relationen in T-006.
+- **Backlog:** KI-Chat innerhalb der App (bräuchte einen API-Key mit Abrechnung nach Verbrauch), eigene Vorlagen, Kampfwerte und Statblocks (Trefferpunkte, Rüstungsklasse, Stufe, Zauber, Inventar), Zeitleisten, Kalender, Stammbäume, Themes, private Chat-Nachrichten, öffentliche (anonyme) Weltansicht, Bilder im Artikeltext.
+
+## Begriffe & Systeme
+
+- **ADR (Architecture Decision Record)**: Kurzes Entscheidungsdokument unter `.ai/decisions/NNN-titel.md` mit den Abschnitten *Kontext*, *Kandidaten*, *Bewertung* (Tabelle gegen die Kriterien), *Entscheidung*, *Konsequenzen*.
+- **Spike**: Zeitlich begrenzter, bewusst verwerfbarer Prototyp, der eine technische Frage beantwortet. Spikes liegen unter `spikes/<name>/` und werden nicht in den Produktivcode übernommen. Ausgenommen ist das Grundgerüst aus T-007, das weiterverwendet wird.
+- **Coolify**: Selbst gehostete Plattform (Open Source), die Anwendungen aus einem Git-Repository als Docker-Container baut, deployt und mit HTTPS-Domain versieht.
+- **Discord-Login (OAuth2)**: Anmeldung über ein Discord-Konto. Erfordert eine Anwendung im Discord Developer Portal mit Client-ID, Client-Secret und registrierter Redirect-URL. Benötigte Scopes: `identify` (Pflicht) und optional `email`. Für reines Login ist keine Prüfung oder Verifizierung durch Discord nötig.
+- **Realtime**: Übertragung von Änderungen an alle verbundenen Browser ohne Neuladen, z. B. über WebSockets oder Server-Sent Events. Wird für Chat und Pin-Verschiebung benötigt.
+- **Relation**: Gespeicherte, gerichtete Verbindung zwischen zwei Inhalten (Artikel, Quest, Charakter, Pin). **Automatische** Relationen entstehen aus Erwähnungen, Vorlagenfeldern und Quest-Beteiligungen; **manuelle** Relationen legt die Spielleitung mit eigener Bezeichnung an. Grundlage für die verknüpften Elemente und den späteren MCP-Server.
+- **Erwähnung**: Verweis auf einen Artikel, eine Quest oder einen Charakter im Rich-Text, eingefügt über `@` mit Teilwortsuche (Definition in `.ai/architecture/datenmodell-fachlich.md`, Abschnitt 2.4).
+- **Welt**: Oberster Container einer Spielrunde mit Mitgliedern, Artikeln, Quests, Chat und Universen.
+- **Universum**: Teilbereich einer Welt (z. B. eine Ebene, ein Kontinent oder eine Dimension), der die Karte(n) enthält. Im MVP genau eine Karte pro Universum.
+- **Game Master**: Ersteller einer Welt mit vollen Rechten. Pro Welt genau einer, im MVP nicht übertragbar.
+- **Master**: Rolle mit allen Rechten des Game Masters außer dem Hinzufügen von Personen, dem Löschen der Welt und dem Entfernen des Game Masters. Pro Welt beliebig viele.
+- **Player**: Rolle, die Inhalte der Welt nur ansieht. Verwaltet eigene Charaktere, Tagebucheinträge und Chat-Beiträge.
+- **Einladungslink**: Vom Game Master erzeugter, widerrufbarer Link. Jeder angemeldete Benutzer, der ihn öffnet, darf der Welt als Player beitreten.
+- **Charakter-Marker**: Darstellung eines aktiven Charakters (Profilbild und Name) auf einer Karte. Pro Karte und Charakter höchstens ein Marker mit eigener Position.
+- **Spielleitung**: Sammelbegriff für Game Master und alle Master einer Welt.
+- **Mitbringen**: Einen eigenen, weltunabhängigen Charakter einer Welt zuordnen, in der der Benutzer Mitglied ist.
+- **Aktiver Charakter**: Der mitgebrachte Charakter, mit dem ein Benutzer in einer Welt gerade spielt. Pro Benutzer und Welt höchstens einer.
+- **Pin-Typen (12)**: Gefahr, Boss, Haus, Stadt, Schatz, Stern (Sehenswürdigkeit), Angeln, Pflanzen, Dungeon, Quest, Teleporter, Shop.
+- **Artikel-Editor**: Rich-Text-Editor für den Artikeltext mit dem im Abschnitt *Artikel-Editor (festgelegt)* definierten Funktionsumfang.
+- **TipTap**: Open-Source-Rich-Text-Editor auf Basis von ProseMirror. Der Kern ist frameworkunabhängig, Anbindungen gibt es für React, Vue und Svelte. Speichert Inhalte als JSON.
+- **MCP (Model Context Protocol)**: Offenes Protokoll, über das Claude Werkzeuge externer Anwendungen aufruft. Wird in Plan `002` umgesetzt. Hier nur als Bewertungskriterium relevant.
+- **Staging**: Eigene Coolify-Umgebung mit eigener Subdomain für Tests. Sie ist von der späteren Produktivumgebung getrennt.
+
+## Relevante Normen
+
+- `.ai/architecture/datenmodell-fachlich.md`: fachliches Datenmodell (Entitäten, Eigenschaften, Regeln, Löschregeln, Rechte je Entität). Verbindliche Grundlage für T-005, T-006 und T-011.
+
+Weitere Normen legt dieser Plan an: ADRs unter `.ai/decisions/`, Projektnormen durch T-013.
+
+## Globale Abhängigkeiten
+
+- Zugang zum eigenen Server mit laufender Coolify-Instanz (liefert der Projektinhaber).
+- Eine Domain bzw. Subdomain, die auf den Server zeigt.
+- Ein Discord-Konto des Projektinhabers zum Anlegen der Discord-Anwendung.
+- Ein Git-Hosting, auf das Coolify zugreifen kann (z. B. GitHub, GitLab oder Gitea). Die Auswahl erfolgt in T-001.
+
+## Aufgaben
+
+### T-001: Bestandsaufnahme Server & Coolify
+- [ ] Beschreibung: Die Eckdaten des Zielservers erfassen und in `.ai/infrastructure/server.md` dokumentieren: Coolify-Version, CPU-Kerne, RAM, freier Speicherplatz, Betriebssystem, bereits laufende Dienste, verfügbare (Sub-)Domains, vorhandenes Backup-Ziel (z. B. S3-kompatibler Speicher) und das Git-Hosting, das an Coolify angebunden ist bzw. wird.
+- Abhängigkeiten: keine
+- Abnahmekriterium: `.ai/infrastructure/server.md` existiert und enthält zu jedem der genannten Punkte einen konkreten Wert oder ausdrücklich „nicht vorhanden“. Git-Hosting und Staging-Subdomain sind festgelegt.
+
+### T-002: Backend-Ansatz entscheiden (ADR-001)
+- [ ] Beschreibung: Die drei Kandidaten bewerten und die Entscheidung als `.ai/decisions/001-backend.md` festhalten.
+  - **A – PocketBase**: einzelnes Binary mit SQLite, integriertem Discord-OAuth2, Realtime-Abonnements, Dateispeicher und Zugriffsregeln pro Datensatz.
+  - **B – Supabase (selbst gehostet)**: PostgreSQL mit Row-Level-Security, Realtime, Storage und Discord-Login. Besteht aus mehreren Containern.
+  - **C – Eigenes TypeScript-Backend**: Node.js, PostgreSQL, ORM (Drizzle), Auth-Bibliothek mit Discord-Provider (z. B. Better Auth) und WebSocket-Server (z. B. Socket.IO).
+
+  Bewertungskriterien, jeweils mit 1–5 Punkten und einer Begründung in einem Satz:
+  1. Discord-Login
+  2. Realtime für Chat und Pins
+  3. Dateispeicher für Kartenbilder bis 20 MB und Titelbilder bis 10 MB
+  4. Rechteprüfung auf Datenebene, inkl. Rollen pro Welt, der Regel „genau ein Game Master“ und der Sichtbarkeit einzelner Tagebucheinträge
+  5. Ressourcenbedarf und Betrieb auf dem Server aus T-001 via Coolify
+  6. Backup & Wiederherstellung
+  7. Typsicherheit und Entwicklerfreundlichkeit
+  8. Anbieterbindung
+  9. **MCP-Tauglichkeit**: Kann die App mit diesem Backend in Plan `002` als OAuth-2.1-Autorisierungsserver für einen Claude-Connector auftreten (fertige Bibliothek oder Plugin vs. Eigenbau), und lassen sich die Rechteprüfungen für Oberfläche und MCP-Werkzeuge gemeinsam nutzen? Kriterium 9 zählt **doppelt**, weil ein Eigenbau der OAuth-Seite der größte Aufwandstreiber von Plan `002` ist.
+- Abhängigkeiten: T-001
+- Abnahmekriterium: ADR-001 enthält die ausgefüllte Bewertungstabelle für alle drei Kandidaten (Kriterium 9 doppelt gewichtet) und genau eine gewählte Option mit Begründung und Konsequenzen. Scheitert einer der Spikes T-005 oder T-008 bis T-012 am gewählten Backend, wird ADR-001 überarbeitet und der Grund darin dokumentiert.
+
+### T-003: Frontend-Framework entscheiden (ADR-002)
+- [ ] Beschreibung: Die Kandidaten **Next.js (React)**, **SvelteKit** und **React + Vite (Single-Page-App)** bewerten und die Entscheidung als `.ai/decisions/002-frontend.md` festhalten. Kriterien: Zusammenspiel mit dem Backend aus ADR-001, Verfügbarkeit der Karten-Bibliothek (T-004) und einer TipTap-Anbindung (T-005) für das Framework, Deployment als Container auf Coolify, Typsicherheit (TypeScript), Aufwand für Realtime-Anbindung, Größe des Ökosystems.
+- Abhängigkeiten: T-002
+- Abnahmekriterium: ADR-002 enthält die Bewertungstabelle aller drei Kandidaten und genau eine gewählte Option. Die Wahl ist mit ADR-001 vereinbar, und das ist im Abschnitt *Konsequenzen* begründet.
+
+### T-004: Karten-/Whiteboard-Bibliothek entscheiden (ADR-003)
+- [ ] Beschreibung: Die Kandidaten bewerten und die Entscheidung als `.ai/decisions/003-karten.md` festhalten.
+  - **Leaflet** mit `CRS.Simple`: Kartenbild als Bild-Ebene, ziehbare Marker mit eigenen Icons.
+  - **Konva** (bzw. `react-konva` / `svelte-konva`): freie Zeichenfläche mit Bild-Hintergrund.
+  - **tldraw**: fertiges Whiteboard. Das Lizenzmodell für den selbst gehosteten Produktivbetrieb ist ausdrücklich zu prüfen.
+
+  Kriterien: flüssiges Zoomen und Verschieben bei einem Kartenbild von 8000 × 6000 px, ziehbare Pins mit 12 eigenen Icons, Klick auf einen Pin öffnet ein Popup mit Link, Touch-Bedienung (Tablet), Speicherung der Pin-Position unabhängig von der Zoomstufe (Koordinaten relativ zum Bild), Lizenz, Eignung für die Live-Synchronisation von Positionen, Verfügbarkeit für das Framework aus ADR-002.
+- Abhängigkeiten: T-003
+- Abnahmekriterium: ADR-003 enthält die Bewertungstabelle, das Ergebnis der Lizenzprüfung für jeden Kandidaten (mit Link auf die Lizenz) und genau eine gewählte Option.
+
+### T-005: Artikel-Editor festschreiben & verproben (ADR-004)
+- [ ] Beschreibung: Die bereits getroffene Entscheidung für **TipTap** als `.ai/decisions/004-editor.md` dokumentieren. Enthalten sein müssen: der Funktionsumfang laut Abschnitt *Artikel-Editor (festgelegt)*, die dafür nötigen TipTap-Erweiterungen, die TipTap-Anbindung für das Framework aus ADR-002, das Speicherformat (TipTap-JSON plus abgeleiteter Klartext für die Suche) sowie Lizenzhinweise. Nur Open-Source-Erweiterungen sind zulässig, keine kostenpflichtigen Pro-Erweiterungen. Danach einen Spike unter `spikes/editor/` bauen, der den Editor mit genau diesem Funktionsumfang zeigt.
+- Abhängigkeiten: T-003
+- Abnahmekriterium: (1) ADR-004 existiert mit allen genannten Inhalten. (2) Die Werkzeugleiste im Spike bietet genau die erlaubten Formatierungen. (3) Wird ein Bild oder eine Tabelle aus der Zwischenablage (z. B. aus einer Webseite oder Word) eingefügt, erscheint im Editor kein Bild und keine Tabelle, der übrige Text bleibt erhalten. (4) `@` öffnet eine Vorschlagsliste aus Testdaten (Artikel, Charaktere, Quests) gemäß Abschnitt 2.4 des fachlichen Datenmodells: Mit den Testdaten „Gottschleim“ (Artikel) und „Töte den Gottschleim“ (Quest) liefert `@schleim` beide Einträge, jeweils mit Kategorie. Nach dem Speichern liefert eine Funktion die Liste aller erwähnten Inhaltsverweise (Art + ID). (5) Gespeichertes JSON lässt sich neu laden und wird identisch dargestellt.
+
+### T-006: Datenmodell-Entwurf
+- [ ] Beschreibung: Das fachliche Datenmodell (`.ai/architecture/datenmodell-fachlich.md`) in ein **technisches Schema** für das Backend aus ADR-001 übersetzen und als `.ai/architecture/datenmodell.md` dokumentieren. Enthalten sein müssen:
+  - ein ER-Diagramm (Mermaid) und pro Entität die Tabellen bzw. Collections mit Feldern und technischen Datentypen,
+  - eine Zuordnungstabelle „Entität / Eigenschaft im fachlichen Modell → Tabelle / Feld im Schema“,
+  - die technische Umsetzung jeder Regel aus dem fachlichen Modell (Constraint, Index, Trigger, Backend-Regel oder Anwendungslogik),
+  - die Umsetzung der Löschregeln (Abschnitt 4 des fachlichen Modells),
+  - die Umsetzung der Rechte je Entität (Abschnitt 5), inkl. Vererbung der Sichtbarkeit Universum → Karte → Pin/Marker und Sichtbarkeit von Relationen (Quelle **und** Ziel sichtbar),
+  - die Speicherung typabhängiger Vorlagenfelder ohne Schemaänderung je Vorlagentyp,
+  - die Speicherung polymorpher Inhaltsverweise (Relationen zwischen Artikel, Quest, Charakter, Pin) mit referentieller Integrität bzw. Aufräumlogik beim Löschen,
+  - die Umsetzung der Erwähnungssuche (Teilwort, ohne Groß-/Kleinschreibung, über Artikel, Quests, Charaktere) und der Volltextsuche.
+- Abhängigkeiten: T-002, T-005
+- **Stopp (Freigabe erforderlich):** Nach Fertigstellung des Entwurfs pausiert `/plan-run` und legt dem Projektinhaber das Datenmodell zur Prüfung vor. Abhängige Aufgaben (T-011, T-013) starten erst nach ausdrücklicher Freigabe im Chat. Änderungswünsche werden vorher eingearbeitet.
+- Abnahmekriterium: (1) Die Zuordnungstabelle deckt **jede** Entität und Eigenschaft des fachlichen Modells ab. Was nicht umgesetzt wird, steht mit Begründung darin. (2) Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells hat eine benannte technische Umsetzung. Mindestens „genau ein Game Master = Ersteller“, „höchstens ein aktiver Charakter pro Benutzer und Welt“ und „höchstens ein Charakter-Marker pro Charakter und Karte“ sind auf Datenebene abgesichert (z. B. eindeutiger Teilindex oder Constraint). (3) Das Mermaid-ER-Diagramm wird in einer Markdown-Vorschau fehlerfrei gerendert. (4) Das Schema erlaubt mehrere Karten pro Universum, ohne dass eine Migration nötig wäre. (5) Abweichungen vom fachlichen Modell sind nicht stillschweigend eingebaut, sondern als Rückfrage beim Stopp vorgelegt.
+
+### T-007: Repository, Grundgerüst & Deployment auf Coolify
+- [ ] Beschreibung: Ein Git-Repository auf dem Git-Hosting aus T-001 anlegen, das Grundgerüst mit Frontend (ADR-002) und Backend (ADR-001) erstellen und auf der Staging-Subdomain über Coolify bereitstellen. Dazu gehören: automatisches Deployment bei Push auf den Hauptzweig, Umgebungsvariablen in Coolify (keine Secrets im Repository), persistentes Volume für Datenbank und Dateien, HTTPS-Zertifikat.
+- Abhängigkeiten: T-001, T-002, T-003
+- Abnahmekriterium: Die Staging-URL liefert per HTTPS eine Startseite, die einen aus der Datenbank gelesenen Wert anzeigt. Ein Push auf den Hauptzweig löst ohne manuellen Eingriff ein neues Deployment aus. Nach einem Neustart des Containers in Coolify sind Datenbankinhalte und hochgeladene Dateien weiterhin vorhanden. `git grep` findet kein Client-Secret und kein Passwort im Repository.
+
+### T-008: Spike Discord-Login
+- [ ] Beschreibung: Eine Discord-Anwendung im Discord Developer Portal anlegen (Scopes `identify` und optional `email`, Redirect-URL der Staging-Umgebung) und die Anmeldung im Grundgerüst aus T-007 einbauen. Beim ersten Login wird ein Benutzer mit Discord-ID, Anzeigename und Avatar-URL angelegt, bei weiteren Logins wiedererkannt.
+- Abhängigkeiten: T-007
+- Abnahmekriterium: Auf der Staging-URL führt „Mit Discord anmelden“ zur Discord-Freigabeseite und zurück in die App, die dort Anzeigename und Avatar zeigt. Ein zweiter Login mit demselben Discord-Konto erzeugt keinen zweiten Benutzer (prüfbar in der Datenbank). Abmelden beendet die Sitzung: Ein Neuladen zeigt wieder den Login-Button.
+
+### T-009: Spike Karten-Whiteboard mit Pins
+- [ ] Beschreibung: Mit der Bibliothek aus ADR-003 eine Seite bauen, auf der ein Kartenbild hochgeladen wird und als zoom- und verschiebbarer Hintergrund erscheint. Pins aller 12 Pin-Typen lassen sich mit Titel (Pflicht) und Beschreibung (optional) platzieren und per Drag & Drop verschieben. Zusätzlich wird ein Charakter-Marker (Profilbild und Name eines Test-Charakters) angezeigt und ist verschiebbar. Positionen von Pins und Markern werden relativ zum Bild gespeichert und per Realtime an alle anderen geöffneten Browser übertragen.
+- Abhängigkeiten: T-004, T-008
+- Abnahmekriterium: (1) Ein Testbild mit 8000 × 6000 px lässt sich hochladen und flüssig zoomen und verschieben. (2) Alle 12 Pin-Typen sind mit unterscheidbarem Icon platzierbar. (3) Wird ein Pin oder der Charakter-Marker in Browser A verschoben, steht er in Browser B (anderer angemeldeter Benutzer) innerhalb von 1 Sekunde an derselben Stelle, ohne Neuladen. (4) Nach dem Neuladen und bei jeder Zoomstufe stehen Pin und Marker an derselben Bildstelle. (5) Charakter-Marker sind optisch klar von Pins unterscheidbar (Profilbild statt Pin-Icon). (6) Der Aufruf der Karten-URL mit einer Pin-ID als Parameter öffnet die Karte zentriert und gezoomt auf diesen Pin und hebt ihn hervor (Grundlage für „verknüpfte Elemente“). (7) Die Bedienung funktioniert per Touch in der Geräte-Emulation des Browsers (Tablet-Profil).
+
+### T-010: Spike Chat mit Würfeln
+- [ ] Beschreibung: Einen einfachen Gruppenchat mit Realtime bauen. Nachrichten, die mit `/roll` beginnen, werden **serverseitig** ausgewertet (Notation `NdM`, `NdM+K`, `NdM-K`, mehrere Terme wie `1d20+1d4+2`; N ≤ 100, M ∈ {2, 4, 6, 8, 10, 12, 20, 100}). Einzelwürfe und Summe werden als Chat-Nachricht gespeichert.
+- Abhängigkeiten: T-008
+- Abnahmekriterium: (1) Eine Nachricht aus Browser A erscheint in Browser B innerhalb von 1 Sekunde. (2) `/roll 2d6+3` erzeugt eine Nachricht mit zwei Einzelwerten zwischen 1 und 6 und der korrekten Summe. (3) Eine ungültige Eingabe (z. B. `/roll 2d7`) erzeugt eine verständliche Fehlermeldung und keinen Wurf. (4) Ein manipulierter Client-Request mit vorgegebenem Würfelergebnis wird ignoriert bzw. abgelehnt. Das Ergebnis entsteht nachweislich auf dem Server. (5) Nach dem Neuladen sind die letzten 50 Nachrichten sichtbar.
+
+### T-011: Spike Rechteprüfung auf Datenebene
+- [ ] Beschreibung: Rollen und Rechteprüfung im Backend für folgende Fälle umsetzen und testen: (a) Tagebucheinträge mit Sichtbarkeit `privat` bzw. `mit Spielleitung geteilt`, (b) Artikel mit Status `nur Spielleitung`, (c) Rollenverwaltung: Game Master = Ersteller, Einladen nur durch den Game Master, Ernennen und Zurückstufen von Mastern, (d) die Regel „höchstens ein aktiver Charakter pro Benutzer und Welt“, (e) das Verschieben von Charakter-Markern. Testbenutzer: 1 Game Master, 1 Master, 2 Player (Player A besitzt einen aktiven Charakter mit Tagebucheinträgen, Player B einen aktiven Charakter ohne Einträge).
+- Abhängigkeiten: T-006, T-008
+- Abnahmekriterium: Direkte Abfragen an das Backend (nicht über die Oberfläche, z. B. mit `curl` und dem Sitzungstoken des jeweiligen Testbenutzers) liefern genau die Ergebnisse der Rechtematrix:
+  - Player B erhält weder `privat`- noch `geteilt`-Einträge von Player A.
+  - Game Master und Master erhalten nur die `geteilt`-Einträge.
+  - Game Master und Master sehen Artikel mit Status `nur Spielleitung`, die Player nicht.
+  - Der Ersteller der Welt ist Game Master. Der Versuch, einen weiteren Benutzer zum Game Master zu machen, wird abgelehnt, ebenso der Versuch eines Masters, den Game Master zu entfernen oder zurückzustufen.
+  - Der Master kann keinen Einladungslink erstellen, aber Player B zum Master ernennen und wieder zurückstufen. Player können weder ernennen noch einladen.
+  - Ein Benutzer mit gültigem Einladungslink tritt als Player bei. Mit einem widerrufenen Link wird der Beitritt abgelehnt.
+  - Der Master kann die Welt nicht löschen.
+  - Player A kann den Marker seines eigenen Charakters verschieben, nicht aber den von Player B. Der Master kann beide verschieben.
+  - Player können keine Artikel, Pins, Karten, Universen oder manuellen Relationen anlegen, ändern oder löschen.
+  - Ist ein Universum `nur Spielleitung`, erhalten Player weder dessen Karte noch deren Pins oder Marker, auch wenn diese selbst `veröffentlicht` sind.
+  - Eine Relation zwischen einem veröffentlichten und einem versteckten Artikel wird Playern nicht geliefert, der Spielleitung schon.
+  - Das Aktivsetzen eines zweiten Charakters desselben Benutzers in derselben Welt deaktiviert den bisherigen oder wird abgelehnt (das gewählte Verhalten ist dokumentiert). Es gibt nie zwei aktive Charaktere.
+
+  Die Tests sind als Skript oder automatisierter Test im Spike-Ordner abgelegt und wiederholbar.
+
+### T-012: Backup & Wiederherstellung
+- [ ] Beschreibung: Ein automatisches, tägliches Backup von Datenbank und hochgeladenen Dateien einrichten (Coolify-Backup-Funktion oder eigener Job) und an das Backup-Ziel aus T-001 senden. Einmal eine vollständige Wiederherstellung auf Staging durchspielen und das Vorgehen dokumentieren.
+- Abhängigkeiten: T-007, T-009
+- Abnahmekriterium: Mindestens ein automatisch erzeugtes Backup liegt am Backup-Ziel. Nach dem Löschen der Staging-Daten und der Wiederherstellung aus dem Backup sind ein Test-Pin aus T-009 und das zugehörige Kartenbild wieder vorhanden. Die Schritte stehen in `.ai/infrastructure/backup.md`.
+
+### T-013: Projektnormen festhalten & Go/No-Go
+- [ ] Beschreibung: Die Ergebnisse als verbindliche Normen für die Folgepläne festhalten:
+  - `.ai/tech-stack.md`: gewählte Technologien mit Version und Verweis auf die ADRs.
+  - `.ai/conventions.md`: Ordnerstruktur, Namenskonventionen, Sprache von Code und Oberfläche, Umgang mit Secrets, Teststrategie.
+  - `.ai/architecture/README.md`: Überblick über die Komponenten und den Datenfluss.
+
+  Danach eine Go/No-Go-Einschätzung am Ende von `.ai/tech-stack.md` ergänzen: Sind die Spikes T-005 und T-008 bis T-012 bestanden?
+- Abhängigkeiten: T-002, T-003, T-004, T-005, T-006, T-008, T-009, T-010, T-011, T-012
+- Abnahmekriterium: Alle drei Dateien existieren. Jede Technologie in `tech-stack.md` verweist auf ein ADR. `conventions.md` legt die Sprache der Oberfläche und des Codes ausdrücklich fest. Die Go/No-Go-Einschätzung nennt für jeden Spike „bestanden“ oder „nicht bestanden“ mit Begründung und endet mit „Go“ oder „No-Go“.
