@@ -1,0 +1,3 @@
+ALTER TABLE "spike_chat_messages" ADD COLUMN "opens_thread_id" uuid;--> statement-breakpoint
+ALTER TABLE "spike_chat_messages" ADD CONSTRAINT "spike_chat_messages_opens_thread_id_spike_chat_threads_id_fk" FOREIGN KEY ("opens_thread_id") REFERENCES "public"."spike_chat_threads"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "spike_chat_messages" ADD CONSTRAINT "spike_chat_messages_opens_thread" UNIQUE("opens_thread_id");

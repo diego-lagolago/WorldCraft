@@ -53,6 +53,12 @@ export const auth = betterAuth({
         required: false,
         input: false,
       },
+      dicePostToChat: {
+        type: "boolean",
+        required: false,
+        defaultValue: true,
+        input: false,
+      },
     },
     validateUserInfo: ({ user, source }) => {
       if (source.oauth?.providerId !== "discord") return;

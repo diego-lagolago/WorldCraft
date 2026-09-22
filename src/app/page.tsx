@@ -42,9 +42,12 @@ export default async function Home() {
         testLoginEnabled={isTestLoginEnabled()}
       />
       {session?.user ? (
-        <p>
+        <p className="flex flex-wrap gap-4">
           <Link className="text-amber-300 underline" href="/spike/karte">
             Karten-Spike
+          </Link>
+          <Link className="text-amber-300 underline" href="/spike/chat">
+            Chat-Spike
           </Link>
         </p>
       ) : null}

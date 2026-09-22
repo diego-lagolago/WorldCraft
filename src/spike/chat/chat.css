@@ -1,0 +1,480 @@
+/* Spike T-010 — Handy zuerst: Chat-Liste, große Eingabe unten im Daumenbereich. */
+
+.spike-chat {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: #09090b;
+  color: #fafafa;
+}
+
+.spike-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: calc(0.5rem + env(safe-area-inset-top)) 0.75rem 0.5rem;
+  border-bottom: 1px solid #3f3f46;
+}
+
+.spike-chat-header a,
+.spike-chat-back,
+.spike-chat-send,
+.spike-chat-icon-btn,
+.spike-chat-stepper button,
+.spike-chat-sides button,
+.spike-chat-sheet-actions button,
+.spike-chat-action-sheet button {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  border-radius: 0.7rem;
+  border: 1px solid #52525b;
+  background: #27272a;
+  color: inherit;
+  padding: 0.45rem 0.85rem;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spike-chat-header a,
+.spike-chat-back {
+  flex: 0 0 2.75rem;
+  padding: 0;
+  font-size: 1.35rem;
+}
+
+.spike-chat-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.spike-chat-title h1 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.spike-chat-title p {
+  margin: 0.1rem 0 0;
+  font-size: 0.85rem;
+  color: #a1a1aa;
+}
+
+.spike-chat-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem 0.75rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.spike-chat-empty {
+  margin: auto;
+  color: #a1a1aa;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.spike-chat-bubble {
+  max-width: 92%;
+  align-self: flex-start;
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: 0.85rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.spike-chat-bubble.own {
+  align-self: flex-end;
+  background: #1c1917;
+  border-color: #a16207;
+}
+
+.spike-chat-bubble.thread {
+  width: 100%;
+  max-width: 100%;
+  border-color: #a16207;
+}
+
+.spike-chat-thread-open {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  width: 100%;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0.15rem 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.spike-chat-thread-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fde68a;
+}
+
+.spike-chat-author {
+  font-size: 0.85rem;
+  color: #d4d4d8;
+  margin-bottom: 0.15rem;
+}
+
+.spike-chat-body {
+  font-size: 1.05rem;
+  word-break: break-word;
+}
+
+.spike-chat-dice {
+  margin-top: 0.35rem;
+  font-size: 1rem;
+  color: #fde68a;
+}
+
+.spike-chat-time {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #71717a;
+}
+
+.spike-chat-error {
+  margin: 0 0.75rem 0.4rem;
+  color: #fecaca;
+  font-size: 0.95rem;
+}
+
+.spike-chat-composer {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.6rem calc(0.65rem + env(safe-area-inset-bottom));
+  border-top: 1px solid #3f3f46;
+  background: #09090b;
+}
+
+.spike-chat-icon-btn,
+.spike-chat-send {
+  flex: 0 0 2.75rem;
+  padding: 0;
+}
+
+.spike-chat-icon-btn {
+  background: #27272a;
+  font-size: 1.45rem;
+  font-weight: 600;
+}
+
+.spike-chat-composer input,
+.spike-chat-term input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
+  border-radius: 0.7rem;
+  border: 1px solid #52525b;
+  background: #18181b;
+  color: inherit;
+  padding: 0.5rem 0.7rem;
+  font-size: 1.05rem;
+}
+
+.spike-chat-send {
+  background: #a16207;
+  border-color: #ca8a04;
+  font-weight: 600;
+}
+
+.spike-chat-send:disabled,
+.spike-chat-icon-btn:disabled,
+.spike-chat-composer input:disabled,
+.spike-chat-roll:disabled {
+  opacity: 0.6;
+}
+
+.spike-chat-action-sheet {
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: calc(4.4rem + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  padding: 0.4rem;
+  border-radius: 1rem;
+  background: #18181b;
+  border: 1px solid #3f3f46;
+}
+
+.spike-chat-action-sheet button {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.spike-chat-sheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.spike-chat-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgb(0 0 0 / 0.5);
+}
+
+.spike-chat-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 88dvh;
+  overflow: auto;
+  padding: 0.5rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  border-radius: 1.15rem 1.15rem 0 0;
+  background: #18181b;
+  border-top: 1px solid #3f3f46;
+}
+
+.spike-chat-sheet-handle {
+  align-self: center;
+  width: 2.75rem;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: #52525b;
+}
+
+.spike-chat-sheet h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.spike-chat-term {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.95rem;
+  color: #d4d4d8;
+}
+
+.spike-chat-term-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.spike-chat-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.spike-chat-stepper strong {
+  min-width: 2.5rem;
+  text-align: center;
+  font-size: 1.25rem;
+  color: #fafafa;
+}
+
+.spike-chat-sides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.spike-chat-sides button[aria-pressed="true"] {
+  border-color: #fbbf24;
+  background: #422006;
+}
+
+.spike-chat-text-btn {
+  align-self: flex-start;
+  min-height: 2.75rem;
+  border: 0;
+  background: none;
+  color: #fde68a;
+  font-size: 1rem;
+  padding: 0.35rem 0;
+}
+
+.spike-chat-preview {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #fde68a;
+  overflow-wrap: anywhere;
+}
+
+.spike-chat-dice-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.spike-chat-dice-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* Bonus + Ergebnis immer nebeneinander, auch ~390px */
+.spike-chat-bonus-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(6.5rem, 8.5rem);
+  align-items: stretch;
+  column-gap: 0.55rem;
+  min-width: 0;
+}
+
+.spike-chat-bonus-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+  font-size: 0.95rem;
+  color: #d4d4d8;
+}
+
+.spike-chat-dice-result {
+  box-sizing: border-box;
+  width: 100%;
+  height: 5.25rem;
+  min-height: 5.25rem;
+  max-height: 5.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.45rem;
+  border: 1px solid #3f3f46;
+  border-radius: 0.85rem;
+  background: #09090b;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.spike-chat-dice-result:not(.empty) {
+  cursor: pointer;
+}
+
+.spike-chat-dice-result.copied {
+  border-color: #a16207;
+  background: #1c1917;
+}
+
+.spike-chat-dice-result p {
+  margin: 0;
+  max-height: 100%;
+  overflow: auto;
+  font-size: 0.82rem;
+  line-height: 1.25;
+  color: #fde68a;
+  text-align: center;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.spike-chat-dice-result.empty p {
+  color: #52525b;
+  font-size: 1.15rem;
+}
+
+.spike-chat-dice-result.copied p {
+  color: #fde68a;
+}
+
+@media (min-width: 32rem) {
+  .spike-chat-bonus-row {
+    grid-template-columns: minmax(0, 1fr) 11rem;
+    column-gap: 0.85rem;
+  }
+
+  .spike-chat-dice-result {
+    height: 5.5rem;
+    min-height: 5.5rem;
+    max-height: 5.5rem;
+    padding: 0.55rem 0.7rem;
+  }
+
+  .spike-chat-dice-result p {
+    font-size: 1rem;
+  }
+
+  .spike-chat-preview {
+    font-size: 1.15rem;
+  }
+}
+
+.spike-chat-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  width: 100%;
+  border: 1px solid #52525b;
+  border-radius: 0.7rem;
+  background: #27272a;
+  color: inherit;
+  padding: 0.45rem 0.75rem;
+  font-size: 1rem;
+}
+
+.spike-chat-switch-track {
+  flex: 0 0 2.75rem;
+  height: 1.65rem;
+  border-radius: 999px;
+  background: #3f3f46;
+  position: relative;
+}
+
+.spike-chat-switch-track::after {
+  content: "";
+  position: absolute;
+  top: 0.18rem;
+  left: 0.18rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: #fafafa;
+}
+
+.spike-chat-switch-track.on {
+  background: #a16207;
+}
+
+.spike-chat-switch-track.on::after {
+  left: auto;
+  right: 0.18rem;
+}
+
+.spike-chat-sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.spike-chat-sheet-actions button {
+  width: 100%;
+}
+
+.spike-chat-roll {
+  background: #fbbf24;
+  color: #18181b;
+  border-color: #fbbf24;
+  font-weight: 600;
+}
+
+.spike-chat-secondary {
+  background: #27272a;
+}
