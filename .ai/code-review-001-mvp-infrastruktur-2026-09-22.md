@@ -165,7 +165,7 @@
 - **Bezug:** T-009, T-010, T-011
 - **Beschreibung:** Dieselbe Logik liegt mehrfach vor. Fehlerbehebungen wie CR-007 müssten an zwei oder drei Stellen gleich nachgezogen werden. Plan 003 baut die Spikes aus, die Duplikate gehen also ohne Konsolidierung direkt ins MVP über.
 - **Empfehlung:** Einen generischen `createRealtimeBus<T>(key)` und `createSseResponse(request, subscribe)` unter `src/lib/realtime/` anlegen, `requireSession` nach `src/lib/session.ts` verschieben, `escapeHtml` nach `src/lib/html.ts`. Pin-Typen und Positionsformat (`POSITION_DECIMALS`, `toDbPosition`, `fromDbPosition`) jeweils an einer Stelle definieren (z. B. `src/lib/map/`), abgeleitet vom Drizzle-Enum.
-- **Abnahmekriterium:** Es gibt genau eine Implementierung von Realtime-Bus, SSE-Response, Sitzungsprüfung und `escapeHtml` in `src/`. `grep -rn "toFixed(7)" src` findet höchstens die zentrale Hilfsfunktion. Die Pin-Typ-Liste existiert einmal und wird überall importiert.
+- **Abnahmekriterium:** (Bis Plan 003 T-016 gilt es für `src/` ohne `src/spike/`, danach für ganz `src/`.) Es gibt genau eine Implementierung von Realtime-Bus, SSE-Response, Sitzungsprüfung und `escapeHtml` in `src/`. `grep -rn "toFixed(7)" src` findet höchstens die zentrale Hilfsfunktion. Die Pin-Typ-Liste existiert einmal und wird überall importiert.
 
 ### CR-013 – Wiederholte Autorisierungsblöcke im Rechte-Repository
 - **Fundstelle:** `src/spike/rechte/repository.ts:1072-1251` (`placeMarker`, `moveMarker`, `deleteMarker`), sinngemäß auch `update*/delete*` für Artikel, Universum, Karte und Pin; `patch: Record<string, unknown>` bei :801, :879, :966, :1041
@@ -174,7 +174,7 @@
 - **Bezug:** T-011
 - **Beschreibung:** Die Folge „Marker laden → Kartenkontext laden → Mitgliedschaft laden → Charakter laden → `canSeePublishedLayer` → `canEditMarker` → Positionsprüfung“ ist dreimal fast wörtlich kopiert. Dasselbe gilt für „Entität laden → Welt ermitteln → `requireStaff`“. Die 1485 Zeilen lange Datei ist die Vorlage für die MVP-`APP-AUTHZ`-Schicht (Norm: „Neue Rechtefälle zuerst in der gemeinsamen Authz-Schicht“). Kopierte Prüfungen laufen erfahrungsgemäß auseinander. Die `Record<string, unknown>`-Patches umgehen außerdem die Drizzle-Typprüfung: Tippfehler in Spaltennamen fallen erst zur Laufzeit auf.
 - **Empfehlung:** Helfer wie `loadMarkerForEdit(actor, markerId)` bzw. `withStaffOnWorldOf(entity)` extrahieren, die Kontext und Gate liefern. Positionsprüfung ins Zod-Schema verschieben (`z.number().min(0).max(1)`). Patches als `Partial<typeof articles.$inferInsert>` typisieren. Die Datei nach Aggregaten aufteilen (`membership.ts`, `content.ts`, `geography.ts`, `relations.ts`).
-- **Abnahmekriterium:** Die Marker-Autorisierung steht in genau einer Funktion, die die drei Marker-Operationen nutzen. Kein `Record<string, unknown>` mehr in `repository.ts`. `npm run test:rechte` bleibt 15/15 grün.
+- **Abnahmekriterium:** (Bis Plan 003 T-016 gilt es für den Produktcode ohne `src/spike/`, danach für ganz `src/`.) Die Marker-Autorisierung steht in genau einer Funktion, die die drei Marker-Operationen nutzen. Kein `Record<string, unknown>` mehr in `repository.ts` bzw. im Nachfolgemodul. `npm run test:rechte` bleibt 15/15 grün.
 
 ### CR-014 – Fehlerbehandlung im Frontend
 - **Fundstelle:** `src/spike/karte/KarteBoard.tsx:198-216` (`persistPinMove`, `persistMarkerMove`), `:224-253` (`createPin`), `:168-170` und `ChatSpikePage.tsx:161-162` (`JSON.parse` im `onmessage`)
@@ -291,10 +291,4 @@ Alle Findings werden in Plan 003 umgesetzt (siehe *Umsetzungsrahmen*). Plan 003 
 
 ## Prioritätenliste
 
-1. **CR-001 (1), CR-003, CR-017:** Zugang absichern (Allowlist, `discordId` sperren, Env-Validierung). Keine Abhängigkeiten.
-2. **CR-002, CR-009, ESLint-Fehler aus CR-015 → CR-010:** Test-Runner (Vitest), Typfehler, Lint, danach der CI-`verify`-Job.
-3. **CR-012, CR-013:** Gemeinsame Module (Realtime, Session, Authz-Helfer) als Basis für den MVP-Ausbau.
-4. **CR-018 → CR-004, CR-020, CR-019:** Trigger, Relationsprüfung, Pin-Sperre, Rechte-Lücken.
-5. **CR-005, CR-008, CR-006, CR-007, CR-011, CR-014:** Laufzeit-Robustheit und Performance im MVP-Code.
-6. **CR-016, CR-021, CR-022, CR-023:** Upload-Härtung, Würfelformat, Editor, Magic Numbers.
-7. **CR-001 (2), (3):** Spikes entfernen und Produktivdaten bereinigen, sobald der MVP-Ersatz steht.
+Die verbindliche Umsetzungsreihenfolge ergibt sich aus Plan `003`: Abschnitt *Code-Review zu Plan 001* (Zuordnung Finding → Aufgabe) und *Reihenfolge (Abhängigkeitsgraph)*. Eine eigene Prioritätenliste führt dieses Dokument nicht mehr, damit keine zweite, abweichende Reihenfolge entsteht. Inhaltlich gilt: Zuerst kommen die kritischen Findings CR-001 (Teil 1) und CR-002 sowie das CI-Gate CR-010 in Plan 003 T-001. Das Entfernen der Spikes und das Bereinigen der Daten (CR-001 Teile 2 und 3) kommen zuletzt in T-016.

@@ -641,6 +641,7 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 | R-3.6-2 | Bild ersetzen hält Positionen | relative Koordinaten, nur `image_id` wechselt |
 | R-3.7-1 | Titel ohne Erwähnungen | `APP-PIN-TITLE-PLAIN` |
 | R-3.7-2 | Erwähnungen nur in der Beschreibung | Editor nur dort mit Mentions |
+| R-3.7-3 | Sperren/Entsperren nur Spielleitung; gesperrter Pin nur entsperrbar | `pins.locked` + `APP-PIN-LOCK` (`requireStaff`, 409 bei Änderung/Löschen) |
 | R-3.8-1 | Besitzer unveränderlich, nur er bearbeitet | `TRIG-CHAR-OWNER-IMMUTABLE` + `APP-AUTHZ` |
 | R-3.8-2 | Attribute 1–30, Modifikator nicht gespeichert | CHECK; UI rechnet |
 | R-3.8-3 | Eigene Fertigkeiten (Name, Übungsgrad, Attribut), max. 30, Name eindeutig, Start leer; Gesamtbonus −4 / −2 / +Ü / +2Ü, nicht gespeichert | `skills` JSONB-Array + `APP-CHAR-SKILLS`; `proficiency_bonus` CHECK 0–10 |

@@ -223,6 +223,8 @@ Regeln:
 - Betrifft ein Finding Spike-Code, der in dieser Aufgabe ins Produkt übernommen wird, wird es im Produktcode behoben, nicht im Spike.
 - Nach Abschluss einer Aufgabe wird die Status-Spalte im Review-Dokument nachgeführt (`/review-check` oder von Hand) und im selben Commit mitcommittet.
 - Bei Abschluss dieses Plans hat kein Finding mehr den Status `offen`.
+- Ist ein Finding mehreren Aufgaben zugeordnet, erfüllt jede Aufgabe das Abnahmekriterium für ihren Teil. Den Status `behoben` bekommt das Finding erst mit der letzten zugeordneten Aufgabe.
+- Abnahmekriterien, die „genau eine Implementierung in `src/`“ verlangen (CR-012, CR-013), gelten bis T-016 für den Produktcode **ohne** `src/spike/`. T-016 prüft sie endgültig für ganz `src/`.
 
 | Finding | Schwere | Aufgabe | Hinweis |
 |---|---|---|---|
@@ -230,21 +232,21 @@ Regeln:
 | CR-002 | kritisch | T-001 | Test-Runner Vitest. `npm test` muss grün sein, sonst kann kein Task committet werden |
 | CR-003 | mittel | T-006 | |
 | CR-004 | mittel | T-010 | Trigger `TRIG-REL-SAME-WORLD` entsteht in T-002 (siehe CR-018) |
-| CR-005 | mittel | T-003 | Gilt für alle Produkt-APIs: ungültige UUID/JSON → 400/404, nie 500 |
-| CR-006 | mittel | T-012 | Resync nach Reconnect gilt auch für die Karte (T-013 nutzt denselben Mechanismus) |
+| CR-005 | mittel | T-003 (Helfer und Regel), T-007 bis T-014 (anwenden) | T-003 liefert `parseJsonBody`/`parseUuid` und die Regel; jede Aufgabe, die APIs baut, wendet sie an: ungültige UUID/JSON → 400/404, nie 500 |
+| CR-006 | mittel | T-012 (Chat), T-013 (Karte) | Resync nach Reconnect im gemeinsamen Realtime-Modul aus T-012; T-013 nutzt es und weist es für Pins und Marker nach |
 | CR-007 | mittel | T-012 | Realtime bleibt In-Process; Norm „genau eine App-Replica“ in `architecture/README.md` und `deployment.md` |
-| CR-008 | mittel | T-003 | |
+| CR-008 | mittel | T-007 (Austritt, Einladung, Welt anlegen), T-012 (Thread mit Eröffnungsnachricht), T-013 (Kartenbild ersetzen) | Jeweils dort, wo der mehrstufige Schreibvorgang als Produktcode entsteht |
 | CR-009 | mittel | T-001 | Direkt im Spike-Code, damit `tsc` in der CI ab T-001 grün ist |
 | CR-010 | mittel | T-001 | CI prüft `npm test`, `tsc` und `eslint` vor dem Image-Build |
-| CR-011 | mittel | T-003 | |
-| CR-012 | mittel | T-012 | Ein gemeinsamer Realtime-Bus und eine SSE-Route für Chat und Karte |
-| CR-013 | mittel | T-003 | |
+| CR-011 | mittel | T-007 (Teilnahmen archivieren), T-010 (Relationen), T-013 (Karten, Pins, Marker) | Keine DB-Query in Schleifen über Datensätze |
+| CR-012 | mittel | T-012 (Realtime-Bus, SSE-Route, Sitzungsprüfung, `escapeHtml`), T-013 (Pin-Typen, Positionsformat), Endprüfung T-016 | Ein gemeinsamer Realtime-Bus und eine SSE-Route für Chat und Karte |
+| CR-013 | mittel | T-003 (Authz-Helfer, typisierte Patches), T-013 (Marker-Autorisierung), Endprüfung T-016 | |
 | CR-014 | niedrig | T-012, T-013 | |
 | CR-015 | niedrig | T-001 (ESLint-Fehler), T-012, T-013 (Struktur) | ESLint ab T-001 grün; Hooks und Komponenten-Schnitt beim Übernehmen von Chat und Karte |
 | CR-016 | niedrig | T-004 | |
 | CR-017 | niedrig | T-006 | |
 | CR-018 | niedrig | T-002 | Alle 8 `TRIG-*`, je mit Integrationstest |
-| CR-019 | niedrig | T-008 | |
+| CR-019 | niedrig | T-008 (Teile b, c), T-015 (Teil a: Persistenz-Snapshot) | Ein Snapshot-Nachfolger in T-015 liefert keinen Klartext von `privat`-Einträgen |
 | CR-020 | niedrig | T-002 (Spalte), T-013 (Rechte, UI) | Pin-Sperre wird übernommen, nur Spielleitung; Fachmodell 3.7 am 2026-09-22 ergänzt |
 | CR-021 | niedrig | T-002 (Schema), T-012 | Würfe pro Term gespeichert und gruppiert angezeigt, z. B. `1d20-1d4 → [15] − [3] = 12` |
 | CR-022 | niedrig | T-005 | |
@@ -288,7 +290,7 @@ Regeln:
 
 ### T-003: Rechteschicht aus dem Spike heben
 - [ ] Beschreibung: `src/spike/rechte/authz.ts` (und zugehörige Typen) nach `src/lib/authz/` verschieben bzw. als Produktmodul etablieren. Alle neuen Produkt-APIs nutzen **nur** diese Schicht plus die APP-*-Regeln. Spike-HTTP darf sie bis T-015 noch aufrufen, soll aber keinen zweiten, abweichenden Rechtepfad aufbauen. `conventions.md`-Regel „Neue Rechtefälle zuerst in der gemeinsamen Schicht + Test“ gilt ab dieser Aufgabe.
-- Code-Review: CR-005, CR-008, CR-011, CR-013. Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
+- Code-Review: CR-005 (Helfer und Regel), CR-013 (Authz-Helfer, typisierte Patches). Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
 - Abhängigkeiten: T-002
 - Abnahmekriterium: (1) Produktcode unter `src/app` und `src/lib` importiert Authz nicht aus `src/spike/`. (2) Bestehende Unit-Tests der Sichtbarkeitsregeln (`src/spike/rechte/authz.test.ts` oder deren neues Ziel) sind grün unter `npm test`. (3) `npm run test:rechte` bleibt grün, solange die Spike-API noch existiert (T-015 stellt um).
 
@@ -314,59 +316,63 @@ Regeln:
 
 ### T-007: Welten, Universen, Mitglieder, Einladungen (F1, F6)
 - [ ] Beschreibung: Oberflächen und APIs für: Welt anlegen (Name, optionale Beschreibung ohne `@`, optionales Titelbild); automatisch Mitgliedschaft Game Master und Universum „Hauptuniversum“ (`veröffentlicht`); weitere Universen (Name eindeutig in der Welt, Beschreibung mit Erwähnungen, Reihenfolge, Sichtbarkeit); Welt bearbeiten / löschen nur GM; Mitgliederliste; Player ↔ Master nur GM; Entfernen nur GM; Austreten jedes Mitglieds außer GM (archivieren); Einladungslink 1 Tag / 7 Tage / unbegrenzt, widerrufen, Beitritt inkl. Reaktivierung. Letztes Universum nicht löschbar. Standard-Sichtbarkeit neuer Universen `nur Spielleitung` außer dem ersten.
-- Code-Review: CR-023. Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
+- Code-Review: CR-005 (anwenden), CR-008 (Austritt, Einladung, Welt anlegen), CR-011 (Teilnahmen archivieren), CR-023. Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
 - Abhängigkeiten: T-004, T-005, T-006
 - Abnahmekriterium: (0) Beim Anlegen einer Welt entstehen Game-Master-Mitgliedschaft, „Hauptuniversum“ und Chat-Kanal „Allgemein“ in einer Transaktion. (1) Ersteller ist Game Master; ein zweiter Game Master wird abgelehnt. (2) Gültiger Link macht den Benutzer zum Player; widerrufener oder abgelaufener Link wird abgelehnt. (3) Master kann weder einladen noch Rollen ändern noch die Welt löschen. (4) Austritt archiviert Mitgliedschaft, löscht keine Inhalte; erneuter Beitritt reaktiviert als Player. (5) Player sieht ein `gm_only`-Universum nicht. (6) Fälle sind um automatisierte Requests (Test-Login) ergänzt oder in das Rechte-Skript aufgenommen — vollständig spätestens T-015.
 
 ### T-008: Charaktere, Mitbringen, Tagebuch (F8, F9)
 - [ ] Beschreibung: Charakterbogen ohne Kampfwerte laut Fachmodell 3.8: Name, Profilbild, Klasse Freitext, sechs Attribute 1–30 mit angezeigtem Modifikator, eigene Fertigkeiten als Liste laut `datenmodell.md` 3.8.1 (Freitext-Name, Übungsgrad, skalierendes Attribut; Hinzufügen per „+“, Entfernen per Zeile; neuer Charakter startet leer; höchstens 30; Name pro Charakter eindeutig ohne Beachtung von Groß-/Kleinschreibung; Anzeige des Gesamtbonus laut `datenmodell.md` 3.8.1: Modifikator + −4 (untalentiert) / −2 (ungeübt) / +Übungsbonus (geübt) / +2 × Übungsbonus (Expertise)), Übungsbonus 0–10 (Standard 2), eigene Fähigkeiten als Liste laut `datenmodell.md` 3.8.2 (Freitext bis 120 Zeichen und skalierendes Attribut, kein Übungsbonus; Hinzufügen per „+“; Start leer; höchstens 30; Text eindeutig; Anzeige nur mit Attributsmodifikator) — dazu Migration, die `characters_skills_object` durch `CHECK (jsonb_typeof(skills) = 'array')` mit Default `[]` ersetzt und `proficiency_bonus` sowie `abilities` (`CHECK (jsonb_typeof(abilities) = 'array')`, Default `[]`) ergänzt, Persönlichkeit/Ideale/Bindungen/Makel, Bio mit Editor (Erwähnungen → Relationen in T-010), bis zu 10 Bildanhänge. Nur der Besitzer schreibt. Mitbringen in eine Welt, in der der Benutzer Mitglied ist; mehrere Charaktere gleichzeitig; kein Aktiv-Schalter. Tagebuch pro Charakter und Welt: Titel optional, Inhalt Pflicht, Sichtbarkeit `privat` / `mit Spielleitung geteilt`. Die Sichtbarkeit eines bestehenden Eintrags wechselt der Besitzer per Tipp auf die Sichtbarkeits-Pill; gespeichert wird erst nach Bestätigung in einem Dialog, in beide Richtungen (Entscheidung Projektinhaber 2026-09-22). Der Dialog weist darauf hin, dass bereits Gelesenes nicht zurückgenommen werden kann. Für Game Master und Master ist die Pill nur Anzeige. Einträge erzeugen **keine** Relationen. Mitglieder sehen mitgebrachte (nicht archivierte) Charakterbögen.
-- Code-Review: CR-019. Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
+- Code-Review: CR-005 (anwenden), CR-019 (Teile b, c). Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
 - Abhängigkeiten: T-007
 - Abnahmekriterium: (1) Player A legt zwei Charaktere an, bringt beide in dieselbe Welt; Player B sieht beide Bögen, nicht aber private Tagebucheinträge. (2) Game Master und Master sehen nur `geteilt`-Einträge, keine `privat`. (3) Tagebuch ohne Mitbringen in diese Welt wird abgelehnt. (4) Attribut 0 oder 31 wird abgelehnt. (4a) Neuer Charakter hat keine Fertigkeiten; eine 31. Fertigkeit, ein leerer Name oder ein doppelter Name („Reiten“ / „reiten“) wird abgelehnt; bei Geschicklichkeit 17 (+3) und Übungsbonus 2 zeigt der Bogen „Reiten“ als untalentiert −1, ungeübt +1, geübt +5, Expertise +7; Übungsbonus 11 wird abgelehnt. (4b) Neuer Charakter hat keine Fähigkeiten; eine Fähigkeit „Wolf rufen“ mit Charisma 9 zeigt −1, unabhängig vom Übungsbonus; eine 31. Fähigkeit, leerer oder doppelter Text wird abgelehnt. (4c) Tipp auf die Pill eines eigenen Eintrags öffnet einen Bestätigungsdialog; Abbrechen ändert nichts, Bestätigen wechselt `privat` ↔ `mit Spielleitung geteilt`. Ein Sichtbarkeitswechsel eines fremden Eintrags per API wird abgelehnt. (5) UI auf ~390 px bedienbar (Bogen scrollbar, keine Hover-only-Aktionen). (6) Player B öffnet `/w/[worldId]/characters/[id]` eines Charakters von Player A und sieht den vollständigen Bogen ohne „Bearbeiten“; `/characters/[id]` desselben Charakters liefert B 404. (7) Nach dem Austritt von Player A liefert die weltbezogene Route für die anderen 404, und der Charakter fehlt in `/w/[worldId]/characters`.
 
 ### T-009: Artikel und Vorlagen (F2, F3)
 - [ ] Beschreibung: Artikel anlegen/bearbeiten/löschen (Spielleitung): Titel, Vorlagentyp laut T-001, Vorlagenfelder, Titelbild, Inhalt (Editor), Sichtbarkeit Default `gm_only`. Vorlagentyp wechseln verwirft unpassende Felder nach Warnung. Player sehen nur `published` (und nur wenn sie die Welt sehen). Liste im Tab Kampagne, filterbar nach Vorlagentyp. Stub aus T-005 wird hier zur echten Seite: `first_edited_at` wird beim ersten Speichern gesetzt, bei dem `body_plain` nicht leer ist **oder** mindestens ein Vorlagenfeld einen Wert hat (Entscheidung Projektinhaber 2026-09-22, Plan-Review). Umbenennen, Titelbild oder Sichtbarkeitswechsel allein setzen es nicht. Einmal gesetzt, bleibt es gesetzt. Erwähnungssuche über Artikel, Charaktere (mitgebracht) und Universen — Teilwort, case-insensitive, Kategorie, max. 10, Sortierung laut Fachmodell 2.4. Die Suche ist so gebaut, dass T-011 Quests nur als weitere Quelle ergänzt.
+- Code-Review: CR-005 (anwenden). Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
 - Abhängigkeiten: T-001, T-005, T-007, T-008
 - Abnahmekriterium: (1) Jeder in T-001 freigegebene Vorlagentyp ist anlegbar; `none` hat keine Extrafelder. (2) Verweis-Feld akzeptiert nur erlaubte Ziele. (3) Die Erwähnungssuche findet Artikel, mitgebrachte Charaktere und Universen: Mit den Testdaten „Gottschleim“ (Artikel), „Schleimtal“ (Universum) und einem mitgebrachten Charakter „Schleimi“ liefert `@schleim` alle drei, jeweils mit Kategorie, Treffer am Wortanfang vor Treffern mitten im Wort. Quest-Treffer prüft T-011. (4) Player erhält `GET` eines `gm_only`-Artikels als 404/403, nicht als Inhalt. (5) Ein über `@` angelegter Stub bleibt rot, wenn nur Titel oder Sichtbarkeit gespeichert werden; nach dem ersten Speichern mit Text oder Vorlagenfeld ist die Erwähnung blau und bleibt es auch, wenn der Text später geleert wird.
 
 ### T-010: Relationen und Bereich „Verknüpft“
 - [ ] Beschreibung: Relationen als Querschnittsmodul (`APP-REL-RECALC`), erweiterbar je Inhaltsart. **In dieser Aufgabe angebunden:** Artikel (Erwähnungen und Vorlagenfelder), Charakter-Bio (Erwähnungen), Universumsbeschreibung (Erwähnungen). **Quests** (`mention`, `participation`) bindet T-011 an, **Pins** (`mention`) bindet T-013 an. Beim Speichern werden die ausgehenden automatischen Relationen der Quelle neu berechnet; manuelle bleiben unberührt. Manuelle Relationen sind zwischen allen fünf Inhaltsarten zulässig, sobald die jeweilige Art existiert. Manuelle Relationen: nur Spielleitung, Bezeichnung Pflicht, optionale Gegenbezeichnung, Vorschläge bereits verwendeter Bezeichnungen der Welt. Sichtbarkeit: nur wenn Quelle **und** Ziel sichtbar. UI „Verknüpft“ laut Fachmodell 2.5 als wiederverwendbare Komponente; in dieser Aufgabe auf Artikel, Charakter und Universum eingebaut, auf Quest in T-011 und auf Pin in T-013. Klick auf einen verknüpften Pin öffnet `/w/…/map?pin=` (Nachweis in T-013). Erwähnung in der Anzeige: aktueller Titel als Link; unsichtbares/gelöschtes Ziel = letzter bekannter Titel als Text.
-- Code-Review: CR-004. Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
+- Code-Review: CR-004, CR-005 (anwenden), CR-011 (Relationen). Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
 - Abhängigkeiten: T-009
 - Abnahmekriterium: (1) Speichern eines Artikels mit `@` erzeugt genau die Mention-Relationen, manuelle bleiben. (2) Relation published↔`gm_only` ist für Player unsichtbar, für Spielleitung sichtbar. (3) Manuelle Relation Player-POST wird abgelehnt. (4) „Verknüpft“ gruppiert nach Pins / Artikeln (nach Vorlagentyp) / Quests / Charakteren / Universen; leere Gruppen werden nicht angezeigt. (5) Ein Vorlagen-Verweisfeld (z. B. Ort → Herrscher) erzeugt eine Relation `template_field` mit Feldschlüssel; Leeren des Felds entfernt sie. (6) Eine manuelle Relation mit Bezeichnung und Gegenbezeichnung erscheint bei der Quelle mit der Bezeichnung und beim Ziel mit der Gegenbezeichnung.
 
 ### T-011: Quests (F7)
 - [ ] Beschreibung: Quests anlegen/bearbeiten/löschen (Spielleitung): Titel, Beschreibung mit Erwähnungen, Status offen/aktiv/abgeschlossen/gescheitert (Default offen), beteiligte mitgebrachte Charaktere (Namens-Snapshot), Sichtbarkeit Default `gm_only`. Kein Feld Auftraggeber. Quests an das Relationsmodul aus T-010 anbinden: Erwähnungen in der Beschreibung erzeugen `mention`, Beteiligungen erzeugen `participation`. „Verknüpft“ auf der Quest-Seite einbauen. Quest-Titel als weitere Quelle in die Erwähnungssuche aus T-009 aufnehmen.
+- Code-Review: CR-005 (anwenden). Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
 - Abhängigkeiten: T-008, T-009, T-010
 - Abnahmekriterium: (1) Player sieht `gm_only`-Quests nicht. (2) Beteiligung eines nicht mitgebrachten Charakters wird abgelehnt. (3) Nach Löschen des Charakters bleibt der festgehaltene Name in der Quest ohne Link. (4) `@schleim` liefert Artikel „Gottschleim“ und Quest „Töte den Gottschleim“ mit Kategorie. (5) Eine Quest mit Beteiligung und einer Erwähnung zeigt beide Relationen in „Verknüpft“; der beteiligte Charakter zeigt die Quest ebenfalls.
 
 ### T-012: Chat der Welt (F10)
 - [ ] Beschreibung: Chat-Spike in die Route `/w/[worldId]/chat` überführen und laut *Chat-Produktmodell (festgelegt)* ausbauen: Composer, Würfel-Sheet, SSE, serverseitige Würfel, `/roll` nur als versteckter API-Pfad für Tests, Schalter „Im Chat posten“, Löschregeln für Nachrichten. Kanalliste mit eingerückten Threads und Chevron zum Auf- und Zuklappen. Kanalverwaltung (anlegen, umbenennen, Reihenfolge, archivieren, wiederherstellen) für die Spielleitung. Beim Anlegen einer Welt (T-007) entsteht der Kanal „Allgemein“; T-012 ergänzt das, falls T-007 es noch nicht tut. Nachrichten unter Benutzername/Avatar. Der Backlog-Punkt zur Kanalverwaltung ist damit erledigt.
-- Code-Review: CR-006, CR-007, CR-012, CR-014, CR-015 (Struktur), CR-021. Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
+- Code-Review: CR-005 (anwenden), CR-006 (Chat), CR-007, CR-008 (Thread mit Eröffnungsnachricht), CR-012 (Realtime-Bus, SSE-Route, Sitzungsprüfung, `escapeHtml`), CR-014, CR-015 (Struktur), CR-021. Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
 - Abhängigkeiten: T-001, T-002, T-003, T-007
 - **UI:** Phone-first; Composer verdeckt Bottom-Bar; Chevron als eigenes Touch-Ziel.
 - Abnahmekriterium: (1) Nachricht von Benutzer A erscheint bei Benutzer B im selben Kanal bzw. Thread derselben Welt in ≤ 1 s. (2) Ein Benutzer in einer anderen Welt sieht sie nicht. (3) Würfel: `/roll 2d6+3` bzw. Sheet erzeugt Server-Werte; `2d7` liefert eine Fehlermeldung ohne Wurf; ein vom Client vorgegebenes Ergebnis wird ignoriert. (4) Der Autor löscht eigene Textnachrichten, die Spielleitung fremde; Würfelwürfe kann niemand löschen. (5) Nach einem Reload sind die letzten 50 Nachrichten des aktuellen Stroms sichtbar. (6) Nicht-Mitglieder erhalten 403. (7) Master legt einen Kanal an, benennt ihn um und ändert die Reihenfolge; Player erhält dafür 403. (8) Threads erscheinen eingerückt unter ihrem Kanal; das Chevron klappt sie auf und zu; ein Kanal ohne Threads zeigt kein Chevron. (9) Archivieren blendet den Kanal für alle aus; seine Nachrichten und Würfe bleiben in der Datenbank; Wiederherstellen macht ihn wieder sichtbar. (10) Der letzte aktive Kanal lässt sich nicht archivieren. (11) Zwei aktive Kanäle mit gleichem Namen in einer Welt werden abgelehnt.
 
 ### T-013: Karten, Pins, Charakter-Marker (F4, F5)
 - [ ] Beschreibung: Karten-Spike an Produkt-`maps`/`pins`/`character_markers` hängen. Eine Karte pro Universum in der Anwendungslogik (Schema erlaubt mehr). Upload 8000×6000 möglich. Zoom/Pan, 12 Pin-Typen mit Icons, Titel Pflicht, Beschreibung Rich-Text mit Erwähnungen (T-005), Sichtbarkeit, Drag Drop, Sync **nach Drop** per SSE an andere Mitglieder der Welt. Charakter-Marker: Profilbild+Name, platzieren/verschieben/entfernen durch Besitzer oder Spielleitung, Player nur eigene. Deep-Link `?pin=`. Sichtbarkeitsvererbung Universum → Karte → Pin/Marker. Pin-Sperre laut Fachmodell 3.7 übernehmen: sperren und entsperren nur Spielleitung; ein gesperrter Pin lässt sich nicht verschieben, bearbeiten oder löschen (409), nur entsperren (CR-020). Zoom-Feinschliff bleibt Backlog.
-- Code-Review: CR-014, CR-015 (Struktur), CR-020. Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
-- Abhängigkeiten: T-004, T-005, T-007, T-008, T-010
+- Code-Review: CR-005 (anwenden), CR-006 (Karte), CR-008 (Kartenbild ersetzen), CR-011 (Karten, Pins, Marker), CR-012 (Pin-Typen, Positionsformat), CR-013 (Marker-Autorisierung), CR-014, CR-015 (Struktur), CR-020. Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
+- Abhängigkeiten: T-004, T-005, T-007, T-008, T-010, T-012 (gemeinsames Realtime-Modul, CR-012)
 - **UI:** Phone-first, große Touch-Ziele; Plus zum Platzieren wie im Spike-Umbau, sofern es Mobile-First dient.
 - Abnahmekriterium: Plan `001` T-009 (1)–(7), bezogen auf eine echte Welt und zwei Test-Login-Benutzer derselben Welt, plus: (8) Player sieht Pins einer `gm_only`-Karte oder eines `gm_only`-Universums nicht, auch wenn der Pin `published` ist. (9) Player A verschiebt eigenen Marker, nicht den von B; Master beide. (10) Zweiter Marker desselben Charakters auf derselben Karte wird abgelehnt. (11) Pins sind an das Relationsmodul aus T-010 angebunden: Erwähnungen in der Pinbeschreibung erzeugen Relationen, das Pin-Popup zeigt „Verknüpft“. (12) Ein Klick auf einen verknüpften Pin im Bereich „Verknüpft“ eines Artikels öffnet `/w/…/map?pin=` zentriert und gezoomt auf den Pin und hebt ihn hervor. (13) Player erhält beim Sperren oder Entsperren 403; Master sperrt einen Pin; Verschieben, Bearbeiten und Löschen des gesperrten Pins liefern 409, auch für die Spielleitung, bis entsperrt wird; Mitglieder sehen das Schloss-Symbol.
 
 ### T-014: Suche im Kampagnen-Hub
 - [ ] Beschreibung: Suchfeld im Kampagnen-Hub: Volltext über Klartext der für den Benutzer sichtbaren Artikel, Quests, Universen, Pins, mitgebrachten Charaktere (Tagebuch **nicht** in dieser Suche, analog MCP-Abgrenzung und Geheimnis-Schutz). Treffer mit Art, Titel, Vorlagentyp, Auszug max. 300 Zeichen. Suche beim Tippen ab 2 Zeichen mit ca. 300 ms Verzögerung; Standard 20 Treffer, per Parameter `limit` höchstens 50 (Entscheidung Projektinhaber 2026-09-22, Plan-Review; entspricht MCP `suchen` in Plan `002`, damit die API dort wiederverwendet werden kann). Optionaler Filter nach Art. Technik laut `datenmodell.md` Abschnitt 9.
+- Code-Review: CR-005 (anwenden). Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
 - Abhängigkeiten: T-009, T-011, T-013
 - Abnahmekriterium: (1) Suche findet sichtbaren Artikeltitel und einen Klartext-Treffer im Inhalt. (2) `gm_only`-Artikel erscheint nicht bei Player, wohl bei Master. (3) Tagebucheintrag erscheint nicht. (4) Eine Eingabe mit weniger als 2 Zeichen löst keine Anfrage aus und zeigt keine Fehlerseite. (5) Ohne `limit` kommen höchstens 20 Treffer, `limit=100` wird auf 50 begrenzt.
 
 ### T-015: Rechte-Testskript auf Produkt-APIs
 - [ ] Beschreibung: `npm run test:rechte` (oder Nachfolger) gegen die **Produkt-APIs** richten, nicht mehr gegen `/api/spike/rechte`. Dieselben Fälle wie Plan `001` T-011, plus Vorlagen-Verweis und Stub nur soweit sie Rechte berühren. Spike-Rechte-HTTP danach ungenutzt.
+- Code-Review: CR-019 (Teil a: Persistenz-Snapshot). Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
 - Abhängigkeiten: T-007, T-008, T-009, T-010, T-011, T-012, T-013
 - Abnahmekriterium: (1) Skript ist lokal mit Test-Login wiederholbar und deckt alle Punkte aus dem Abnahmekriterium von Plan `001` T-011. (2) Es ruft keine `/api/spike/`-Pfade mehr auf. (3) Produktion bleibt ohne Test-Login (404 / Guard unverändert).
 
 ### T-016: Spike-Abbau und Normen
-- [ ] Beschreibung: Routen `/spike/*` und `/api/spike/*` entfernen. Tabellen `spike_*` und Enum `spike_pin_type` per Migration droppen. Code unter `src/spike/` und `spikes/editor/` entfernen (der Editor lebt ab T-005 in der App; die Historie bleibt in Git). `spikes/ui-prototype/` bleibt als Design-Referenz erhalten und wird nicht entfernt. `conventions.md`, `architecture/README.md`, `tech-stack.md` (Spike-Zeilen) aktualisieren. Test-Glob in `package.json` an neue Pfade anpassen. Zusätzlich CR-001 Teile 2 und 3: Spike-Code entfernen und Spike-Daten aus den Produktivtabellen per `scripts/cleanup-spike-data.sql` bereinigen (Welten `Rechte-Spike*` samt Kaskade, `files` mit `storage_key LIKE 'spike/%'`). Vor der Ausführung auf Produktion zeigt ein Dry-Run die betroffenen Zeilen, und der Projektinhaber bestätigt im Chat.
-- Code-Review: CR-001 (Teile 2 und 3). Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
+- [ ] Beschreibung: Routen `/spike/*` und `/api/spike/*` entfernen. Tabellen `spike_*` und Enum `spike_pin_type` per Migration droppen. Code unter `src/spike/` und `spikes/editor/` entfernen (der Editor lebt ab T-005 in der App; die Historie bleibt in Git). `spikes/ui-prototype/` bleibt als Design-Referenz erhalten und wird nicht entfernt. `conventions.md`, `architecture/README.md`, `tech-stack.md` (Spike-Zeilen) aktualisieren. Test-Includes in `vitest.config.ts` an die neuen Pfade anpassen. Zusätzlich CR-001 Teile 2 und 3: Spike-Code entfernen und Spike-Daten aus den Produktivtabellen per `scripts/cleanup-spike-data.sql` bereinigen (Welten `Rechte-Spike*` samt Kaskade, `files` mit `storage_key LIKE 'spike/%'`). Vor der Ausführung auf Produktion zeigt ein Dry-Run die betroffenen Zeilen, und der Projektinhaber bestätigt im Chat.
+- Code-Review: CR-001 (Teile 2 und 3), Endprüfung CR-012 und CR-013 für ganz `src/`. Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
 - Abhängigkeiten: T-015
 - Abnahmekriterium: (1) `GET /spike/karte` und `GET /spike/chat` sind 404. (2) `npm test` und `npm run test:rechte` grün. (3) `conventions.md` beschreibt die Produkt-Ordnerstruktur ohne Spike als Normalfall. (4) Keine toten Imports auf gelöschte Spike-Module. (5) Abnahmekriterium von CR-001 Teile 2 und 3 erfüllt: `git ls-files src | grep -i spike` ist leer; in Produktion gibt es keine `spike_*`-Tabellen, keine Welten `Rechte-Spike*` und keine `files`-Zeilen mit `storage_key LIKE 'spike/%'`.
 
@@ -399,7 +405,7 @@ T-001 Freigabe
                                          ├─ T-008 Charaktere/Tagebuch
                                          ├─ T-012 Chat + Kanalverwaltung
                                          └─ T-009 Artikel → T-010 Relationen → T-011 Quests
-                                              T-007+T-008+T-010 → T-013 Karte
+                                              T-007+T-008+T-010+T-012 → T-013 Karte
                                               T-009+T-011+T-013 → T-014 Suche
                                               T-007…T-013 → T-015 Rechte-Skript
                                                               └─ T-016 Cutover
@@ -407,7 +413,7 @@ T-001 Freigabe
                                                                     └─ T-018 Abgleich 002
 ```
 
-T-012 (Chat) kann parallel zu T-008/T-009 laufen, sobald T-007 steht.
+T-012 (Chat) kann parallel zu T-008/T-009 laufen, sobald T-007 steht. T-013 (Karte) wartet auf T-012, weil es dessen gemeinsames Realtime-Modul nutzt (CR-012).
 
 ## Abschluss dieses Plans
 
