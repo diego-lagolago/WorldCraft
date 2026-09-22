@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.ai
+spikes
+data
+.env
+.env.*
+!.env.example
+*.md
+.DS_Store
+coverage
+*.tsbuildinfo
