@@ -11,7 +11,7 @@ import {
   type MembershipRole,
   type MembershipRow,
   type VisibilityStatus,
-} from "./types.ts";
+} from "./types";
 
 export function denyIfNoMembership(
   membership: MembershipRow | null,

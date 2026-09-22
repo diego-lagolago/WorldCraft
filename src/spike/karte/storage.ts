@@ -14,7 +14,9 @@ export const ALLOWED_MAP_TYPES: Record<string, string> = {
 };
 
 export function fileStorageRoot(): string {
-  return path.resolve(process.env.FILE_STORAGE_PATH ?? "./data/uploads");
+  return path.resolve(
+    /* turbopackIgnore: true */ process.env.FILE_STORAGE_PATH ?? "./data/uploads",
+  );
 }
 
 export function spikeImageAbsolutePath(filename: string): string {

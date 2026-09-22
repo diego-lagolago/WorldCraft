@@ -7,7 +7,7 @@ import {
   MAX_DICE_TERMS,
   isAllowedSides,
   type StructuredRoll,
-} from "./dice-sides.ts";
+} from "./dice-sides";
 
 export {
   ALLOWED_SIDES,
@@ -15,8 +15,8 @@ export {
   MAX_DICE_TERMS,
   formatStructuredPreview,
   isAllowedSides,
-} from "./dice-sides.ts";
-export type { AllowedSides, StructuredDiceTerm, StructuredRoll } from "./dice-sides.ts";
+} from "./dice-sides";
+export type { AllowedSides, StructuredDiceTerm, StructuredRoll } from "./dice-sides";
 
 const ALLOWED_SIDES_SET = new Set<number>(ALLOWED_SIDES);
 const DICE_RE = /^(\d+)d(\d+)/i;

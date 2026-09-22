@@ -4,10 +4,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
   agentRules: false,
   // 20 MB map images (datenmodell) plus multipart overhead.
-  serverActions: {
-    bodySizeLimit: "21mb",
-  },
   experimental: {
+    serverActions: {
+      bodySizeLimit: "21mb",
+    },
     proxyClientMaxBodySize: "21mb",
   },
 };
