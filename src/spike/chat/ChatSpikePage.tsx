@@ -4,8 +4,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import "./chat.css";
+import { ChatMarkdown } from "./ChatMarkdown";
 import {
   ALLOWED_SIDES,
   MAX_DICE_TERMS,
@@ -13,8 +14,10 @@ import {
   formatStructuredPreview,
   type StructuredDiceTerm,
 } from "./dice-sides";
+import { RichComposer } from "./RichComposer";
 import type {
   SpikeChatMessageDto,
+  SpikeChatOlderPage,
   SpikeChatRealtimeEvent,
   SpikeChatState,
   SpikeChatThreadDto,
@@ -120,10 +123,13 @@ export function ChatSpikePage({
   const [dicePostToChat, setDicePostToChat] = useState(initialState.dicePostToChat);
   const [privateRoll, setPrivateRoll] = useState<string | null>(null);
   const [copiedHint, setCopiedHint] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const logRef = useRef<HTMLDivElement | null>(null);
   const stateRef = useRef(state);
   const idsRef = useRef(new Set(initialState.messages.map((message) => message.id)));
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stickToBottomRef = useRef(true);
+  const pendingScrollRestoreRef = useRef<{ height: number; top: number } | null>(null);
 
   useEffect(() => {
     stateRef.current = state;
@@ -131,6 +137,7 @@ export function ChatSpikePage({
 
   const showStream = useCallback((next: SpikeChatState) => {
     idsRef.current = new Set(next.messages.map((message) => message.id));
+    stickToBottomRef.current = true;
     setState(next);
     const params = new URLSearchParams();
     params.set("channel", next.channel.id);
@@ -144,7 +151,7 @@ export function ChatSpikePage({
     idsRef.current.add(message.id);
     setState((current) => ({
       ...current,
-      messages: [...current.messages, message].slice(-50),
+      messages: [...current.messages, message],
     }));
   }, []);
 
@@ -170,10 +177,19 @@ export function ChatSpikePage({
     return () => source.close();
   }, [append]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const log = logRef.current;
-    if (log) log.scrollTop = log.scrollHeight;
-  }, [state.messages]);
+    if (!log) return;
+    const restore = pendingScrollRestoreRef.current;
+    if (restore) {
+      pendingScrollRestoreRef.current = null;
+      log.scrollTop = restore.top + (log.scrollHeight - restore.height);
+      return;
+    }
+    if (stickToBottomRef.current) {
+      log.scrollTop = log.scrollHeight;
+    }
+  }, [state.messages, state.channel.id, state.thread?.id]);
 
   async function loadStream(channelId: string, threadId?: string | null) {
     const query = new URLSearchParams({ channelId });
@@ -181,6 +197,57 @@ export function ChatSpikePage({
     const response = await fetch(`/api/spike/chat?${query}`, { credentials: "include" });
     if (!response.ok) throw new Error("Chat konnte nicht geladen werden.");
     showStream((await response.json()) as SpikeChatState);
+  }
+
+  async function loadOlderMessages() {
+    if (loadingOlder || !state.hasMore || state.messages.length === 0) return;
+    const oldest = state.messages[0];
+    if (!oldest) return;
+    setLoadingOlder(true);
+    setError(null);
+    try {
+      const query = new URLSearchParams({
+        channelId: state.channel.id,
+        before: oldest.id,
+      });
+      if (state.thread) query.set("threadId", state.thread.id);
+      const response = await fetch(`/api/spike/chat?${query}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Ältere Nachrichten konnten nicht geladen werden.");
+      const page = (await response.json()) as SpikeChatOlderPage;
+      const log = logRef.current;
+      if (log) {
+        pendingScrollRestoreRef.current = { height: log.scrollHeight, top: log.scrollTop };
+      }
+      stickToBottomRef.current = false;
+      setState((current) => {
+        const fresh = page.messages.filter((message) => {
+          if (idsRef.current.has(message.id)) return false;
+          idsRef.current.add(message.id);
+          return true;
+        });
+        return {
+          ...current,
+          messages: [...fresh, ...current.messages],
+          hasMore: page.hasMore,
+        };
+      });
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Ältere Nachrichten konnten nicht geladen werden.",
+      );
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
+
+  function onLogScroll() {
+    const log = logRef.current;
+    if (!log) return;
+    const distanceFromBottom = log.scrollHeight - log.scrollTop - log.clientHeight;
+    stickToBottomRef.current = distanceFromBottom < 80;
+    if (log.scrollTop < 72) {
+      void loadOlderMessages();
+    }
   }
 
   async function postJson(body: unknown) {
@@ -347,7 +414,8 @@ export function ChatSpikePage({
           <p>{sub}</p>
         </div>
       </header>
-      <div className="spike-chat-log" ref={logRef}>
+      <div className="spike-chat-log" ref={logRef} onScroll={onLogScroll}>
+        {loadingOlder ? <p className="spike-chat-load-older">Ältere Nachrichten…</p> : null}
         {state.messages.length === 0 ? (
           <p className="spike-chat-empty">
             Noch keine Nachrichten. Schreib etwas oder tippe auf den Würfel.
@@ -368,11 +436,17 @@ export function ChatSpikePage({
                     onClick={() => void loadStream(state.channel.id, message.opensThreadId)}
                   >
                     <span className="spike-chat-thread-label">Thread</span>
-                    <span className="spike-chat-body">{message.body}</span>
+                    <span className="spike-chat-body">
+                      <ChatMarkdown text={message.body} />
+                    </span>
                   </button>
                 ) : (
                   <div className={message.dice ? "spike-chat-dice" : "spike-chat-body"}>
-                    {message.dice ? compactDiceLine(message) : message.body}
+                    {message.dice ? (
+                      compactDiceLine(message)
+                    ) : (
+                      <ChatMarkdown text={message.body} />
+                    )}
                   </div>
                 )}
                 <div className="spike-chat-time">{formatTime(message.sentAt)}</div>
@@ -381,59 +455,57 @@ export function ChatSpikePage({
           })
         )}
       </div>
-      {error ? <p className="spike-chat-error">{error}</p> : null}
-      <form
-        className="spike-chat-composer"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void sendText();
-        }}
-      >
-        <button
-          className="spike-chat-icon-btn"
-          type="button"
-          aria-label="Aktionen"
-          disabled={sending}
-          onClick={() => {
-            setError(null);
-            setSheet("actions");
+      <div className="spike-chat-dock">
+        {error ? <p className="spike-chat-error">{error}</p> : null}
+        <form
+          className="spike-chat-composer"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void sendText();
           }}
         >
-          +
-        </button>
-        <button
-          className="spike-chat-icon-btn"
-          type="button"
-          aria-label="Würfeln"
-          disabled={sending}
-          onClick={() => {
-            setError(null);
-            setDiceDraft(DEFAULT_DRAFT);
-            setPrivateRoll(null);
-            setSheet("dice");
-          }}
-        >
-          <DiceIcon />
-        </button>
-        <input
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="Nachricht"
-          maxLength={2000}
-          enterKeyHint="send"
-          autoComplete="off"
-          disabled={sending}
-          aria-label="Nachricht"
-        />
-        <button
-          className="spike-chat-send"
-          type="submit"
-          aria-label="Senden"
-          disabled={sending || !draft.trim()}
-        >
-          <PlaneIcon />
-        </button>
-      </form>
+          <button
+            className="spike-chat-icon-btn"
+            type="button"
+            aria-label="Aktionen"
+            disabled={sending}
+            onClick={() => {
+              setError(null);
+              setSheet("actions");
+            }}
+          >
+            +
+          </button>
+          <button
+            className="spike-chat-icon-btn"
+            type="button"
+            aria-label="Würfeln"
+            disabled={sending}
+            onClick={() => {
+              setError(null);
+              setDiceDraft(DEFAULT_DRAFT);
+              setPrivateRoll(null);
+              setSheet("dice");
+            }}
+          >
+            <DiceIcon />
+          </button>
+          <RichComposer
+            value={draft}
+            onChange={setDraft}
+            disabled={sending}
+            onSubmit={() => void sendText()}
+          />
+          <button
+            className="spike-chat-send"
+            type="submit"
+            aria-label="Senden"
+            disabled={sending || !draft.trim()}
+          >
+            <PlaneIcon />
+          </button>
+        </form>
+      </div>
       {sheet !== "none" ? (
         <div className="spike-chat-sheet-root">
           <button

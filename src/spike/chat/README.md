@@ -16,6 +16,6 @@ Nachrichten sind **kein** flaches Welt-Log mehr: immer ein Kanal, optional ein T
 
 ## Gebaut vs. Backlog
 
-**Gebaut:** Default-Kanal „Allgemein“, Thread anlegen über `+` → „Thread starten“ legt einen tappable Eltern-Post im Kanal an (`opens_thread_id`). Nachrichten/Würfel im aktuellen Strom, SSE, letzte 50 je Strom. Icon-Wurf mit Schalter **Im Chat posten** (Profilfeld `users.dice_post_to_chat`, Default `true`). `/roll` im Composer postet immer, unabhängig vom Schalter. Chat-Wurf ist eine Zeile, z. B. `2d6+3 → 4, 2 + 3 = 9`.
+**Gebaut:** Default-Kanal „Allgemein“, Thread anlegen über `+` → „Thread starten“ legt einen tappable Eltern-Post im Kanal an (`opens_thread_id`). Nachrichten/Würfel im aktuellen Strom, SSE, letzte 50 je Strom mit `before=`-Pagination für ältere. Composer: contentEditable mit Live-`*`/`**`, sticky unten. Icon-Wurf mit Schalter **Im Chat posten** (Profilfeld `users.dice_post_to_chat`, Default `true`). `/roll` im Composer postet immer, unabhängig vom Schalter. Chat-Wurf ist eine Zeile, z. B. `2d6+3 → 4, 2 + 3 = 9`.
 
 **Backlog** (`.ai/backlog.md`): Channel-Verwaltung (anlegen, umbenennen, Reihenfolge) analog Discord; Thread-UX über den `+`-Button hinaus.

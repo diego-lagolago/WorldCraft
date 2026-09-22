@@ -38,7 +38,15 @@ export type SpikeChatState = {
   channels: SpikeChatChannelDto[];
   threads: SpikeChatThreadDto[];
   messages: SpikeChatMessageDto[];
+  /** True when older messages exist beyond the current window. */
+  hasMore: boolean;
   dicePostToChat: boolean;
+};
+
+/** Older-page response when `GET ...&before=<messageId>`. */
+export type SpikeChatOlderPage = {
+  messages: SpikeChatMessageDto[];
+  hasMore: boolean;
 };
 
 export type SpikeChatRealtimeEvent =

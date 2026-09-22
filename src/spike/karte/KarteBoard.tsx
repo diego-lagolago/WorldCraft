@@ -15,8 +15,8 @@ import "leaflet/dist/leaflet.css";
 import {
   SPIKE_PIN_TYPE_META,
   pinMarkerHtml,
-  pinTypeIconUrl,
   pinTypeMeta,
+  pinTypePictogram,
   type SpikePinType,
 } from "./pin-types";
 import type {
@@ -554,7 +554,9 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
       )}
 
       <header className="spike-chrome">
-        <Link href="/">Start</Link>
+        <Link href="/" aria-label="Zurück">
+          ←
+        </Link>
         <label className="spike-upload">
           Karte hochladen
           <input
@@ -743,13 +745,17 @@ function PinFields({
           <button
             key={meta.id}
             type="button"
+            aria-label={meta.label}
+            title={meta.label}
             aria-pressed={pinType === meta.id}
             onClick={() => onType(meta.id)}
           >
-            {/* Distinct spike pin icons; data URI, not a map tile. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={pinTypeIconUrl(meta.id)} alt="" />
-            {meta.label}
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              style={{ color: meta.color }}
+              dangerouslySetInnerHTML={{ __html: pinTypePictogram(meta.id) }}
+            />
           </button>
         ))}
       </div>

@@ -1,11 +1,12 @@
 /** Spike T-010 — Kanäle, Threads und Nachrichten für alle angemeldeten Tester. */
 
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { spikeChatChannels, spikeChatMessages, spikeChatThreads, users } from "@/db/schema";
 import type {
   SpikeChatChannelDto,
   SpikeChatMessageDto,
+  SpikeChatOlderPage,
   SpikeChatState,
   SpikeChatThreadDto,
   SpikeDiceDto,
@@ -130,21 +131,73 @@ export async function insertThread(input: {
   return serializeThread(row);
 }
 
+function threadScopeFilter(threadId?: string | null) {
+  return threadId == null
+    ? isNull(spikeChatMessages.threadId)
+    : eq(spikeChatMessages.threadId, threadId);
+}
+
 export async function listRecentChatMessages(input: {
   channelId: string;
   threadId?: string | null;
-}): Promise<SpikeChatMessageDto[]> {
-  const threadFilter =
-    input.threadId == null
-      ? isNull(spikeChatMessages.threadId)
-      : eq(spikeChatMessages.threadId, input.threadId);
+  limit?: number;
+}): Promise<{ messages: SpikeChatMessageDto[]; hasMore: boolean }> {
+  const limit = input.limit ?? SPIKE_CHAT_HISTORY_LIMIT;
   const rows = await db
     .select()
     .from(spikeChatMessages)
-    .where(and(eq(spikeChatMessages.channelId, input.channelId), threadFilter))
-    .orderBy(desc(spikeChatMessages.sentAt))
-    .limit(SPIKE_CHAT_HISTORY_LIMIT);
-  return rows.reverse().map(serializeChatMessage);
+    .where(and(eq(spikeChatMessages.channelId, input.channelId), threadScopeFilter(input.threadId)))
+    .orderBy(desc(spikeChatMessages.sentAt), desc(spikeChatMessages.id))
+    .limit(limit + 1);
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  return {
+    messages: page.reverse().map(serializeChatMessage),
+    hasMore,
+  };
+}
+
+/** Messages older than the cursor message (`before` = message id), newest-of-page last. */
+export async function listOlderChatMessages(input: {
+  channelId: string;
+  threadId?: string | null;
+  beforeMessageId: string;
+  limit?: number;
+}): Promise<SpikeChatOlderPage | null> {
+  const limit = input.limit ?? SPIKE_CHAT_HISTORY_LIMIT;
+  const [cursor] = await db
+    .select()
+    .from(spikeChatMessages)
+    .where(eq(spikeChatMessages.id, input.beforeMessageId))
+    .limit(1);
+  if (!cursor) return null;
+  if (cursor.channelId !== input.channelId) return null;
+  const expectedThread = input.threadId ?? null;
+  if ((cursor.threadId ?? null) !== expectedThread) return null;
+
+  const olderThanCursor = or(
+    lt(spikeChatMessages.sentAt, cursor.sentAt),
+    and(eq(spikeChatMessages.sentAt, cursor.sentAt), lt(spikeChatMessages.id, cursor.id)),
+  );
+
+  const rows = await db
+    .select()
+    .from(spikeChatMessages)
+    .where(
+      and(
+        eq(spikeChatMessages.channelId, input.channelId),
+        threadScopeFilter(input.threadId),
+        olderThanCursor,
+      ),
+    )
+    .orderBy(desc(spikeChatMessages.sentAt), desc(spikeChatMessages.id))
+    .limit(limit + 1);
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  return {
+    messages: page.reverse().map(serializeChatMessage),
+    hasMore,
+  };
 }
 
 export async function insertChatMessage(input: {
@@ -232,7 +285,7 @@ export async function loadSpikeChatState(input?: {
   const threadRow = input?.threadId ? await getThread(input.threadId) : null;
   const thread =
     threadRow && threadRow.channelId === channelRow.id ? serializeThread(threadRow) : null;
-  const [channels, threads, messages, dicePostToChat] = await Promise.all([
+  const [channels, threads, recent, dicePostToChat] = await Promise.all([
     listChannels(),
     listThreads(channelRow.id),
     listRecentChatMessages({
@@ -246,7 +299,8 @@ export async function loadSpikeChatState(input?: {
     thread,
     channels,
     threads,
-    messages,
+    messages: recent.messages,
+    hasMore: recent.hasMore,
     dicePostToChat,
   };
 }

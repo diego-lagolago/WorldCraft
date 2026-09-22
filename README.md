@@ -55,6 +55,14 @@ curl -b /tmp/wc-cookies http://localhost:3000/api/auth/get-session
 
 Hochgeladene Dateien liegen lokal unter `FILE_STORAGE_PATH` (Standard `./data/uploads`, nicht im Git).
 
+Rechte-Spike (T-011), während der Dev-Server läuft:
+
+```bash
+npm run test:rechte
+```
+
+Details: `src/spike/rechte/README.md`.
+
 Der Editor-Spike bleibt unabhängig:
 
 ```bash

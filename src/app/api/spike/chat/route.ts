@@ -18,6 +18,7 @@ import {
   getThread,
   getDicePostToChat,
   insertChatMessage,
+  listOlderChatMessages,
   loadSpikeChatState,
 } from "@/spike/chat/repository";
 import { requireSpikeSession } from "@/spike/karte/session";
@@ -97,10 +98,28 @@ export async function GET(request: Request) {
   const { session, response } = await requireSpikeSession();
   if (response || !session) return response;
   const url = new URL(request.url);
+  const channelId = url.searchParams.get("channelId") ?? undefined;
+  const threadId = url.searchParams.get("threadId") ?? undefined;
+  const before = url.searchParams.get("before");
+
+  if (before) {
+    const scope = await resolveScope({ channelId, threadId: threadId ?? null });
+    if (scope.error) return scope.error;
+    const page = await listOlderChatMessages({
+      channelId: scope.channel.id,
+      threadId: scope.threadId,
+      beforeMessageId: before,
+    });
+    if (!page) {
+      return NextResponse.json({ error: "Cursor-Nachricht nicht gefunden." }, { status: 404 });
+    }
+    return NextResponse.json(page);
+  }
+
   return NextResponse.json(
     await loadSpikeChatState({
-      channelId: url.searchParams.get("channelId") ?? undefined,
-      threadId: url.searchParams.get("threadId") ?? undefined,
+      channelId,
+      threadId,
       userId: session.user.id,
     }),
   );

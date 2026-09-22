@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --experimental-strip-types --test src/lib/*.test.ts src/spike/**/*.test.ts",
+    "test:rechte": "node --env-file=.env --experimental-strip-types --test src/spike/rechte/run-rechte-tests.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file=.env scripts/migrate.mjs",
     "db:studio": "drizzle-kit studio"

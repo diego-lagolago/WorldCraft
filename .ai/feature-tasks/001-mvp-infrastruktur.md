@@ -104,6 +104,7 @@ Grundsatz: Master dürfen alles, was der Game Master darf, **außer Mitglieder z
 
 - `.ai/architecture/datenmodell-fachlich.md`: fachliches Datenmodell (Entitäten, Eigenschaften, Regeln, Löschregeln, Rechte je Entität). Verbindliche Grundlage für T-005, T-006 und T-011.
 - `.ai/standards/mobile-first.md`: verbindliche UI-Norm (Handy zuerst, Desktop folgt daraus). Gilt für T-009 und alle Folgeaufgaben.
+- `.ai/standards/mobile-navigation.md`: spätere angeheftete Bottom-Bar (Weltkugel, Karte, Chat, Menü; nur vom Chatfenster überschrieben). Spezifikation jetzt; Shell-Umsetzung später.
 
 Weitere Normen legt dieser Plan an: ADRs unter `.ai/decisions/`, Projektnormen durch T-013.
 
