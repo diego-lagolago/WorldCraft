@@ -212,6 +212,43 @@ Modell:
 - Kanalname: Pflicht, max. 80 Zeichen (wie im Spike), eindeutig unter den aktiven Kanälen der Welt.
 - Threads werden im MVP nicht einzeln archiviert oder gelöscht (nur zusammen mit ihrem Kanal ausgeblendet).
 
+## Code-Review zu Plan 001 (verbindlich)
+
+**Entscheidung Projektinhaber 2026-09-22:** Die Findings aus [`.ai/code-review-001-mvp-infrastruktur-2026-09-22.md`](../code-review-001-mvp-infrastruktur-2026-09-22.md) werden im Rahmen dieses Plans umgesetzt. Nur dieser Plan referenziert das Review; andere Pläne und Normen verweisen nicht darauf.
+
+Regeln:
+
+- Jedes Finding gehört zu genau der Aufgabe in der Tabelle. Die Aufgabe ist erst abgeschlossen, wenn zusätzlich zu ihren eigenen Abnahmekriterien die **Abnahmekriterien der zugeordneten Findings** (im Review-Dokument unter „Findings im Detail“) erfüllt sind.
+- Betrifft ein Finding Spike-Code, der in dieser Aufgabe ins Produkt übernommen wird, wird es im Produktcode behoben, nicht im Spike.
+- Nach Abschluss einer Aufgabe wird die Status-Spalte im Review-Dokument nachgeführt (`/review-check` oder von Hand) und im selben Commit mitcommittet.
+- Bei Abschluss dieses Plans hat kein Finding mehr den Status `offen`.
+
+| Finding | Schwere | Aufgabe | Hinweis |
+|---|---|---|---|
+| CR-001 | kritisch | T-001 (sperren), T-016 (entfernen) | In T-001 Spike-Endpunkte in Produktion schließen (z. B. nur mit `ENABLE_TEST_LOGIN` oder Allowlist); wirksam erst nach freigegebenem Push |
+| CR-002 | kritisch | T-001 | `npm test` muss grün sein, sonst kann kein Task committet werden |
+| CR-003 | mittel | T-006 | |
+| CR-004 | mittel | T-010 | Trigger `TRIG-REL-SAME-WORLD` entsteht in T-002 (siehe CR-018) |
+| CR-005 | mittel | T-003 | Gilt für alle Produkt-APIs: ungültige UUID/JSON → 400/404, nie 500 |
+| CR-006 | mittel | T-012 | Resync nach Reconnect gilt auch für die Karte (T-013 nutzt denselben Mechanismus) |
+| CR-007 | mittel | T-012 | |
+| CR-008 | mittel | T-003 | |
+| CR-009 | mittel | T-012 | |
+| CR-010 | mittel | T-001 | CI prüft `npm test`, `tsc` und `eslint` vor dem Image-Build |
+| CR-011 | mittel | T-003 | |
+| CR-012 | mittel | T-012 | Ein gemeinsamer Realtime-Bus und eine SSE-Route für Chat und Karte |
+| CR-013 | mittel | T-003 | |
+| CR-014 | niedrig | T-012, T-013 | |
+| CR-015 | niedrig | T-012, T-013 | ESLint grün spätestens mit T-013 |
+| CR-016 | niedrig | T-004 | |
+| CR-017 | niedrig | T-006 | |
+| CR-018 | niedrig | T-002 | |
+| CR-019 | niedrig | T-008 | |
+| CR-020 | niedrig | T-013 | Bereits durch T-013 erledigt: Pin-Lock wird nicht übernommen |
+| CR-021 | niedrig | T-012 | |
+| CR-022 | niedrig | T-005 | |
+| CR-023 | niedrig | T-007 | `sort_order` für Universen; übrige Konstanten jeweils in der Aufgabe, die den Code übernimmt |
+
 ## Aufgaben
 
 ### T-001: Entscheidungen in die Normen übertragen
@@ -221,8 +258,9 @@ Modell:
   - `.ai/architecture/datenmodell.md` Abschnitt 13: Abweichung „Chat-Kanäle im MVP“ gegenüber Fachmodell 3.16 und Abschnitt 6, mit Datum und Verweis auf diesen Plan.
   - `.ai/backlog.md`: Eintrag „Chat: Channel-Verwaltung & Thread-UX“ als in Plan `003` übernommen kennzeichnen.
   - Das fachliche Datenmodell wird **nicht** geändert (eingefroren ohne Freigabe).
+  Zusätzlich die Code-Review-Findings CR-001 (Spike-Endpunkte in Produktion sperren), CR-002 (`npm test` grün) und CR-010 (CI prüft Tests, Typen, Lint) umsetzen, siehe *Code-Review zu Plan 001*. Sie stehen hier, weil ohne grüne Tests kein Task committet werden kann und CR-001 kritisch ist.
 - Abhängigkeiten: keine
-- Abnahmekriterium: Die vier genannten Nachträge existieren. `datenmodell.md` enthält keine Aussage mehr, die Kanäle für den MVP ausschließt, ohne auf die Abweichung in Abschnitt 13 zu verweisen.
+- Abnahmekriterium: Die vier genannten Nachträge existieren. `datenmodell.md` enthält keine Aussage mehr, die Kanäle für den MVP ausschließt, ohne auf die Abweichung in Abschnitt 13 zu verweisen. Die Abnahmekriterien von CR-001, CR-002 und CR-010 aus dem Review-Dokument sind erfüllt.
 
 ### T-002: Produktschema vervollständigen
 - [ ] Beschreibung: Drizzle-Schema und Migration(en) an `.ai/architecture/datenmodell.md` angleichen, inklusive T-001-Nachtrag. Mindestens:
@@ -352,4 +390,4 @@ T-012 (Chat) kann parallel zu T-008/T-009 laufen, sobald T-007 steht.
 
 ## Abschluss dieses Plans
 
-Danach ist der MVP funktionsfähig. Nächster Plan laut Reihenfolge: **`002` MCP-Server**. Optional `/code-review` für 003 vor dem Start von 002.
+Danach ist der MVP funktionsfähig und alle Findings aus dem Code-Review zu Plan 001 sind erledigt (siehe *Code-Review zu Plan 001*). Nächster Plan laut Reihenfolge: **`002` MCP-Server**. Optional `/code-review` für 003 vor dem Start von 002.
