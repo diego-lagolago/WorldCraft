@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { AuthPanel } from "@/components/auth-panel";
@@ -40,6 +41,13 @@ export default async function Home() {
         discordConfigured={isDiscordConfigured()}
         testLoginEnabled={isTestLoginEnabled()}
       />
+      {session?.user ? (
+        <p>
+          <Link className="text-amber-300 underline" href="/spike/karte">
+            Karten-Spike
+          </Link>
+        </p>
+      ) : null}
     </main>
   );
 }

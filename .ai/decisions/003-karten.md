@@ -150,7 +150,7 @@ Die Empfehlung bleibt A. Lizenz und Passung zu F4/F5 schließen C aus; B bleibt 
 
 ## Konsequenzen
 
-- **T-009** baut `/spike/karte` mit Leaflet `CRS.Simple`, ImageOverlay, 12 `L.icon`, einem `L.divIcon` für den Charakter-Marker, `dragend` → API → SSE → `setLatLng`. Prüfung auch auf dem Handy (Touch-Ziele, Pinch, Speicher für große Bilder).
+- **T-009** baut `/spike/karte` mit Leaflet `CRS.Simple`, ImageOverlay, 12 `L.icon`, einem `L.divIcon` für den Charakter-Marker, `dragend` → API → SSE → `setLatLng`. Prüfung auch auf dem Handy (Touch-Ziele, Pinch, Speicher für große Bilder). Mobile-First ist verbindliche Produktnorm (`.ai/standards/mobile-first.md`): UI zuerst für ~390 px / einhändig; Desktop folgt daraus.
 - **Speicherformat:** `{ x, y }` als Dezimalzahlen 0–1 relativ zu Breite/Höhe des Kartenbilds (fachliches Modell 2.7, mindestens 6 Nachkommastellen). Leaflet-LatLng nur UI.
 - **Deep-Link:** Query-Parameter Pin-ID → `fit`/`setView` + Popup/Highlight.
 - **Nicht gewählt:** Konva (mehr Eigenbau, Canvas-Risiko auf dem Handy); tldraw (Production-License-Key, Wasserzeichen/Kosten, falsches Sync-Modell).

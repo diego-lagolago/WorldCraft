@@ -1,0 +1,1 @@
+ALTER TABLE "spike_pins" ADD COLUMN "locked" boolean DEFAULT false NOT NULL;

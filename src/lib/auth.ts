@@ -33,7 +33,11 @@ export const auth = betterAuth({
       verification: schema.verifications,
     },
   }),
-  trustedOrigins: [APP_URL],
+  trustedOrigins: [
+    APP_URL,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ].filter((value, index, all) => all.indexOf(value) === index),
   emailAndPassword: {
     enabled: false,
   },
