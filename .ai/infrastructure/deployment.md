@@ -2,19 +2,11 @@
 
 Die KI kann Git-Hosting und Coolify nicht anlegen. Bitte die folgenden Schritte selbst ausführen und im Chat bestätigen. **Secrets niemals in den Chat kopieren.**
 
-**Abweichung (Projektinhaber, 2026-09-22):** Staging als eigene Coolify-Umgebung entfällt. Deploy direkt auf **`worldcraft.lagolago.at`**. Diese Domain ist **Produktion** (Option 1): `APP_ENV=production` in Coolify, `ENABLE_TEST_LOGIN` bleibt dort aus. Test-Login nur lokal. Auf der Domain echter Discord-Login. T-014 prüft HTTPS, Discord, Pins und Chat gegen `worldcraft.lagolago.at`. T-008 / T-011 Test-Login-Abnahme bleibt **lokal**. Produktion muss `ENABLE_TEST_LOGIN=true` verweigern. Git-Hosting: **GitHub** (Remote-URL noch offen).
+**Abweichung (Projektinhaber, 2026-09-22):** Staging als eigene Coolify-Umgebung entfällt. Deploy direkt auf **`worldcraft.lagolago.at`**. Diese Domain ist **Produktion** (Option 1): `APP_ENV=production` in Coolify, `ENABLE_TEST_LOGIN` bleibt dort aus. Test-Login nur lokal. Auf der Domain echter Discord-Login. T-014 prüft HTTPS, Discord, Pins und Chat gegen `worldcraft.lagolago.at`. T-008 / T-011 Test-Login-Abnahme bleibt **lokal**. Produktion muss `ENABLE_TEST_LOGIN=true` verweigern. Git-Hosting: **GitHub** — [https://github.com/diego-lagolago/WorldCraft](https://github.com/diego-lagolago/WorldCraft).
 
 ## 1. Repository auf GitHub
 
-1. Leeres Repository auf **GitHub** anlegen (kein README überschreiben, der Code liegt schon lokal).
-2. Entweder die Remote-URL im Chat nennen, oder selbst pushen:
-
-   ```bash
-   git remote add origin <REMOTE-URL>
-   git push -u origin main
-   ```
-
-Die Remote-URL steht noch aus. Automatisches Deployment hängt am Hauptzweig `main`.
+Remote: `https://github.com/diego-lagolago/WorldCraft.git` (privat). Branch `main`. Automatisches Deployment hängt am Hauptzweig `main`.
 
 ## 2. Coolify: Postgres
 
@@ -48,7 +40,16 @@ Namen aus `.env.example` — Werte selbst eintragen. Diese Domain ist Produktion
 
 `POSTGRES_*` braucht Coolify nur, wenn ihr Postgres selbst per Compose betreibt. Bei der Coolify-Postgres-Ressource reicht `DATABASE_URL`.
 
-## 5. Abnahme auf der Domain (nach dem ersten Deploy)
+## 5. Discord Developer Portal (T-008, Projektinhaber)
+
+Anwendung anlegen, Scopes `identify` und **`email`** (Pflicht). Redirects eintragen:
+
+- `http://localhost:3000/api/auth/callback/discord`
+- `https://worldcraft.lagolago.at/api/auth/callback/discord`
+
+Client-ID und Client-Secret selbst in die lokale `.env` und in Coolify eintragen. **Secrets nicht in den Chat legen.**
+
+## 6. Abnahme auf der Domain (nach dem ersten Deploy)
 
 - `https://worldcraft.lagolago.at` zeigt die Startseite mit dem Wert aus der Datenbank.
 - Ein Push auf `main` löst ohne Klick ein neues Deployment aus.

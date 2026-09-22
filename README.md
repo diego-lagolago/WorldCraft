@@ -14,7 +14,7 @@ Voraussetzung: Docker Desktop (oder vergleichbar) und Node 22.
    cp .env.example .env
    ```
 
-   In `.env` mindestens `POSTGRES_PASSWORD` und die dazu passende `DATABASE_URL` setzen. Discord-Werte und `BETTER_AUTH_SECRET` braucht erst der Login (T-008).
+   In `.env` mindestens `POSTGRES_PASSWORD`, die dazu passende `DATABASE_URL` und `BETTER_AUTH_SECRET` setzen (`openssl rand -base64 32`). Discord-Werte trägt der Projektinhaber selbst ein (nicht in den Chat).
 
 2. PostgreSQL starten:
 
@@ -36,6 +36,22 @@ Voraussetzung: Docker Desktop (oder vergleichbar) und Node 22.
    ```
 
 5. Im Browser: [http://localhost:3000](http://localhost:3000) — die Startseite zeigt einen Satz aus der Tabelle `app_info`.
+
+### Discord-Login (T-008)
+
+Im Discord Developer Portal eine Anwendung anlegen (Scopes `identify` und `email`) und diese Redirects eintragen:
+
+- `http://localhost:3000/api/auth/callback/discord`
+- `https://worldcraft.lagolago.at/api/auth/callback/discord`
+
+Client-ID und Secret nur in `.env` bzw. Coolify. Test-Login (`ENABLE_TEST_LOGIN=true`) nur lokal:
+
+```bash
+curl -c /tmp/wc-cookies -X POST http://localhost:3000/api/test-login \
+  -H 'Content-Type: application/json' \
+  -d '{"discordId":"test-gm"}'
+curl -b /tmp/wc-cookies http://localhost:3000/api/auth/get-session
+```
 
 Hochgeladene Dateien liegen lokal unter `FILE_STORAGE_PATH` (Standard `./data/uploads`, nicht im Git).
 

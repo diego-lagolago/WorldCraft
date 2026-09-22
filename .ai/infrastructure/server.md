@@ -6,5 +6,5 @@ Die Eckdaten des Zielservers werden in diesem Plan nicht erfasst. ADR-001 bewert
 
 Konkrete Serverwerte bleiben offen (T-001 übersprungen). Festlegungen aus T-007 (Projektinhaber, 2026-09-22):
 
-- **Git-Hosting:** GitHub (Remote-URL noch offen, Repository noch nicht angelegt/verbunden).
+- **Git-Hosting:** GitHub — [https://github.com/diego-lagolago/WorldCraft](https://github.com/diego-lagolago/WorldCraft) (privat).
 - **Domain:** `worldcraft.lagolago.at` — Produktion, kein separates Staging.
