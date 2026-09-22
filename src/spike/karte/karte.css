@@ -57,8 +57,8 @@
 .spike-chrome label.spike-upload,
 .spike-sheet button,
 .spike-action-sheet button,
-.spike-place-banner button,
-.spike-fab {
+.spike-filter-sheet button,
+.spike-place-banner button {
   min-height: 2.75rem;
   border-radius: 0.7rem;
   border: 1px solid #52525b;
@@ -136,26 +136,72 @@
   font-size: 1rem;
 }
 
-.spike-fab {
+.spike-fab-row {
   position: absolute;
   left: max(1rem, env(safe-area-inset-left));
   bottom: calc(1.25rem + env(safe-area-inset-bottom));
   z-index: 800;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.spike-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 3.5rem;
   height: 3.5rem;
+  min-width: 3.5rem;
   min-height: 3.5rem;
   padding: 0;
+  margin: 0;
   border-radius: 999px;
   border: none;
   background: #fbbf24;
   color: #18181b;
-  font-size: 2rem;
-  font-weight: 600;
-  line-height: 1;
+  font-size: 0;
+  line-height: 0;
   box-shadow: 0 6px 18px rgb(0 0 0 / 0.4);
 }
 
-.spike-action-sheet {
+.spike-fab svg {
+  width: 1.55rem;
+  height: 1.55rem;
+  display: block;
+  flex: none;
+}
+
+.spike-fab-filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  min-width: 3.5rem;
+  min-height: 3.5rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid #52525b;
+  background: #27272a;
+  color: #fafafa;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+}
+
+.spike-fab-filter[aria-pressed="true"] {
+  border-color: #fbbf24;
+  background: #422006;
+  color: #fbbf24;
+}
+
+.spike-fab-filter svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  display: block;
+}
+
+.spike-action-sheet,
+.spike-filter-sheet {
   position: absolute;
   left: max(1rem, env(safe-area-inset-left));
   bottom: calc(5.2rem + env(safe-area-inset-bottom));
@@ -163,6 +209,9 @@
   display: flex;
   flex-direction: column;
   min-width: 12rem;
+  max-width: min(20rem, calc(100vw - 2rem));
+  max-height: min(60dvh, 28rem);
+  overflow: auto;
   padding: 0.4rem;
   border-radius: 1rem;
   background: #18181b;
@@ -173,6 +222,38 @@
 .spike-action-sheet button {
   width: 100%;
   text-align: left;
+}
+
+.spike-filter-sheet {
+  gap: 0.25rem;
+  right: max(1rem, env(safe-area-inset-right));
+  width: calc(100vw - 2rem);
+  max-width: 22rem;
+}
+
+.spike-filter-sheet h2 {
+  margin: 0.35rem 0.5rem 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.spike-filter-sheet button {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.spike-filter-sheet button[aria-pressed="true"] {
+  border-color: #fbbf24;
+  background: #422006;
+}
+
+.spike-filter-sheet svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: none;
 }
 
 .spike-sheet-backdrop {
@@ -209,9 +290,38 @@
   background: #52525b;
 }
 
+.spike-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .spike-sheet h2 {
   margin: 0;
   font-size: 1.25rem;
+}
+
+.spike-sheet-share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 !important;
+  border-radius: 0.7rem;
+  border: 1px solid #52525b;
+  background: #27272a;
+  color: inherit;
+}
+
+.spike-sheet-share svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  display: block;
 }
 
 .spike-sheet input[type="text"],

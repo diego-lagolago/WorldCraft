@@ -29,10 +29,62 @@ import type {
 /** Spike T-009 — Leaflet CRS.Simple, Client-only, Handy zuerst. */
 
 const MAP_ACTIONS = [{ id: "place-pin", label: "Pin setzen" }] as const;
+const VIEW_STORAGE_KEY = "spike-karte-view-v1";
+
+type SavedMapView = {
+  mapId: string;
+  updatedAt: string;
+  lat: number;
+  lng: number;
+  zoom: number;
+};
+
+function readSavedView(mapId: string, updatedAt: string): SavedMapView | null {
+  try {
+    const raw = sessionStorage.getItem(VIEW_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SavedMapView;
+    if (
+      parsed.mapId !== mapId ||
+      parsed.updatedAt !== updatedAt ||
+      !Number.isFinite(parsed.lat) ||
+      !Number.isFinite(parsed.lng) ||
+      !Number.isFinite(parsed.zoom)
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeSavedView(map: L.Map, mapId: string, updatedAt: string) {
+  const center = map.getCenter();
+  const payload: SavedMapView = {
+    mapId,
+    updatedAt,
+    lat: center.lat,
+    lng: center.lng,
+    zoom: map.getZoom(),
+  };
+  try {
+    sessionStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    /* private mode / quota */
+  }
+}
+
+function pinShareUrl(pinId: string): string {
+  const url = new URL("/spike/karte", window.location.origin);
+  url.searchParams.set("pin", pinId);
+  return url.toString();
+}
 
 type Sheet =
   | { kind: "none" }
   | { kind: "actions" }
+  | { kind: "filter" }
   | { kind: "create" }
   | { kind: "edit"; pinId: string }
   | { kind: "view"; pinId: string };
@@ -57,10 +109,16 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
   const typeRef = useRef<SpikePinType>("danger");
   const highlighted = useRef(false);
   const holdTimer = useRef<number | undefined>(undefined);
+  const fittedMapKey = useRef<string | null>(null);
+  const persistViewMap = useRef<{ mapId: string; updatedAt: string } | null>(
+    null,
+  );
+  const typeFilterRef = useRef<Set<SpikePinType>>(new Set());
 
   const [state, setState] = useState<SpikeKarteState>(initialState);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [shareHint, setShareHint] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [title, setTitle] = useState("");
@@ -68,6 +126,8 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
   const [pinType, setPinType] = useState<SpikePinType>("danger");
   const [sheet, setSheet] = useState<Sheet>({ kind: "none" });
   const [savingPin, setSavingPin] = useState(false);
+  /** Empty set = alle Typen sichtbar. */
+  const [typeFilter, setTypeFilter] = useState<Set<SpikePinType>>(() => new Set());
 
   useEffect(() => {
     placingRef.current = placing;
@@ -75,7 +135,8 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
     descriptionRef.current = description;
     typeRef.current = pinType;
     stateRef.current = state;
-  }, [placing, title, description, pinType, state]);
+    typeFilterRef.current = typeFilter;
+  }, [placing, title, description, pinType, state, typeFilter]);
 
   const openPinSheet = useCallback((pin: SpikePinDto) => {
     setError(null);
@@ -200,6 +261,8 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
       overlayRef.current = null;
       pinMarkers.current.clear();
       markerRef.current = null;
+      fittedMapKey.current = null;
+      persistViewMap.current = null;
       return;
     }
 
@@ -231,10 +294,19 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
         );
         void createPin(relative.x, relative.y);
       });
+      map.on("moveend", () => {
+        const meta = persistViewMap.current;
+        const live = mapRef.current;
+        if (!meta || !live) return;
+        writeSavedView(live, meta.mapId, meta.updatedAt);
+      });
     }
 
     const map = mapRef.current;
     const bounds = L.latLngBounds(imageOverlayBounds(mapData.imageWidth, mapData.imageHeight));
+    const mapKey = `${mapData.id}:${mapData.updatedAt}`;
+    persistViewMap.current = { mapId: mapData.id, updatedAt: mapData.updatedAt };
+
     if (overlayRef.current) {
       overlayRef.current.setUrl(mapData.imageUrl);
       overlayRef.current.setBounds(bounds);
@@ -242,17 +314,39 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
       overlayRef.current = L.imageOverlay(mapData.imageUrl, bounds, {
         interactive: false,
       }).addTo(map);
-      map.fitBounds(bounds);
     }
-  }, [state?.map, createPin]);
+
+    // Fit / restore only once per map image — not on pin SSE refreshes.
+    if (fittedMapKey.current !== mapKey) {
+      fittedMapKey.current = mapKey;
+      if (highlightPinId) {
+        // Sensible zoom first; pin effect centers the deep-linked pin once.
+        map.fitBounds(bounds);
+      } else {
+        const saved = readSavedView(mapData.id, mapData.updatedAt);
+        if (saved) {
+          map.setView([saved.lat, saved.lng], saved.zoom, { animate: false });
+        } else {
+          map.fitBounds(bounds);
+        }
+      }
+    }
+  }, [state?.map, createPin, highlightPinId]);
 
   useEffect(() => {
     const map = mapRef.current;
     const mapData = state?.map;
     if (!map || !mapData) return;
 
+    const filterActive = typeFilter.size > 0;
     const seen = new Set<string>();
     for (const pin of state.pins) {
+      const filteredOut =
+        filterActive &&
+        !typeFilter.has(pin.pinType) &&
+        pin.id !== highlightPinId;
+      if (filteredOut) continue;
+
       seen.add(pin.id);
       const latlng = relativeToLatLng(pin.posX, pin.posY, mapData.imageWidth, mapData.imageHeight);
       const highlight = highlightPinId === pin.id;
@@ -281,6 +375,14 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
         leafletMarker.on("dragstart", () => {
           const current = stateRef.current?.pins.find((item) => item.id === pin.id);
           if (current?.locked) {
+            leafletMarker?.dragging?.disable();
+            return;
+          }
+          // Filtered-out pins are not on the map; still guard if filter toggles mid-drag.
+          if (
+            typeFilterRef.current.size > 0 &&
+            !typeFilterRef.current.has(current?.pinType ?? "danger")
+          ) {
             leafletMarker?.dragging?.disable();
             return;
           }
@@ -412,7 +514,7 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
         openPinSheetRef.current(pin);
       }
     }
-  }, [state, highlightPinId, persistPinMove, persistMarkerMove]);
+  }, [state, highlightPinId, persistPinMove, persistMarkerMove, typeFilter]);
 
   async function onUpload(file: File | undefined) {
     if (!file) return;
@@ -518,7 +620,17 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
   }
 
   async function lockPin(pinId: string) {
-    const pin = await patchPin(pinId, { locked: true });
+    const trimmed = title.trim();
+    if (!trimmed) {
+      setError("Titel ist Pflicht.");
+      return;
+    }
+    const pin = await patchPin(pinId, {
+      title: trimmed,
+      description: description.trim() || null,
+      pinType,
+      locked: true,
+    });
     if (pin) setSheet({ kind: "view", pinId });
   }
 
@@ -532,11 +644,45 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
     }
   }
 
+  async function sharePin(pinId: string) {
+    const url = pinShareUrl(pinId);
+    setShareHint(null);
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: "WorldCraft Pin", url });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareHint("Link kopiert.");
+      window.setTimeout(() => setShareHint(null), 2200);
+    } catch {
+      setError("Link konnte nicht kopiert werden.");
+    }
+  }
+
+  function toggleTypeFilter(id: SpikePinType) {
+    setTypeFilter((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function clearTypeFilter() {
+    setTypeFilter(new Set());
+  }
+
   const selectedPin =
     sheet.kind === "edit" || sheet.kind === "view"
       ? state.pins.find((pin) => pin.id === sheet.pinId)
       : undefined;
-  const sheetOpen = sheet.kind !== "none" && sheet.kind !== "actions";
+  const sheetOpen = sheet.kind !== "none" && sheet.kind !== "actions" && sheet.kind !== "filter";
+  const filterActive = typeFilter.size > 0;
 
   return (
     <div className="spike-karte">
@@ -588,6 +734,7 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
 
       {error ? <p className="spike-toast spike-error">{error}</p> : null}
       {warning ? <p className="spike-toast spike-warn">{warning}</p> : null}
+      {shareHint ? <p className="spike-toast spike-hint">{shareHint}</p> : null}
 
       {state?.map && !placing && !sheetOpen ? (
         <>
@@ -605,19 +752,77 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
               ))}
             </div>
           ) : null}
-          <button
-            type="button"
-            className="spike-fab"
-            aria-expanded={sheet.kind === "actions"}
-            aria-label={sheet.kind === "actions" ? "Aktionen schließen" : "Aktionen"}
-            onClick={() =>
-              setSheet((current) =>
-                current.kind === "actions" ? { kind: "none" } : { kind: "actions" },
-              )
-            }
-          >
-            {sheet.kind === "actions" ? "×" : "+"}
-          </button>
+          {sheet.kind === "filter" ? (
+            <div
+              className="spike-filter-sheet"
+              role="group"
+              aria-label="Pin-Typen filtern"
+            >
+              <h2>Pin-Typen</h2>
+              <button
+                type="button"
+                aria-pressed={!filterActive}
+                onClick={clearTypeFilter}
+              >
+                Alle
+              </button>
+              {SPIKE_PIN_TYPE_META.map((meta) => (
+                <button
+                  key={meta.id}
+                  type="button"
+                  aria-pressed={typeFilter.has(meta.id)}
+                  onClick={() => toggleTypeFilter(meta.id)}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    style={{ color: meta.color }}
+                    dangerouslySetInnerHTML={{ __html: pinTypePictogram(meta.id) }}
+                  />
+                  {meta.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <div className="spike-fab-row">
+            <button
+              type="button"
+              className="spike-fab"
+              aria-expanded={sheet.kind === "actions"}
+              aria-label={sheet.kind === "actions" ? "Aktionen schließen" : "Aktionen"}
+              onClick={() =>
+                setSheet((current) =>
+                  current.kind === "actions" ? { kind: "none" } : { kind: "actions" },
+                )
+              }
+            >
+              {sheet.kind === "actions" ? (
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.75" strokeLinecap="round">
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.75" strokeLinecap="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              )}
+            </button>
+            <button
+              type="button"
+              className="spike-fab-filter"
+              aria-expanded={sheet.kind === "filter"}
+              aria-pressed={filterActive}
+              aria-label="Pin-Typen filtern"
+              onClick={() =>
+                setSheet((current) =>
+                  current.kind === "filter" ? { kind: "none" } : { kind: "filter" },
+                )
+              }
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 6h16M7 12h10M10 18h4" />
+              </svg>
+            </button>
+          </div>
         </>
       ) : null}
 
@@ -666,7 +871,30 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
           }}
         >
           <div className="spike-sheet-handle" aria-hidden="true" />
-          <h2>Pin bearbeiten</h2>
+          <div className="spike-sheet-header">
+            <h2>Pin bearbeiten</h2>
+            <button
+              type="button"
+              className="spike-sheet-share"
+              aria-label="Teilen"
+              onClick={() => void sharePin(selectedPin.id)}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="18" cy="5" r="3" />
+                <circle cx="6" cy="12" r="3" />
+                <circle cx="18" cy="19" r="3" />
+                <path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" />
+              </svg>
+            </button>
+          </div>
           <PinFields
             pinType={pinType}
             title={title}

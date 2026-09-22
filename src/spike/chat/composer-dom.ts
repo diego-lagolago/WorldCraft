@@ -5,35 +5,24 @@ import { markdownToEditorHtml } from "./markdown";
 export { markdownToEditorHtml };
 export const COMPOSER_MAX_LENGTH = 2000;
 
-function markerOpen(tag: string): number {
-  if (tag === "strong" || tag === "b") return 2;
-  if (tag === "em" || tag === "i") return 1;
-  return 0;
-}
-
-/** Serialize editor DOM back to markdown plain text (strips unknown tags). */
+/** Serialize editor DOM to markdown plain text (markers are already in the DOM). */
 export function serializeEditor(root: HTMLElement): string {
-  return serializeChildren(root).replace(/\u00a0/g, " ");
+  return textFromNode(root).replace(/\u00a0/g, " ");
 }
 
-function serializeChildren(parent: Node): string {
-  let out = "";
-  for (const child of Array.from(parent.childNodes)) {
-    out += serializeNode(child);
-  }
-  return out;
-}
-
-function serializeNode(node: Node): string {
+function textFromNode(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
   if (node.nodeType !== Node.ELEMENT_NODE) return "";
   const el = node as HTMLElement;
   const tag = el.tagName.toLowerCase();
   if (tag === "br") return "\n";
-  const inner = serializeChildren(el);
-  if (tag === "strong" || tag === "b") return `**${inner}**`;
-  if (tag === "em" || tag === "i") return `*${inner}*`;
-  return inner;
+  // Some platforms insert emoji as <img alt="…"> — keep them in markdown.
+  if (tag === "img") return el.getAttribute("alt") ?? el.getAttribute("title") ?? "";
+  let out = "";
+  for (const child of Array.from(node.childNodes)) {
+    out += textFromNode(child);
+  }
+  return out;
 }
 
 /** Markdown character offset of the current caret inside `root`. */
@@ -45,10 +34,6 @@ export function getCaretMarkdownOffset(root: HTMLElement): number {
   const { startContainer, startOffset } = sel.getRangeAt(0);
   let total = 0;
   let found = false;
-
-  function walkFully(node: Node): void {
-    total += serializeNode(node).length;
-  }
 
   function walk(node: Node): void {
     if (found) return;
@@ -76,23 +61,19 @@ export function getCaretMarkdownOffset(root: HTMLElement): number {
       return;
     }
 
-    const open = markerOpen(tag);
     if (node === startContainer) {
-      total += open;
       const children = Array.from(node.childNodes);
       for (let i = 0; i < startOffset && i < children.length; i++) {
-        walkFully(children[i]!);
+        total += textFromNode(children[i]!);
       }
       found = true;
       return;
     }
 
-    total += open;
     for (const child of Array.from(node.childNodes)) {
       walk(child);
       if (found) return;
     }
-    total += open;
   }
 
   for (const child of Array.from(root.childNodes)) {
@@ -147,22 +128,8 @@ export function setCaretMarkdownOffset(root: HTMLElement, offset: number): void 
       return false;
     }
 
-    const open = markerOpen(tag);
-    if (open > 0) {
-      if (remaining < open) {
-        const first = node.firstChild;
-        return first ? place(first, 0) : placeAtEndOf(node);
-      }
-      remaining -= open;
-    }
-
     for (const child of Array.from(node.childNodes)) {
       if (walk(child)) return true;
-    }
-
-    if (open > 0) {
-      if (remaining < open) return placeAtEndOf(node);
-      remaining -= open;
     }
     return false;
   }

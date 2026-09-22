@@ -214,15 +214,30 @@
 }
 
 .spike-chat-editor {
+  position: relative;
   outline: none;
   word-break: break-word;
   white-space: pre-wrap;
 }
 
+/* Overlay placeholder — must not occupy caret position (caret stays at start). */
 .spike-chat-editor.is-empty::before {
   content: attr(data-placeholder);
+  position: absolute;
+  left: 0.7rem;
+  top: 0.55rem;
+  right: 0.7rem;
   color: #71717a;
   pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spike-chat-editor .md-syntax {
+  color: #71717a;
+  font-style: normal;
+  font-weight: 400;
 }
 
 .spike-chat-editor strong {

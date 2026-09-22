@@ -1,8 +1,8 @@
 "use client";
 
-/** contentEditable composer: live *italic* / **bold**, sends markdown plain text. */
+/** contentEditable composer: Discord-style live *italic* / **bold**, sends markdown plain text. */
 
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import {
   COMPOSER_MAX_LENGTH,
   getCaretMarkdownOffset,
@@ -11,6 +11,10 @@ import {
   serializeEditor,
   setCaretMarkdownOffset,
 } from "./composer-dom";
+
+export type RichComposerHandle = {
+  focus: () => void;
+};
 
 type Props = {
   value: string;
@@ -22,20 +26,36 @@ type Props = {
 
 const REPARSE_MS = 80;
 
-export function RichComposer({
-  value,
-  onChange,
-  disabled,
-  onSubmit,
-  "aria-label": ariaLabel = "Nachricht",
-}: Props) {
+function placeCaretAtStart(el: HTMLElement) {
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(true);
+  sel?.addRange(range);
+}
+
+export const RichComposer = forwardRef<RichComposerHandle, Props>(function RichComposer(
+  { value, onChange, disabled, onSubmit, "aria-label": ariaLabel = "Nachricht" },
+  ref,
+) {
   const editorRef = useRef<HTMLDivElement | null>(null);
   const valueRef = useRef(value);
   const reparseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const composingRef = useRef(false);
+  /** Skip reparse after we wrote HTML — never skip syncing DOM → markdown. */
   const skipReparseRef = useRef(false);
 
   valueRef.current = value;
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      const el = editorRef.current;
+      if (!el) return;
+      el.focus();
+      placeCaretAtStart(el);
+    },
+  }));
 
   useEffect(() => {
     const el = editorRef.current;
@@ -48,13 +68,7 @@ export function RichComposer({
       skipReparseRef.current = true;
       el.innerHTML = markdownToEditorHtml(value);
       if (value === "" && document.activeElement === el) {
-        // keep focus; caret at start
-        const sel = window.getSelection();
-        sel?.removeAllRanges();
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        range.collapse(true);
-        sel?.addRange(range);
+        placeCaretAtStart(el);
       }
     }
   }, [value]);
@@ -72,6 +86,7 @@ export function RichComposer({
     if (md.length > COMPOSER_MAX_LENGTH) {
       md = md.slice(0, COMPOSER_MAX_LENGTH);
       const offset = Math.min(getCaretMarkdownOffset(el), COMPOSER_MAX_LENGTH);
+      skipReparseRef.current = true;
       el.innerHTML = markdownToEditorHtml(md);
       setCaretMarkdownOffset(el, offset);
     }
@@ -93,15 +108,18 @@ export function RichComposer({
       const html = markdownToEditorHtml(md);
       if (el.innerHTML === html) return;
       const offset = getCaretMarkdownOffset(el);
+      skipReparseRef.current = true;
       el.innerHTML = html;
       setCaretMarkdownOffset(el, offset);
     }, REPARSE_MS);
   }
 
+  const isEmpty = value.trim().length === 0;
+
   return (
     <div
       ref={editorRef}
-      className={`spike-chat-editor${value.trim() ? "" : " is-empty"}`}
+      className={`spike-chat-editor${isEmpty ? " is-empty" : ""}`}
       contentEditable={!disabled}
       role="textbox"
       aria-multiline="false"
@@ -109,10 +127,8 @@ export function RichComposer({
       data-placeholder="Nachricht"
       suppressContentEditableWarning
       onInput={() => {
-        if (skipReparseRef.current) {
-          skipReparseRef.current = false;
-          return;
-        }
+        // Always sync DOM → markdown (emoji / first keystroke after clear).
+        // skipReparseRef only suppresses the decorative reparse pass.
         emitFromDom();
       }}
       onCompositionStart={() => {
@@ -142,4 +158,4 @@ export function RichComposer({
       }}
     />
   );
-}
+});

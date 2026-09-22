@@ -5,7 +5,9 @@ import { mdNodesToPlain, markdownToEditorHtml, parseChatMarkdown, type MdNode } 
 function summarize(nodes: MdNode[]): unknown {
   return nodes.map((node) => {
     if (node.type === "text") return node.value;
-    return { [node.type]: summarize(node.children) };
+    const summary: Record<string, unknown> = { [node.type]: summarize(node.children) };
+    if (node.incomplete) summary.incomplete = true;
+    return summary;
   });
 }
 
@@ -42,8 +44,17 @@ describe("parseChatMarkdown", () => {
     assert.deepEqual(summarize(parseChatMarkdown("2*3=6")), ["2", "*", "3=6"]);
   });
 
+  it("live mode styles unclosed markers through EOF", () => {
+    assert.deepEqual(summarize(parseChatMarkdown("*offen", { live: true })), [
+      { italic: ["offen"], incomplete: true },
+    ]);
+    assert.deepEqual(summarize(parseChatMarkdown("**offen", { live: true })), [
+      { bold: ["offen"], incomplete: true },
+    ]);
+  });
+
   it("does not invent HTML and preserves surrounding text", () => {
-    const nodes = parseChatMarkdown('Sag <b>nein</b> und **ja**');
+    const nodes = parseChatMarkdown("Sag <b>nein</b> und **ja**");
     assert.deepEqual(summarize(nodes), ["Sag <b>nein</b> und ", { bold: ["ja"] }]);
     assert.equal(mdNodesToPlain(nodes), "Sag <b>nein</b> und ja");
   });
@@ -54,25 +65,38 @@ describe("parseChatMarkdown", () => {
 });
 
 describe("markdownToEditorHtml", () => {
-  it("renders bold and italic as strong/em", () => {
-    assert.equal(markdownToEditorHtml("*kursiv*"), "<em>kursiv</em>");
-    assert.equal(markdownToEditorHtml("**fett**"), "<strong>fett</strong>");
+  it("keeps Discord-style visible markers around bold/italic", () => {
     assert.equal(
-      markdownToEditorHtml("Hallo **Welt** und *Freund*"),
-      "Hallo <strong>Welt</strong> und <em>Freund</em>",
+      markdownToEditorHtml("*kursiv*"),
+      '<span class="md-syntax">*</span><em>kursiv</em><span class="md-syntax">*</span>',
+    );
+    assert.equal(
+      markdownToEditorHtml("**fett**"),
+      '<span class="md-syntax">**</span><strong>fett</strong><span class="md-syntax">**</span>',
+    );
+    assert.equal(
+      markdownToEditorHtml("*kursiver Text* und **fetter Text**, ohne"),
+      '<span class="md-syntax">*</span><em>kursiver Text</em><span class="md-syntax">*</span> und <span class="md-syntax">**</span><strong>fetter Text</strong><span class="md-syntax">**</span>, ohne',
     );
   });
 
   it("escapes raw HTML (XSS-safe)", () => {
     assert.equal(
       markdownToEditorHtml("Sag <img src=x onerror=alert(1)> und **ja**"),
-      "Sag &lt;img src=x onerror=alert(1)&gt; und <strong>ja</strong>",
+      'Sag &lt;img src=x onerror=alert(1)&gt; und <span class="md-syntax">**</span><strong>ja</strong><span class="md-syntax">**</span>',
     );
   });
 
-  it("handles empty and unmatched markers as text", () => {
+  it("preserves emoji and incomplete live markers", () => {
     assert.equal(markdownToEditorHtml(""), "");
-    assert.equal(markdownToEditorHtml("**offen"), "**offen");
-    assert.equal(markdownToEditorHtml("*offen"), "*offen");
+    assert.equal(markdownToEditorHtml("😱"), "😱");
+    assert.equal(
+      markdownToEditorHtml("*offen"),
+      '<span class="md-syntax">*</span><em>offen</em>',
+    );
+    assert.equal(
+      markdownToEditorHtml("**offen"),
+      '<span class="md-syntax">**</span><strong>offen</strong>',
+    );
   });
 });

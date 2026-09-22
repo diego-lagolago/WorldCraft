@@ -246,8 +246,8 @@ Weitere Normen legt dieser Plan an: ADRs unter `.ai/decisions/`, Projektnormen d
 
 ### T-014: Smoketest aller Spikes auf Staging
 **Abweichung (Projektinhaber, 2026-09-22):** Staging als eigene Coolify-Umgebung entfällt. HTTPS-/Discord-/Pin-/Chat-Prüfungen laufen gegen `worldcraft.lagolago.at`. Test-Login-Abnahme (T-008 / T-011) bleibt **lokal**. Produktion darf `ENABLE_TEST_LOGIN=true` nicht akzeptieren — in Coolify nicht setzen.
-**Stand (2026-09-22):** Protokoll `.ai/infrastructure/smoketest.md` angelegt. **Noch nicht `[x]`** — Chat auf Prod 404 (Code nicht deployed); Karten-Upload/Realtime und Chat-Realtime brauchen Owner (+ zweites Discord-Konto). T-011-Skript lokal 15/15; auf Prod N/A.
-- [ ] Beschreibung: Den Stand mit den lokal abgenommenen Spikes T-008 bis T-011 auf den Hauptzweig pushen, sodass Coolify das Image von GHCR pullt (Deployment aus T-007). **Kein** `ENABLE_TEST_LOGIN` in Coolify (Prod). Danach die Abnahmekriterien von T-008, T-009, T-010 und T-011 gegen Prod bzw. lokal (Test-Login/Rechte) prüfen und das Ergebnis je Kriterium in `.ai/infrastructure/smoketest.md` festhalten (bestanden / nicht bestanden / N/A, bei „nicht bestanden“ mit Beobachtung). Schlägt ein Kriterium nur auf Prod fehl (z. B. Realtime hinter dem Reverse Proxy, Upload-Limit für 20-MB-Kartenbilder), wird die Ursache behoben und der Smoketest für den betroffenen Spike wiederholt.
+**Nachweis (2026-09-22):** Owner: Smoketest insgesamt erfolgreich. Protokoll `.ai/infrastructure/smoketest.md` aktualisiert. Offene Chat-/Karten-UX-Bugs iterativ / Backlog — kein Blocker für T-014.
+- [x] Beschreibung: Den Stand mit den lokal abgenommenen Spikes T-008 bis T-011 auf den Hauptzweig pushen, sodass Coolify das Image von GHCR pullt (Deployment aus T-007). **Kein** `ENABLE_TEST_LOGIN` in Coolify (Prod). Danach die Abnahmekriterien von T-008, T-009, T-010 und T-011 gegen Prod bzw. lokal (Test-Login/Rechte) prüfen und das Ergebnis je Kriterium in `.ai/infrastructure/smoketest.md` festhalten (bestanden / nicht bestanden / N/A, bei „nicht bestanden“ mit Beobachtung). Schlägt ein Kriterium nur auf Prod fehl (z. B. Realtime hinter dem Reverse Proxy, Upload-Limit für 20-MB-Kartenbilder), wird die Ursache behoben und der Smoketest für den betroffenen Spike wiederholt.
 - **UI:** Phone-first prüfen (~390 px), nicht nur Desktop. Siehe `.ai/standards/mobile-first.md`.
 - 👤 Manuelle Schritte (Projektinhaber):
   - Den echten Discord-Login auf Prod mit dem eigenen Konto durchführen (Kriterien aus T-008) — **erledigt 2026-09-22**.
@@ -260,7 +260,8 @@ Weitere Normen legt dieser Plan an: ADRs unter `.ai/decisions/`, Projektnormen d
 - Vom Projektinhaber am 2026-09-22 aus diesem Plan gestrichen, siehe *Abgrenzung → Backlog*. Die ID T-012 bleibt reserviert und wird nicht neu vergeben.
 
 ### T-013: Projektnormen festhalten & Go/No-Go
-- [ ] Beschreibung: Die Ergebnisse als verbindliche Normen für die Folgepläne festhalten:
+**Nachweis (2026-09-22):** `.ai/tech-stack.md` (inkl. Go + Abgleich Plan 002), `.ai/conventions.md`, `.ai/architecture/README.md`. Einschätzung **Go**.
+- [x] Beschreibung: Die Ergebnisse als verbindliche Normen für die Folgepläne festhalten:
   - `.ai/tech-stack.md`: gewählte Technologien mit Version und Verweis auf die ADRs.
   - `.ai/conventions.md`: Ordnerstruktur, Namenskonventionen, Sprache von Code und Oberfläche, Umgang mit Secrets, Teststrategie (inkl. Regel: Test-Login nur auf Staging und lokal, nie in Produktion).
   - `.ai/architecture/README.md`: Überblick über die Komponenten und den Datenfluss.

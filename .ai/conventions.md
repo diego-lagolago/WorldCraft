@@ -1,0 +1,88 @@
+# Conventions (verbindlich)
+
+**Status:** Festgehalten durch Plan `001` T-013 (2026-09-22).  
+**Ergänzt:** [tech-stack.md](tech-stack.md), [architecture/README.md](architecture/README.md), Standards unter `.ai/standards/`.
+
+## Sprache
+
+| Bereich | Sprache | Regel |
+|---|---|---|
+| **Oberfläche (UI)** | **Deutsch** | Labels, Fehlermeldungen, Hilfetexte, Consent, MCP-Werkzeugbeschreibungen für Claude |
+| **Code** | **Englisch** | Dateien, Identifier, Commits-Technikbegriffe, HTTP-Pfade soweit technisch, DB-Tabellen/Spalten |
+| **Fachdokumente in `.ai/`** | **Deutsch** | Pläne, ADRs, Normen; Code-Beispiele und Identifier darin englisch belassen |
+| **Enum-Schlüssel (DB)** | Englisch | z. B. `gm_only`, `game_master`; UI zeigt deutsche Labels |
+| **Git-Commit-Nachrichten** | Deutsch oder Englisch | kurz, „why“; Team-Stil der letzten Commits folgen |
+
+## Ordnerstruktur
+
+```
+.ai/                    Normen, ADRs, Pläne, Infrastruktur-Doku
+spikes/editor/          isolierter Editor-Spike (Vite), nicht Teil der Next-App
+src/
+  app/                  Next.js App Router (Seiten, Route Handlers)
+    api/                HTTP-APIs (auth, test-login, spike/*)
+    spike/              Spike-Routen /spike/karte, /spike/chat
+  components/           wiederverwendbare UI
+  db/                   Drizzle-Schema, Migrationen
+  lib/                  Auth, Env, Domain-Hilfen
+  spike/<name>/         Spike-UI und Spike-Logik (klar als Spike gekennzeichnet)
+scripts/                Migrations-/Hilfsskripte
+data/uploads/           lokale Uploads (nicht committen)
+```
+
+- Produktcode wächst unter `src/` (nicht neue Top-Level-Apps ohne ADR).
+- Spike-Seiten unter `/spike/…` dürfen im MVP-Folgeplan ausgebaut oder entfernt werden; Discord-Login bleibt.
+- Neue automatisierte Spike-/Rechte-Tests: neben dem Spike oder unter `src/lib/*.test.ts` / `src/spike/**/*.test.ts` (siehe `npm test`).
+
+## Namenskonventionen
+
+| Gegenstand | Konvention |
+|---|---|
+| React-Komponenten / Dateien | `PascalCase.tsx` für Komponenten; Hooks `useX.ts` |
+| Module / Utilities | `kebab-case.ts` oder bestehende `camelCase`-Dateien im Ordner nicht brechen |
+| DB-Tabellen / Spalten | `snake_case`, englisch ([datenmodell.md](architecture/datenmodell.md)) |
+| Env-Variablen | `SCREAMING_SNAKE_CASE` (Vorlage `.env.example`) |
+| Feature-Pläne | `.ai/feature-tasks/NNN-kurzname.md`, Tasks `T-NNN` |
+| ADRs | `.ai/decisions/NNN-kurzname.md` |
+
+## Secrets & Konfiguration
+
+- **Niemals** Secrets committen (Client-Secret, `BETTER_AUTH_SECRET`, DB-Passwort, Tokens).
+- Vorlage: `.env.example` (ohne echte Werte). Lokal: `.env` (gitignored).
+- Produktion: Werte nur in Coolify. Secrets nicht in den Chat.
+- `git grep` / Review: keine Klartext-Secrets im Repo.
+
+## Test-Login (hart)
+
+| Umgebung | `ENABLE_TEST_LOGIN` | Erlaubt? |
+|---|---|---|
+| Lokal (`APP_ENV=development`) | `true` | Ja — Seeds und Rechte-Skript |
+| Produktion (`APP_ENV=production`, `worldcraft.lagolago.at`) | **nicht setzen** | Test-Login muss 404 sein; App **startet nicht**, wenn beide true |
+
+Es gibt **kein** separates Staging. Formulierungen „Staging“ in älteren Docs meinen: lokal oder die frühere Planannahme — maßgeblich ist deployment.md.
+
+## Teststrategie
+
+1. **Unit / Node-Tests:** `npm test` (`src/lib/*.test.ts`, `src/spike/**/*.test.ts`).
+2. **Rechte-Matrix:** `npm run test:rechte` — braucht laufenden Dev-Server + Test-Login (nur lokal).
+3. **Editor-Spike:** `cd spikes/editor && npm test`.
+4. **Manuell / Smoketest:** Prod per Discord; Protokoll [infrastructure/smoketest.md](infrastructure/smoketest.md).
+5. **CI:** Image-Build (GHCR); Rechte-Skript läuft nicht gegen Prod.
+
+Neue Rechtefälle: zuerst in der gemeinsamen Authz-Schicht + Test, nicht nur in der UI.
+
+## UI-Normen (Querverweise)
+
+- [standards/mobile-first.md](standards/mobile-first.md)
+- [standards/mobile-navigation.md](standards/mobile-navigation.md) — Bottom-Bar später
+- [standards/erwaehnungen.md](standards/erwaehnungen.md)
+
+## Deployment-Kurzregel
+
+- Build: GitHub Actions → GHCR. Coolify: Image pull, kein Dockerfile-Build auf dem VPS.
+- Persistenz: Postgres-Volume + Upload-Volume `/app/data/uploads`.
+- Details: [infrastructure/deployment.md](infrastructure/deployment.md).
+
+## Backlog vs. Normen
+
+Kurze Restpunkte ohne Plan: [backlog.md](backlog.md). Normen hier und unter `.ai/standards/` haben Vorrang vor Spike-WIP.

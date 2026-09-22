@@ -1,0 +1,91 @@
+# Architektur — Überblick
+
+**Status:** Festgehalten durch Plan `001` T-013 (2026-09-22).  
+**Details:** [datenmodell-fachlich.md](datenmodell-fachlich.md) · [datenmodell.md](datenmodell.md) · ADRs · [tech-stack.md](../tech-stack.md)
+
+## Komponenten
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  Browser (Mobile-First UI)                                  │
+│  Next.js Client: Karte (Leaflet), Chat, TipTap, Seiten      │
+└───────────────┬─────────────────────────────┬───────────────┘
+                │ HTTPS / Cookies             │ SSE (EventSource)
+                ▼                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Next.js App (ein Container, Port 3000)                     │
+│  • Seiten (App Router)                                      │
+│  • Route Handlers: /api/auth, /api/spike/*, später /mcp     │
+│  • Better Auth (Discord-Client jetzt; OAuth-AS für MCP später)│
+│  • Rechteschicht (TypeScript)                               │
+│  • Drizzle → PostgreSQL                                     │
+│  • Dateien → Volume (FILE_STORAGE_PATH)                     │
+│  • SSE-Bus (Spike: in-process; Prod: ein App-Prozess)       │
+└───────────────┬─────────────────────────────┬───────────────┘
+                │                             │
+                ▼                             ▼
+         ┌────────────┐              ┌────────────────┐
+         │ PostgreSQL │              │ Upload-Volume  │
+         │ (Coolify / │              │ Karten, Avatare│
+         │  Compose)  │              │ Titelbilder    │
+         └────────────┘              └────────────────┘
+```
+
+| Komponente | Rolle |
+|---|---|
+| **Next.js-App** | UI + API + Auth + Rechte + Realtime-Endpunkte in einem Prozess ([ADR-001](../decisions/001-backend.md), [ADR-002](../decisions/002-frontend.md)) |
+| **PostgreSQL** | Fachdaten, Constraints, Archive; keine RLS als Rechtematrix |
+| **Better Auth** | Sessions, Discord-OAuth; später MCP-Plugin / OAuth-AS (Plan `002`) |
+| **Volume** | Binärdateien; Metadaten in Tabelle `files` |
+| **Leaflet** | Kartenbild + Pins/Marker ([ADR-003](../decisions/003-karten.md)) |
+| **TipTap** | Rich-Text JSON + Klartext ([ADR-004](../decisions/004-editor.md)) |
+| **Coolify + GHCR** | Betrieb Prod; Image vorgebaut ([deployment.md](../infrastructure/deployment.md)) |
+
+Isolierter Spike: `spikes/editor/` (Vite) — nur Editor-Beweis, nicht produktiv verdrahtet.
+
+## Datenfluss (kurz)
+
+### Login
+
+1. Browser → Discord (OAuth) → Callback `/api/auth/callback/discord`.
+2. Better Auth legt/aktualisiert `users` (Discord-ID, Name, Avatar, E-Mail).
+3. Session-Cookie same-origin.
+
+Test-Login (nur lokal): `POST /api/test-login` → gleiche Session-Form, Seed-User.
+
+### Karte (Spike / später Produkt)
+
+1. Upload → Volume + `files` / Map-Metadaten.
+2. Pins/Marker: Position relativ `{x,y}` ∈ [0,1].
+3. Nach **Drop**: Persistenz → SSE an andere Clients (kein Live-Drag).
+
+### Chat
+
+1. Nachricht oder Würfel-Aktion → Server speichert (Würfel **nur serverseitig**).
+2. SSE benachrichtigt andere Clients.
+3. Composer-UI: Würfel-Sheet; `/roll` bleibt API-/Test-Pfad.
+
+### Rechte
+
+Jede lesende/schreibende API (und später MCP) fragt die **gemeinsame Rechteschicht** mit Benutzerkontext. Sichtbarkeit erbt Universum → Karte → Pin/Marker; Relationen nur wenn Quelle **und** Ziel sichtbar. Mitgliedschaften/Teilnahmen werden archiviert, nicht hart gelöscht (siehe fachliches Modell).
+
+### Geplant: MCP (Plan 002)
+
+```text
+Claude ──OAuth 2.1──► WorldCraft AS (Better Auth)
+Claude ──Bearer──► POST /mcp ──► Rechteschicht ──► DB
+```
+
+Nur lesend; kein Tagebuch, kein Chat über MCP.
+
+## Domänenkerne (MVP)
+
+Welt → Universen → Karten → Pins / Charakter-Marker  
+Welt → Artikel, Quests, Relationen, Chat  
+Benutzer → Charaktere (weltunabhängig) → Mitbringen → Marker / Tagebuch  
+
+Rollen pro Welt: Game Master | Master | Player (Rechtematrix in Plan `001`).
+
+## UI-Shell (später)
+
+Angepinnte Mobile-Navigation: Weltkugel · Karte · Chat · Menü — [mobile-navigation.md](../standards/mobile-navigation.md). Spikes bauen die Shell noch nicht nach.

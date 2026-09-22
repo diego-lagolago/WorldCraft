@@ -14,7 +14,7 @@ import {
   formatStructuredPreview,
   type StructuredDiceTerm,
 } from "./dice-sides";
-import { RichComposer } from "./RichComposer";
+import { RichComposer, type RichComposerHandle } from "./RichComposer";
 import type {
   SpikeChatMessageDto,
   SpikeChatOlderPage,
@@ -125,6 +125,7 @@ export function ChatSpikePage({
   const [copiedHint, setCopiedHint] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const logRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<RichComposerHandle | null>(null);
   const stateRef = useRef(state);
   const idsRef = useRef(new Set(initialState.messages.map((message) => message.id)));
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -289,6 +290,8 @@ export function ChatSpikePage({
       setError(cause instanceof Error ? cause.message : "Nachricht konnte nicht gesendet werden.");
     } finally {
       setSending(false);
+      // Keep focus so the next message (incl. emoji-only) can be typed immediately.
+      requestAnimationFrame(() => composerRef.current?.focus());
     }
   }
 
@@ -491,16 +494,16 @@ export function ChatSpikePage({
             <DiceIcon />
           </button>
           <RichComposer
+            ref={composerRef}
             value={draft}
             onChange={setDraft}
-            disabled={sending}
             onSubmit={() => void sendText()}
           />
           <button
             className="spike-chat-send"
             type="submit"
             aria-label="Senden"
-            disabled={sending || !draft.trim()}
+            disabled={sending || draft.trim().length === 0}
           >
             <PlaneIcon />
           </button>

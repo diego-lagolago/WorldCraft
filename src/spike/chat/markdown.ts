@@ -2,8 +2,13 @@
 
 export type MdNode =
   | { type: "text"; value: string }
-  | { type: "bold"; children: MdNode[] }
-  | { type: "italic"; children: MdNode[] };
+  | { type: "bold"; children: MdNode[]; incomplete?: boolean }
+  | { type: "italic"; children: MdNode[]; incomplete?: boolean };
+
+type ParseOptions = {
+  /** Unclosed `*` / `**` style through EOF (Discord-style live preview). */
+  live?: boolean;
+};
 
 function findItalicClose(source: string, from: number): number {
   let i = from;
@@ -23,10 +28,11 @@ function findItalicClose(source: string, from: number): number {
   return -1;
 }
 
-/** Parse plain text with a tiny markdown subset. Unmatched `*` / `**` stay as text. */
-export function parseChatMarkdown(source: string): MdNode[] {
+/** Parse plain text with a tiny markdown subset. Unmatched `*` / `**` stay as text (unless `live`). */
+export function parseChatMarkdown(source: string, options: ParseOptions = {}): MdNode[] {
   const nodes: MdNode[] = [];
   let i = 0;
+  const live = options.live === true;
 
   while (i < source.length) {
     // Common order: ***bold+italic*** before **bold** before *italic*.
@@ -49,6 +55,14 @@ export function parseChatMarkdown(source: string): MdNode[] {
         i = close + 2;
         continue;
       }
+      if (live) {
+        nodes.push({
+          type: "bold",
+          incomplete: true,
+          children: parseChatMarkdown(source.slice(i + 2), { live: true }),
+        });
+        break;
+      }
       nodes.push({ type: "text", value: "*" });
       i += 1;
       continue;
@@ -60,6 +74,14 @@ export function parseChatMarkdown(source: string): MdNode[] {
         nodes.push({ type: "italic", children: parseChatMarkdown(source.slice(i + 1, close)) });
         i = close + 1;
         continue;
+      }
+      if (live) {
+        nodes.push({
+          type: "italic",
+          incomplete: true,
+          children: parseChatMarkdown(source.slice(i + 1), { live: true }),
+        });
+        break;
       }
       nodes.push({ type: "text", value: "*" });
       i += 1;
@@ -93,18 +115,31 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function syntaxSpan(marker: string): string {
+  return `<span class="md-syntax">${escapeHtml(marker)}</span>`;
+}
+
 function nodesToHtml(nodes: MdNode[]): string {
   return nodes
     .map((node) => {
       if (node.type === "text") return escapeHtml(node.value).replace(/\n/g, "<br>");
-      if (node.type === "bold") return `<strong>${nodesToHtml(node.children)}</strong>`;
-      return `<em>${nodesToHtml(node.children)}</em>`;
+      if (node.type === "bold") {
+        const inner = nodesToHtml(node.children);
+        if (node.incomplete) return `${syntaxSpan("**")}<strong>${inner}</strong>`;
+        return `${syntaxSpan("**")}<strong>${inner}</strong>${syntaxSpan("**")}`;
+      }
+      const inner = nodesToHtml(node.children);
+      if (node.incomplete) return `${syntaxSpan("*")}<em>${inner}</em>`;
+      return `${syntaxSpan("*")}<em>${inner}</em>${syntaxSpan("*")}`;
     })
     .join("");
 }
 
-/** Safe HTML for the composer (escaped text + strong/em only). */
+/**
+ * Discord-style composer HTML: markers stay visible (dimmed), only the span
+ * between matching open/close is bold/italic. Serialize via plain text walk.
+ */
 export function markdownToEditorHtml(source: string): string {
   if (!source) return "";
-  return nodesToHtml(parseChatMarkdown(source));
+  return nodesToHtml(parseChatMarkdown(source, { live: true }));
 }
