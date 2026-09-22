@@ -15,15 +15,15 @@ Versionen = installierte bzw. Spike-Stand am 2026-09-22. Patch-Updates innerhalb
 | Datenbank | PostgreSQL | `16` (Docker-Image `postgres:16-alpine`) | ADR-001 |
 | ORM / Schema | Drizzle ORM + Drizzle Kit | `drizzle-orm ^0.45.2`, `drizzle-kit ^0.31.10` | ADR-001 · [datenmodell.md](architecture/datenmodell.md) |
 | Auth | Better Auth (Discord + Session) | `^1.7.5` | ADR-001 · ADR-002 |
-| Validierung | Zod | `^4.6.5` | — |
-| Dateien | lokales Volume (`FILE_STORAGE_PATH`) | — | ADR-001 · Deployment |
-| Realtime | **SSE** (Server-Sent Events) nach Drop / nach Speichern | Browser `EventSource` | ADR-002 (Präzisierung); Spike-Beweis T-009/T-010. Kein Socket.IO-Custom-Server. |
+| Validierung | Zod | `^4.6.5` | [ADR-001](decisions/001-backend.md) (Typsicherheit im TypeScript-Backend; kein eigenes ADR) |
+| Dateien | lokales Volume (`FILE_STORAGE_PATH`) | — | [ADR-001](decisions/001-backend.md) · [deployment.md](infrastructure/deployment.md) |
+| Realtime | **SSE** (Server-Sent Events) nach Drop / nach Speichern | Browser `EventSource` | [ADR-002](decisions/002-frontend.md) (Präzisierung); Spike-Beweis T-009/T-010. Kein Socket.IO-Custom-Server. |
 | Karten | Leaflet `CRS.Simple` | `leaflet ^1.9.4` | [ADR-003](decisions/003-karten.md) |
 | Artikel-Editor | TipTap (nur OSS-Extensions) | `@tiptap/* ^3.30.2` (Spike `spikes/editor/`) | [ADR-004](decisions/004-editor.md) |
-| UI-Styling | Tailwind CSS | `^4` | — |
-| Betrieb | Coolify + GHCR-Image (`linux/amd64`) | Domain `worldcraft.lagolago.at` | [deployment.md](infrastructure/deployment.md) |
-| CI-Build | GitHub Actions → GHCR | Tags `:main` und `:<sha>` | deployment.md |
-| Lokale DB | Docker Compose | `docker-compose.yml` | README |
+| UI-Styling | Tailwind CSS | `^4` | [ADR-002](decisions/002-frontend.md) (Frontend-Stack; kein eigenes ADR) |
+| Betrieb | Coolify + GHCR-Image (`linux/amd64`) | Domain `worldcraft.lagolago.at` | [ADR-001](decisions/001-backend.md) / [ADR-002](decisions/002-frontend.md) (ein Container) · [deployment.md](infrastructure/deployment.md) |
+| CI-Build | GitHub Actions → GHCR | Tags `:main` und `:<sha>` | [ADR-001](decisions/001-backend.md) (Coolify-Betrieb) · deployment.md |
+| Lokale DB | Docker Compose | `docker-compose.yml` | [ADR-001](decisions/001-backend.md) · README |
 
 **Nicht gewählt (bewusst):** PocketBase, Supabase Self-Host, SvelteKit, React+Vite-SPA, Konva, tldraw, TipTap Pro, Socket.IO als Pflicht.
 
