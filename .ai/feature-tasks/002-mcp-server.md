@@ -43,9 +43,9 @@ Alle Werkzeuge sind nur lesend, erfordern den Scope `worlds:read` und liefern au
 
 | Werkzeug | Eingabe | Ausgabe |
 |---|---|---|
-| `welten_auflisten` | – | Alle Welten, in denen der Benutzer Mitglied ist: ID, Name, eigene Rolle, Name und ID des aktiven eigenen Charakters. |
-| `suchen` | `welt_id`, `suchbegriff`, optional `art` (artikel / quest / charakter / pin), optional `limit` (Standard 20, maximal 50) | Treffer mit Art, ID, Titel, Vorlagentyp und einem Textauszug von maximal 300 Zeichen. |
-| `inhalt_lesen` | `welt_id`, `art` (artikel / quest / charakter / pin), `id` | Vollständiger Inhalt als Markdown (Rich-Text aus TipTap-JSON umgewandelt, Erwähnungen als `@Titel`). Artikel: Titel, Vorlagentyp, Vorlagenfelder, Text. Quest: Titel, Status, beteiligte Charaktere, Beschreibung. Charakter: Charakterbogen (Klasse, Attribute, Fertigkeiten, Persönlichkeitsmerkmale, Ideale, Bindungen, Makel, Bio), ohne Bildanhänge und ohne Tagebuch. Pin: Titel, Pin-Typ, Karte, Beschreibung. Jeweils mit Kennzeichnung, ob der Inhalt `nur Spielleitung` ist. |
+| `welten_auflisten` | – | Alle Welten, in denen der Benutzer Mitglied ist: ID, Name, eigene Rolle, Name und ID aller eigenen in diese Welt mitgebrachten Charaktere (nicht archivierte Teilnahmen). |
+| `suchen` | `welt_id`, `suchbegriff`, optional `art` (artikel / quest / charakter / pin / universum), optional `limit` (Standard 20, maximal 50) | Treffer mit Art, ID, Titel, Vorlagentyp und einem Textauszug von maximal 300 Zeichen. |
+| `inhalt_lesen` | `welt_id`, `art` (artikel / quest / charakter / pin / universum), `id` | Vollständiger Inhalt als Markdown (Rich-Text aus TipTap-JSON umgewandelt, Erwähnungen als `@Titel`). Artikel: Titel, Vorlagentyp, Vorlagenfelder, Text. Quest: Titel, Status, beteiligte Charaktere, Beschreibung. Charakter: Charakterbogen (Klasse, Attribute, Fertigkeiten, Persönlichkeitsmerkmale, Ideale, Bindungen, Makel, Bio), ohne Bildanhänge und ohne Tagebuch. Pin: Titel, Pin-Typ, Karte, Beschreibung. Universum: Name, Beschreibung, Karten (ID und Name). Jeweils mit Kennzeichnung, ob der Inhalt `nur Spielleitung` ist. |
 | `relationen_abrufen` | `welt_id`, `art`, `id`, optional `tiefe` (1 oder 2, Standard 1) | Ein- und ausgehende Relationen mit Herkunft (Erwähnung, Vorlagenfeld inkl. Feldname, Beteiligung, manuell inkl. Bezeichnung bzw. Gegenbezeichnung) sowie Art, ID und Titel des jeweils anderen Inhalts. |
 | `quests_auflisten` | `welt_id`, optional `status` | Quests mit ID, Titel, Status und beteiligten Charakteren. |
 | `karte_lesen` | `welt_id`, optional `karte_id` | Ohne `karte_id`: alle Universen der Welt mit ihren Karten (Universum-ID und -Name, Karten-ID und -Name). Mit `karte_id`: alle Pins mit Pin-Typ, Titel, verknüpften Inhalten (aus Erwähnungen und manuellen Relationen: Art, ID, Titel) und relativer Position sowie alle Charakter-Marker mit Charaktername, Besitzer und relativer Position. |
@@ -90,7 +90,7 @@ Zum Zeitpunkt der Planerstellung existieren sie noch nicht. Sie werden durch Pla
   - 5 Artikel mit verschiedenen Vorlagentypen, davon 1 mit Status `nur Spielleitung`. Darunter ein Artikel „Burg Rabenstein“ mit mindestens 3 Relationen (mindestens eine per Erwähnung, eine per Vorlagenfeld und eine manuelle mit Bezeichnung und Gegenbezeichnung) und einer Relation über 2 Stufen.
   - 2 veröffentlichte Quests mit unterschiedlichem Status, davon eine mit einem beteiligten Charakter
   - 2 Universen mit je 1 Karte; das zweite Universum hat den Status `nur Spielleitung`. Die Karte des ersten Universums hat 4 veröffentlichte Pins, davon 2 mit Erwähnungen in der Beschreibung, und einen Charakter-Marker für den Charakter von Player A.
-  - 1 Charakter von Player A, aktiv in der Testwelt, mit je einem Tagebucheintrag `privat` und `mit Spielleitung geteilt`, die jeweils das eindeutige Wort `GEHEIMTEST` enthalten
+  - 1 Charakter von Player A, in die Testwelt mitgebracht, mit je einem Tagebucheintrag `privat` und `mit Spielleitung geteilt`, die jeweils das eindeutige Wort `GEHEIMTEST` enthalten
   - 1 Chat-Nachricht mit dem eindeutigen Wort `CHATTEST`
 
   Für jeden Testbenutzer lässt sich eine Sitzung erzeugen, ohne dass ein echter Discord-Login nötig ist. Das ist nur in Staging und lokal möglich, niemals in Produktion.
@@ -105,7 +105,7 @@ Zum Zeitpunkt der Planerstellung existieren sie noch nicht. Sie werden durch Pla
   4. **Autorisierungsendpunkt**: Ist der Benutzer nicht angemeldet, wird er zum bestehenden Discord-Login und danach zurück in den OAuth-Ablauf geleitet. PKCE ist Pflicht. Der Parameter `resource` wird ausgewertet.
   5. **Zustimmungsseite**: zeigt den vom Client angegebenen Namen mit dem Hinweis, dass dieser Name vom Client selbst stammt, sowie die Redirect-Domain, den Umfang in Klartext („Lesezugriff auf deine Welten; Tagebücher und Chat sind ausgeschlossen“) und die Schaltflächen „Erlauben“ und „Ablehnen“.
   6. **Token-Endpunkt**: Zugriffstoken mit 1 Stunde Laufzeit, an die Ressource `/mcp` gebunden (Audience). Refresh-Token mit 30 Tagen Laufzeit, das bei jeder Nutzung durch ein neues ersetzt wird (Rotation). Tokens werden nur als Hash gespeichert.
-  7. Ist der Benutzer aus allen Welten entfernt worden oder sein Konto gelöscht, schlagen Token-Erneuerungen fehl.
+  7. Ist der Benutzer aus allen Welten ausgetreten bzw. entfernt worden (alle Mitgliedschaften archiviert) oder sein Konto gelöscht, schlagen Token-Erneuerungen fehl.
 - Abhängigkeiten: T-001
 - Abnahmekriterium: (1) Beide Metadaten-Endpunkte liefern gültiges JSON mit den geforderten Feldern. (2) Mit dem MCP Inspector lässt sich der komplette Ablauf DCR → Discord-Login → Zustimmung → Token → Refresh auf Staging durchspielen. (3) Automatisierte Tests belegen: Eine Anfrage ohne PKCE oder mit der Methode `plain` wird abgelehnt. Eine DCR mit der Redirect-URI `http://evil.example` wird abgelehnt. Ein bereits benutztes Refresh-Token wird abgelehnt. Ein Autorisierungscode ist nur einmal einlösbar. „Ablehnen“ auf der Zustimmungsseite liefert dem Client den Fehler `access_denied`. (4) In der Datenbank liegt kein Token im Klartext.
 

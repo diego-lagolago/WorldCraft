@@ -1,6 +1,7 @@
 # Fachliches Datenmodell (MVP)
 
 **Status:** Freigegeben durch den Projektinhaber am 2026-09-22. Alle offenen Fragen (Abschnitt 7) sind geklärt. Änderungen nur nach erneuter Abstimmung mit dem Projektinhaber.
+**Änderung 2026-09-22 (Plan-Review 001, abgestimmt mit dem Projektinhaber):** Rollen ändern und Mitglieder entfernen darf nur der Game Master, nicht mehr die gesamte Spielleitung (3.3, Abschnitt 5). Austreten und Entfernen löschen nichts mehr: Mitgliedschaft, Welt-Teilnahmen, Marker und Relationen werden archiviert und bei erneutem Beitritt wiederhergestellt (3.3, 3.4, 3.9, 3.10, Abschnitt 4). Universen werden Teil des Beziehungsnetzes: erwähnbar über `@`, Quelle (über Erwähnungen in ihrer Beschreibung) und Ziel von Relationen. Die Welt bleibt reines logisches Objekt ohne Erwähnungen und Relationen (2.1, 2.3, 2.4, 2.5, 3.2, 3.14, Abschnitt 4). Das Konzept „aktiver Charakter“ entfällt: Ein Benutzer kann mehrere mitgebrachte Charaktere gleichzeitig spielen, jeder mitgebrachte Charakter kann Marker haben (3.9, 3.10, Abschnitt 5).
 **Bezug:** Plan `001-mvp-infrastruktur.md` (F1–F10, Rechtematrix). Grundlage für T-006, das dieses Modell in ein technisches Schema übersetzt.
 
 Dieses Dokument beschreibt, **welche Dinge es gibt, welche Eigenschaften sie haben, wie sie zusammenhängen und welche Regeln gelten**, unabhängig von Datenbank und Backend. Datentypen sind fachlich gemeint (z. B. „Text, max. 120 Zeichen“), nicht technisch.
@@ -33,7 +34,7 @@ erDiagram
     BENUTZER ||--o{ CHAT_NACHRICHT : schreibt
 ```
 
-Relationen verbinden Artikel, Quests, Charaktere und Pins beliebig miteinander (Inhaltsverweis, siehe 2.1). Sie sind im Diagramm nur als Zugehörigkeit zur Welt dargestellt.
+Relationen verbinden Artikel, Quests, Charaktere, Pins und Universen beliebig miteinander (Inhaltsverweis, siehe 2.1). Sie sind im Diagramm nur als Zugehörigkeit zur Welt dargestellt.
 
 **Leseregel:** Alles außer Benutzer und Charakter gehört (direkt oder indirekt) zu genau einer Welt. Wird eine Welt gelöscht, verschwindet alles, was zu ihr gehört. Charaktere gehören dem Benutzer und überleben das Löschen einer Welt.
 
@@ -47,12 +48,14 @@ Mehrere Stellen verweisen auf „einen Inhalt der Welt“ (Pins, Relationen, Erw
 
 | Feld | Werte |
 |---|---|
-| Art | `artikel`, `quest`, `charakter`, `pin` |
+| Art | `artikel`, `quest`, `charakter`, `pin`, `universum` |
 | Ziel | der konkrete Artikel, die Quest, der Charakter oder der Pin |
 
 Regeln:
 - Das Ziel muss zur selben Welt gehören (bei Charakteren: in diese Welt mitgebracht sein).
 - Pins können Quelle einer Relation sein (über Erwähnungen in ihrer Beschreibung) und Ende einer manuellen Relation. Über `@` erwähnbar sind sie **nicht** (siehe 2.4).
+- Universen sind über `@` erwähnbar, können Quelle einer Relation sein (über Erwähnungen in ihrer Beschreibung) und Quelle oder Ziel einer manuellen Relation.
+- Die **Welt** ist kein Inhaltsverweis: Sie ist nur das logische Objekt (die Gruppe) für die Geschichte, nicht erwähnbar und nie Quelle oder Ziel einer Relation.
 
 ### 2.2 Sichtbarkeitsstatus
 
@@ -70,7 +73,7 @@ Regeln:
 
 ### 2.3 Rich-Text
 
-Formatierter Text aus dem Artikel-Editor (TipTap) mit dem in Plan 001 festgelegten Funktionsumfang, inkl. Erwähnungen (`@Name`) als Inhaltsverweise. Wird zusätzlich als Klartext für die Suche vorgehalten. Rich-Text wird verwendet für: Welt- und Universumsbeschreibung, Artikelinhalt, Questbeschreibung, Pinbeschreibung, Charakter-Bio und Tagebucheinträge.
+Formatierter Text aus dem Artikel-Editor (TipTap) mit dem in Plan 001 festgelegten Funktionsumfang, inkl. Erwähnungen (`@Name`) als Inhaltsverweise. Wird zusätzlich als Klartext für die Suche vorgehalten. Rich-Text wird verwendet für: Weltbeschreibung (**ohne** Erwähnungen), Universumsbeschreibung, Artikelinhalt, Questbeschreibung, Pinbeschreibung, Charakter-Bio und Tagebucheinträge.
 
 ### 2.4 Erwähnung & Erwähnungssuche
 
@@ -79,16 +82,16 @@ Eine **Erwähnung** ist ein Inhaltsverweis mitten im Rich-Text, z. B.:
 > Hier findet man den **@Gottschleim**. Du musst einen für die Quest **@Töte den Gottschleim** erlegen.
 
 **Erwähnungssuche** (beim Tippen von `@` im Editor):
-- Durchsucht die Titel bzw. Namen aller **Artikel, Quests und Charaktere** der Welt, die der schreibende Benutzer sehen darf.
+- Durchsucht die Titel bzw. Namen aller **Artikel, Quests, Charaktere und Universen** der Welt, die der schreibende Benutzer sehen darf.
 - Treffer bei **Teilwort, ohne Beachtung der Groß-/Kleinschreibung**: `@Schleim` findet „Gottschleim“ (Artikel) und „Töte den Gottschleim“ (Quest).
-- Jeder Vorschlag zeigt die **Kategorie** (`Artikel`, `Quest`, `Charakter`), bei Artikeln zusätzlich den Vorlagentyp (z. B. „Artikel · Ort“).
+- Jeder Vorschlag zeigt die **Kategorie** (`Artikel`, `Quest`, `Charakter`, `Universum`), bei Artikeln zusätzlich den Vorlagentyp (z. B. „Artikel · Ort“).
 - Höchstens 10 Vorschläge, sortiert: Treffer am Wortanfang vor Treffern mitten im Wort, danach alphabetisch.
 
 **Anzeige:** Eine Erwähnung erscheint als Link mit dem **aktuellen** Titel des Ziels (ein Umbenennen des Ziels aktualisiert alle Erwähnungen). Darf der Leser das Ziel nicht sehen oder existiert es nicht mehr, erscheint der zuletzt bekannte Titel als normaler Text ohne Link.
 
 ### 2.5 Verknüpfte Elemente
 
-Jeder Artikel, jede Quest, jeder Charakter und jeder Pin zeigt einen Bereich **„Verknüpft“** mit allen Relationen, ein- und ausgehend, die der Betrachter sehen darf. Gruppiert nach Kategorie:
+Jeder Artikel, jede Quest, jeder Charakter, jeder Pin und jedes Universum zeigt einen Bereich **„Verknüpft“** mit allen Relationen, ein- und ausgehend, die der Betrachter sehen darf. Gruppiert nach Kategorie:
 
 | Gruppe | Anzeige | Klick führt zu |
 |---|---|---|
@@ -96,6 +99,7 @@ Jeder Artikel, jede Quest, jeder Charakter und jeder Pin zeigt einen Bereich **�
 | Artikel | Titel, untergruppiert nach Vorlagentyp (z. B. „Orte“, „Personen“) | dem Artikel |
 | Quests | Titel, Status | der Quest |
 | Charaktere | Porträt, Name | dem Charakter |
+| Universen | Name | dem Universum |
 
 Bei manuellen Relationen wird zusätzlich deren Bezeichnung angezeigt (siehe 3.14).
 
@@ -131,7 +135,7 @@ Wird beim ersten Discord-Login angelegt.
 | Eigenschaft | Typ | Pflicht | Regel |
 |---|---|:-:|---|
 | Name | Text, max. 120 | ✅ | |
-| Beschreibung | Rich-Text | – | |
+| Beschreibung | Rich-Text ohne Erwähnungen | – | |
 | Titelbild | Bild (JPG/PNG/WebP, max. 10 MB) | – | |
 | Ersteller | Benutzer | ✅ | unveränderlich; ist der Game Master |
 
@@ -150,10 +154,13 @@ Verbindet Benutzer und Welt.
 | Rolle | `Game Master` / `Master` / `Player` | ✅ | |
 | Beigetreten am | Zeitpunkt | ✅ | |
 | Beigetreten über | Einladungslink | – | leer beim Ersteller |
+| Archiviert am | Zeitpunkt | – | gesetzt = Mitgliedschaft ruht (Benutzer ist ausgetreten oder wurde entfernt) |
 
 Regeln:
 - `Game Master` hat genau der Ersteller der Welt, niemand sonst. Seine Mitgliedschaft kann weder geändert noch entfernt werden.
 - Neue Mitglieder erhalten immer `Player`.
+- Rollen ändern (Player ↔ Master) und Mitglieder entfernen darf nur der Game Master. Das Austreten aus einer Welt steht jedem Mitglied außer dem Game Master frei.
+- Austreten und Entfernen **löschen nichts**, sondern archivieren die Mitgliedschaft (siehe Abschnitt 4). Ein Benutzer mit archivierter Mitgliedschaft gilt in allen Rechteprüfungen als Nicht-Mitglied.
 
 ### 3.4 Einladungslink
 
@@ -170,7 +177,7 @@ Regeln:
 - Nur der Game Master erstellt und widerruft Einladungslinks.
 - Eine Welt kann mehrere gleichzeitig gültige Links haben. Die Anzahl der Nutzungen ist nicht begrenzt.
 - Ein Link ist gültig, solange er nicht widerrufen und nicht abgelaufen ist.
-- Öffnet ein angemeldeter Benutzer einen gültigen Link und ist noch kein Mitglied, wird er Player. Ist er bereits Mitglied, passiert nichts.
+- Öffnet ein angemeldeter Benutzer einen gültigen Link und ist noch kein Mitglied, wird er Player. Hat er eine archivierte Mitgliedschaft, wird diese reaktiviert (Archiviert am wird geleert, Rolle `Player`). Ist er bereits Mitglied, passiert nichts.
 
 ### 3.5 Universum
 
@@ -238,14 +245,13 @@ Ein Charakter, der in eine Welt mitgebracht wurde.
 |---|---|:-:|---|
 | Charakter | Charakter | ✅ | |
 | Welt | Welt | ✅ | pro Charakter und Welt höchstens eine Teilnahme |
-| Aktiv | ja/nein | ✅ | |
 | Mitgebracht am | Zeitpunkt | ✅ | |
 | Archiviert am | Zeitpunkt | – | gesetzt = Teilnahme ruht (siehe Löschregeln, OF-05) |
 
 Regeln:
-- Der Besitzer des Charakters muss Mitglied der Welt sein, solange die Teilnahme nicht archiviert ist.
-- Pro Benutzer und Welt ist höchstens **ein** Charakter aktiv. Wird ein anderer aktiv gesetzt, wird der bisherige automatisch inaktiv.
-- Eine archivierte Teilnahme ist nie aktiv. Der Charakter und seine Tagebucheinträge dieser Welt sind dann für niemanden in der Welt sichtbar, auch nicht für die Spielleitung.
+- Der Besitzer des Charakters muss (nicht archiviertes) Mitglied der Welt sein, solange die Teilnahme nicht archiviert ist.
+- Ein Benutzer kann beliebig viele eigene Charaktere in dieselbe Welt mitbringen und gleichzeitig spielen. Einen Aktiv-Schalter gibt es nicht.
+- Ist eine Teilnahme archiviert, sind der Charakter und seine Tagebucheinträge dieser Welt für niemanden in der Welt sichtbar, auch nicht für die Spielleitung.
 - Bringt der Besitzer denselben Charakter nach einem erneuten Beitritt wieder mit, wird die archivierte Teilnahme reaktiviert (Archiviert am wird geleert). Damit sind die früheren Tagebucheinträge wieder da.
 
 ### 3.10 Charakter-Marker
@@ -257,10 +263,10 @@ Regeln:
 | Position | relative Position | ✅ | |
 
 Regeln (OF-04):
-- Marker entstehen **nicht automatisch**. Der Besitzer platziert seinen aktiven Charakter bewusst auf einer Karte, oder die Spielleitung platziert ihn dort. Der Besitzer kann dafür nur Karten wählen, die er sehen darf.
+- Marker entstehen **nicht automatisch**. Der Besitzer platziert einen seiner mitgebrachten Charaktere bewusst auf einer Karte, oder die Spielleitung platziert ihn dort. Der Besitzer kann dafür nur Karten wählen, die er sehen darf.
 - Ein Charakter kann auf mehreren Karten einen Marker haben, pro Karte höchstens einen.
 - Besitzer und Spielleitung können einen Marker verschieben und von der Karte entfernen (= Marker löschen).
-- Angezeigt werden nur Marker von Charakteren, die in der Welt der Karte **aktiv** sind. Wird ein Charakter inaktiv gesetzt, bleiben seine Marker gespeichert, werden aber ausgeblendet. Beim erneuten Aktivsetzen erscheinen sie wieder an derselben Stelle.
+- Angezeigt werden die Marker aller Charaktere mit nicht archivierter Teilnahme an der Welt der Karte. Soll ein Charakter nicht mehr auf der Karte erscheinen, wird sein Marker entfernt.
 
 ### 3.11 Artikel
 
@@ -320,7 +326,7 @@ Gerichtete Verbindung zwischen zwei Inhalten. Es gibt zwei Sorten (OF-06):
 
 | Herkunft | Entsteht aus |
 |---|---|
-| `Erwähnung` | `@Name` im Rich-Text eines Artikels, einer Quest, eines Pins oder eines Charakters (nicht aus Tagebucheinträgen, siehe 3.15) |
+| `Erwähnung` | `@Name` im Rich-Text eines Artikels, einer Quest, eines Pins, eines Charakters oder eines Universums (nicht aus Tagebucheinträgen, siehe 3.15, und nicht aus der Weltbeschreibung) |
 | `Vorlagenfeld` | Verweis- oder Verweislisten-Feld eines Artikels |
 | `Beteiligung` | beteiligter Charakter einer Quest (Quelle = Quest) |
 | `manuell` | direkt von der Spielleitung angelegt |
@@ -367,11 +373,11 @@ Regeln (OF-03):
 | Wenn gelöscht wird … | … passiert mit abhängigen Daten |
 |---|---|
 | **Welt** | Alles, was zur Welt gehört, wird gelöscht (Mitgliedschaften, Einladungslinks, Universen, Karten, Pins, Marker, Artikel, Quests, Relationen, Welt-Teilnahmen, Tagebucheinträge dieser Welt, Chat). Charaktere bleiben beim Besitzer erhalten. |
-| **Universum** | Seine Karten samt Pins und Markern werden gelöscht. Das letzte Universum einer Welt kann nicht gelöscht werden. |
+| **Universum** | Seine Karten samt Pins und Markern werden gelöscht, ebenso alle Relationen mit dem Universum (oder einem seiner Pins) als Quelle oder Ziel. Erwähnungen in anderen Texten werden als nicht verlinkter Text angezeigt. Das letzte Universum einer Welt kann nicht gelöscht werden. |
 | **Karte** | Pins und Marker der Karte werden gelöscht. |
 | **Artikel**, **Quest** | Alle Relationen (automatisch und manuell) mit dem Inhalt als Quelle oder Ziel werden gelöscht. Erwähnungen in anderen Texten werden als nicht verlinkter Text angezeigt. |
 | **Pin** | Alle Relationen mit dem Pin als Quelle oder Ziel werden gelöscht. |
-| **Mitgliedschaft** (Benutzer verlässt die Welt oder wird entfernt) | Die Mitgliedschaft wird gelöscht. Seine Welt-Teilnahmen in dieser Welt werden **archiviert**, seine Charakter-Marker in dieser Welt gelöscht. Seine Tagebucheinträge bleiben erhalten, sind aber verborgen (siehe 3.9). Quest-Beteiligungen seiner Charaktere und seine Chat-Nachrichten bleiben unverändert. Von ihm erstellte Artikel, Quests usw. bleiben erhalten. Bei erneutem Beitritt kann er die Charaktere wieder mitbringen (OF-05). |
+| **Mitgliedschaft** (Benutzer tritt aus oder wird entfernt) | **Es wird nichts gelöscht.** Die Mitgliedschaft wird **archiviert**, ebenso seine Welt-Teilnahmen in dieser Welt. Seine Charakter-Marker, Tagebucheinträge und alle Relationen mit seinen Charakteren als Quelle oder Ziel bleiben gespeichert, sind aber für niemanden in der Welt sichtbar, solange die Teilnahme archiviert ist (siehe 3.9; Relationen folgen der Regel „Quelle und Ziel sichtbar“). Erwähnungen seiner Charaktere erscheinen solange als nicht verlinkter Text. Quest-Beteiligungen seiner Charaktere und seine Chat-Nachrichten bleiben unverändert. Von ihm erstellte Artikel, Quests usw. bleiben erhalten. Bei erneutem Beitritt wird die Mitgliedschaft reaktiviert (als Player). Bringt er einen Charakter wieder mit, werden dessen Teilnahme, Marker, Tagebucheinträge und Relationen unverändert wieder sichtbar (OF-05).
 | **Charakter** (durch den Besitzer) | Alle Welt-Teilnahmen, Marker und Tagebucheinträge des Charakters werden gelöscht, ebenso Relationen mit dem Charakter als Quelle oder Ziel. Quest-Beteiligungen bleiben mit dem festgehaltenen Namen als Text (ohne Verlinkung). Erwähnungen werden als nicht verlinkter Text angezeigt (OF-05). |
 | **Benutzerkonto** | Nicht Teil des MVP (Löschung nur manuell durch den Betreiber). |
 
@@ -384,12 +390,12 @@ Umsetzung der Rechtematrix aus Plan 001. „Spielleitung“ = Game Master + Mast
 | Entität | Ansehen | Erstellen / Bearbeiten / Löschen |
 |---|---|---|
 | Welt | Mitglieder | Bearbeiten: Spielleitung. Löschen: nur Game Master |
-| Mitgliedschaft | Mitglieder | Rolle ändern (Player ↔ Master), entfernen: Spielleitung; nie beim Game Master |
+| Mitgliedschaft | Mitglieder | Rolle ändern (Player ↔ Master), entfernen: nur Game Master; nie beim Game Master selbst. Austreten: jedes Mitglied außer dem Game Master |
 | Einladungslink | Game Master | nur Game Master |
 | Universum, Karte, Pin | `veröffentlicht` (inkl. aller übergeordneten Ebenen): Mitglieder; sonst: Spielleitung | Spielleitung |
 | Charakter | Besitzer; Mitglieder jeder Welt mit nicht archivierter Teilnahme | nur Besitzer |
-| Welt-Teilnahme | Mitglieder (nicht archivierte) | mitbringen, aktiv/inaktiv setzen: nur Besitzer des Charakters |
-| Charakter-Marker | Mitglieder, sofern Charakter aktiv und Karte für sie sichtbar | platzieren, verschieben, entfernen: Besitzer des Charakters und Spielleitung |
+| Welt-Teilnahme | Mitglieder (nicht archivierte) | mitbringen: nur Besitzer des Charakters |
+| Charakter-Marker | Mitglieder, sofern Teilnahme nicht archiviert und Karte für sie sichtbar | platzieren, verschieben, entfernen: Besitzer des Charakters und Spielleitung |
 | Artikel, Quest | `veröffentlicht`: Mitglieder; `nur Spielleitung`: Spielleitung | Spielleitung |
 | Relation | wer Quelle **und** Ziel sehen darf | automatische: nie direkt; manuelle: Spielleitung |
 | Tagebucheintrag | `privat`: Besitzer; `geteilt`: Besitzer + Spielleitung der Welt | nur Besitzer |
@@ -414,7 +420,7 @@ Umsetzung der Rechtematrix aus Plan 001. „Spielleitung“ = Game Master + Mast
 | OF-01 | Laufen Einladungslinks ab, und/oder sind sie in der Anzahl der Nutzungen begrenzt? | 3.4 | ✅ Ablauf wählbar (1 Tag / 7 Tage / unbegrenzt), Nutzungen unbegrenzt |
 | OF-02 | Gibt es den Status `nur Spielleitung` auch für Quests, Pins, Universen/Karten (z. B. versteckter Dungeon)? Welcher Standardwert gilt für neue Artikel? | 2.2, 3.7, 3.11, 3.13 | ✅ Artikel, Quests, Pins, Universen, Karten; Standard `nur Spielleitung`; Vererbung nach unten |
 | OF-03 | Chat: Dürfen Nachrichten bearbeitet/gelöscht werden (von wem)? Schreibt man als Benutzer oder als aktiver Charakter? | 3.16 | ✅ als Benutzer; kein Bearbeiten; Löschen eigener bzw. durch Spielleitung, Würfe nie |
-| OF-04 | Charakter-Marker: Entsteht er automatisch beim Aktivsetzen (wo?) oder setzt ihn jemand bewusst auf die Karte? Was passiert beim Deaktivieren? | 3.10 | ✅ Platzieren durch Besitzer oder Spielleitung; bei Deaktivierung ausgeblendet, nicht gelöscht |
+| OF-04 | Charakter-Marker: Entsteht er automatisch beim Aktivsetzen (wo?) oder setzt ihn jemand bewusst auf die Karte? Was passiert beim Deaktivieren? | 3.10 | ✅ Platzieren durch Besitzer oder Spielleitung; bei Deaktivierung ausgeblendet, nicht gelöscht (Deaktivierung überholt, siehe Änderung 2026-09-22 oben) |
 | OF-05 | Was passiert mit Welt-Teilnahmen, Markern, Tagebucheinträgen und Quest-Beteiligungen, wenn ein Charakter gelöscht wird oder sein Besitzer die Welt verlässt? | 4 | ✅ Austritt archiviert; Löschen des Charakters löscht Tagebuch, Name bleibt in Quests |
 | OF-06 | Reichen automatisch abgeleitete Relationen, oder braucht es manuelle Relationen mit eigener Bezeichnung (z. B. „ist verfeindet mit“)? Zählt ein Pin-Verweis als Relation? | 3.14 | ✅ automatisch + manuell mit Bezeichnung; Pins über ihre Beschreibung verknüpft |
 | OF-07 | Sind Volk und Klasse Freitext oder Auswahl aus einer festen Liste (z. B. D&D-5e-Klassen)? | 3.8 | ✅ Klasse als Freitext; kein Volk |
