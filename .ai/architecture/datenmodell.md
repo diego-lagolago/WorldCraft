@@ -224,6 +224,7 @@ Bild ersetzen: `image_id` wechseln. Pins/Marker bleiben über relative `pos_x`/`
 | `description_plain` | text | – | |
 | `pos_x`, `pos_y` | numeric(8,7) | ✅ | 0–1 |
 | `visibility` | `visibility_status` | ✅ | Default `gm_only` |
+| `locked` | boolean | ✅ | Default `false`. Sperren/Entsperren nur Spielleitung (`requireStaff`). Ist `locked = true`, wird jede Änderung außer `locked → false` sowie das Löschen mit 409 abgelehnt (`APP-PIN-LOCK`) |
 | Protokollfelder | | ✅ | |
 
 ### 3.8 `characters` (Charakter)
@@ -517,6 +518,7 @@ Jede Eigenschaft aus `.ai/architecture/datenmodell-fachlich.md`. Nichts ausgelas
 | Beschreibung | `pins.description_json/plain` |
 | Position | `pins.pos_x`, `pins.pos_y` |
 | Sichtbarkeit | `pins.visibility` |
+| Gesperrt | `pins.locked` (`APP-PIN-LOCK`) |
 
 ### 3.8 Charakter
 

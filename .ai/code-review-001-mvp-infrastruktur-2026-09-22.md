@@ -5,6 +5,14 @@
 **Geprüfte Aufgaben (`[x]`):** T-002, T-003, T-004, T-005, T-006, T-007, T-008, T-009, T-010, T-011, T-013, T-014 (T-001 und T-012 sind entfallen).
 **Zusätzlich ausgeführt:** `npm test` (2 Testdateien schlagen fehl), `npx tsc --noEmit` (1 Fehler), `npx eslint .` (1 Fehler).
 
+## Umsetzungsrahmen (Entscheidung Projektinhaber, Plan-Review 2026-09-22)
+
+- **Keine Behebung im aktuellen Spike-Code.** Alle Findings dieses Reviews werden im Rahmen von Plan `003` (`.ai/feature-tasks/003-mvp-funktionen.md`) umgesetzt, beim Ausbau bzw. beim Ersetzen der Spikes durch MVP-Code. Dieses Dokument ist dafür die Eingabe. Welche Aufgabe in Plan 003 welches Finding umsetzt, steht dort im Abschnitt *Code-Review zu Plan 001* und in der Zeile *Code-Review* jeder Aufgabe.
+- **Ausnahme:** CR-009 und der ESLint-Fehler aus CR-015 werden in Plan 003 T-001 direkt im Spike-Code behoben, weil der CI-Job aus CR-010 sonst ab T-001 rot wäre.
+- **Bewusst akzeptiertes Risiko:** Bis Plan 003 T-001 umgesetzt und gepusht ist, bleiben die Spike-Endpunkte in Produktion für jedes Discord-Konto erreichbar (CR-001), und `npm test` bleibt rot (CR-002).
+- **Findings in entfernten Spikes:** Wird ein Spike in Plan 003 entfernt statt ausgebaut, gilt ein Finding als erledigt, wenn (a) die Fundstelle nicht mehr existiert **und** (b) der MVP-Ersatzcode das Abnahmekriterium sinngemäß erfüllt. `/review-check` setzt dann `behoben`, bei nicht mehr zuordenbarer Fundstelle `drift` mit Verweis auf den Nachfolgecode.
+- **Abnahmekriterien** mit Spike-Pfaden (`/api/spike/...`, `src/spike/...`) gelten sinngemäß für die entsprechenden MVP-Pfade.
+
 ## Tracking
 
 | ID | Kategorie | Schweregrad | Status | Kurzbeschreibung |
@@ -26,9 +34,9 @@
 | CR-015 | Bad Practices | niedrig | offen | ESLint-Fehler (Ref-Zuweisung beim Rendern), Komponenten mit 700 bis 1000 Zeilen |
 | CR-016 | Sicherheit | niedrig | offen | Endung beim Upload kommt aus dem Client-MIME, `nosniff` fehlt, Kartenbild wird pro Abruf komplett gelesen |
 | CR-017 | Fehlerbehandlung & Validierung | niedrig | offen | Keine Startvalidierung für `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL`, localhost-Origins auch in Produktion vertraut |
-| CR-018 | Aufgaben-Abgleich | niedrig | offen | 8 dokumentierte `TRIG-*`-Regeln fehlen in den Migrationen, ohne Vermerk im Datenmodell |
+| CR-018 | Aufgaben-Abgleich | niedrig | offen | 8 dokumentierte `TRIG-*`-Regeln fehlen in den Migrationen: alle bauen (Plan-Review) |
 | CR-019 | Sicherheit | niedrig | offen | Persistenz-Snapshot liefert `privat`-Tagebuchtexte an die Spielleitung, Journal auf archivierter Teilnahme möglich |
-| CR-020 | Aufgaben-Abgleich | niedrig | offen | Pin-Sperre (`locked`) ist nicht im Plan und nicht dokumentiert (Scope Creep) |
+| CR-020 | Aufgaben-Abgleich | niedrig | offen | Pin-Sperre (`locked`) nicht dokumentiert: übernehmen, nur Spielleitung (Plan-Review) |
 | CR-021 | Lesbarkeit & Wartbarkeit | niedrig | offen | Würfelausgabe: negative Würfelterme ohne Vorzeichen, versteckter `/roll`-Pfad ignoriert `dicePostToChat` |
 | CR-022 | Bad Practices | niedrig | offen | Editor-Spike: Link/Underline doppelt registriert (StarterKit v3), deutsche Identifier entgegen Konvention |
 | CR-023 | Bad Practices | niedrig | offen | Magic Numbers (`Date.now() % 1_000_000`, `15000`, `toFixed(7)` verstreut) |
@@ -43,8 +51,12 @@
 - **Schweregrad:** kritisch
 - **Bezug:** T-007, T-008, T-009, T-010, T-011, T-014
 - **Beschreibung:** `worldcraft.lagolago.at` ist öffentlich erreichbar. Anmelden kann sich jedes beliebige Discord-Konto, es gibt keine Allowlist. Alle Spike-Endpunkte prüfen nur „angemeldet ja/nein“. Ein fremder Benutzer kann damit in Produktion das gemeinsame Kartenbild ersetzen (`/api/spike/karte/upload`, 20 MB pro Request, ohne Rate-Limit), Pins und Marker verschieben, unbegrenzt Chat-Nachrichten und Threads anlegen und über `/api/spike/rechte/*` Welten, Artikel, Universen, Karten und `files`-Platzhalter in den **echten MVP-Tabellen** anlegen. Die Daten landen im selben Schema, auf dem Plan 003 aufbaut.
-- **Empfehlung:** Kurzfristig: Spike-Routen in Produktion hinter ein Feature-Flag legen (z. B. `ENABLE_SPIKES`, Default aus bei `APP_ENV=production`, Antwort 404) oder eine Discord-ID-Allowlist (`ALLOWED_DISCORD_IDS`) im `databaseHooks.user.create.before` bzw. `validateUserInfo` erzwingen. Die Rechte-Spike-API gehört grundsätzlich hinter `isTestLoginEnabled()`, da sie laut README nur lokal gedacht ist. In Produktion angelegte Spike-Datensätze in den MVP-Tabellen vor Beginn von Plan 003 bereinigen.
-- **Abnahmekriterium:** Mit `APP_ENV=production` und ohne Freischaltung liefern `/api/spike/rechte/worlds` (POST), `/api/spike/karte/upload` und `/api/spike/chat` (POST) für einen angemeldeten Benutzer HTTP 404 bzw. 403. Ein Discord-Konto außerhalb der Allowlist (falls umgesetzt) erhält beim Login einen Fehler, und es entsteht kein `users`-Datensatz.
+- **Empfehlung (festgelegt im Plan-Review 2026-09-22):**
+  1. **Discord-Allowlist:** Neue Umgebungsvariable `ALLOWED_DISCORD_IDS` (kommagetrennte Discord-User-IDs, in `.env.example` dokumentiert, Wert nur in Coolify bzw. der lokalen `.env`). Sie wird in `validateUserInfo` bzw. `databaseHooks.user.create.before` in `src/lib/auth.ts` geprüft. Discord-Konten außerhalb der Liste werden mit einer deutschen Fehlermeldung abgelehnt. Test-Login-Benutzer (`test-*`) sind ausgenommen, weil der Test-Login in Produktion ohnehin nicht startet. Ist die Variable in Produktion leer oder nicht gesetzt, bricht der Start ab (fail closed, analog zu `assertTestLoginNotInProduction`).
+  2. **Spike-Routen entfernen:** `src/app/api/spike/**`, `src/app/spike/**` und `src/spike/**` werden entfernt, sobald ihr MVP-Ersatz in Plan 003 steht. Kein Feature-Flag.
+  3. **Spike-Daten bereinigen:** Ein einmaliges SQL-Skript (`scripts/cleanup-spike-data.sql`) entfernt die `spike_*`-Tabellen per Migration sowie alle Welten, die über die Rechte-Spike-API angelegt wurden (Name beginnt mit `Rechte-Spike`), samt Kaskade, und die Platzhalter-Dateien mit `storage_key LIKE 'spike/rechte/%'`. Vor der Ausführung auf Produktion listet ein Dry-Run-Abschnitt die betroffenen Zeilen auf, und der Projektinhaber bestätigt sie.
+- **Abnahmekriterium:** (1) Ein Discord-Konto, dessen ID nicht in `ALLOWED_DISCORD_IDS` steht, erhält beim Login eine Fehlermeldung, und es entsteht kein `users`-Datensatz. Ein gelistetes Konto meldet sich normal an. Ein Start mit `APP_ENV=production` ohne `ALLOWED_DISCORD_IDS` bricht mit einer verständlichen Meldung ab. (2) `git ls-files src | grep -i spike` liefert keine Treffer, und `/api/spike/*` antwortet mit 404. (3) Nach dem Cleanup existieren in Produktion keine `spike_*`-Tabellen, keine Welten mit Namen `Rechte-Spike*` und keine `files`-Zeilen mit `storage_key LIKE 'spike/%'`.
+- **Abhängigkeit:** Die Entfernung (Punkt 2) setzt voraus, dass Karte, Chat und Rechte-API in Plan 003 als MVP-Code stehen. Die Allowlist (Punkt 1) hat keine Abhängigkeit und sollte in Plan 003 zuerst umgesetzt werden.
 
 ### CR-002 – `npm test` ist rot (Module werden nicht gefunden)
 - **Fundstelle:** `package.json:10` (`test`-Skript), `src/spike/chat/dice.ts:4-18`, `src/spike/rechte/authz.ts:3-14` (Importe ohne Dateiendung seit Commit `74a4eff`)
@@ -52,8 +64,8 @@
 - **Schweregrad:** kritisch
 - **Bezug:** T-010, T-011, T-013
 - **Beschreibung:** `node --experimental-strip-types --test` löst ESM-Importe ohne `.ts`-Endung nicht auf. Nachdem Commit `74a4eff` die Endungen für den Next-Build entfernt hat, scheitern `src/spike/chat/dice.test.ts` („Cannot find module …/dice-sides“) und `src/spike/rechte/authz.test.ts` („Cannot find module …/types“) mit `ERR_MODULE_NOT_FOUND`. Die Würfel- und Autorisierungsregeln, also die Kernnachweise für T-010 (AC 2 bis 4) und T-011, laufen damit nicht mehr als Unit-Tests. Die Go-Einschätzung in `.ai/tech-stack.md` stützt sich auf diese Tests.
-- **Empfehlung:** Den Test-Runner auf einen TS-fähigen Resolver umstellen, z. B. `tsx --test` oder `vitest` (im Editor-Spike schon im Einsatz), statt nacktem `--experimental-strip-types`. Alternativ `allowImportingTsExtensions` mit `.ts`-Endungen und `rewriteRelativeImportExtensions` nutzen, dann aber zusammen mit dem Next-Build prüfen. Zusätzlich `"type": "module"` setzen, damit die `MODULE_TYPELESS_PACKAGE_JSON`-Warnungen verschwinden.
-- **Abnahmekriterium:** `npm test` endet mit Exit-Code 0, alle Testdateien unter `src/lib/*.test.ts` und `src/spike/**/*.test.ts` werden ausgeführt, und keine meldet `ERR_MODULE_NOT_FOUND`. `npm run build` ist weiterhin erfolgreich.
+- **Empfehlung (festgelegt im Plan-Review 2026-09-22): Vitest.** `vitest` als devDependency ergänzen (wie in `spikes/editor/`), dazu `vitest.config.ts` mit dem Pfad-Alias `@` → `src` und `environment: "node"` (DOM-Tests per `// @vitest-environment happy-dom` pro Datei). Das Skript wird `"test": "vitest run"`. Bestehende `node:test`-Dateien auf `import { describe, it, expect } from "vitest"` umstellen (`assert.equal` → `expect(...).toBe(...)`). Das Rechte-Integrationsskript (`test:rechte`) läuft ebenfalls über Vitest mit eigener Config bzw. eigenem Include, getrennt von `npm test`, weil es einen laufenden Dev-Server braucht. Importe bleiben ohne `.ts`-Endung (Next-kompatibel). `conventions.md` → Teststrategie auf Vitest aktualisieren.
+- **Abnahmekriterium:** `npm test` (= `vitest run`) endet mit Exit-Code 0 und führt alle `*.test.ts`-Dateien unter `src/` aus. In `src/` wird `node:test` nicht mehr importiert. `npm run build` ist weiterhin erfolgreich. `conventions.md` nennt Vitest als Test-Runner.
 
 ### CR-003 – `discordId` ist vom Benutzer änderbar
 - **Fundstelle:** `src/lib/auth.ts:46-50` (`additionalFields.discordId`, `input: true`)
@@ -97,8 +109,8 @@
 - **Schweregrad:** mittel
 - **Bezug:** T-009, T-010
 - **Beschreibung:** `publish*Event` ruft die Listener synchron und ohne `try/catch` auf. Wirft `controller.enqueue` bei einem bereits geschlossenen Stream (etwa wenn Proxy oder Browser trennen, bevor `abort`/`cancel` durchgelaufen ist), bricht die Schleife ab. Die übrigen Clients bekommen das Ereignis dann nicht, und die Exception erreicht den POST-Handler **nach** dem Datenbank-Insert. Der Absender sieht 500 und schickt die Nachricht womöglich erneut (Duplikat). Der `setInterval`-Heartbeat kann genauso werfen, dann als unbehandelte Exception. Der Bus funktioniert außerdem nur mit genau einem Node-Prozess. Das steht im Kommentar, fehlt aber als Norm in `tech-stack.md`/`architecture/README.md`.
-- **Empfehlung:** Jeden Listener-Aufruf mit `try/catch` absichern und fehlerhafte Listener entfernen. Im Heartbeat und in `send` vor dem `enqueue` auf `closed` prüfen. Die Einschränkung auf einen Prozess als Architekturgrenze dokumentieren. Für das MVP einen Bus (z. B. PostgreSQL `LISTEN/NOTIFY`) oder einen Replica-Count von 1 festschreiben.
-- **Abnahmekriterium:** Ein Unit-Test registriert einen werfenden und einen normalen Listener. `publish` wirft nicht, und der normale Listener erhält das Ereignis. Die Ein-Prozess-Annahme steht in `.ai/architecture/README.md`.
+- **Empfehlung (festgelegt im Plan-Review 2026-09-22): In-Process-Bus beibehalten, genau ein App-Container.** Jeden Listener-Aufruf mit `try/catch` absichern und fehlerhafte Listener entfernen. Im Heartbeat und in `send` vor dem `enqueue` auf `closed` prüfen. Als Norm festschreiben: Die App läuft in Coolify mit **genau einer Replica** (kein horizontales Skalieren). Mehr als eine Replica erfordert vorher ein ADR für einen prozessübergreifenden Bus (Kandidaten: PostgreSQL `LISTEN/NOTIFY`, Redis Pub/Sub).
+- **Abnahmekriterium:** Ein Unit-Test registriert einen werfenden und einen normalen Listener. `publish` wirft nicht, und der normale Listener erhält das Ereignis. `.ai/architecture/README.md` und `.ai/infrastructure/deployment.md` enthalten die Regel „genau eine App-Replica, Realtime In-Process; Skalierung nur nach neuem ADR“.
 
 ### CR-008 – Fehlende Transaktionen, Lost Updates, Get-or-create-Races
 - **Fundstelle:** `src/spike/rechte/repository.ts:386-419` (`archiveMembershipAndParticipations`), `:507-567` (`joinByInvite`, `useCount + 1`), `src/spike/chat/repository.ts:229-256` (`createThreadWithParentPost`), `:61-79` (`ensureDefaultChannel`), `src/spike/karte/repository.ts:85-128` (`upsertSpikeMap` + Marker), `src/app/api/spike/karte/upload/route.ts:59-75`
@@ -138,7 +150,7 @@
 - **Bezug:** T-011
 - **Beschreibung:** `listRelations` ruft pro Relation zweimal `isContentVisibleFor` auf. Jeder Aufruf lädt die Mitgliedschaft neu und dann den Inhalt (bei Pins mit Join, bei Charakteren zwei Queries). Das sind 4 bis 6 Queries pro Relation. Bei einigen hundert Relationen, wie sie der MCP-Server aus Plan 002 regelmäßig abfragen würde, wird das spürbar. Der Austritt aktualisiert Teilnahmen in einer Schleife pro Charakter statt mit `inArray`. `listWorldGeography` lädt alle Marker aller Charaktere mit Teilnahme in der Welt, auch auf Karten anderer Welten, und filtert erst im Speicher.
 - **Empfehlung:** Sichtbarkeit gesammelt ermitteln: Mitgliedschaft einmal laden, IDs pro Art sammeln und je Art eine `inArray`-Query (bzw. ein Join) ausführen, danach in einer Map nachschlagen. Teilnahmen mit einem Update per `inArray` archivieren. Die Marker-Query mit `inArray(characterMarkers.mapId, mapIds)` einschränken.
-- **Abnahmekriterium:** Die Zahl der SQL-Statements in `listRelations` ist unabhängig von der Anzahl der Relationen (höchstens ca. 6, geprüft per Drizzle-Logger). `npm run test:rechte` bleibt grün.
+- **Abnahmekriterium:** In `listRelations`, beim Archivieren von Teilnahmen und in `listWorldGeography` (bzw. ihren MVP-Nachfolgern) wird keine DB-Query innerhalb einer Schleife über Datensätze ausgeführt (kein `await db…` in `for`/`map`/`filter`). Die Marker-Query ist auf die Karten-IDs der Welt eingeschränkt. Der Rechte-Integrationstest bleibt grün.
 
 ### CR-012 – Duplizierte Spike-Infrastruktur und Konstanten
 - **Fundstelle:**
@@ -180,7 +192,7 @@
 - **Bezug:** T-009, T-010
 - **Beschreibung:** `npm run lint` schlägt mit einem Fehler fehl. Ref-Zuweisungen beim Rendern sind unter React 19 bzw. im Concurrent Rendering nicht garantiert konsistent. Die beiden Hauptkomponenten vermischen Datenladen, SSE, Leaflet-Imperativcode, Sheets und Formulare. Das erschwert Tests und den geplanten Ausbau in Plan 003.
 - **Empfehlung:** Ref-Updates in `useEffect`/`useLayoutEffect` verschieben oder `useEffectEvent` nutzen. Hooks extrahieren (`useKarteRealtime`, `useLeafletMap`, `usePinSheet`, `useChatStream`) und Sheets als eigene Komponenten auslagern.
-- **Abnahmekriterium:** `npx eslint .` meldet 0 Fehler. Keine Spike-Komponente ist länger als ca. 400 Zeilen, Realtime- und Datenlogik liegen in eigenen Hooks.
+- **Abnahmekriterium:** `npx eslint .` meldet 0 Fehler. In Karten- und Chat-Komponenten (bzw. ihren MVP-Nachfolgern) liegen Realtime-Anbindung (SSE), Datenladen und Leaflet-Initialisierung jeweils in eigenen Hooks. Sheets und Formulare sind eigene Komponenten. Die Hauptkomponente enthält keinen `fetch`- und keinen `EventSource`-Aufruf direkt.
 
 ### CR-016 – Upload und Auslieferung des Kartenbilds
 - **Fundstelle:** `src/app/api/spike/karte/upload/route.ts:29-57`, `src/app/api/spike/karte/image/route.ts:26-34`
@@ -189,7 +201,7 @@
 - **Bezug:** T-009
 - **Beschreibung:** Die Dateiendung und damit der später ausgelieferte `Content-Type` stammen aus dem **vom Client gemeldeten** `file.type`, nicht aus dem tatsächlich erkannten Format. `image-size` erkennt auch SVG, GIF, BMP usw. Eine als `image/png` deklarierte andere Datei wird als `.png` gespeichert und ausgeliefert. `X-Content-Type-Options: nosniff` fehlt. Zur Performance: Jeder Abruf liest bis zu 20 MB komplett mit `readFile` in den Speicher, obwohl die URL versioniert ist (`?v=`), und cacht nur 60 s.
 - **Empfehlung:** `imageSize(bytes).type` gegen die Allowlist `jpg|png|webp` prüfen und die Endung daraus ableiten. `nosniff` setzen. Die Datei per Stream (`createReadStream` → `ReadableStream`) ausliefern, mit `Cache-Control: private, max-age=31536000, immutable` für versionierte URLs.
-- **Abnahmekriterium:** Ein Upload einer GIF- oder SVG-Datei mit `Content-Type: image/png` wird mit 400 abgelehnt. Die Bildantwort enthält `X-Content-Type-Options: nosniff` und einen `immutable`-Cache-Header. Der Heap wächst beim Abruf des 8000 × 6000-Testbilds nicht um die Dateigröße.
+- **Abnahmekriterium:** Ein Upload einer GIF- oder SVG-Datei mit `Content-Type: image/png` wird mit 400 abgelehnt. Die Bildantwort enthält `X-Content-Type-Options: nosniff` und einen `immutable`-Cache-Header. Die Bildroute verwendet kein `readFile`, sondern liefert die Datei per Stream (`createReadStream`) aus.
 
 ### CR-017 – Keine Startvalidierung der Umgebung, localhost-Origins in Produktion
 - **Fundstelle:** `src/lib/env.ts`, `src/lib/auth.ts:24-40`, `src/db/client.ts:5-7`
@@ -206,8 +218,9 @@
 - **Schweregrad:** niedrig
 - **Bezug:** T-006, T-011
 - **Beschreibung:** Das technische Datenmodell nennt als Umsetzung von Regeln `TRIG-GM-IS-CREATOR`, `TRIG-WORLD-CREATOR-IMMUTABLE`, `TRIG-REL-SAME-WORLD`, `TRIG-UNIVERSE-LAST`, `TRIG-JOURNAL-PART`, `TRIG-PART-OWNER-MEMBER`, `TRIG-CHAR-OWNER-IMMUTABLE` und `TRIG-CHAR-IMAGES-MAX`. Keine Migration enthält einen Trigger. Die T-006-Regel „genau ein Game Master = Ersteller“ ist auf Datenebene nur zur Hälfte abgesichert (`uq_one_gm` stellt höchstens einen GM sicher, aber nicht „= Ersteller“). Plan 003 greift das auf, das Datenmodell sagt aber nirgends, dass diese Regeln noch fehlen. Wer nur das Datenmodell liest, hält sie für umgesetzt.
-- **Empfehlung:** Im Datenmodell (Abschnitt Regelumsetzung) den Status je `TRIG-*` vermerken („offen, Plan 003 T-…“) oder die Trigger jetzt als Migration nachziehen.
-- **Abnahmekriterium:** Für jedes `TRIG-*`-Kürzel gilt entweder: es existiert eine Migration mit dem Trigger, oder `datenmodell.md` markiert es ausdrücklich als offen mit Verweis auf die Plan-003-Task-ID.
+- **Empfehlung (festgelegt im Plan-Review 2026-09-22): Alle 8 Trigger bauen.** Pro Trigger eine PL/pgSQL-Funktion plus `CREATE TRIGGER`, die Semantik genau wie in `datenmodell.md` beschrieben. Fehler per `RAISE EXCEPTION` mit eigenem SQLSTATE, den die Authz-Schicht auf 4xx abbildet, analog zu `isUniqueViolation`. Die Migration erzeugt Drizzle per `drizzle-kit generate --custom`, damit das Journal konsistent bleibt. Für jeden Trigger gibt es einen Integrationstest gegen die lokale Docker-PostgreSQL (Vitest, eigenes Include wie `test:rechte`), der den Verstoß provoziert und die Ablehnung prüft.
+- **Abnahmekriterium:** Für jedes der 8 Kürzel (`TRIG-GM-IS-CREATOR`, `TRIG-WORLD-CREATOR-IMMUTABLE`, `TRIG-REL-SAME-WORLD`, `TRIG-UNIVERSE-LAST`, `TRIG-JOURNAL-PART`, `TRIG-PART-OWNER-MEMBER`, `TRIG-CHAR-OWNER-IMMUTABLE`, `TRIG-CHAR-IMAGES-MAX`) gibt es einen Trigger in einer Migration, und ein grüner Integrationstest belegt die Ablehnung eines Verstoßes. Ein direkter SQL-Versuch, eine Relation zwischen zwei Welten anzulegen, schlägt fehl.
+- **Abhängigkeit:** CR-002 (Vitest). CR-004 nutzt `TRIG-REL-SAME-WORLD` als zweite Absicherungsschicht.
 
 ### CR-019 – Kleinere Lücken in der Rechteschicht
 - **Fundstelle:** `src/spike/rechte/repository.ts:1427-1485` (`persistenceSnapshot`), `:685-695` (`createJournal`), `src/spike/rechte/authz.ts:63-71` (`canSeeCharacterInWorld`)
@@ -224,8 +237,8 @@
 - **Schweregrad:** niedrig
 - **Bezug:** T-009
 - **Beschreibung:** T-009 verlangt verschiebbare Pins. Die Funktion „Pin sperren/entsperren“ (inkl. 409-Logik und UI) steht weder im Plan noch im fachlichen Datenmodell noch im Backlog. Anders als Kanäle/Threads im Chat (Owner-Änderung dokumentiert) fehlt hier eine Festlegung. Dazu kommt: Jeder angemeldete Benutzer kann jeden Pin sperren und entsperren, ein Rechtemodell dafür gibt es nicht.
-- **Empfehlung:** Die Entscheidung beim Projektinhaber einholen: entweder im fachlichen Datenmodell (Pin-Eigenschaft plus Rechte: nur Spielleitung) aufnehmen oder aus dem Spike entfernen bzw. als Backlog-Idee vermerken.
-- **Abnahmekriterium:** `locked` ist im fachlichen Datenmodell oder in `backlog.md` mit Rechteregel beschrieben, oder Spalte und Logik sind entfernt.
+- **Empfehlung (Entscheidung Projektinhaber, Plan-Review 2026-09-22): Übernehmen, nur die Spielleitung darf sperren.** Fachlich: Ein Pin hat die Eigenschaft **gesperrt** (ja/nein, Default nein). Nur Game Master und Master dürfen sperren und entsperren. Ein gesperrter Pin lässt sich weder verschieben noch bearbeiten noch löschen. Erlaubt ist nur das Entsperren durch die Spielleitung. Player sehen gesperrte Pins normal (optional mit Schloss-Symbol). Technisch: Spalte `pins.locked boolean NOT NULL DEFAULT false`, Prüfung in der Authz-Schicht (`requireStaff` für jede Änderung an `locked`; Änderungen an gesperrten Pins → 409). In `datenmodell-fachlich.md` (3.7 Pin und Rechte je Entität) und `datenmodell.md` (3.7 `pins.locked`, Zuordnungstabelle, `APP-PIN-LOCK`) am 2026-09-22 eingetragen. Umsetzung in Plan 003 T-002 (Spalte) und T-013 (Rechte, UI).
+- **Abnahmekriterium:** `datenmodell-fachlich.md` und `datenmodell.md` beschreiben `gesperrt`/`locked` samt Rechteregel. Im MVP-Code: Ein Player erhält beim Sperren oder Entsperren 403. Ein Master kann sperren. Verschieben, Bearbeiten oder Löschen eines gesperrten Pins liefert 409, auch für die Spielleitung, bis entsperrt wird. Die Fälle stehen im Rechte-Integrationstest.
 
 ### CR-021 – Uneinheitliche Würfelausgabe und versteckter `/roll`-Pfad
 - **Fundstelle:** `src/spike/chat/dice.ts:204-212` (`formatCompactRoll`), `src/spike/chat/dice-sides.ts:23-34` (`formatCompactFromDto`), `src/app/api/spike/chat/route.ts:170-183`, `:69-80`
@@ -233,8 +246,8 @@
 - **Schweregrad:** niedrig
 - **Bezug:** T-010
 - **Beschreibung:** Bei `1d20-1d4` werden alle Einzelwerte ohne Vorzeichen aufgelistet (`1d20-1d4 → 15, 3 = 12`). Das ist missverständlich, und `formatCompactFromDto` rechnet den Modifikator dann falsch zurück (Differenz enthält den negativen Würfel). Es gibt zwei Formatierer mit leicht unterschiedlicher Logik. Der versteckte `/roll`-Pfad postet immer (`postToChat` fest `true`), der strukturierte Wurf beachtet `dicePostToChat`. `rejectForgedDice` ist wegen der `.strict()`-Schemas praktisch redundant, liefert aber eine bessere Meldung. Das sollte kommentiert sein.
-- **Empfehlung:** Einzelwerte pro Term mit Vorzeichen gruppieren (z. B. `[15] − [3]`) und einen einzigen Formatierer (shared) nutzen, der Terme statt Summendifferenz auswertet. `/roll` ebenfalls über `getDicePostToChat` steuern oder die Abweichung kommentieren.
-- **Abnahmekriterium:** `formatCompactRoll` und die Client-Darstellung zeigen für `1d20-1d4` mit Würfen 15 und 3 übereinstimmend einen Text, aus dem das Minus beim d4 erkennbar ist. Dafür gibt es einen Test in `dice.test.ts`.
+- **Empfehlung (festgelegt im Plan-Review 2026-09-22): Darstellung pro Term gruppiert.** Format: `<Ausdruck> → <Term1> <op> <Term2> … = <Summe>`. Würfelterme stehen in eckigen Klammern mit kommagetrennten Einzelwerten, Modifikatoren ohne Klammern. Operatoren sind ` + ` bzw. ` − ` (U+2212). Beispiele: `1d20-1d4 → [15] − [3] = 12`, `2d6+3 → [4, 2] + 3 = 9`, `1d20+1d4+2 → [11] + [2] + 2 = 15`. Dafür speichert das DTO bzw. die Nachricht die Würfe **pro Term** (z. B. `dice_terms jsonb`: `[{ sides, sign, values[] }, { modifier }]`) statt einer flachen `dice_values`-Liste. Es gibt genau einen Formatierer in einem Modul, das Server und Client teilen. Er rechnet aus den Termen, nicht aus der Summendifferenz. `/roll` wird ebenfalls über `dicePostToChat` gesteuert.
+- **Abnahmekriterium:** Server und Client erzeugen für die drei Beispiele exakt die oben genannten Texte (Unit-Test mit festen Würfen). `formatCompactFromDto` bzw. eine zweite Formatierlogik gibt es nicht mehr. Ein `/roll` bei `dicePostToChat = false` wird nicht in den Chat gepostet.
 
 ### CR-022 – Editor-Spike: doppelte Extensions und deutsche Identifier
 - **Fundstelle:** `spikes/editor/src/editor/extensions.ts:22-37`, `spikes/editor/src/editor/types.ts`, `extract-mentions.ts:3`
@@ -256,13 +269,32 @@
 
 ---
 
+## Abhängigkeiten & Reihenfolge (festgelegt im Plan-Review 2026-09-22)
+
+Alle Findings werden in Plan 003 umgesetzt (siehe *Umsetzungsrahmen*). Plan 003 referenziert die CR-IDs selbst. Dieses Dokument ändert Plan 003 nicht. „A → B“ heißt: A muss erledigt sein, bevor B abgenommen werden kann.
+
+| Finding | hängt ab von | Grund |
+|---|---|---|
+| CR-001 (1) Allowlist | – | Zuerst umsetzen, unabhängig vom Rest |
+| CR-001 (2) Spikes entfernen | MVP-Ersatz für Karte, Chat, Rechte in Plan 003 | Ohne Ersatz fehlt die Funktion |
+| CR-001 (3) Daten-Cleanup | CR-001 (2) | Tabellen erst löschen, wenn kein Code sie mehr nutzt |
+| CR-010 CI-Verify | CR-002, CR-009, ESLint-Fehler aus CR-015 | CI soll von Beginn an grün sein (Tests, `tsc`, Lint); alles in Plan 003 T-001 |
+| CR-018 Trigger | CR-002 | Integrationstests laufen mit Vitest |
+| CR-004 Relationen | CR-018 (`TRIG-REL-SAME-WORLD`) | App-Prüfung plus Trigger als zweite Schicht, gemeinsamer Test |
+| CR-020 Pin-Sperre | CR-013 | Sperrprüfung gehört in die konsolidierte Authz-Schicht |
+| CR-011 N+1 | CR-013 | Umbau im konsolidierten Repository statt im Spike-Monolithen |
+| CR-014 | CR-012 | `apiFetch`-Helfer im selben Zug wie das gemeinsame Realtime-Modul (Plan 003 T-012/T-013) |
+| CR-006, CR-007 | CR-012 | Resync und Fehlerisolation im gemeinsamen Realtime-Modul umsetzen |
+| CR-021 Würfelformat | CR-002 | Formatierer-Tests mit Vitest |
+| CR-022 Editor | – | Beim Übernehmen des Editors ins MVP |
+| CR-003, CR-005, CR-008, CR-016, CR-017, CR-019, CR-023 | – | Unabhängig, beim Bau der jeweiligen MVP-Stelle (CR-005 bringt seine Helfer `parseJsonBody`/`parseUuid` selbst mit) |
+
 ## Prioritätenliste
 
-1. **CR-001:** Spike-Endpunkte in Produktion schließen bzw. Allowlist einführen, Spike-Daten in den MVP-Tabellen bereinigen.
-2. **CR-002, CR-010:** Test-Runner reparieren und `verify`-Job in CI, damit die folgenden Fixes abgesichert sind.
-3. **CR-003, CR-004:** Identitätsfeld sperren, Weltzugehörigkeit bei Relationen prüfen (Grundlage für Plan 002/003).
-4. **CR-009, CR-005, CR-008:** Laufzeitfehler: Caret-Bug, 500er bei Eingaben, Transaktionen/Races.
-5. **CR-006, CR-007:** Realtime robust machen (Resync nach Reconnect, Fehlerisolation, Ein-Prozess-Grenze dokumentieren).
-6. **CR-012, CR-013, CR-011:** Vor dem Ausbau in Plan 003 konsolidieren und N+1 beseitigen.
-7. **CR-015, CR-014, CR-017, CR-016:** Lint grün, Frontend-Fehlerbehandlung, Env-Validierung, Upload-Härtung.
-8. **CR-018 bis CR-023:** Dokumentations-Abgleich, Rechte-Kleinigkeiten, Scope-Entscheidung Pin-Sperre, Würfelformat, Editor-Extensions, Magic Numbers.
+1. **CR-001 (1), CR-003, CR-017:** Zugang absichern (Allowlist, `discordId` sperren, Env-Validierung). Keine Abhängigkeiten.
+2. **CR-002, CR-009, ESLint-Fehler aus CR-015 → CR-010:** Test-Runner (Vitest), Typfehler, Lint, danach der CI-`verify`-Job.
+3. **CR-012, CR-013:** Gemeinsame Module (Realtime, Session, Authz-Helfer) als Basis für den MVP-Ausbau.
+4. **CR-018 → CR-004, CR-020, CR-019:** Trigger, Relationsprüfung, Pin-Sperre, Rechte-Lücken.
+5. **CR-005, CR-008, CR-006, CR-007, CR-011, CR-014:** Laufzeit-Robustheit und Performance im MVP-Code.
+6. **CR-016, CR-021, CR-022, CR-023:** Upload-Härtung, Würfelformat, Editor, Magic Numbers.
+7. **CR-001 (2), (3):** Spikes entfernen und Produktivdaten bereinigen, sobald der MVP-Ersatz steht.

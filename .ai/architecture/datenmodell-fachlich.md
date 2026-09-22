@@ -213,6 +213,7 @@ Regeln:
 | Beschreibung | Rich-Text | – | darf leer sein; im Popup angezeigt; **einziger Ort** für Erwähnungen am Pin, die ihn mit beliebig vielen Artikeln, Quests und Charakteren verknüpfen (OF-09) |
 | Position | relative Position | ✅ | |
 | Sichtbarkeit | Sichtbarkeitsstatus | ✅ | Standard `nur Spielleitung` |
+| Gesperrt | ja/nein | ✅ | Standard `nein`. Nur die Spielleitung sperrt und entsperrt. Ein gesperrter Pin lässt sich weder verschieben noch bearbeiten noch löschen, auch nicht durch die Spielleitung. Erlaubt ist nur das Entsperren. Mitglieder sehen gesperrte Pins normal, mit Schloss-Symbol (Entscheidung Projektinhaber 2026-09-22, Code-Review Plan 001 CR-020) |
 
 ### 3.8 Charakter
 
@@ -394,7 +395,7 @@ Umsetzung der Rechtematrix aus Plan 001. „Spielleitung“ = Game Master + Mast
 | Welt | Mitglieder | Bearbeiten: Spielleitung. Löschen: nur Game Master |
 | Mitgliedschaft | Mitglieder | Rolle ändern (Player ↔ Master), entfernen: nur Game Master; nie beim Game Master selbst. Austreten: jedes Mitglied außer dem Game Master |
 | Einladungslink | Game Master | nur Game Master |
-| Universum, Karte, Pin | `veröffentlicht` (inkl. aller übergeordneten Ebenen): Mitglieder; sonst: Spielleitung | Spielleitung |
+| Universum, Karte, Pin | `veröffentlicht` (inkl. aller übergeordneten Ebenen): Mitglieder; sonst: Spielleitung | Spielleitung. Pin sperren/entsperren: Spielleitung; gesperrter Pin: nur Entsperren (siehe 3.7) |
 | Charakter | Besitzer; Mitglieder jeder Welt mit nicht archivierter Teilnahme | nur Besitzer |
 | Welt-Teilnahme | Mitglieder (nicht archivierte) | mitbringen: nur Besitzer des Charakters |
 | Charakter-Marker | Mitglieder, sofern Teilnahme nicht archiviert und Karte für sie sichtbar | platzieren, verschieben, entfernen: Besitzer des Charakters und Spielleitung |
