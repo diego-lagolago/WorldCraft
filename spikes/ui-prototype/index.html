@@ -1,0 +1,1274 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WorldCraft – UI-Prototyp (Plan 003)</title>
+<style>
+:root{
+  --bg:#0b0b0f; --panel:#15151c; --panel2:#1c1c25; --line:#2a2a36; --text:#ece9e4; --muted:#9d9aa6;
+  --accent:#f5b83d; --accent-ink:#1a1204; --blue:#6aa8ff; --red:#ff7a7a; --gm:#b69cff; --ok:#6ee7a8;
+  --nav-h:64px; --rail-w:232px; --radius:14px;
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);height:100%}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,select,textarea{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+textarea{min-height:90px;resize:vertical}
+h1,h2,h3{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.row{display:flex;gap:10px;align-items:center}
+.wrap{flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+.stack{display:flex;flex-direction:column;gap:12px}
+
+/* ---------- Shell ---------- */
+.shell{display:flex;min-height:100dvh}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.content{flex:1;padding:16px;max-width:980px;width:100%;margin:0 auto;padding-bottom:calc(var(--nav-h) + 28px + env(safe-area-inset-bottom))}
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(11,11,15,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.topbar .world{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.proto{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-left:auto}
+.proto select{width:auto;padding:6px 8px;font-size:12px}
+.proto .tag{background:#2b2210;color:var(--accent);border:1px solid #4a3a14;border-radius:999px;padding:3px 8px;font-weight:600}
+
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);height:calc(var(--nav-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:#111117;border-top:1px solid var(--line)}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;color:var(--muted);min-height:48px}
+.nav a .ic{font-size:22px;line-height:1}
+.nav a.on{color:var(--accent)}
+.nav .brand,.nav .rail-foot{display:none}
+.shell.chat-focus .nav{display:none}
+.shell.chat-focus .content{padding-bottom:0}
+
+/* Desktop: gleiche vier Ziele als dauerhafte Seitenleiste */
+@media (min-width:768px){
+  .nav{position:sticky;top:0;align-self:flex-start;height:100dvh;width:var(--rail-w);display:flex;flex-direction:column;gap:4px;padding:16px 12px;border-top:0;border-right:1px solid var(--line)}
+  .nav .brand{display:block;font-weight:700;letter-spacing:.04em;padding:6px 10px 14px;color:var(--accent)}
+  .nav a{flex-direction:row;justify-content:flex-start;gap:12px;padding:10px 12px;border-radius:10px;font-size:15px;min-height:44px}
+  .nav a:hover{background:var(--panel)}
+  .nav a.on{background:var(--panel2)}
+  .nav .rail-foot{display:block;margin-top:auto;font-size:12px;color:var(--muted);padding:10px}
+  .shell.chat-focus .nav{display:flex}
+  .content{padding:24px;padding-bottom:40px}
+}
+
+/* ---------- Bausteine ---------- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+.card h2{font-size:16px;margin-bottom:10px}
+.section-h{display:flex;align-items:center;justify-content:space-between;margin:22px 0 10px}
+.section-h h2{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.list{display:flex;flex-direction:column}
+.item{display:flex;align-items:center;gap:12px;min-height:52px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.item:active{background:var(--panel2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);font-weight:600}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{background:#2a1214;border-color:#5b1f24;color:#ffb3b3}
+.btn.sm{min-height:36px;padding:0 12px;font-size:14px;border-radius:10px}
+.btn.icon{width:44px;padding:0}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:14px;white-space:nowrap}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.jpill{min-height:36px;font-size:13px}
+.jpill.gm{color:var(--gm);border-color:#4b3c7a;background:#1d1830}
+.badge.gm{color:var(--gm);border-color:#4b3c7a;background:#1d1830}
+.badge.st-open{color:#cbd5e1}.badge.st-active{color:var(--accent);border-color:#5a4415}
+.badge.st-completed{color:var(--ok);border-color:#1f5a3f}.badge.st-failed{color:var(--red);border-color:#5b1f24}
+.av{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;font-weight:700;font-size:14px;color:#111}
+.av.lg{width:84px;height:84px;font-size:28px}
+.av.sm{width:30px;height:30px;font-size:12px}
+.kind{font-size:12px;color:var(--muted)}
+.hero{height:140px;border-radius:var(--radius);background:linear-gradient(135deg,#3b2a12,#1d3b4a 60%,#23183d);display:flex;align-items:flex-end;padding:14px;margin-bottom:14px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 80% 20%,rgba(245,184,61,.25),transparent 50%)}
+.hero h1{position:relative;font-size:26px;text-shadow:0 2px 8px #000}
+.prose{line-height:1.6}
+.prose p{margin:0 0 10px}
+.mention{color:var(--blue);font-weight:600;cursor:pointer}
+.mention.stub{color:var(--red)}
+.mention-plain{color:inherit}
+.fields{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px}
+.fields dt{color:var(--muted)}
+.fields dd{margin:0}
+.grid2{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:768px){.grid2{grid-template-columns:1fr 1fr}}
+.back{display:inline-flex;align-items:center;gap:6px;color:var(--muted);min-height:40px;margin-bottom:6px}
+.empty{padding:14px;color:var(--muted);font-size:14px}
+.hint{font-size:12px;color:var(--muted);border-left:3px solid var(--accent);padding:6px 10px;background:#17140c;border-radius:0 8px 8px 0}
+
+/* Verknüpft */
+.linked h3{font-size:13px;color:var(--muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.05em}
+.linked .sub{font-size:12px;color:var(--muted);margin:6px 0 2px 2px}
+.linked .item{min-height:46px;padding:8px 4px}
+.rel-label{font-size:12px;color:var(--accent)}
+.origin{font-size:11px;color:var(--muted)}
+
+/* ---------- Sheet ---------- */
+.sheet-bg{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-height:88dvh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom))}
+.sheet .grab{width:44px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 12px}
+.sheet h2{font-size:18px}
+@media (min-width:768px){
+  .sheet-bg{align-items:center}
+  .sheet{max-width:520px;border-radius:18px}
+  .sheet .grab{display:none}
+}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--nav-h) + 18px + env(safe-area-inset-bottom));z-index:80;background:#f3efe6;color:#141414;padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:92vw}
+@media (min-width:768px){.toast{bottom:24px}}
+
+/* ---------- Karte ---------- */
+.map-page{position:relative;height:calc(100dvh - 53px - var(--nav-h) - env(safe-area-inset-bottom))}
+@media (min-width:768px){.map-page{height:calc(100dvh - 53px)}}
+.map-vp{position:absolute;inset:0;overflow:hidden;touch-action:none;background:#0f2436;cursor:grab}
+.map-vp.placing{cursor:crosshair}
+.map-cv{position:absolute;left:0;top:0;width:1600px;height:1200px;transform-origin:0 0;--inv:1}
+.map-cv svg.bg{position:absolute;inset:0;width:100%;height:100%}
+.pin{position:absolute;width:44px;height:54px;transform:translate(-50%,-100%) scale(var(--inv));transform-origin:50% 100%;touch-action:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5))}
+.pin img{width:44px;height:54px;display:block;pointer-events:none}
+.pin.hidden-gm{opacity:.75}
+.pin.hidden-gm::after{content:"SL";position:absolute;top:-6px;right:-8px;font-size:10px;font-weight:800;background:var(--gm);color:#140d2b;border-radius:6px;padding:1px 4px}
+.pin.hl{animation:pulse 1.2s ease-out 3}
+@keyframes pulse{0%{filter:drop-shadow(0 0 0 rgba(245,184,61,.9))}100%{filter:drop-shadow(0 0 22px rgba(245,184,61,0))}}
+.pin.hl img{outline:3px solid var(--accent);outline-offset:3px;border-radius:50%}
+.marker{position:absolute;transform:translate(-50%,-50%) scale(var(--inv));display:flex;flex-direction:column;align-items:center;gap:2px;touch-action:none}
+.marker .av{width:42px;height:42px;border:3px solid var(--accent);box-shadow:0 3px 8px rgba(0,0,0,.6)}
+.marker .nm{font-size:11px;font-weight:700;background:rgba(0,0,0,.7);padding:1px 6px;border-radius:6px;white-space:nowrap}
+.map-top{position:absolute;left:12px;right:12px;top:12px;z-index:5;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.map-top .chip:not(.on){background:rgba(21,21,28,.92)}
+@media (max-width:767px){
+  .proto label{display:none}
+  .map-hint{max-width:calc(100% - 90px);font-size:11px}
+}
+.map-ctrl{position:absolute;right:12px;bottom:14px;z-index:5;display:flex;flex-direction:column;gap:8px}
+.fab{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font-size:30px;background:var(--accent);color:var(--accent-ink);box-shadow:0 6px 18px rgba(0,0,0,.5)}
+.zbtn{width:48px;height:48px;border-radius:14px;background:rgba(21,21,28,.94);border:1px solid var(--line);font-size:22px;display:grid;place-items:center}
+.map-hint{position:absolute;left:12px;bottom:14px;z-index:5;max-width:60%;font-size:12px;background:rgba(21,21,28,.92);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--muted)}
+.type-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.type-grid button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:10px;border:1px solid var(--line);font-size:10px}
+.type-grid button.on{border-color:var(--accent);background:#2b2210}
+.type-grid img{width:30px;height:37px}
+
+/* ---------- Chat ---------- */
+.chat{display:flex;height:calc(100dvh - 53px - var(--nav-h) - env(safe-area-inset-bottom))}
+.shell.chat-focus .chat{height:calc(100dvh - 53px)}
+.chan-list{width:100%;overflow:auto;padding:8px 0}
+.stream{display:none;flex:1;min-width:0;flex-direction:column}
+.chat.open .chan-list{display:none}
+.chat.open .stream{display:flex}
+@media (min-width:768px){
+  .chat,.shell.chat-focus .chat{height:calc(100dvh - 53px)}
+  .chan-list,.chat.open .chan-list{display:block;width:290px;flex:none;border-right:1px solid var(--line)}
+  .stream,.chat.open .stream{display:flex}
+  .stream-back{display:none!important}
+}
+.chan{display:flex;align-items:center;min-height:48px;padding:0 8px 0 4px}
+.chan.on,.thr.on{background:var(--panel2)}
+.chev{width:40px;height:44px;display:grid;place-items:center;color:var(--muted);font-size:14px;transition:transform .15s}
+.chev.open{transform:rotate(90deg)}
+.chev-sp{width:40px;flex:none}
+.chan a{flex:1;display:flex;align-items:center;gap:8px;min-height:44px;font-weight:600}
+.chan .hash{color:var(--muted);font-weight:500}
+.thr{display:flex;align-items:center;min-height:42px;padding:0 10px 0 44px;position:relative}
+.thr::before{content:"";position:absolute;left:24px;top:0;bottom:50%;width:12px;border-left:2px solid var(--line);border-bottom:2px solid var(--line);border-bottom-left-radius:8px}
+.thr a{flex:1;display:flex;align-items:center;gap:6px;min-height:40px;font-size:14px;color:#d6d2cb}
+.more{width:40px;height:40px;display:grid;place-items:center;color:var(--muted);font-size:18px;border-radius:10px}
+.stream-h{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);min-height:54px}
+.msgs{flex:1;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:14px}
+.msg{display:flex;gap:10px}
+.msg .body{min-width:0;flex:1}
+.msg .who{font-weight:700;font-size:14px}
+.msg .when{font-size:11px;color:var(--muted);margin-left:6px;font-weight:400}
+.msg .txt{font-size:15px;line-height:1.45;word-wrap:break-word}
+.dice{display:inline-flex;align-items:center;gap:8px;margin-top:2px;padding:6px 10px;border-radius:10px;background:#1f1a0e;border:1px solid #4a3a14;font-family:ui-monospace,Menlo,monospace;font-size:14px}
+.dice b{color:var(--accent);font-size:16px}
+.thread-card{margin-top:4px;display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);font-size:14px}
+.del{margin-left:auto;color:var(--muted);width:32px;height:32px;border-radius:8px;flex:none}
+.composer{display:flex;align-items:flex-end;gap:6px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:#111117}
+.composer .cb{width:44px;height:44px;flex:none;border-radius:12px;display:grid;place-items:center;font-size:20px;background:var(--panel2);border:1px solid var(--line)}
+.composer .cb.send{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.composer .in{flex:1;min-height:44px;max-height:120px;border-radius:12px;padding:11px 12px}
+.pop{position:absolute;bottom:62px;left:8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;z-index:10;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.pop button{display:flex;gap:10px;align-items:center;min-height:44px;padding:0 14px;border-radius:8px;width:100%}
+.dice-dies{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.dice-dies button{min-height:48px;border-radius:10px;border:1px solid var(--line);font-weight:700}
+.dice-dies button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);font-size:20px}
+.stepper span{min-width:44px;text-align:center;font-size:20px;font-weight:700}
+.toggle{display:flex;align-items:center;justify-content:space-between;min-height:48px}
+.sw{width:50px;height:30px;border-radius:99px;background:var(--line);position:relative;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s}
+.sw.on{background:var(--accent)}
+.sw.on::after{left:23px}
+
+/* ---------- Editor ---------- */
+.toolbar{display:flex;gap:4px;overflow-x:auto;padding:6px;border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:var(--panel2);scrollbar-width:none}
+.toolbar button{min-width:40px;height:40px;border-radius:8px;font-weight:700;flex:none}
+.toolbar button:active{background:var(--line)}
+.toolbar .sep{width:1px;background:var(--line);margin:6px 2px;flex:none}
+.editor{min-height:220px;padding:14px;border:1px solid var(--line);border-radius:0 0 12px 12px;background:var(--panel);line-height:1.6;outline:none}
+.editor h2{font-size:20px;margin:8px 0}.editor h3{font-size:17px;margin:6px 0}
+.editor blockquote,.prose blockquote{border-left:3px solid var(--line);margin:8px 0;padding-left:12px;color:#cfcac2}
+.suggest{border:1px solid var(--line);border-radius:12px;background:var(--panel);margin-top:6px;overflow:hidden}
+.suggest button{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:46px;padding:0 14px;border-bottom:1px solid var(--line);text-align:left}
+.suggest button:last-child{border-bottom:0}
+.suggest .new{color:var(--accent);font-weight:600}
+
+/* Charakterbogen */
+.attrs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (min-width:768px){.attrs{grid-template-columns:repeat(6,1fr)}}
+.attr{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.attr .k{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.06em}
+.attr .v{font-size:22px;font-weight:800}
+.attr .m{font-size:13px;color:var(--accent)}
+.skill{display:flex;align-items:center;justify-content:space-between;min-height:38px;border-bottom:1px solid var(--line);font-size:14px}
+.skill-edit{display:flex;flex-direction:column;gap:6px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.skill-edit:last-child{border-bottom:0;padding-bottom:0}
+.sk-row{display:flex;gap:6px}
+.sk-row select{flex:1;min-width:0;padding:8px}.lvl{font-size:12px;color:var(--muted)}
+.sk-total{font-size:16px;min-width:36px;text-align:right}
+.lvl.untalented{color:var(--red)}
+.lvl.trained{color:var(--blue)}.lvl.expertise{color:var(--accent);font-weight:700}
+.thumbs{display:flex;gap:8px;overflow-x:auto}
+.thumb{width:96px;height:72px;border-radius:10px;flex:none;background:linear-gradient(135deg,#2b3a4a,#3b2a3a)}
+
+/* Login */
+.center{min-height:100dvh;display:grid;place-items:center;padding:24px}
+.login{max-width:380px;width:100%;text-align:center}
+.logo{font-size:44px;margin-bottom:6px}
+.discord{background:#5865f2;border-color:#5865f2;color:#fff;width:100%}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="overlay"></div>
+<script>
+/* =====================================================================
+   WorldCraft UI-Prototyp zu Plan 003. Reine Attrappe: keine Server,
+   keine Persistenz. Die Rolle oben rechts simuliert die Rechtematrix.
+   ===================================================================== */
+
+const PIN_META = {
+  danger:["Gefahr","#b91c1c"], boss:["Boss","#6b21a8"], house:["Haus","#92400e"], city:["Stadt","#334155"],
+  treasure:["Schatz","#ca8a04"], landmark:["Stern","#d97706"], fishing:["Angeln","#0891b2"], plants:["Pflanzen","#15803d"],
+  dungeon:["Dungeon","#44403c"], quest:["Quest","#1d4ed8"], teleporter:["Teleporter","#c026d3"], shop:["Shop","#c2410c"]
+};
+const PICTO = {
+  danger:`<path fill="currentColor" fill-rule="evenodd" d="M12 2.2 22.6 21.4H1.4L12 2.2Zm0 6.4c.6 0 1.1.5 1.1 1.1v4.6c0 .6-.5 1.1-1.1 1.1s-1.1-.5-1.1-1.1V9.7c0-.6.5-1.1 1.1-1.1Zm0 8.6a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6Z"/>`,
+  boss:`<path fill="currentColor" fill-rule="evenodd" d="M12 2.2c4.9 0 8.6 3.5 8.6 7.8 0 2.2-1 4.1-2.6 5.4v2.4c0 1.1-1 1.9-2.2 1.9H8.2c-1.2 0-2.2-.8-2.2-1.9v-2.4C4.4 14.1 3.4 12.2 3.4 10 3.4 5.7 7.1 2.2 12 2.2ZM8.6 8.6a2 2.1 0 1 0 0 4.2 2 2.1 0 0 0 0-4.2Zm6.8 0a2 2.1 0 1 0 0 4.2 2 2.1 0 0 0 0-4.2ZM12 12.2 10.4 15.4h3.2L12 12.2Z"/>`,
+  house:`<path fill="currentColor" fill-rule="evenodd" d="M12 2.6 2.2 11.2h2.6V21.6h14.4V11.2h2.6L12 2.6ZM10.2 13.4h3.6V21.6h-3.6V13.4Z"/>`,
+  city:`<path fill="currentColor" d="M5.8 12.4 2.8 15h.9V21.6h4.4v-6.6h.9L5.8 12.4Z"/><path fill="currentColor" fill-rule="evenodd" d="M12 3.8 8 7.8h1.1V21.6h5.8V7.8H16L12 3.8Zm-1.3 9.4h2.6v8.4h-2.6v-8.4Z"/><path fill="currentColor" d="M18.4 10.2 15.4 13h.9V21.6h4.6V13h.9L18.4 10.2Z"/>`,
+  treasure:`<path fill="currentColor" d="M3 8h18c.7 0 1.2.5 1.2 1.1V11.6H1.8V9.1C1.8 8.5 2.3 8 3 8Z"/><path fill="currentColor" fill-rule="evenodd" d="M2.2 12h19.6v8.2c0 .9-.8 1.6-1.7 1.6H3.9c-.9 0-1.7-.7-1.7-1.6V12Zm8.4 1.2h2.8v3.1c0 .6-.6 1.1-1.4 1.1s-1.4-.5-1.4-1.1v-3.1Z"/>`,
+  landmark:`<path fill="currentColor" d="M12 2 14.7 8.8H22l-5.6 4.2 2.1 7-6.5-4.4-6.5 4.4 2.1-7L2 8.8h7.3L12 2Z"/>`,
+  fishing:`<path fill="currentColor" fill-rule="evenodd" d="M2.4 12C4.2 7 9.2 4.8 14.6 7.2L22.2 5.8 19 12l3.2 6.2-7.6-1.4C9.2 19.2 4.2 17 2.4 12Zm4.8-1.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"/>`,
+  plants:`<path fill="currentColor" d="M17.8 2.4c3.4 4.4 2.8 11.4-1.6 15.2-2.6 2.2-6.2 1.6-7.1-1-1.2-4.4 3.6-11.4 8.7-14.2Z"/><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M10.4 17C9.2 18.8 7.8 20.4 6.6 21.4"/>`,
+  dungeon:`<path fill="currentColor" fill-rule="evenodd" d="M2 21.4 3.4 13.2 7 8.2 10.4 5.2 12 4.2l1.8 1.2 3.4 3 3.4 5 1.4 8H2Zm6.4 0v-6.4c0-2 1.5-3.6 3.6-3.6s3.6 1.6 3.6 3.6v6.4H8.4Z"/>`,
+  quest:`<path fill="currentColor" fill-rule="evenodd" d="M6.4 4.4h10.8c1 0 1.8.8 1.8 1.8v1.1c.6.3 1 .9 1 1.6v8.6c0 1.3-1.1 2.3-2.4 2.3H7.4C6 19.8 4.8 18.7 4.8 17.3V6.2c0-1 .8-1.8 1.6-1.8Zm.8 2.8h10.2V6.4H7.2v.8Zm1.4 2.8h7.6v1.3H8.6V10Zm0 2.8h6v1.3h-6V12.8Z"/>`,
+  teleporter:`<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 6a6 6 0 1 1-5.2 3M12 9a3 3 0 1 1-2.6 1.5"/>`,
+  shop:`<path fill="currentColor" d="M7.6 8.8c0-1.7 1.1-3 2.2-3 .5 0 .9.2 1.2.6.5-1.2 1.7-2 2.8-2 1.4 0 2.6 1.5 2.6 3.2 0 .4 0 .8-.1 1.2H7.7c0-.3-.1-.6-.1-1Z"/><rect fill="currentColor" x="5.2" y="8.3" width="13.6" height="2.3" rx="1.15"/><path fill="currentColor" d="M5.8 10.5h12.4l1.1 9.3c.12 1-.7 1.9-1.7 1.9H6.4c-1 0-1.82-.9-1.7-1.9l1.1-9.3Z"/>`
+};
+function pinIcon(t){
+  const c = PIN_META[t][1];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="58" viewBox="0 0 48 58"><path d="M24 2c-11 0-20 9-20 20 0 15 20 34 20 34s20-19 20-34C44 11 35 2 24 2z" fill="${c}" stroke="#0f172a" stroke-width="2"/><circle cx="24" cy="21" r="11" fill="#fff7ed"/><svg x="15" y="12" width="18" height="18" viewBox="0 0 24 24" color="${c}">${PICTO[t]}</svg></svg>`;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
+/* ---------------- Testdaten ---------------- */
+const USERS = { diego:"Diego", mara:"Mara", jonas:"Jonas", lea:"Lea" };
+const ME = "diego";
+const TEMPLATES = {
+  none:{ label:"Ohne Vorlage", plural:"Ohne Vorlage", fields:[] },
+  person:{ label:"Person", plural:"Personen", fields:[
+    {k:"aliases",l:"Andere Namen",t:"text"},{k:"occupation",l:"Beruf / Rolle",t:"text"},
+    {k:"status",l:"Status",t:"select",o:{alive:"lebendig",dead:"tot",missing:"verschollen",unknown:"unbekannt"}},
+    {k:"location",l:"Aufenthaltsort",t:"ref",to:["place"]},{k:"organization",l:"Organisation",t:"ref",to:["organization"]}]},
+  place:{ label:"Ort", plural:"Orte", fields:[
+    {k:"kind",l:"Art",t:"select",o:{city:"Stadt",village:"Dorf",building:"Gebäude",region:"Region",dungeon:"Dungeon",wilderness:"Wildnis",plane:"Ebene",other:"sonstiges"}},
+    {k:"ruler",l:"Herrscher",t:"ref",to:["person"]},{k:"parent",l:"Übergeordneter Ort",t:"ref",to:["place"]}]},
+  organization:{ label:"Organisation", plural:"Organisationen", fields:[
+    {k:"kind",l:"Art",t:"select",o:{guild:"Gilde",religion:"Religion",house:"Adelshaus",company:"Freie Kompanie",state:"Staat",cult:"Kult",other:"sonstiges"}},
+    {k:"leader",l:"Anführer",t:"ref",to:["person"]},{k:"seat",l:"Sitz",t:"ref",to:["place"]}]},
+  item:{ label:"Gegenstand", plural:"Gegenstände", fields:[
+    {k:"kind",l:"Art",t:"select",o:{weapon:"Waffe",armor:"Rüstung",artifact:"Artefakt",relic:"Relikt",mundane:"alltäglich",other:"sonstiges"}},
+    {k:"owner",l:"Besitzer",t:"ref",to:["person","character"]}]}
+};
+const D = {
+  worlds:[{id:"w1",name:"Die Splitterlande",desc:"Eine zerbrochene Welt aus schwebenden Inseln. Wir spielen seit 2025."},{id:"w2",name:"Nebelküste",desc:"One-Shot-Runde"}],
+  universes:{
+    u1:{name:"Hauptuniversum",vis:"published",sort:1,desc:"<p>Die bekannte Welt der Splitterlande. Im Zentrum liegt [[article:a2]].</p>",map:"m1"},
+    u2:{name:"Schattenebene",vis:"gm_only",sort:2,desc:"<p>Ein Spiegel der Welt, in dem der [[article:a7]] seine Rituale abhält.</p>",map:"m2"}
+  },
+  maps:{ m1:{u:"u1",name:"Splitterlande",vis:"published",style:"land"}, m2:{u:"u2",name:"Schattenebene",vis:"gm_only",style:"shadow"} },
+  articles:{
+    a1:{title:"Gottschleim",tpl:"none",vis:"published",edited:true,body:"<p>Ein uralter Schleim, der in den Höhlen unter [[article:a2]] haust. Die Gruppe hat [[quest:q1]] angenommen.</p><p><b>Schwäche:</b> Feuer und Salz.</p>",f:{}},
+    a2:{title:"Burg Rabenstein",tpl:"place",vis:"published",edited:true,body:"<h2>Geschichte</h2><p>Stammsitz von [[article:a3]]. Hinter den Mauern trifft sich heimlich der [[article:a4]].</p><p>Weiter nördlich liegen die [[article:a6]].</p><blockquote>„Rabenstein fällt nie.“ – Inschrift am Tor</blockquote>",f:{kind:"building",ruler:["article","a3"]}},
+    a3:{title:"Graf Aldric",tpl:"person",vis:"published",edited:true,body:"<p>Ein misstrauischer Herrscher mit grauem Bart. Man munkelt, er gehöre zum [[article:a7]].</p><p>Er ist mit [[character:c2]] seit dem Turnier verfeindet.</p>",f:{occupation:"Graf von Rabenstein",status:"alive",location:["article","a2"],organization:["article","a4"]}},
+    a4:{title:"Orden der Asche",tpl:"organization",vis:"published",edited:true,body:"<p>Ein Ritterorden, der die Grenzen gegen Schleimwesen verteidigt.</p>",f:{kind:"religion",leader:["article","a3"],seat:["article","a2"]}},
+    a5:{title:"Klinge Morgenrot",tpl:"item",vis:"published",edited:true,body:"<p>Geschmiedet in der [[universe:u2]]. Leuchtet in der Nähe von Schleim.</p>",f:{kind:"artifact",owner:["character","c1"]}},
+    a6:{title:"Tore von Wertheim",tpl:"none",vis:"gm_only",edited:false,body:"",f:{}},
+    a7:{title:"Kult des Schwarzen Mondes",tpl:"organization",vis:"gm_only",edited:true,body:"<p>Der Kult plant die Rückkehr des [[article:a1]].</p>",f:{kind:"cult",leader:["article","a3"]}}
+  },
+  quests:{
+    q1:{title:"Töte den Gottschleim",status:"active",vis:"published",parts:["c1","c2"],desc:"<p>Der Gottschleim bedroht [[article:a2]]. Auftrag von [[article:a3]]. Belohnung: 500 Gold.</p>"},
+    q2:{title:"Das Erbe von Rabenstein",status:"open",vis:"gm_only",parts:["c3"],desc:"<p>Geheim: [[article:a3]] hat keinen legitimen Erben.</p>"},
+    q3:{title:"Die verlorene Karawane",status:"completed",vis:"published",parts:["c1","c4"],desc:"<p>Die Karawane wurde am Wolfspass gefunden.</p>"},
+    q4:{title:"Flucht aus der Gruft",status:"failed",vis:"published",parts:["c3"],desc:"<p>Knapp überlebt.</p>"}
+  },
+  characters:{
+    c1:{name:"Elara Sturmwind",owner:"diego",cls:"Waldläuferin",attrs:[12,17,14,11,15,9],sk:[{name:"Heimlichkeit",attr:1,level:"trained"},{name:"Wahrnehmung",attr:4,level:"expertise"},{name:"Spurenlesen",attr:4,level:"trained"},{name:"Bogenbau",attr:1,level:"untrained"}],ab:[{text:"Zwei Pfeile gleichzeitig schießen",attr:1},{text:"Fährten im Regen lesen",attr:4}],pers:"Spricht leise, beobachtet viel.",ideals:"Freiheit über alles.",bonds:"Ihr Wolf Grau.",flaws:"Traut keinem Adligen.",bio:"<p>Aufgewachsen in den Wäldern um [[article:a2]]. Trägt die [[article:a5]].</p>",imgs:3},
+    c3:{name:"Finn Leichtfuß",owner:"diego",cls:"Schurke",attrs:[9,18,12,13,10,14],sk:[{name:"Schlösser knacken",attr:1,level:"expertise"},{name:"Taschendiebstahl",attr:1,level:"expertise"},{name:"Täuschen",attr:5,level:"trained"},{name:"Schwimmen",attr:0,level:"untalented"}],ab:[{text:"Im Schatten verschwinden",attr:1}],pers:"Grinst immer.",ideals:"Gold.",bonds:"Seine Schwester.",flaws:"Kann nichts liegen lassen.",bio:"<p>Kleiner Dieb aus der Unterstadt.</p>",imgs:1},
+    c2:{name:"Brom Eisenfaust",owner:"jonas",cls:"Kämpfer",prof:3,attrs:[18,11,16,8,12,10],sk:[{name:"Athletik",attr:0,level:"expertise"},{name:"Einschüchtern",attr:5,level:"trained"},{name:"Bier trinken",attr:2,level:"expertise"}],ab:[{text:"Kampfrausch",attr:0},{text:"Zähigkeit der Zwerge",attr:2}],pers:"Laut und herzlich.",ideals:"Ehre.",bonds:"Seine Axt.",flaws:"Jähzornig.",bio:"<p>Zwergischer Söldner. Hat [[article:a3]] beim Turnier gedemütigt.</p>",imgs:0},
+    c4:{name:"Sylva",owner:"lea",cls:"Druidin",attrs:[10,13,14,12,17,11],sk:[{name:"Kräuterkunde",attr:3,level:"expertise"},{name:"Heilkunde",attr:4,level:"trained"},{name:"Mit Tieren sprechen",attr:4,level:"trained"}],ab:[],pers:"Ruhig.",ideals:"Gleichgewicht.",bonds:"Der Silbersee.",flaws:"Weltfremd.",bio:"<p>Hüterin des Silbersees.</p>",imgs:2}
+  },
+  brought:["c1","c3","c2","c4"],
+  pins:{
+    p1:{m:"m1",t:"city",title:"Burg Rabenstein",x:.46,y:.40,vis:"published",desc:"<p>Sitz von [[article:a3]]. Mehr unter [[article:a2]].</p>"},
+    p2:{m:"m1",t:"boss",title:"Schleimhöhle",x:.68,y:.62,vis:"published",desc:"<p>Hier lauert der [[article:a1]]. Ziel von [[quest:q1]].</p>"},
+    p3:{m:"m1",t:"shop",title:"Händler Orvin",x:.39,y:.53,vis:"published",desc:""},
+    p4:{m:"m1",t:"dungeon",title:"Vergessene Gruft",x:.23,y:.30,vis:"gm_only",desc:"<p>Eingang zum Heiligtum des [[article:a7]].</p>"},
+    p5:{m:"m1",t:"fishing",title:"Silbersee",x:.60,y:.27,vis:"published",desc:"<p>Heimat von [[character:c4]].</p>"},
+    p6:{m:"m1",t:"teleporter",title:"Runenkreis",x:.82,y:.33,vis:"published",desc:"<p>Führt in die [[universe:u2]].</p>"},
+    p7:{m:"m1",t:"danger",title:"Wolfspass",x:.30,y:.72,vis:"published",desc:"<p>Schauplatz von [[quest:q3]].</p>"},
+    p8:{m:"m1",t:"treasure",title:"Versunkener Hort",x:.76,y:.80,vis:"published",desc:""},
+    p9:{m:"m2",t:"landmark",title:"Obsidianturm",x:.5,y:.45,vis:"published",desc:"<p>Zentrum der Schattenebene.</p>"}
+  },
+  markers:{ m1:{c1:[.49,.44],c2:[.52,.38],c4:[.62,.30]} },
+  manual:[
+    {from:["quest","q1"],to:["pin","p2"],label:"findet statt bei",counter:"ist Schauplatz von"},
+    {from:["article","a3"],to:["character","c2"],label:"ist verfeindet mit",counter:""}
+  ],
+  channels:[
+    {id:"ch1",name:"Allgemein",archived:false},{id:"ch2",name:"Ingame",archived:false},
+    {id:"ch3",name:"Off-Topic",archived:false},{id:"ch4",name:"Alte Runde",archived:true}
+  ],
+  threads:[{id:"t1",ch:"ch1",title:"Planung Session 12"},{id:"t2",ch:"ch2",title:"Marktgespräch mit Orvin"},{id:"t3",ch:"ch2",title:"Nachtwache"}],
+  msgs:[
+    {id:1,ch:"ch1",th:null,u:"mara",t:"18:58",text:"Nächste Session Freitag 19 Uhr?"},
+    {id:2,ch:"ch1",th:null,u:"jonas",t:"19:01",text:"Passt! Ich bring *Snacks* mit."},
+    {id:3,ch:"ch1",th:null,u:"mara",t:"19:03",text:"Thread für die Planung:",opens:"t1"},
+    {id:4,ch:"ch1",th:"t1",u:"mara",t:"19:04",text:"Wer fehlt am Freitag?"},
+    {id:5,ch:"ch1",th:"t1",u:"lea",t:"19:10",text:"Ich komme später, ca. 20 Uhr."},
+    {id:6,ch:"ch2",th:null,u:"jonas",t:"20:15",text:"Brom tritt die Tür ein. **BAM!**"},
+    {id:7,ch:"ch2",th:null,u:"jonas",t:"20:15",text:"",dice:{expr:"1d20+5",vals:[14],mod:5,sum:19}},
+    {id:8,ch:"ch2",th:null,u:"mara",t:"20:16",text:"Die Tür splittert. Dahinter: Dunkelheit."},
+    {id:9,ch:"ch2",th:null,u:"diego",t:"20:17",text:"Elara zündet eine Fackel an.",},
+    {id:10,ch:"ch2",th:null,u:"diego",t:"20:17",text:"",opens:"t2"},
+    {id:11,ch:"ch2",th:"t2",u:"diego",t:"20:18",text:"Was kostet das Seil, Orvin?"},
+    {id:12,ch:"ch2",th:"t2",u:"mara",t:"20:19",text:"„Für euch? 3 Silber.“"},
+    {id:13,ch:"ch2",th:null,u:"diego",t:"20:21",text:"",opens:"t3"},
+    {id:14,ch:"ch2",th:"t3",u:"lea",t:"20:30",text:"Sylva übernimmt die erste Wache.",},
+    {id:15,ch:"ch2",th:"t3",u:"lea",t:"20:31",text:"",dice:{expr:"1d20+3",vals:[7],mod:3,sum:10}},
+    {id:16,ch:"ch3",th:null,u:"lea",t:"12:00",text:"Hat jemand den neuen Film gesehen?"},
+    {id:17,ch:"ch4",th:null,u:"mara",t:"01.03.",text:"Archiv der alten Runde."}
+  ],
+  journal:[
+    {id:"j1",c:"c1",title:"Nach dem Turnier",vis:"shared_with_gm",body:"<p>Aldric hat Brom angesehen, als wolle er ihn töten.</p>"},
+    {id:"j2",c:"c1",title:"Geheimnis",vis:"private",body:"<p>Ich habe den Brief des Grafen gelesen. Niemand darf es wissen.</p>"},
+    {id:"j3",c:"c3",title:"",vis:"private",body:"<p>Den Siegelring habe ich noch.</p>"}
+  ],
+  invites:[
+    {code:"k7Qz…9vA2",validity:"7 Tage",uses:2,revoked:false},
+    {code:"Hq1x…Lp0e",validity:"unbegrenzt",uses:4,revoked:false},
+    {code:"Zz9P…aa31",validity:"1 Tag",uses:0,revoked:true}
+  ]
+};
+let nextId = 100;
+
+/* ---------------- Zustand ---------------- */
+const S = {
+  role:"game_master", loggedIn:true, articleFilter:"all", search:"", expanded:{ch1:true,ch2:true},
+  dice:{n:1,m:20,mod:0,post:true}, universe:"u1", placing:false, map:null, lastMap:null
+};
+const isStaff = () => S.role !== "player";
+const isGM = () => S.role === "game_master";
+
+function members(){
+  const roles = {
+    game_master:[["diego","game_master"],["mara","master"],["jonas","player"],["lea","player"]],
+    master:[["mara","game_master"],["diego","master"],["jonas","player"],["lea","player"]],
+    player:[["mara","game_master"],["jonas","master"],["diego","player"],["lea","player"]]
+  }[S.role];
+  return roles.map(([u,r])=>({u,r}));
+}
+const ROLE_LABEL = {game_master:"Game Master",master:"Master",player:"Player"};
+
+/* ---------------- Sichtbarkeit (Rechtematrix-Attrappe) ---------------- */
+function get(k,id){ return ({article:D.articles,quest:D.quests,universe:D.universes,character:D.characters,pin:D.pins})[k]?.[id]; }
+function visible(k,id){
+  const o = get(k,id); if(!o) return false;
+  if(k==="character") return D.brought.includes(id);
+  if(isStaff()) return true;
+  if(k==="pin"){ const m=D.maps[o.m]; return o.vis==="published" && m.vis==="published" && D.universes[m.u].vis==="published"; }
+  return o.vis==="published";
+}
+function title(k,id){ const o=get(k,id); return o ? (o.title||o.name) : "?"; }
+function href(k,id){
+  return {article:`#/w/w1/articles/${id}`,quest:`#/w/w1/quests/${id}`,universe:`#/w/w1/universes/${id}`,character:`#/w/w1/characters/${id}`,pin:`#/w/w1/map?pin=${id}`}[k];
+}
+const KIND_LABEL = {article:"Artikel",quest:"Quest",character:"Charakter",universe:"Universum",pin:"Pin"};
+function kindLabel(k,id){
+  if(k==="article"){ const a=D.articles[id]; return a.tpl==="none" ? "Artikel" : TEMPLATES[a.tpl].label; }
+  return KIND_LABEL[k];
+}
+function templateLabel(id){ const t=D.articles[id].tpl; return t==="none" ? "" : TEMPLATES[t].label; }
+
+/* ---------------- Relationen (automatisch + manuell) ---------------- */
+function allRelations(){
+  const out = [];
+  const scan = (k,id,html)=>{ (html||"").replace(/\[\[(\w+):(\w+)\]\]/g,(_,tk,tid)=>{ out.push({from:[k,id],to:[tk,tid],origin:"mention"}); }); };
+  for(const [id,a] of Object.entries(D.articles)){
+    scan("article",id,a.body);
+    for(const f of TEMPLATES[a.tpl].fields){ const v=a.f[f.k]; if(f.t==="ref" && v) out.push({from:["article",id],to:v,origin:"template_field",field:f.l}); }
+  }
+  for(const [id,q] of Object.entries(D.quests)){ scan("quest",id,q.desc); q.parts.forEach(c=>out.push({from:["quest",id],to:["character",c],origin:"participation"})); }
+  for(const [id,p] of Object.entries(D.pins)) scan("pin",id,p.desc);
+  for(const [id,u] of Object.entries(D.universes)) scan("universe",id,u.desc);
+  for(const [id,c] of Object.entries(D.characters)) scan("character",id,c.bio);
+  D.manual.forEach(r=>out.push({...r,origin:"manual"}));
+  return out;
+}
+const ORIGIN = {mention:"Erwähnung",template_field:"Vorlagenfeld",participation:"Beteiligung",manual:"manuell"};
+function linkedHtml(k,id){
+  const rels = allRelations().filter(r=>(r.from[0]===k&&r.from[1]===id)||(r.to[0]===k&&r.to[1]===id))
+    .filter(r=>visible(...r.from)&&visible(...r.to));
+  const groups = {pin:[],article:[],quest:[],character:[],universe:[]}; const seen=new Map();
+  for(const r of rels){
+    const outgoing = r.from[0]===k && r.from[1]===id;
+    const [ok,oid] = outgoing ? r.to : r.from;
+    const label = r.origin==="manual" ? (outgoing ? r.label : (r.counter||r.label)) : "";
+    const why = ORIGIN[r.origin]+(r.field?" · "+r.field:"");
+    const key = ok+oid+label;
+    if(seen.has(key)){ const it=seen.get(key); if(!it.why.includes(why)) it.why.push(why); continue; }
+    const it = {ok,oid,label,why:[why]}; seen.set(key,it); groups[ok]?.push(it);
+  }
+  const names = {pin:"Pins",article:"Artikel",quest:"Quests",character:"Charaktere",universe:"Universen"};
+  let html = "";
+  for(const g of ["pin","article","quest","character","universe"]){
+    const items = groups[g]; if(!items.length) continue;
+    html += `<h3>${names[g]}</h3>`;
+    const render = it => {
+      const extra = it.label ? `<div class="rel-label">${esc(it.label)}</div>` : `<div class="origin">${esc(it.why.join(" · "))}</div>`;
+      let lead = "";
+      if(g==="pin"){ const p=D.pins[it.oid]; lead=`<img src="${pinIcon(p.t)}" width="26" height="31" alt="">`; }
+      if(g==="character"){ lead=avatar(D.characters[it.oid].name,"sm"); }
+      let meta = "";
+      if(g==="pin") meta = `<span class="kind">${esc(D.maps[D.pins[it.oid].m].name)}</span>`;
+      if(g==="quest") meta = statusBadge(D.quests[it.oid].status);
+      return `<a class="item" href="${href(g,it.oid)}">${lead}<div class="grow"><div>${esc(title(g,it.oid))}</div>${extra}</div>${meta}</a>`;
+    };
+    if(g==="article"){
+      const byTpl = {}; items.forEach(it=>{ const t=D.articles[it.oid].tpl; (byTpl[t]=byTpl[t]||[]).push(it); });
+      for(const [t,its] of Object.entries(byTpl)) html += `<div class="sub">${TEMPLATES[t].plural}</div><div class="list">${its.map(render).join("")}</div>`;
+    } else html += `<div class="list">${items.map(render).join("")}</div>`;
+  }
+  const add = isStaff() ? `<button class="btn sm" data-act="manual-rel" data-k="${k}" data-id="${id}">+ Relation</button>` : "";
+  return `<div class="card linked"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Verknüpft</h2>${add}</div>${html||'<div class="empty">Noch keine Verknüpfungen.</div>'}</div>`;
+}
+
+/* ---------------- Rendering-Helfer ---------------- */
+function esc(s){ return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function hue(s){ let h=0; for(const c of s) h=(h*31+c.charCodeAt(0))%360; return h; }
+function initials(n){ return n.split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase(); }
+function avatar(name,cls=""){ return `<span class="av ${cls}" style="background:hsl(${hue(name)} 60% 68%)">${initials(name)}</span>`; }
+function gmBadge(vis){ return vis==="gm_only" && isStaff() ? `<span class="badge gm">nur Spielleitung</span>` : ""; }
+const STATUS = {open:"offen",active:"aktiv",completed:"abgeschlossen",failed:"gescheitert"};
+function statusBadge(s){ return `<span class="badge st-${s}">${STATUS[s]}</span>`; }
+function rich(html){
+  return (html||"").replace(/\[\[(\w+):(\w+)\]\]/g,(_,k,id)=>{
+    const o=get(k,id); if(!o) return "?";
+    const t = esc(title(k,id));
+    if(!visible(k,id)) return `<span class="mention-plain">${t}</span>`;
+    const stub = k==="article" && !o.edited;
+    return `<a class="mention ${stub?"stub":""}" href="${href(k,id)}">${t}</a>`;
+  });
+}
+function chatText(s){ return esc(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/\*(.+?)\*/g,"<i>$1</i>"); }
+function toast(msg){
+  const el=document.createElement("div"); el.className="toast"; el.textContent=msg; document.body.appendChild(el);
+  setTimeout(()=>el.remove(),2600);
+}
+function sheet(html){
+  document.getElementById("overlay").innerHTML = `<div class="sheet-bg" data-act="close-sheet"><div class="sheet" role="dialog"><div class="grab"></div>${html}</div></div>`;
+}
+function closeSheet(){ document.getElementById("overlay").innerHTML=""; }
+
+/* ---------------- Shell ---------------- */
+function shell(tab, inner, opts={}){
+  const world = D.worlds[0];
+  return `<div class="shell ${opts.chatFocus?"chat-focus":""}">
+    <nav class="nav" aria-label="Hauptnavigation">
+      <div class="brand">WORLDCRAFT</div>
+      ${navItem("globe","🌍","Kampagne","#/w/w1",tab)}
+      ${navItem("map","🗺️","Karte","#/w/w1/map",tab)}
+      ${navItem("chat","💬","Chat","#/w/w1/chat",tab)}
+      ${navItem("menu","☰","Menü","#/w/w1/menu",tab)}
+      <div class="rail-foot">v0.1.0 · Prototyp<br>Icons: Platzhalter</div>
+    </nav>
+    <div class="main">
+      <header class="topbar">
+        <a href="#/w/w1" class="world">${esc(world.name)}</a>
+        <div class="proto"><span class="tag">Prototyp</span>
+          <label for="role" class="small">Ansicht als</label>
+          <select id="role" data-act="role">
+            ${Object.entries(ROLE_LABEL).map(([k,v])=>`<option value="${k}" ${S.role===k?"selected":""}>${v}</option>`).join("")}
+          </select></div>
+      </header>
+      ${opts.full ? inner : `<div class="content">${inner}</div>`}
+    </div>
+  </div>`;
+}
+function navItem(id,ic,label,h,tab){ return `<a href="${h}" class="${tab===id?"on":""}"><span class="ic">${ic}</span><span>${label}</span></a>`; }
+
+/* ---------------- Ansichten ---------------- */
+function viewLogin(){
+  return `<div class="center"><div class="login stack">
+    <div class="logo">🌍</div><h1>WorldCraft</h1>
+    <p class="muted">Welten, Karten, Quests und Chat für eure D&amp;D-Runde.</p>
+    <a class="btn discord" href="#/onboarding">Mit Discord anmelden</a>
+    <a class="btn" href="#/w/w1">Test-Login (nur lokal)</a>
+    <p class="small muted">Prototyp: Beide Buttons melden sofort an.</p>
+  </div></div>`;
+}
+function viewOnboarding(){
+  return `<div class="center"><div class="login stack" style="text-align:left">
+    <h1>Willkommen, Diego</h1><p class="muted">Du bist noch in keiner Welt.</p>
+    <div class="card stack"><h2>Neue Welt anlegen</h2>
+      <input placeholder="Name der Welt" value="Die Splitterlande">
+      <p class="small muted">Du wirst Game Master. Das „Hauptuniversum“ und der Chat-Kanal „Allgemein“ werden automatisch angelegt.</p>
+      <a class="btn primary" href="#/w/w1" data-act="toast" data-msg="Welt angelegt">Welt anlegen</a></div>
+    <div class="card stack"><h2>Einladung einlösen</h2>
+      <input placeholder="Einladungslink einfügen">
+      <a class="btn" href="#/invite/k7Qz9vA2">Beitreten</a></div>
+  </div></div>`;
+}
+function viewInvite(){
+  return `<div class="center"><div class="login stack">
+    <div class="logo">✉️</div><h1>Einladung</h1>
+    <p>Du wurdest in <b>Die Splitterlande</b> eingeladen.</p>
+    <p class="muted small">Du trittst als Player bei. Warst du früher Mitglied, werden deine Charaktere und Tagebucheinträge wiederhergestellt.</p>
+    <a class="btn primary" href="#/w/w1" data-act="toast" data-msg="Beigetreten als Player">Beitreten</a>
+    <a class="btn" href="#/">Abbrechen</a></div></div>`;
+}
+
+function viewHub(){
+  const w = D.worlds[0];
+  const unis = Object.entries(D.universes).filter(([id])=>visible("universe",id)).sort((a,b)=>a[1].sort-b[1].sort);
+  const arts = Object.entries(D.articles).filter(([id,a])=>visible("article",id) && (S.articleFilter==="all"||a.tpl===S.articleFilter));
+  const quests = Object.entries(D.quests).filter(([id])=>visible("quest",id));
+  const filterChip = (k,l)=>`<button class="chip ${S.articleFilter===k?"on":""}" data-act="afilter" data-v="${k}">${l}</button>`;
+  return shell("globe", `
+    <div class="hero"><h1>${esc(w.name)}</h1></div>
+    <p class="muted" style="margin-top:0">${esc(w.desc)}</p>
+
+    <div class="row" style="gap:8px;margin:12px 0">
+      <input id="search" placeholder="In dieser Welt suchen …" value="${esc(S.search)}" autocomplete="off">
+    </div>
+    <div id="search-results">${searchResults()}</div>
+
+    <div class="section-h"><h2>Welten</h2></div>
+    <div class="card list" style="padding:0 4px">
+      ${D.worlds.map((x,i)=>`<a class="item" href="#/w/w1" ${i?'data-act="toast" data-msg="Prototyp: nur „Die Splitterlande“ ist ausgearbeitet"':""}>
+        <span class="av sm" style="background:hsl(${hue(x.name)} 50% 60%)">${initials(x.name)}</span>
+        <div class="grow">${esc(x.name)}<div class="kind">${i?"Player":ROLE_LABEL[S.role]}</div></div>${i?"":"✓"}</a>`).join("")}
+      <a class="item" href="#/onboarding"><span class="av sm" style="background:var(--panel2);color:var(--accent)">+</span><div class="grow">Neue Welt / Einladung</div></a>
+    </div>
+
+    <div class="section-h"><h2>Universen</h2>${isStaff()?'<button class="btn sm" data-act="toast" data-msg="Universum anlegen (Name, Beschreibung, Sichtbarkeit)">+ Universum</button>':""}</div>
+    <div class="card list" style="padding:0 4px">
+      ${unis.map(([id,u])=>`<a class="item" href="#/w/w1/universes/${id}"><span style="font-size:22px">🪐</span><div class="grow">${esc(u.name)}</div>${gmBadge(u.vis)}<span class="muted">›</span></a>`).join("")}
+    </div>
+
+    <div class="section-h"><h2>Artikel</h2>${isStaff()?'<a class="btn sm" href="#/w/w1/articles/new/edit">+ Artikel</a>':""}</div>
+    <div class="chips">${filterChip("all","Alle")}${["person","place","organization","item","none"].map(t=>filterChip(t,TEMPLATES[t].plural)).join("")}</div>
+    <div class="card list" style="padding:0 4px;margin-top:8px">
+      ${arts.length ? arts.map(([id,a])=>`<a class="item" href="#/w/w1/articles/${id}">
+        <div class="grow"><div class="${a.edited?"":"stub-t"}" style="${a.edited?"":"color:var(--red)"}">${esc(a.title)}</div><div class="kind">${[templateLabel(id),a.edited?"":"noch leer"].filter(Boolean).join(" · ")}</div></div>${gmBadge(a.vis)}<span class="muted">›</span></a>`).join("") : '<div class="empty">Keine Artikel in dieser Kategorie.</div>'}
+    </div>
+
+    <div class="section-h"><h2>Quests</h2>${isStaff()?'<button class="btn sm" data-act="toast" data-msg="Quest anlegen">+ Quest</button>':""}</div>
+    <div class="card list" style="padding:0 4px">
+      ${quests.map(([id,q])=>`<a class="item" href="#/w/w1/quests/${id}"><div class="grow">${esc(q.title)}<div class="kind">${q.parts.map(c=>esc(D.characters[c].name.split(" ")[0])).join(", ")}</div></div>${gmBadge(q.vis)}${statusBadge(q.status)}</a>`).join("")}
+    </div>
+  `);
+}
+function searchResults(){
+  const q = S.search.trim().toLowerCase();
+  if(q.length<2) return "";
+  const hits = [];
+  const strip = h => (h||"").replace(/\[\[(\w+):(\w+)\]\]/g,(_,k,id)=>title(k,id)).replace(/<[^>]+>/g," ");
+  const push = (k,id,t,body)=>{ if(!visible(k,id)) return; const b=strip(body); if((t+" "+b).toLowerCase().includes(q)){
+      const i=b.toLowerCase().indexOf(q); const snip = i<0 ? b.slice(0,120) : "…"+b.slice(Math.max(0,i-40),i+120)+"…";
+      hits.push({k,id,t,snip}); } };
+  for(const [id,a] of Object.entries(D.articles)) push("article",id,a.title,a.body);
+  for(const [id,x] of Object.entries(D.quests)) push("quest",id,x.title,x.desc);
+  for(const [id,x] of Object.entries(D.universes)) push("universe",id,x.name,x.desc);
+  for(const [id,x] of Object.entries(D.pins)) push("pin",id,x.title,x.desc);
+  for(const [id,x] of Object.entries(D.characters)) push("character",id,x.name,x.bio);
+  if(!hits.length) return `<div class="card empty">Keine Treffer für „${esc(S.search)}“.</div>`;
+  return `<div class="card list" style="padding:0 4px">${hits.slice(0,20).map(h=>`<a class="item" href="${href(h.k,h.id)}"><div class="grow"><div>${esc(h.t)} <span class="kind">· ${kindLabel(h.k,h.id)}</span></div><div class="small muted">${esc(h.snip.slice(0,300))}</div></div></a>`).join("")}
+    <div class="small muted" style="padding:8px 12px">Tagebücher werden nicht durchsucht.</div></div>`;
+}
+
+function fieldValue(f,v){
+  if(v==null||v==="") return '<span class="muted">–</span>';
+  if(f.t==="select") return esc(f.o[v]);
+  if(f.t==="ref"){ const [k,id]=v; return visible(k,id) ? `<a class="mention" href="${href(k,id)}">${esc(title(k,id))}</a>` : esc(title(k,id)); }
+  return esc(v);
+}
+function viewArticle(id){
+  const a = D.articles[id];
+  if(!a || !visible("article",id)) return shell("globe", notFound());
+  const tpl = TEMPLATES[a.tpl];
+  return shell("globe", `
+    <a class="back" href="#/w/w1">‹ Kampagne</a>
+    <div class="hero"><h1>${esc(a.title)}</h1></div>
+    <div class="row wrap" style="margin-bottom:12px">${templateLabel(id)?`<span class="badge">${templateLabel(id)}</span>`:""}${gmBadge(a.vis)}
+      ${isStaff()?`<a class="btn sm" style="margin-left:auto" href="#/w/w1/articles/${id}/edit">Bearbeiten</a>`:""}</div>
+    <div class="grid2">
+      <div class="stack">
+        ${tpl.fields.length?`<div class="card"><dl class="fields">${tpl.fields.map(f=>`<dt>${esc(f.l)}</dt><dd>${fieldValue(f,a.f[f.k])}</dd>`).join("")}</dl></div>`:""}
+        <div class="card prose">${a.body ? rich(a.body) : '<p class="muted">Dieser Artikel ist noch leer. Erwähnungen darauf erscheinen rot, bis Text oder ein Vorlagenfeld gespeichert wird.</p>'}</div>
+      </div>
+      <div>${linkedHtml("article",id)}</div>
+    </div>`);
+}
+function viewArticleEdit(id){
+  if(!isStaff()) return shell("globe", `<div class="card">Nur die Spielleitung darf Artikel bearbeiten.</div>`);
+  const isNew = id==="new";
+  const a = isNew ? {title:"",tpl:"none",vis:"gm_only",body:"",f:{}} : D.articles[id];
+  S.editTpl = S.editTpl && S.editId===id ? S.editTpl : a.tpl; S.editId=id;
+  const tpl = TEMPLATES[S.editTpl];
+  const refOptions = (f,cur)=>{
+    const opts = [];
+    for(const [aid,x] of Object.entries(D.articles)) if(f.to.includes(x.tpl)) opts.push(["article",aid,x.title]);
+    if(f.to.includes("character")) D.brought.forEach(c=>opts.push(["character",c,D.characters[c].name]));
+    return `<select data-field="${f.k}"><option value="">–</option>${opts.map(([k,oid,t])=>`<option value="${k}:${oid}" ${cur&&cur[1]===oid?"selected":""}>${esc(t)}${k==="character"?" (Charakter)":""}</option>`).join("")}</select>`;
+  };
+  const fieldInput = f => {
+    const v = a.f[f.k];
+    if(f.t==="select") return `<select data-field="${f.k}"><option value="">–</option>${Object.entries(f.o).map(([k,l])=>`<option value="${k}" ${v===k?"selected":""}>${l}</option>`).join("")}</select>`;
+    if(f.t==="ref") return refOptions(f,v);
+    return `<input data-field="${f.k}" value="${esc(v||"")}">`;
+  };
+  const bodyEditable = (a.body||"").replace(/\[\[(\w+):(\w+)\]\]/g,(_,k,mid)=>`<span class="mention ${k==="article"&&!D.articles[mid]?.edited?"stub":""}" contenteditable="false" data-k="${k}" data-id="${mid}">${esc(title(k,mid))}</span>`);
+  return shell("globe", `
+    <a class="back" href="${isNew?"#/w/w1":"#/w/w1/articles/"+id}">‹ Abbrechen</a>
+    <div class="stack">
+      <input id="ed-title" placeholder="Titel" value="${esc(a.title)}" style="font-size:20px;font-weight:700">
+      <div class="grid2">
+        <label class="stack small muted">Vorlage<select id="ed-tpl" data-act="tpl">${Object.entries(TEMPLATES).map(([k,t])=>`<option value="${k}" ${S.editTpl===k?"selected":""}>${t.label}</option>`).join("")}</select></label>
+        <div class="toggle card" style="padding:8px 12px"><span>Veröffentlicht<br><span class="small muted">aus = nur Spielleitung</span></span><button class="sw ${a.vis==="published"?"on":""}" data-act="sw"></button></div>
+      </div>
+      <div class="card"><div class="row" style="justify-content:space-between"><span>Titelbild</span><button class="btn sm" data-act="toast" data-msg="JPG, PNG oder WebP, max. 10 MB">Bild wählen</button></div></div>
+      ${tpl.fields.length?`<div class="card stack"><h2 style="margin:0">${tpl.label}</h2>${tpl.fields.map(f=>`<label class="stack small muted">${esc(f.l)}${fieldInput(f)}</label>`).join("")}</div>`:""}
+      <div>
+        <div class="toolbar">
+          <button data-cmd="formatBlock" data-v="H2">H2</button><button data-cmd="formatBlock" data-v="H3">H3</button><span class="sep"></span>
+          <button data-cmd="bold"><b>B</b></button><button data-cmd="italic"><i>I</i></button><button data-cmd="underline"><u>U</u></button><button data-cmd="strikeThrough"><s>S</s></button><span class="sep"></span>
+          <button data-cmd="insertUnorderedList">•</button><button data-cmd="insertOrderedList">1.</button><button data-cmd="formatBlock" data-v="BLOCKQUOTE">❝</button><button data-cmd="insertHorizontalRule">—</button><button data-cmd="createLink">🔗</button>
+        </div>
+        <div id="editor" class="editor prose" contenteditable="true">${bodyEditable || "<p><br></p>"}</div>
+        <div id="suggest"></div>
+        <p class="small muted">Tippe <b>@</b> für Erwähnungen (Artikel, Quests, Charaktere, Universen). Bilder und Tabellen werden beim Einfügen verworfen.</p>
+      </div>
+      <div class="row"><button class="btn primary grow" data-act="save-article" data-id="${id}">Speichern</button>
+      ${!isNew?`<button class="btn danger" data-act="toast" data-msg="Artikel und seine Relationen würden gelöscht">Löschen</button>`:""}</div>
+    </div>`);
+}
+function viewQuest(id){
+  const q = D.quests[id];
+  if(!q || !visible("quest",id)) return shell("globe", notFound());
+  return shell("globe", `
+    <a class="back" href="#/w/w1">‹ Kampagne</a>
+    <h1 style="font-size:24px;margin-bottom:8px">${esc(q.title)}</h1>
+    <div class="row wrap" style="margin-bottom:14px"><span class="badge">Quest</span>${gmBadge(q.vis)}
+      ${isStaff() ? `<select style="width:auto" data-act="toast-change" data-msg="Status gespeichert">${Object.entries(STATUS).map(([k,v])=>`<option ${q.status===k?"selected":""}>${v}</option>`).join("")}</select>` : statusBadge(q.status)}</div>
+    <div class="grid2"><div class="stack">
+      <div class="card"><h2>Beteiligte</h2><div class="row wrap">${q.parts.map(c=>`<a class="chip" href="#/w/w1/characters/${c}">${avatar(D.characters[c].name,"sm")} ${esc(D.characters[c].name)}</a>`).join("")}</div></div>
+      <div class="card prose">${rich(q.desc)}</div>
+    </div><div>${linkedHtml("quest",id)}</div></div>`);
+}
+function viewUniverse(id){
+  const u = D.universes[id];
+  if(!u || !visible("universe",id)) return shell("globe", notFound());
+  const m = D.maps[u.map];
+  return shell("globe", `
+    <a class="back" href="#/w/w1">‹ Kampagne</a>
+    <h1 style="font-size:24px;margin-bottom:8px">🪐 ${esc(u.name)}</h1>
+    <div class="row wrap" style="margin-bottom:14px"><span class="badge">Universum</span>${gmBadge(u.vis)}${isStaff()?'<button class="btn sm" style="margin-left:auto" data-act="toast" data-msg="Universum bearbeiten">Bearbeiten</button>':""}</div>
+    <div class="grid2"><div class="stack">
+      <div class="card prose">${rich(u.desc)}</div>
+      <div class="card"><h2>Karte</h2>${m && (isStaff()||m.vis==="published") ? `<a class="item" href="#/w/w1/map?universe=${id}">🗺️ <div class="grow">${esc(m.name)}</div>${gmBadge(m.vis)}›</a>` : '<div class="empty">Keine sichtbare Karte.</div>'}</div>
+    </div><div>${linkedHtml("universe",id)}</div></div>`);
+}
+function notFound(){ return `<a class="back" href="#/w/w1">‹ Kampagne</a><div class="card"><h2>Nicht gefunden</h2><p class="muted">Dieser Inhalt existiert nicht oder ist für dich nicht sichtbar. (Player sehen „nur Spielleitung“-Inhalte nicht.)</p></div>`; }
+
+/* ---------------- Karte ---------------- */
+function mapSvg(style){
+  if(style==="shadow") return `<svg class="bg" viewBox="0 0 1600 1200"><rect width="1600" height="1200" fill="#140f22"/><path d="M200 300 Q500 120 900 240 T1400 320 Q1500 700 1100 950 T300 900 Q120 600 200 300Z" fill="#241a3c" stroke="#5b3f99" stroke-width="4"/><circle cx="800" cy="540" r="90" fill="#35245a"/><text x="800" y="700" fill="#b69cff" font-size="40" text-anchor="middle" font-family="serif" opacity=".6">Schattenebene</text></svg>`;
+  return `<svg class="bg" viewBox="0 0 1600 1200">
+    <defs><pattern id="w" width="60" height="30" patternUnits="userSpaceOnUse"><path d="M0 15 Q15 5 30 15 T60 15" fill="none" stroke="#2c5a82" stroke-width="2" opacity=".5"/></pattern></defs>
+    <rect width="1600" height="1200" fill="#173a5a"/><rect width="1600" height="1200" fill="url(#w)"/>
+    <path d="M180 260 Q420 110 760 170 Q1100 90 1380 250 Q1520 420 1420 640 Q1480 900 1180 1040 Q860 1130 560 1050 Q260 1010 190 800 Q90 560 180 260Z" fill="#c9b78a" stroke="#6d5a33" stroke-width="5"/>
+    <path d="M300 360 Q500 260 700 330 Q820 450 700 560 Q540 650 380 560 Q250 470 300 360Z" fill="#7fa36a" opacity=".85"/>
+    <path d="M900 700 Q1080 620 1220 720 Q1280 860 1140 930 Q980 960 900 860Z" fill="#6f9a5c" opacity=".8"/>
+    <ellipse cx="960" cy="330" rx="110" ry="60" fill="#3d77a6" stroke="#2a587e" stroke-width="3"/>
+    <path d="M960 390 Q900 520 820 600 Q760 700 700 860 Q660 960 600 1060" fill="none" stroke="#3d77a6" stroke-width="10" stroke-linecap="round"/>
+    ${[[520,700],[560,660],[600,710],[1250,440],[1290,400],[1330,450],[430,820],[470,780]].map(([x,y])=>`<path d="M${x-30} ${y+25} L${x} ${y-30} L${x+30} ${y+25}Z" fill="#8a7a5c" stroke="#4d4230" stroke-width="3"/>`).join("")}
+    <text x="760" y="140" fill="#2d2515" font-size="44" text-anchor="middle" font-family="serif" font-style="italic" opacity=".7">Die Splitterlande</text>
+  </svg>`;
+}
+function canEditMarker(c){ return isStaff() || D.characters[c].owner===ME; }
+function viewMap(q){
+  const params = new URLSearchParams(q||"");
+  const pinId = params.get("pin");
+  if(pinId && D.pins[pinId]) S.universe = D.maps[D.pins[pinId].m].u;
+  if(params.get("universe")) S.universe = params.get("universe");
+  const unis = Object.entries(D.universes).filter(([id])=>visible("universe",id));
+  if(!visible("universe",S.universe)) S.universe = unis[0][0];
+  const u = D.universes[S.universe]; const mId = u.map; const m = D.maps[mId];
+  const mapVisible = isStaff() || (m.vis==="published" && u.vis==="published");
+  const pins = Object.entries(D.pins).filter(([id,p])=>p.m===mId && visible("pin",id));
+  const markers = Object.entries(D.markers[mId]||{}).filter(([c])=>D.brought.includes(c));
+  const inner = `<div class="map-page">
+    <div class="map-top">${unis.map(([id,x])=>`<a class="chip ${id===S.universe?"on":""}" href="#/w/w1/map?universe=${id}">🪐 ${esc(x.name)}${x.vis==="gm_only"?" · SL":""}</a>`).join("")}</div>
+    ${mapVisible ? `<div class="map-vp ${S.placing?"placing":""}" id="vp"><div class="map-cv" id="cv" data-map="${mId}">
+      ${mapSvg(m.style)}
+      ${pins.map(([id,p])=>`<button class="pin ${p.vis==="gm_only"?"hidden-gm":""} ${id===pinId?"hl":""}" data-drag="pin" data-id="${id}" style="left:${p.x*100}%;top:${p.y*100}%" aria-label="${esc(p.title)}"><img src="${pinIcon(p.t)}" alt=""></button>`).join("")}
+      ${markers.map(([c,[x,y]])=>`<button class="marker" data-drag="marker" data-id="${c}" style="left:${x*100}%;top:${y*100}%">${avatar(D.characters[c].name)}<span class="nm">${esc(D.characters[c].name.split(" ")[0])}</span></button>`).join("")}
+    </div></div>
+    <div class="map-hint">${S.placing ? "Tippe auf die Karte, um den Pin zu setzen." : "Ziehen = verschieben · Pinch/Scroll = zoomen · Pin antippen = Details. Nach dem Ablegen sehen alle die neue Position."}</div>
+    <div class="map-ctrl">
+      <button class="zbtn" data-act="zoom" data-v="1.4" aria-label="Hineinzoomen">＋</button>
+      <button class="zbtn" data-act="zoom" data-v="0.7" aria-label="Herauszoomen">－</button>
+      <button class="zbtn" data-act="fit" aria-label="Ganze Karte">⤢</button>
+      <button class="zbtn" data-act="place-marker" aria-label="Charakter platzieren">🧝</button>
+      ${isStaff()?`<button class="fab" data-act="place" aria-label="Pin setzen">${S.placing?"×":"+"}</button>`:""}
+    </div>` : `<div class="content"><div class="card">Diese Karte ist nur für die Spielleitung sichtbar.</div></div>`}
+  </div>`;
+  S.mapCtx = {mId, pinId};
+  return shell("map", inner, {full:true});
+}
+function mountMap(){
+  const vp = document.getElementById("vp"), cv = document.getElementById("cv");
+  if(!vp) return;
+  const W=1600,H=1200; const r = vp.getBoundingClientRect();
+  const fit = Math.min(r.width/W, r.height/H);
+  const key = S.mapCtx.mId;
+  if(!S.map || S.lastMap!==key){ S.map={s:fit,x:(r.width-W*fit)/2,y:(r.height-H*fit)/2}; S.lastMap=key; }
+  if(S.mapCtx.pinId){ const p=D.pins[S.mapCtx.pinId]; const s=Math.max(fit*3,0.9); S.map={s,x:r.width/2-p.x*W*s,y:r.height/2-p.y*H*s}; S.mapCtx.pinId=null; }
+  const M = S.map; const minS = fit*0.8, maxS = 4;
+  const apply = ()=>{ cv.style.transform=`translate(${M.x}px,${M.y}px) scale(${M.s})`; cv.style.setProperty("--inv",1/M.s); };
+  const zoomAt = (f,cx,cy)=>{ const ns=Math.min(maxS,Math.max(minS,M.s*f)); const k=ns/M.s; M.x=cx-(cx-M.x)*k; M.y=cy-(cy-M.y)*k; M.s=ns; apply(); };
+  S.mapZoom = f=>zoomAt(f,r.width/2,r.height/2);
+  S.mapFit = ()=>{ Object.assign(M,{s:fit,x:(r.width-W*fit)/2,y:(r.height-H*fit)/2}); apply(); };
+  apply();
+  vp.addEventListener("wheel",e=>{ e.preventDefault(); const b=vp.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY*0.0022),e.clientX-b.left,e.clientY-b.top); },{passive:false});
+  const pts = new Map(); let pan=null, pinch=null, drag=null;
+  const toMap = (cx,cy)=>{ const b=vp.getBoundingClientRect(); return [ (cx-b.left-M.x)/M.s/W, (cy-b.top-M.y)/M.s/H ]; };
+  vp.addEventListener("pointerdown",e=>{
+    const el = e.target.closest("[data-drag]");
+    vp.setPointerCapture(e.pointerId);
+    pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(el && pts.size===1){ drag={el,kind:el.dataset.drag,id:el.dataset.id,sx:e.clientX,sy:e.clientY,moved:false}; return; }
+    drag=null;
+    if(pts.size===1) pan={sx:e.clientX,sy:e.clientY,ox:M.x,oy:M.y,moved:false};
+    if(pts.size===2){ const [a,b]=[...pts.values()]; pinch={d:Math.hypot(a.x-b.x,a.y-b.y)}; pan=null; }
+  });
+  vp.addEventListener("pointermove",e=>{
+    if(!pts.has(e.pointerId)) return; pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(drag){
+      const dist=Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy);
+      if(dist>6){
+        const allowed = drag.kind==="pin" ? isStaff() : canEditMarker(drag.id);
+        if(!allowed){ if(!drag.warned){ toast(drag.kind==="pin"?"Nur die Spielleitung verschiebt Pins.":"Du darfst nur eigene Charakter-Marker verschieben."); drag.warned=true; } return; }
+        drag.moved=true; const [x,y]=toMap(e.clientX,e.clientY);
+        drag.el.style.left=Math.min(100,Math.max(0,x*100))+"%"; drag.el.style.top=Math.min(100,Math.max(0,y*100))+"%";
+      }
+      return;
+    }
+    if(pinch && pts.size===2){ const [a,b]=[...pts.values()]; const d=Math.hypot(a.x-b.x,a.y-b.y); const bb=vp.getBoundingClientRect(); zoomAt(d/pinch.d,(a.x+b.x)/2-bb.left,(a.y+b.y)/2-bb.top); pinch.d=d; return; }
+    if(pan){ const dx=e.clientX-pan.sx, dy=e.clientY-pan.sy; if(Math.hypot(dx,dy)>4) pan.moved=true; M.x=pan.ox+dx; M.y=pan.oy+dy; apply(); }
+  });
+  const end = e=>{
+    pts.delete(e.pointerId);
+    if(drag){
+      const d=drag; drag=null;
+      if(d.moved){
+        const x=parseFloat(d.el.style.left)/100, y=parseFloat(d.el.style.top)/100;
+        if(d.kind==="pin"){ D.pins[d.id].x=x; D.pins[d.id].y=y; } else { D.markers[key][d.id]=[x,y]; }
+        toast("Position gespeichert – an alle Anwesenden gesendet");
+      } else if(!d.warned){ if(d.kind==="pin") openPin(d.id); else openMarker(d.id); }
+      return;
+    }
+    if(pan && !pan.moved && S.placing){ const [x,y]=toMap(e.clientX,e.clientY); S.placing=false; vp.classList.remove("placing"); openNewPin(x,y,key); }
+    if(pts.size<2) pinch=null; if(!pts.size) pan=null;
+  };
+  vp.addEventListener("pointerup",end); vp.addEventListener("pointercancel",end);
+}
+function openPin(id){
+  const p = D.pins[id];
+  sheet(`<div class="row"><img src="${pinIcon(p.t)}" width="36" height="44" alt=""><div class="grow"><h2>${esc(p.title)}</h2><div class="kind">${PIN_META[p.t][0]} · ${esc(D.maps[p.m].name)}</div></div>${gmBadge(p.vis)}</div>
+    <div class="prose" style="margin:14px 0">${p.desc?rich(p.desc):'<p class="muted">Keine Beschreibung.</p>'}</div>
+    ${linkedHtml("pin",id)}
+    <div class="row" style="margin-top:12px">${isStaff()?`<button class="btn grow" data-act="toast" data-msg="Pin bearbeiten: Typ, Titel, Beschreibung, Sichtbarkeit">Bearbeiten</button>`:""}<button class="btn grow" data-act="close-sheet">Schließen</button></div>`);
+}
+function openMarker(c){
+  const ch = D.characters[c];
+  sheet(`<div class="row">${avatar(ch.name,"lg")}<div><h2>${esc(ch.name)}</h2><div class="muted">${esc(ch.cls)} · gespielt von ${USERS[ch.owner]}</div></div></div>
+    <div class="row" style="margin-top:16px"><a class="btn grow" href="#/w/w1/characters/${c}" data-act="close-sheet-nav">Charakterbogen</a>
+    ${canEditMarker(c)?`<button class="btn danger" data-act="toast" data-msg="Marker von der Karte entfernt">Entfernen</button>`:""}</div>`);
+}
+function openNewPin(x,y,mId){
+  S.newPin={x,y,m:mId,t:"city",vis:"gm_only"};
+  const types=Object.keys(PIN_META);
+  sheet(`<h2>Neuer Pin</h2>
+    <div class="type-grid" style="margin:14px 0" id="tg">${types.map(t=>`<button data-act="ptype" data-v="${t}" class="${t==="city"?"on":""}"><img src="${pinIcon(t)}" alt="">${PIN_META[t][0]}</button>`).join("")}</div>
+    <div class="stack"><input id="np-title" placeholder="Titel (Pflicht)"><textarea placeholder="Beschreibung (optional, @ für Erwähnungen)"></textarea>
+    <div class="toggle"><span>Veröffentlicht <span class="small muted">(aus = nur Spielleitung)</span></span><button class="sw" data-act="sw"></button></div>
+    <button class="btn primary" data-act="save-pin">Pin setzen</button></div>`);
+}
+
+/* ---------------- Chat ---------------- */
+function activeChannels(){ return D.channels.filter(c=>!c.archived); }
+function viewChat(ch,th){
+  const open = !!ch; const mobile = matchMedia("(max-width:767px)").matches;
+  if(!ch && !mobile) ch = activeChannels()[0].id;
+  const channel = D.channels.find(c=>c.id===ch);
+  const thread = th ? D.threads.find(t=>t.id===th) : null;
+  const list = `<div class="chan-list">
+    <div class="row" style="justify-content:space-between;padding:6px 14px 10px"><b>Kanäle</b>${isStaff()?'<button class="btn sm" data-act="new-channel">+ Kanal</button>':""}</div>
+    ${activeChannels().map(c=>{
+      const ths = D.threads.filter(t=>t.ch===c.id); const ex = !!S.expanded[c.id];
+      return `<div class="chan ${c.id===ch&&!th?"on":""}">
+          ${ths.length?`<button class="chev ${ex?"open":""}" data-act="chev" data-id="${c.id}" aria-label="Threads ${ex?"zuklappen":"aufklappen"}" aria-expanded="${ex}">▶</button>`:'<span class="chev-sp"></span>'}
+          <a href="#/w/w1/chat/${c.id}"><span class="hash">#</span>${esc(c.name)}${ths.length&&!ex?` <span class="badge">${ths.length}</span>`:""}</a>
+          ${isStaff()?`<button class="more" data-act="chan-menu" data-id="${c.id}" aria-label="Kanal verwalten">⋯</button>`:""}
+        </div>
+        ${ex?ths.map(t=>`<div class="thr ${t.id===th?"on":""}"><a href="#/w/w1/chat/${c.id}/${t.id}">🧵 ${esc(t.title)}</a></div>`).join(""):""}`;
+    }).join("")}
+    ${isStaff()?`<details style="padding:14px"><summary class="small muted">Archivierte Kanäle (${D.channels.filter(c=>c.archived).length})</summary>
+      ${D.channels.filter(c=>c.archived).map(c=>`<div class="row" style="justify-content:space-between;min-height:44px"><span class="muted"># ${esc(c.name)}</span><button class="btn sm" data-act="restore" data-id="${c.id}">Wiederherstellen</button></div>`).join("")}</details>`:""}
+  </div>`;
+  let stream = "";
+  if(channel){
+    const msgs = D.msgs.filter(m=>m.ch===ch && (m.th||null)===(th||null));
+    stream = `<div class="stream">
+      <div class="stream-h">
+        <a class="btn icon sm stream-back" href="${th?`#/w/w1/chat/${ch}`:"#/w/w1/chat"}" aria-label="Zurück">‹</a>
+        <div class="grow"><b>${thread?"🧵 "+esc(thread.title):"# "+esc(channel.name)}</b>${thread?`<div class="kind">in #${esc(channel.name)}</div>`:""}</div>
+      </div>
+      <div class="msgs" id="msgs">${msgs.map(msgHtml).join("") || '<div class="empty">Noch keine Nachrichten.</div>'}</div>
+      <div class="composer" style="position:relative">
+        <div id="plus-pop"></div>
+        <button class="cb" data-act="plus" aria-label="Mehr">＋</button>
+        <button class="cb" data-act="dice" aria-label="Würfeln">🎲</button>
+        <textarea class="in" id="chat-in" rows="1" placeholder="Nachricht an ${thread?"🧵 "+esc(thread.title):"#"+esc(channel.name)}"></textarea>
+        <button class="cb send" data-act="send" aria-label="Senden">➤</button>
+      </div></div>`;
+  }
+  S.chatCtx={ch,th};
+  return shell("chat", `<div class="chat ${open?"open":""}">${list}${stream}</div>`, {full:true, chatFocus: open && mobile});
+}
+function msgHtml(m){
+  const name = USERS[m.u]; const canDel = !m.dice && !m.opens && (m.u===ME || isStaff());
+  let body = m.text ? `<div class="txt">${chatText(m.text)}</div>` : "";
+  if(m.dice) body += `<div class="dice">🎲 ${m.dice.expr} → ${m.dice.vals.join(", ")}${m.dice.mod?(m.dice.mod>0?" + ":" − ")+Math.abs(m.dice.mod):""} = <b>${m.dice.sum}</b></div>`;
+  if(m.opens){ const t=D.threads.find(x=>x.id===m.opens); const n=D.msgs.filter(x=>x.th===t.id).length;
+    body += `<a class="thread-card" href="#/w/w1/chat/${m.ch}/${t.id}">🧵 <b>${esc(t.title)}</b> <span class="muted">· ${n} Antworten ›</span></a>`; }
+  return `<div class="msg">${avatar(name)}<div class="body"><div class="who">${name}<span class="when">${m.t}</span></div>${body}</div>
+    ${canDel?`<button class="del" data-act="del-msg" data-id="${m.id}" aria-label="Löschen">🗑</button>`:""}</div>`;
+}
+function nowT(){ const d=new Date(); return d.toTimeString().slice(0,5); }
+function openDice(){
+  const d=S.dice; const dies=[4,6,8,10,12,20,100];
+  sheet(`<h2>Würfeln</h2>
+    <div class="dice-dies" style="margin:14px 0">${dies.map(m=>`<button data-act="die" data-v="${m}" class="${d.m===m?"on":""}">d${m}</button>`).join("")}</div>
+    <div class="row" style="justify-content:space-between;margin:10px 0"><span>Anzahl</span><div class="stepper"><button data-act="dn" data-v="-1">−</button><span>${d.n}</span><button data-act="dn" data-v="1">＋</button></div></div>
+    <div class="row" style="justify-content:space-between;margin:10px 0"><span>Modifikator</span><div class="stepper"><button data-act="dmod" data-v="-1">−</button><span>${d.mod>=0?"+":""}${d.mod}</span><button data-act="dmod" data-v="1">＋</button></div></div>
+    <div class="toggle"><span>Im Chat posten</span><button class="sw ${d.post?"on":""}" data-act="dpost"></button></div>
+    <button class="btn primary" style="width:100%;margin-top:10px" data-act="roll">${d.n}d${d.m}${d.mod?(d.mod>0?"+":"")+d.mod:""} würfeln</button>
+    <p class="small muted">Das Ergebnis entsteht auf dem Server.</p>`);
+}
+
+/* ---------------- Menü ---------------- */
+function viewMenu(){
+  const mem = members();
+  const invites = isGM() ? `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Einladungslinks</h2></div>
+      <div class="list">${D.invites.map((l,i)=>`<div class="item"><div class="grow"><code>${l.code}</code><div class="kind">${l.validity} · ${l.uses} Nutzungen</div></div>${l.revoked?'<span class="badge">widerrufen</span>':`<button class="btn sm" data-act="copy">Kopieren</button><button class="btn sm danger" data-act="revoke" data-i="${i}">Widerrufen</button>`}</div>`).join("")}</div>
+      <div class="row" style="margin-top:10px"><select id="inv-v" style="flex:1"><option>1 Tag</option><option selected>7 Tage</option><option>unbegrenzt</option></select><button class="btn primary" data-act="new-invite">Link erstellen</button></div></div>` : "";
+  const myChars = Object.entries(D.characters).filter(([,c])=>c.owner===ME);
+  return shell("menu", `
+    <h1 style="font-size:24px;margin-bottom:14px">Menü</h1>
+    <div class="grid2">
+      <div class="stack">
+        <div class="card"><h2>Mitglieder</h2><div class="list">${mem.map(x=>`<div class="item">${avatar(USERS[x.u])}<div class="grow">${USERS[x.u]}${x.u===ME?' <span class="kind">(du)</span>':""}<div class="kind">${ROLE_LABEL[x.r]}</div></div>
+          ${isGM() && x.r!=="game_master" ? `<button class="btn sm" data-act="toast" data-msg="${x.r==="player"?USERS[x.u]+" ist jetzt Master":USERS[x.u]+" ist jetzt Player"}">${x.r==="player"?"Zum Master":"Zu Player"}</button><button class="btn sm danger" data-act="toast" data-msg="${USERS[x.u]} entfernt (archiviert, nichts gelöscht)">✕</button>`:""}</div>`).join("")}</div></div>
+        ${invites}
+        ${isStaff()?`<div class="card stack"><h2 style="margin:0">Welt-Einstellungen</h2><input value="Die Splitterlande"><textarea>Eine zerbrochene Welt aus schwebenden Inseln.</textarea><p class="small muted">Weltbeschreibung ohne @-Erwähnungen.</p><button class="btn" data-act="toast" data-msg="Gespeichert">Speichern</button>
+          ${isGM()?'<button class="btn danger" data-act="toast" data-msg="Welt löschen: Bestätigung mit Weltnamen nötig">Welt löschen</button>':""}</div>`:""}
+      </div>
+      <div class="stack">
+        <div class="card"><h2>Charaktere der Welt</h2><div class="list">${D.brought.map(c=>`<a class="item" href="#/w/w1/characters/${c}">${avatar(D.characters[c].name)}<div class="grow">${esc(D.characters[c].name)}<div class="kind">${esc(D.characters[c].cls)} · ${USERS[D.characters[c].owner]}</div></div>›</a>`).join("")}</div></div>
+        <div class="card"><h2>Meine Charaktere</h2><div class="list">${myChars.map(([id,c])=>`<div class="item">${avatar(c.name)}<div class="grow">${esc(c.name)}<div class="kind">in dieser Welt mitgebracht</div></div><a class="btn sm" href="#/w/w1/journal/${id}">Tagebuch</a><a class="btn sm" href="#/characters/${id}">Bearbeiten</a></div>`).join("")}</div>
+          <div class="row" style="margin-top:10px"><button class="btn grow" data-act="toast" data-msg="Neuen Charakter anlegen (weltunabhängig)">+ Charakter</button><button class="btn grow" data-act="toast" data-msg="Charakter in diese Welt mitbringen">Mitbringen</button></div></div>
+        <div class="card list">
+          ${!isGM()?'<button class="item" style="width:100%" data-act="toast" data-msg="Ausgetreten – Mitgliedschaft archiviert">🚪 <div class="grow" style="text-align:left">Welt verlassen</div></button>':""}
+          <a class="item" href="#/">↩ <div class="grow">Abmelden</div></a>
+        </div>
+      </div>
+    </div>`);
+}
+
+/* ---------------- Charaktere & Tagebuch ---------------- */
+const ATTR = ["STÄ","GES","KON","INT","WEI","CHA"];
+const ATTR_LONG = ["Stärke","Geschicklichkeit","Konstitution","Intelligenz","Weisheit","Charisma"];
+const LVL = {untalented:"untalentiert",untrained:"ungeübt",trained:"geübt",expertise:"Expertise"};
+const UNTALENTED_MALUS = -4;
+const UNTRAINED_MALUS = -2;
+const PROF_DEFAULT = 2, PROF_MIN = 0, PROF_MAX = 10;
+const signed = n => (n>=0?"+":"")+n;
+function skillBonus(c,s){
+  const base = Math.floor((c.attrs[s.attr]-10)/2);
+  const prof = c.prof ?? PROF_DEFAULT;
+  return base + ({untalented:UNTALENTED_MALUS, untrained:UNTRAINED_MALUS, trained:prof, expertise:2*prof})[s.level];
+}
+const SKILL_NAME_MAX = 60;
+const SKILL_MAX = 30;
+function skillRowEdit(s,i){
+  return `<div class="skill-edit" data-skill="${i}">
+    <input class="sk-name" data-sk="name" maxlength="${SKILL_NAME_MAX}" placeholder="Fertigkeit, z. B. Schlösser knacken" value="${esc(s.name)}">
+    <div class="sk-row">
+      <select data-sk="attr" aria-label="Skaliert mit">${ATTR_LONG.map((l,a)=>`<option value="${a}" ${s.attr===a?"selected":""}>${l}</option>`).join("")}</select>
+      <select data-sk="level" aria-label="Übungsgrad">${Object.entries(LVL).map(([k,l])=>`<option value="${k}" ${s.level===k?"selected":""}>${l}</option>`).join("")}</select>
+      <button class="btn icon sm danger" data-act="sk-del" data-i="${i}" aria-label="Fertigkeit entfernen">✕</button>
+    </div></div>`;
+}
+const ABILITY_TEXT_MAX = 120;
+const ABILITY_MAX = 30;
+function abilityRowEdit(f,i){
+  return `<div class="skill-edit" data-ability="${i}">
+    <input class="sk-name" data-ab="text" maxlength="${ABILITY_TEXT_MAX}" placeholder="Fähigkeit, z. B. Zweitwaffe ziehen" value="${esc(f.text)}">
+    <div class="sk-row">
+      <select data-ab="attr" aria-label="Skaliert mit">${ATTR_LONG.map((l,a)=>`<option value="${a}" ${f.attr===a?"selected":""}>${l}</option>`).join("")}</select>
+      <button class="btn icon sm danger" data-act="ab-del" data-i="${i}" aria-label="Fähigkeit entfernen">✕</button>
+    </div></div>`;
+}
+function duplicateText(list){
+  return list.find((n,i)=>list.findIndex(m=>m.toLowerCase()===n.toLowerCase())!==i);
+}
+const mod = v => { const m=Math.floor((v-10)/2); return (m>=0?"+":"")+m; };
+function viewWorldChar(id){
+  const c = D.characters[id];
+  if(!c || !D.brought.includes(id)) return shell("menu", notFound());
+  S.skillDraftFor = null;
+  const mine = c.owner===ME;
+  return shell("menu", `
+    <a class="back" href="#/w/w1/menu">‹ Menü</a>
+    <div class="row" style="margin-bottom:14px">${avatar(c.name,"lg")}<div class="grow"><h1 style="font-size:24px">${esc(c.name)}</h1><div class="muted">${esc(c.cls)} · gespielt von ${USERS[c.owner]}</div></div>
+      ${mine?`<a class="btn sm" href="#/characters/${id}">Bearbeiten</a>`:""}</div>
+    <div class="grid2"><div class="stack">
+      <div class="attrs">${c.attrs.map((v,i)=>`<div class="attr"><div class="k">${ATTR[i]}</div><div class="v">${v}</div><div class="m">${mod(v)}</div></div>`).join("")}</div>
+      <div class="card"><h2>Fertigkeiten</h2>
+        ${c.sk.length ? c.sk.map(s=>`<div class="skill"><span class="grow">${esc(s.name)} <span class="kind">${ATTR[s.attr]} ${mod(c.attrs[s.attr])} · <span class="lvl ${s.level}">${LVL[s.level]}</span></span></span><b class="sk-total">${signed(skillBonus(c,s))}</b></div>`).join("") : '<div class="empty">Noch keine Fertigkeiten.</div>'}</div>
+      <div class="card"><h2>Fähigkeiten</h2>
+        ${c.ab.length ? c.ab.map(f=>`<div class="skill"><span class="grow">${esc(f.text)} <span class="kind">${ATTR[f.attr]}</span></span><b class="sk-total">${mod(c.attrs[f.attr])}</b></div>`).join("") : '<div class="empty">Noch keine Fähigkeiten.</div>'}</div>
+      <div class="card"><dl class="fields"><dt>Persönlichkeit</dt><dd>${esc(c.pers)}</dd><dt>Ideale</dt><dd>${esc(c.ideals)}</dd><dt>Bindungen</dt><dd>${esc(c.bonds)}</dd><dt>Makel</dt><dd>${esc(c.flaws)}</dd></dl></div>
+      <div class="card prose"><h2>Bio</h2>${rich(c.bio)}</div>
+    </div><div class="stack">
+      <div class="card"><h2>Bilder (${c.imgs}/10)</h2><div class="thumbs">${Array.from({length:c.imgs},()=>'<div class="thumb"></div>').join("")||'<span class="muted small">Keine Bilder.</span>'}</div></div>
+      ${linkedHtml("character",id)}
+    </div></div>`);
+}
+function viewCharEdit(id){
+  const c = D.characters[id];
+  if(!c || c.owner!==ME) return shell("menu", `<a class="back" href="#/w/w1/menu">‹ Menü</a><div class="card"><h2>Nicht gefunden</h2><p class="muted">Nur der Besitzer bearbeitet seinen Charakter.</p></div>`);
+  if(S.skillDraftFor!==id){ S.skillDraft = c.sk.map(s=>({...s})); S.abilityDraft = c.ab.map(f=>({...f})); S.skillDraftFor = id; }
+  return shell("menu", `
+    <a class="back" href="#/w/w1/characters/${id}">‹ Zurück</a>
+    <h1 style="font-size:22px;margin-bottom:12px">Charakter bearbeiten</h1>
+    <div class="grid2"><div class="stack">
+      <div class="row">${avatar(c.name,"lg")}<button class="btn sm" data-act="toast" data-msg="Profilbild: JPG/PNG/WebP, max. 10 MB">Profilbild</button></div>
+      <label class="stack small muted">Name<input value="${esc(c.name)}"></label>
+      <label class="stack small muted">Klasse (Freitext)<input value="${esc(c.cls)}"></label>
+      <label class="stack small muted">Übungsbonus (${PROF_MIN}–${PROF_MAX}, Standard +${PROF_DEFAULT})<input type="number" id="prof" min="${PROF_MIN}" max="${PROF_MAX}" value="${c.prof ?? PROF_DEFAULT}"></label>
+      <div class="attrs">${c.attrs.map((v,i)=>`<label class="attr"><div class="k">${ATTR[i]}</div><input type="number" min="1" max="30" value="${v}" data-attr="${i}" style="text-align:center;padding:6px"><div class="m" id="mod${i}">${mod(v)}</div></label>`).join("")}</div>
+      <div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">Fertigkeiten</h2><button class="btn icon sm primary" data-act="sk-add" aria-label="Fertigkeit hinzufügen">＋</button></div>
+        <div id="sk-list" class="stack" style="gap:10px">${S.skillDraft.map(skillRowEdit).join("") || '<div class="empty">Noch keine Fertigkeiten. Mit ＋ hinzufügen.</div>'}</div>
+        <p class="small muted">Freitext-Name, Übungsgrad und das Attribut, mit dem die Fertigkeit skaliert.</p></div>
+      <div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">Fähigkeiten</h2><button class="btn icon sm primary" data-act="ab-add" aria-label="Fähigkeit hinzufügen">＋</button></div>
+        <div id="ab-list" class="stack" style="gap:10px">${S.abilityDraft.map(abilityRowEdit).join("") || '<div class="empty">Noch keine Fähigkeiten. Mit ＋ hinzufügen.</div>'}</div>
+        <p class="small muted">Freitext und das Attribut, mit dem die Fähigkeit skaliert. Kein Übungsbonus.</p></div>
+      ${["Persönlichkeitsmerkmale","Ideale","Bindungen","Makel"].map((l,i)=>`<label class="stack small muted">${l}<textarea>${esc([c.pers,c.ideals,c.bonds,c.flaws][i])}</textarea></label>`).join("")}
+      <label class="stack small muted">Bio (Rich-Text mit @)<div class="editor prose" contenteditable="true" style="border-radius:12px">${rich(c.bio)}</div></label>
+      <button class="btn primary" data-act="save-char" data-id="${id}">Speichern</button>
+    </div><div class="stack">
+      <div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Bilder ${c.imgs}/10</h2><button class="btn sm" data-act="toast" data-msg="${c.imgs>=10?"Höchstens 10 Bilder":"Bild hinzufügen"}">+ Bild</button></div></div>
+      ${linkedHtml("character",id)}
+      <p class="small muted">Verknüpfungen aus Erwähnungen in der Bio werden beim Speichern neu berechnet.</p>
+    </div></div>`);
+}
+function readSkillDraft(){
+  document.querySelectorAll("[data-skill]").forEach(row=>{
+    const s = S.skillDraft[parseInt(row.dataset.skill)];
+    s.name = row.querySelector("[data-sk=name]").value;
+    s.attr = parseInt(row.querySelector("[data-sk=attr]").value);
+    s.level = row.querySelector("[data-sk=level]").value;
+  });
+}
+function renderSkillDraft(focusLast){
+  const list = document.getElementById("sk-list");
+  list.innerHTML = S.skillDraft.map(skillRowEdit).join("") || '<div class="empty">Noch keine Fertigkeiten. Mit ＋ hinzufügen.</div>';
+  if(focusLast) list.querySelector("[data-skill]:last-child [data-sk=name]")?.focus();
+}
+function readAbilityDraft(){
+  document.querySelectorAll("[data-ability]").forEach(row=>{
+    const f = S.abilityDraft[parseInt(row.dataset.ability)];
+    f.text = row.querySelector("[data-ab=text]").value;
+    f.attr = parseInt(row.querySelector("[data-ab=attr]").value);
+  });
+}
+function renderAbilityDraft(focusLast){
+  const list = document.getElementById("ab-list");
+  list.innerHTML = S.abilityDraft.map(abilityRowEdit).join("") || '<div class="empty">Noch keine Fähigkeiten. Mit ＋ hinzufügen.</div>';
+  if(focusLast) list.querySelector("[data-ability]:last-child [data-ab=text]")?.focus();
+}
+function viewJournal(cid){
+  const c = D.characters[cid];
+  if(!c || c.owner!==ME) return shell("menu", notFound());
+  const entries = D.journal.filter(j=>j.c===cid);
+  return shell("menu", `
+    <a class="back" href="#/w/w1/menu">‹ Menü</a>
+    <div class="row" style="margin-bottom:12px">${avatar(c.name)}<div><h1 style="font-size:22px">Tagebuch</h1><div class="muted small">${esc(c.name)} · Die Splitterlande</div></div></div>
+    <div class="hint" style="margin-bottom:12px">„Privat“ siehst nur du. „Mit Spielleitung geteilt“ sehen du, der Game Master und die Master. Einträge erzeugen keine Verknüpfungen.</div>
+    <div class="stack">
+      ${entries.map(j=>`<div class="card"><div class="row"><b class="grow">${esc(j.title||"Ohne Titel")}</b><button class="chip jpill ${j.vis==="shared_with_gm"?"gm":""}" data-act="jvis-toggle" data-id="${j.id}" aria-label="Sichtbarkeit ändern">${j.vis==="private"?"🔒 privat":"👁 mit Spielleitung geteilt"} <span class="muted">⇄</span></button></div><div class="prose" style="margin-top:8px">${j.body}</div></div>`).join("")}
+      <div class="card stack"><h2 style="margin:0">Neuer Eintrag</h2><input id="j-title" placeholder="Titel (optional)"><textarea id="j-body" placeholder="Was ist passiert?"></textarea>
+        <div class="chips"><button class="chip on" data-act="jvis" data-v="private">🔒 privat</button><button class="chip" data-act="jvis" data-v="shared_with_gm">👁 mit Spielleitung teilen</button></div>
+        <button class="btn primary" data-act="save-journal" data-c="${cid}">Speichern</button></div>
+    </div>`);
+}
+
+/* ---------------- Router ---------------- */
+function route(){
+  const raw = location.hash.slice(1) || "/";
+  const [path, query] = raw.split("?");
+  const p = path.split("/").filter(Boolean);
+  closeSheet();
+  let html;
+  if(p.length===0) html = viewLogin();
+  else if(p[0]==="onboarding") html = viewOnboarding();
+  else if(p[0]==="invite") html = viewInvite();
+  else if(p[0]==="characters") html = viewCharEdit(p[1]);
+  else if(p[0]==="w"){
+    const sec = p[2];
+    if(!sec) html = viewHub();
+    else if(sec==="articles") html = p[4]==="edit" ? viewArticleEdit(p[3]) : viewArticle(p[3]);
+    else if(sec==="quests") html = viewQuest(p[3]);
+    else if(sec==="universes") html = viewUniverse(p[3]);
+    else if(sec==="map") html = viewMap(query);
+    else if(sec==="chat") html = viewChat(p[3],p[4]);
+    else if(sec==="menu") html = viewMenu();
+    else if(sec==="characters") html = p[3] ? viewWorldChar(p[3]) : viewMenu();
+    else if(sec==="journal") html = viewJournal(p[3]);
+  }
+  document.getElementById("app").innerHTML = html || viewLogin();
+  if(p[2]==="map") mountMap();
+  if(p[2]==="chat"){ const m=document.getElementById("msgs"); if(m) m.scrollTop=m.scrollHeight; }
+  if(p[2]==="articles" && p[4]==="edit") mountEditor();
+  window.scrollTo(0,0);
+}
+window.addEventListener("hashchange", route);
+let lastMobile = matchMedia("(max-width:767px)").matches;
+window.addEventListener("resize", ()=>{
+  const mob = matchMedia("(max-width:767px)").matches;
+  if(mob!==lastMobile){ lastMobile=mob; S.map=null; route(); }
+});
+
+/* ---------------- Editor: @-Erwähnungen ---------------- */
+function mentionables(){
+  const out=[];
+  for(const [id,a] of Object.entries(D.articles)) if(visible("article",id)) out.push(["article",id,a.title]);
+  for(const [id,q] of Object.entries(D.quests)) if(visible("quest",id)) out.push(["quest",id,q.title]);
+  D.brought.forEach(c=>out.push(["character",c,D.characters[c].name]));
+  for(const [id,u] of Object.entries(D.universes)) if(visible("universe",id)) out.push(["universe",id,u.name]);
+  return out;
+}
+function mountEditor(){
+  const ed = document.getElementById("editor"), box = document.getElementById("suggest");
+  if(!ed) return;
+  let ctx = null;
+  const update = ()=>{
+    const sel = getSelection(); if(!sel.rangeCount || !ed.contains(sel.anchorNode) || sel.anchorNode.nodeType!==3){ box.innerHTML=""; ctx=null; return; }
+    const txt = sel.anchorNode.textContent.slice(0, sel.anchorOffset);
+    const m = txt.match(/@([^@\n]{0,40})$/);
+    if(!m){ box.innerHTML=""; ctx=null; return; }
+    const q = m[1]; ctx = {node:sel.anchorNode, end:sel.anchorOffset, start:sel.anchorOffset-m[0].length, q};
+    const ql = q.toLowerCase();
+    const hits = mentionables().filter(([,,t])=>t.toLowerCase().includes(ql))
+      .sort((a,b)=>{ const wa=a[2].toLowerCase().split(/\s+/).some(w=>w.startsWith(ql))?0:1, wb=b[2].toLowerCase().split(/\s+/).some(w=>w.startsWith(ql))?0:1; return wa-wb || a[2].localeCompare(b[2]); })
+      .slice(0,10);
+    box.innerHTML = `<div class="suggest">${hits.map(([k,id,t])=>`<button data-act="pick" data-k="${k}" data-id="${id}"><span>${esc(t)}</span><span class="kind">${kindLabel(k,id)}</span></button>`).join("")}
+      ${!hits.length && q.trim().length>=2 ? `<button data-act="pick-new" class="new">＋ Neuen Artikel „${esc(q.trim())}“ anlegen</button>` : ""}
+      ${!hits.length && q.trim().length<2 ? `<div class="empty">Tippe weiter …</div>`:""}</div>`;
+  };
+  ed.addEventListener("keyup", update); ed.addEventListener("click", update);
+  ed.addEventListener("paste", e=>{ e.preventDefault(); const t=e.clipboardData.getData("text/plain"); document.execCommand("insertText",false,t); toast("Eingefügt als Text – Bilder und Tabellen verworfen"); });
+  S.insertMention = (k,id)=>{
+    if(!ctx) return;
+    const r = document.createRange(); r.setStart(ctx.node,ctx.start); r.setEnd(ctx.node,ctx.end); r.deleteContents();
+    const span = document.createElement("span"); span.className="mention"+(k==="article"&&!D.articles[id].edited?" stub":""); span.contentEditable="false"; span.dataset.k=k; span.dataset.id=id; span.textContent=title(k,id);
+    r.insertNode(span); const sp=document.createTextNode("\u00a0"); span.after(sp);
+    const s=getSelection(); s.removeAllRanges(); const r2=document.createRange(); r2.setStartAfter(sp); s.addRange(r2);
+    box.innerHTML=""; ctx=null; ed.focus();
+  };
+  S.newStub = ()=>{ const t=ctx.q.trim(); const id="a"+(nextId++); D.articles[id]={title:t,tpl:"none",vis:"gm_only",edited:false,body:"",f:{}}; S.insertMention("article",id); toast(`Artikel „${t}“ angelegt – rot, bis er Inhalt hat`); };
+  document.querySelectorAll("[data-cmd]").forEach(b=>b.addEventListener("mousedown",e=>{
+    e.preventDefault(); const c=b.dataset.cmd;
+    if(c==="createLink"){ const u=prompt("Externer Link (https://…)"); if(u) document.execCommand("createLink",false,u); }
+    else document.execCommand(c,false,b.dataset.v||null);
+  }));
+}
+
+/* ---------------- Aktionen ---------------- */
+document.addEventListener("click", e=>{
+  const a = e.target.closest("[data-act]"); if(!a) return;
+  if(["SELECT","INPUT","TEXTAREA","OPTION"].includes(e.target.tagName)) return;
+  const act = a.dataset.act;
+  if(act==="close-sheet"){ if(e.target===a || a.tagName==="BUTTON") closeSheet(); return; }
+  if(act==="close-sheet-nav"){ closeSheet(); return; }
+  if(act==="toast"){ toast(a.dataset.msg); if(a.tagName!=="A") e.preventDefault(); return; }
+  e.preventDefault();
+  switch(act){
+    case "afilter": S.articleFilter=a.dataset.v; route(); break;
+    case "chev": S.expanded[a.dataset.id]=!S.expanded[a.dataset.id]; route(); break;
+    case "zoom": S.mapZoom && S.mapZoom(parseFloat(a.dataset.v)); break;
+    case "fit": S.mapFit && S.mapFit(); break;
+    case "place": S.placing=!S.placing; route(); break;
+    case "place-marker": {
+      const mine = D.brought.filter(c=>D.characters[c].owner===ME || isStaff());
+      const onMap = D.markers[S.mapCtx.mId]||{};
+      sheet(`<h2>Charakter auf Karte setzen</h2><p class="small muted">Pro Charakter höchstens ein Marker pro Karte.</p><div class="list">${mine.map(c=>`<button class="item" style="width:100%" data-act="add-marker" data-id="${c}" ${onMap[c]?"disabled":""}>${avatar(D.characters[c].name)}<div class="grow" style="text-align:left">${esc(D.characters[c].name)}<div class="kind">${onMap[c]?"schon auf dieser Karte":USERS[D.characters[c].owner]}</div></div></button>`).join("")}</div>`);
+      break; }
+    case "add-marker": if(a.disabled) break; (D.markers[S.mapCtx.mId] ||= {})[a.dataset.id]=[.5,.5]; closeSheet(); route(); toast("Marker in der Kartenmitte platziert"); break;
+    case "ptype": S.newPin.t=a.dataset.v; document.querySelectorAll("#tg button").forEach(b=>b.classList.toggle("on",b===a)); break;
+    case "sw": a.classList.toggle("on"); break;
+    case "save-pin": {
+      const t=document.getElementById("np-title").value.trim();
+      if(!t){ toast("Titel ist Pflicht"); break; }
+      const id="p"+(nextId++); D.pins[id]={m:S.newPin.m,t:S.newPin.t,title:t,x:S.newPin.x,y:S.newPin.y,vis:"gm_only",desc:""};
+      closeSheet(); route(); toast("Pin gesetzt (nur Spielleitung)"); break; }
+    case "new-channel": sheet(`<h2>Neuer Kanal</h2><div class="stack" style="margin-top:12px"><input id="ch-name" placeholder="Kanalname (max. 80 Zeichen)" maxlength="80"><button class="btn primary" data-act="save-channel">Anlegen</button></div>`); break;
+    case "save-channel": {
+      const n=document.getElementById("ch-name").value.trim();
+      if(!n) break; if(activeChannels().some(c=>c.name.toLowerCase()===n.toLowerCase())){ toast("Ein aktiver Kanal mit diesem Namen existiert schon"); break; }
+      const id="ch"+(nextId++); D.channels.splice(activeChannels().length,0,{id,name:n,archived:false}); closeSheet(); location.hash=`#/w/w1/chat/${id}`; break; }
+    case "chan-menu": {
+      const c=D.channels.find(x=>x.id===a.dataset.id);
+      sheet(`<h2># ${esc(c.name)}</h2><div class="list" style="margin-top:10px">
+        <button class="item" style="width:100%" data-act="ch-rename" data-id="${c.id}">✏️ Umbenennen</button>
+        <button class="item" style="width:100%" data-act="ch-move" data-id="${c.id}" data-v="-1">⬆️ Nach oben</button>
+        <button class="item" style="width:100%" data-act="ch-move" data-id="${c.id}" data-v="1">⬇️ Nach unten</button>
+        <button class="item" style="width:100%;color:#ffb3b3" data-act="ch-archive" data-id="${c.id}">🗄 Archivieren</button></div>
+        <p class="small muted">Archivieren blendet den Kanal für alle aus. Nachrichten und Würfe bleiben erhalten.</p>`); break; }
+    case "ch-rename": { const c=D.channels.find(x=>x.id===a.dataset.id); const n=prompt("Neuer Name",c.name); if(n&&n.trim()){ c.name=n.trim().slice(0,80); } closeSheet(); route(); break; }
+    case "ch-move": { const i=D.channels.findIndex(x=>x.id===a.dataset.id), j=i+parseInt(a.dataset.v); if(j>=0&&j<D.channels.length&&!D.channels[j].archived){ [D.channels[i],D.channels[j]]=[D.channels[j],D.channels[i]]; } closeSheet(); route(); break; }
+    case "ch-archive": { if(activeChannels().length<=1){ toast("Der letzte aktive Kanal kann nicht archiviert werden"); break; } D.channels.find(x=>x.id===a.dataset.id).archived=true; closeSheet(); location.hash="#/w/w1/chat"; route(); toast("Kanal archiviert"); break; }
+    case "restore": D.channels.find(x=>x.id===a.dataset.id).archived=false; route(); toast("Kanal wiederhergestellt"); break;
+    case "plus": { const pop=document.getElementById("plus-pop"); pop.innerHTML = pop.innerHTML ? "" : `<div class="pop">${S.chatCtx.th?'<div class="empty">In einem Thread gibt es keine Unter-Threads.</div>':'<button data-act="new-thread">🧵 Thread starten</button>'}</div>`; break; }
+    case "new-thread": sheet(`<h2>Thread starten</h2><div class="stack" style="margin-top:12px"><input id="th-name" placeholder="Titel des Threads" maxlength="80"><button class="btn primary" data-act="save-thread">Starten</button></div>`); break;
+    case "save-thread": { const n=document.getElementById("th-name").value.trim(); if(!n) break; const id="t"+(nextId++); const ch=S.chatCtx.ch;
+      D.threads.push({id,ch,title:n}); D.msgs.push({id:nextId++,ch,th:null,u:ME,t:nowT(),text:"",opens:id}); S.expanded[ch]=true; closeSheet(); location.hash=`#/w/w1/chat/${ch}/${id}`; break; }
+    case "send": { const inp=document.getElementById("chat-in"); const t=inp.value.trim(); if(!t) break; D.msgs.push({id:nextId++,ch:S.chatCtx.ch,th:S.chatCtx.th||null,u:ME,t:nowT(),text:t.slice(0,2000)}); route(); document.getElementById("chat-in")?.focus(); break; }
+    case "dice": openDice(); break;
+    case "die": S.dice.m=parseInt(a.dataset.v); openDice(); break;
+    case "dn": S.dice.n=Math.min(100,Math.max(1,S.dice.n+parseInt(a.dataset.v))); openDice(); break;
+    case "dmod": S.dice.mod=Math.max(-20,Math.min(20,S.dice.mod+parseInt(a.dataset.v))); openDice(); break;
+    case "dpost": S.dice.post=!S.dice.post; openDice(); break;
+    case "roll": { const d=S.dice; const vals=Array.from({length:d.n},()=>1+Math.floor(Math.random()*d.m)); const sum=vals.reduce((x,y)=>x+y,0)+d.mod;
+      const expr=`${d.n}d${d.m}${d.mod?(d.mod>0?"+":"")+d.mod:""}`; closeSheet();
+      if(d.post){ D.msgs.push({id:nextId++,ch:S.chatCtx.ch,th:S.chatCtx.th||null,u:ME,t:nowT(),text:"",dice:{expr,vals,mod:d.mod,sum}}); route(); }
+      else toast(`🎲 ${expr} → ${vals.join(", ")} = ${sum} (nur für dich)`); break; }
+    case "del-msg": { const i=D.msgs.findIndex(m=>m.id==a.dataset.id); if(i>=0) D.msgs.splice(i,1); route(); toast("Nachricht gelöscht"); break; }
+    case "copy": toast("Link kopiert"); break;
+    case "revoke": D.invites[a.dataset.i].revoked=true; route(); toast("Link widerrufen"); break;
+    case "new-invite": D.invites.unshift({code:Math.random().toString(36).slice(2,6)+"…"+Math.random().toString(36).slice(2,6),validity:document.getElementById("inv-v").value,uses:0,revoked:false}); route(); toast("Einladungslink erstellt"); break;
+    case "pick": S.insertMention(a.dataset.k,a.dataset.id); break;
+    case "pick-new": S.newStub(); break;
+    case "save-article": {
+      const id=a.dataset.id; const ed=document.getElementById("editor").cloneNode(true);
+      ed.querySelectorAll(".mention").forEach(s=>s.replaceWith(`[[${s.dataset.k}:${s.dataset.id}]]`));
+      const body=ed.innerHTML.replace(/^<p><br><\/p>$/,""); const plain=ed.textContent.trim();
+      const f={}; document.querySelectorAll("[data-field]").forEach(el=>{ if(!el.value) return; const fd=TEMPLATES[S.editTpl].fields.find(x=>x.k===el.dataset.field); f[fd.k]= fd.t==="ref" ? el.value.split(":") : el.value; });
+      const t=document.getElementById("ed-title").value.trim() || "Ohne Titel";
+      const vis=document.querySelector("[data-act=sw]").classList.contains("on")?"published":"gm_only";
+      const nid = id==="new" ? "a"+(nextId++) : id; const prev=D.articles[nid];
+      const edited = (prev&&prev.edited) || plain.length>0 || Object.keys(f).length>0;
+      D.articles[nid]={title:t,tpl:S.editTpl,vis,edited,body,f};
+      S.editTpl=null; location.hash=`#/w/w1/articles/${nid}`; toast(edited?"Gespeichert – Relationen neu berechnet":"Gespeichert – ohne Inhalt bleibt die Erwähnung rot"); break; }
+    case "manual-rel": sheet(`<h2>Manuelle Relation</h2><div class="stack" style="margin-top:12px">
+        <label class="stack small muted">Ziel<select>${mentionables().concat(Object.entries(D.pins).map(([id,p])=>["pin",id,p.title])).map(([k,id,t])=>`<option>${esc(t)} (${KIND_LABEL[k]})</option>`).join("")}</select></label>
+        <label class="stack small muted">Bezeichnung (Pflicht)<input list="labels" placeholder="z. B. ist verfeindet mit"><datalist id="labels">${[...new Set(D.manual.map(r=>r.label))].map(l=>`<option value="${esc(l)}">`).join("")}</datalist></label>
+        <label class="stack small muted">Gegenbezeichnung (optional)<input placeholder="leer = gleiche Bezeichnung"></label>
+        <button class="btn primary" data-act="toast" data-msg="Relation angelegt">Anlegen</button></div>`); break;
+    case "sk-add": readSkillDraft(); if(S.skillDraft.length>=SKILL_MAX){ toast(`Höchstens ${SKILL_MAX} Fertigkeiten`); break; } S.skillDraft.push({name:"",attr:0,level:"trained"}); renderSkillDraft(true); break;
+    case "sk-del": readSkillDraft(); S.skillDraft.splice(parseInt(a.dataset.i),1); renderSkillDraft(false); break;
+    case "ab-add": readAbilityDraft(); if(S.abilityDraft.length>=ABILITY_MAX){ toast(`Höchstens ${ABILITY_MAX} Fähigkeiten`); break; } S.abilityDraft.push({text:"",attr:0}); renderAbilityDraft(true); break;
+    case "ab-del": readAbilityDraft(); S.abilityDraft.splice(parseInt(a.dataset.i),1); renderAbilityDraft(false); break;
+    case "save-char": {
+      readSkillDraft(); readAbilityDraft();
+      const names = S.skillDraft.map(s=>s.name.trim());
+      if(names.some(n=>!n)){ toast("Jede Fertigkeit braucht einen Namen"); break; }
+      const dup = duplicateText(names);
+      if(dup){ toast(`Fertigkeit „${dup}“ gibt es schon`); break; }
+      const texts = S.abilityDraft.map(f=>f.text.trim());
+      if(texts.some(t=>!t)){ toast("Jede Fähigkeit braucht einen Text"); break; }
+      const dupAb = duplicateText(texts);
+      if(dupAb){ toast(`Fähigkeit „${dupAb}“ gibt es schon`); break; }
+      const c = D.characters[a.dataset.id];
+      c.sk = S.skillDraft.map(s=>({...s,name:s.name.trim()}));
+      c.ab = S.abilityDraft.map(f=>({...f,text:f.text.trim()}));
+      const attrs = [...document.querySelectorAll("[data-attr]")].map(el=>Math.min(30,Math.max(1,parseInt(el.value)||10)));
+      if(attrs.length===6) c.attrs = attrs;
+      const prof = parseInt(document.getElementById("prof").value);
+      if(isNaN(prof) || prof<PROF_MIN || prof>PROF_MAX){ toast(`Übungsbonus muss zwischen ${PROF_MIN} und ${PROF_MAX} liegen`); break; }
+      c.prof = prof;
+      S.skillDraftFor = null; location.hash = `#/w/w1/characters/${a.dataset.id}`; toast("Charakter gespeichert"); break; }
+    case "jvis-toggle": {
+      const j = D.journal.find(x=>x.id===a.dataset.id);
+      const toShared = j.vis==="private";
+      sheet(`<h2>${toShared?"Mit Spielleitung teilen?":"Wieder privat machen?"}</h2>
+        <p class="muted">${toShared
+          ? "Game Master und Master können diesen Eintrag danach lesen. Auch wenn du ihn später wieder auf privat stellst, kann die Spielleitung ihn bis dahin gesehen haben."
+          : "Nur du siehst den Eintrag danach. Was die Spielleitung bereits gelesen hat, lässt sich nicht zurücknehmen."}</p>
+        <div class="row" style="margin-top:14px"><button class="btn grow" data-act="close-sheet">Abbrechen</button>
+        <button class="btn primary grow" data-act="jvis-confirm" data-id="${j.id}">${toShared?"Teilen":"Privat machen"}</button></div>`);
+      break; }
+    case "jvis-confirm": {
+      const j = D.journal.find(x=>x.id===a.dataset.id);
+      j.vis = j.vis==="private" ? "shared_with_gm" : "private";
+      route(); toast(j.vis==="private" ? "Jetzt privat" : "Jetzt mit Spielleitung geteilt"); break; }
+    case "jvis": document.querySelectorAll("[data-act=jvis]").forEach(b=>b.classList.toggle("on",b===a)); break;
+    case "save-journal": { const body=document.getElementById("j-body").value.trim(); if(!body){ toast("Inhalt ist Pflicht"); break; }
+      const vis=document.querySelector("[data-act=jvis].on").dataset.v; D.journal.push({id:"j"+(nextId++),c:a.dataset.c,title:document.getElementById("j-title").value.trim(),vis,body:`<p>${esc(body)}</p>`}); route(); toast("Eintrag gespeichert"); break; }
+  }
+});
+document.addEventListener("change", e=>{
+  const a = e.target.closest("[data-act]"); if(a?.dataset.act==="role"){ S.role=a.value; S.map=null; route(); toast("Ansicht als "+ROLE_LABEL[S.role]); }
+  if(a?.dataset.act==="tpl"){ if(confirm("Vorlage wechseln? Nicht passende Vorlagenfelder werden verworfen.")){ S.editTpl=a.value; route(); } else a.value=S.editTpl; }
+  if(a?.dataset.act==="toast-change") toast(a.dataset.msg);
+  if(e.target.dataset.attr!=null){ const v=parseInt(e.target.value)||1; document.getElementById("mod"+e.target.dataset.attr).textContent = v<1||v>30 ? "1–30!" : mod(v); }
+});
+document.addEventListener("input", e=>{
+  if(e.target.id==="search"){ S.search=e.target.value; clearTimeout(S.st); S.st=setTimeout(()=>{ document.getElementById("search-results").innerHTML=searchResults(); },300); }
+});
+document.addEventListener("keydown", e=>{
+  if(e.target.id==="chat-in" && e.key==="Enter" && !e.shiftKey){ e.preventDefault(); document.querySelector("[data-act=send]").click(); }
+});
+route();
+</script>
+</body>
+</html>

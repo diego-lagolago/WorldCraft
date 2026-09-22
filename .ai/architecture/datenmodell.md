@@ -76,7 +76,7 @@ Relationen verbinden Artikel, Quests, Charaktere, Pins und Universen polymorph (
 | `invite_validity` | `one_day`, `seven_days`, `unlimited` | 1 Tag, 7 Tage, unbegrenzt |
 | `pin_type` | `danger`, `boss`, `house`, `city`, `treasure`, `landmark`, `fishing`, `plants`, `dungeon`, `quest`, `teleporter`, `shop` | Gefahr, Boss, Haus, Stadt, Schatz, Stern, Angeln, Pflanzen, Dungeon, Quest, Teleporter, Shop |
 | `quest_status` | `open`, `active`, `completed`, `failed` | offen, aktiv, abgeschlossen, gescheitert |
-| `skill_level` | `untrained`, `trained`, `expertise` | ungeübt, geübt, Expertise |
+| `skill_level` | `untalented`, `untrained`, `trained`, `expertise` | untalentiert, ungeübt, geübt, Expertise |
 | `journal_visibility` | `private`, `shared_with_gm` | privat, mit Spielleitung geteilt |
 | `content_kind` | `article`, `quest`, `character`, `pin`, `universe` | artikel, quest, charakter, pin, universum |
 | `relation_origin` | `mention`, `template_field`, `participation`, `manual` | Erwähnung, Vorlagenfeld, Beteiligung, manuell |
@@ -236,7 +236,9 @@ Bild ersetzen: `image_id` wechseln. Pins/Marker bleiben über relative `pos_x`/`
 | `portrait_id` | uuid FK `files` ON DELETE SET NULL | – | max. 10 MB; ohne Bild: Initialen in der UI |
 | `class` | text | – | max. 60, Freitext |
 | `attr_str` … `attr_cha` | smallint | – | je `CHECK (NULL OR BETWEEN 1 AND 30)`; Modifikator wird nicht gespeichert |
-| `skills` | jsonb | ✅ | genau die 18 Fertigkeiten, Default `untrained` (Abschnitt 3.8.1) |
+| `skills` | jsonb | ✅ | Array eigener Fertigkeiten, Default `[]`, max. 30 (Abschnitt 3.8.1) |
+| `proficiency_bonus` | smallint | ✅ | Default 2, `CHECK (BETWEEN 0 AND 10)` |
+| `abilities` | jsonb | ✅ | Array eigener Fähigkeiten, Default `[]`, max. 30 (Abschnitt 3.8.2) |
 | `personality` | text | – | max. 1000 |
 | `ideals` | text | – | max. 1000 |
 | `bonds` | text | – | max. 1000 |
@@ -247,17 +249,36 @@ Bild ersetzen: `image_id` wechseln. Pins/Marker bleiben über relative `pos_x`/`
 
 #### 3.8.1 `skills`-JSONB
 
-Schlüssel fest im Code (D&D 5e). Neue Fertigkeiten = Codeänderung, keine Schemaänderung.
+Geordnetes Array frei angelegter Fertigkeiten (Entscheidung Projektinhaber 2026-09-22, ersetzt die frühere feste Liste der 18 D&D-5e-Fertigkeiten). Die Reihenfolge im Array ist die Anzeigereihenfolge.
 
-| Schlüssel | Attribut |
-|---|---|
-| `athletics` | str |
-| `acrobatics`, `sleight_of_hand`, `stealth` | dex |
-| `arcana`, `history`, `investigation`, `nature`, `religion` | int |
-| `animal_handling`, `insight`, `medicine`, `perception`, `survival` | wis |
-| `deception`, `intimidation`, `performance`, `persuasion` | cha |
+```json
+[{ "name": "Schlösser knacken", "level": "expertise", "attr": "dex" }]
+```
 
-Wert je Schlüssel: `untrained` \| `trained` \| `expertise`. Prüfung in der Anwendung (`APP-CHAR-SKILLS`); zusätzlich `CHECK (jsonb_typeof(skills) = 'object')`.
+| Feld | Typ | Regel |
+|---|---|---|
+| `name` | string | Pflicht, getrimmt 1–60 Zeichen; pro Charakter eindeutig, Vergleich ohne Groß-/Kleinschreibung |
+| `level` | `skill_level` | `untalented` \| `untrained` \| `trained` \| `expertise` |
+| `attr` | string | `str` \| `dex` \| `con` \| `int` \| `wis` \| `cha` (skalierendes Attribut; die UI zeigt dessen Modifikator) |
+
+Gesamtbonus (nur berechnet, nicht gespeichert) = abgerundet((Attributwert − 10) / 2) + Aufschlag: `untalented` −4 (fest), `untrained` −2 (fest), `trained` + `proficiency_bonus`, `expertise` + 2 × `proficiency_bonus`. Ist das Attribut leer, rechnet die UI mit Modifikator 0.
+
+Höchstens 30 Einträge; neuer Charakter startet mit `[]`. Prüfung in der Anwendung per Zod (`APP-CHAR-SKILLS`); zusätzlich `CHECK (jsonb_typeof(skills) = 'array')`. Die bestehende Migration hat noch `= 'object'` und wird in Plan `003` T-008 umgestellt.
+
+#### 3.8.2 `abilities`-JSONB
+
+Geordnetes Array frei angelegter Fähigkeiten (Entscheidung Projektinhaber 2026-09-22). Die Reihenfolge im Array ist die Anzeigereihenfolge.
+
+```json
+[{ "text": "Zwei Pfeile gleichzeitig schießen", "attr": "dex" }]
+```
+
+| Feld | Typ | Regel |
+|---|---|---|
+| `text` | string | Pflicht, getrimmt 1–120 Zeichen; pro Charakter eindeutig, Vergleich ohne Groß-/Kleinschreibung |
+| `attr` | string | `str` \| `dex` \| `con` \| `int` \| `wis` \| `cha` (skalierendes Attribut) |
+
+Kein Übungsgrad und kein Übungsbonus. Angezeigt wird nur abgerundet((Attributwert − 10) / 2), nicht gespeichert; leeres Attribut → 0. Höchstens 30 Einträge; neuer Charakter startet mit `[]`. Prüfung per Zod (`APP-CHAR-ABILITIES`); zusätzlich `CHECK (jsonb_typeof(abilities) = 'array')`. Spalte entsteht in Plan `003` T-008.
 
 ### 3.9 `character_images` (Bildanhänge)
 
@@ -620,7 +641,8 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 | R-3.7-2 | Erwähnungen nur in der Beschreibung | Editor nur dort mit Mentions |
 | R-3.8-1 | Besitzer unveränderlich, nur er bearbeitet | `TRIG-CHAR-OWNER-IMMUTABLE` + `APP-AUTHZ` |
 | R-3.8-2 | Attribute 1–30, Modifikator nicht gespeichert | CHECK; UI rechnet |
-| R-3.8-3 | 18 Fertigkeiten, Default ungeübt | `skills` JSONB + `APP-CHAR-SKILLS` |
+| R-3.8-3 | Eigene Fertigkeiten (Name, Übungsgrad, Attribut), max. 30, Name eindeutig, Start leer; Gesamtbonus −4 / −2 / +Ü / +2Ü, nicht gespeichert | `skills` JSONB-Array + `APP-CHAR-SKILLS`; `proficiency_bonus` CHECK 0–10 |
+| R-3.8-3a | Eigene Fähigkeiten (Text, Attribut), max. 30, Text eindeutig, Start leer; Anzeige nur Attributsmodifikator | `abilities` JSONB-Array + `APP-CHAR-ABILITIES` |
 | R-3.8-4 | Höchstens 10 Bildanhänge | `TRIG-CHAR-IMAGES-MAX` |
 | R-3.9-1 | Höchstens eine Teilnahme pro Charakter und Welt | `UQ-PARTICIPATION` |
 | R-3.9-2 | Besitzer muss aktives Mitglied sein (solange aktiv) | `TRIG-PART-OWNER-MEMBER` |

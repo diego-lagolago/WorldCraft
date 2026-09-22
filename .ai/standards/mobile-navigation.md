@@ -12,7 +12,7 @@ WorldCraft hat auf dem Handy eine **angeheftete Navigationsleiste am unteren Bil
 
 | # | Label     | Zweck |
 |---|-----------|--------|
-| 1 | **Weltkugel** | Welt / Universum wählen |
+| 1 | **Kampagne** | Welt / Universum wählen |
 | 2 | **Karte**     | Kontext: aktuelles Universum |
 | 3 | **Chat**      | Kontext: aktuelle Welt |
 | 4 | **Menü**      | Burger-Menü; weitere Funktionen später |

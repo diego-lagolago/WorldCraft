@@ -88,4 +88,4 @@ Rollen pro Welt: Game Master | Master | Player (Rechtematrix in Plan `001`).
 
 ## UI-Shell (später)
 
-Angepinnte Mobile-Navigation: Weltkugel · Karte · Chat · Menü — [mobile-navigation.md](../standards/mobile-navigation.md). Spikes bauen die Shell noch nicht nach.
+Angepinnte Mobile-Navigation: Kampagne · Karte · Chat · Menü — [mobile-navigation.md](../standards/mobile-navigation.md). Spikes bauen die Shell noch nicht nach.

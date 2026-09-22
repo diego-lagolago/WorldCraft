@@ -225,7 +225,9 @@ Gehört einem Benutzer, unabhängig von Welten.
 | Profilbild | Bild (JPG/PNG/WebP, max. 10 MB) | – | wird auch als Charakter-Marker verwendet; ohne Bild: Platzhalter mit Initialen |
 | Klasse | Text, max. 60 | – | Freitext (OF-07) |
 | Attribute | je eine Ganzzahl 1–30 für Stärke, Geschicklichkeit, Konstitution, Intelligenz, Weisheit, Charisma | – | der Modifikator wird nur angezeigt, nicht gespeichert: abgerundet((Wert − 10) / 2) |
-| Fertigkeiten | pro Fertigkeit: `ungeübt` / `geübt` / `Expertise` | – | feste Liste der 18 D&D-5e-Fertigkeiten, jeweils mit zugehörigem Attribut (z. B. Athletik → Stärke); Standard `ungeübt` |
+| Fertigkeiten | geordnete Liste; pro Fertigkeit: Name (Text, max. 60), Übungsgrad `untalentiert` / `ungeübt` / `geübt` / `Expertise`, skalierendes Attribut (eines der sechs) | – | frei vom Besitzer angelegt, keine feste D&D-Liste; neuer Charakter startet mit leerer Liste; höchstens 30 Fertigkeiten; Name pro Charakter eindeutig (ohne Beachtung von Groß-/Kleinschreibung); angezeigt wird der Gesamtbonus = Modifikator des skalierenden Attributs + Aufschlag nach Übungsgrad: `untalentiert` −4 (fest), `ungeübt` −2 (fest), `geübt` + Übungsbonus, `Expertise` + 2 × Übungsbonus; bei Übungsbonus +2 also −4 / −2 / +2 / +4. Der Gesamtbonus wird nur angezeigt, nicht gespeichert (Entscheidung Projektinhaber 2026-09-22) |
+| Übungsbonus | Ganzzahl 0–10 | ✅ | Standard +2; vom Besitzer frei gesetzt, nicht aus einer Stufe berechnet |
+| Fähigkeiten | geordnete Liste; pro Fähigkeit: Text (max. 120), skalierendes Attribut (eines der sechs) | – | frei vom Besitzer angelegt; kein Übungsgrad, kein Übungsbonus; angezeigt wird nur der Modifikator des skalierenden Attributs (nicht gespeichert); neuer Charakter startet mit leerer Liste; höchstens 30; Text pro Charakter eindeutig (ohne Beachtung von Groß-/Kleinschreibung) (Entscheidung Projektinhaber 2026-09-22) |
 | Persönlichkeitsmerkmale | Text, max. 1000 | – | |
 | Ideale | Text, max. 1000 | – | |
 | Bindungen | Text, max. 1000 | – | |
@@ -233,7 +235,7 @@ Gehört einem Benutzer, unabhängig von Welten.
 | Bio | Rich-Text | – | Hintergrundgeschichte, Aussehen usw.; Erwähnungen erzeugen Relationen |
 | Bildanhänge | Liste von Bildern (JPG/PNG/WebP, je max. 10 MB, höchstens 10) mit optionaler Bildunterschrift (Text, max. 200) | – | Reihenfolge änderbar |
 
-Bewusst **nicht** enthalten (OF-08): Volk, Stufe, Trefferpunkte, Rüstungsklasse, Übungsbonus, Rettungswürfe, Inventar, Zauber.
+Bewusst **nicht** enthalten (OF-08): Volk, Stufe, Trefferpunkte, Rüstungsklasse, Rettungswürfe, Inventar, Zauber. (Der Übungsbonus ist seit 2026-09-22 enthalten, siehe oben.)
 
 Regel: Nur der Besitzer bearbeitet seinen Charakter. Mitglieder einer Welt sehen alle in diese Welt mitgebrachten Charaktere mit allen oben genannten Eigenschaften.
 

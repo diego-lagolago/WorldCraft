@@ -34,7 +34,7 @@ Noch offen:
 
 **Quelle:** Projektinhaber. **Norm:** `.ai/standards/mobile-navigation.md` (Bezug Mobile-First).
 
-Angepinnte Leiste unten: Weltkugel, Karte, Chat, Menü. Wird nur vom Chatfenster überschrieben. Vorbild Vitura `MobileNavigation`. Shell später bauen — nicht im laufenden Spike nachziehen.
+Angepinnte Leiste unten: Kampagne, Karte, Chat, Menü. Wird nur vom Chatfenster überschrieben. Vorbild Vitura `MobileNavigation`. Shell später bauen — nicht im laufenden Spike nachziehen.
 
 ## Bereits im Plan 001 genannt (Abgrenzung)
 
