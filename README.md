@@ -76,8 +76,17 @@ Nach einem Container-Neustart müssen beide erhalten bleiben.
 
 Git-Hosting: **GitHub**. Domain: **`worldcraft.lagolago.at`** (Produktion, kein separates Staging). Test-Login nur lokal — in Coolify `ENABLE_TEST_LOGIN` nicht setzen, `APP_ENV=production`.
 
-Schritte: [`.ai/infrastructure/deployment.md`](.ai/infrastructure/deployment.md). Coolify: Quelle = GitHub-Repo, Build Pack = Dockerfile, Port 3000, Volume `/app/data/uploads`.
+**Image-Build läuft auf GitHub, nicht auf dem Server.** Ein Push auf `main` (Workflow `.github/workflows/build-image.yml`) baut das Dockerfile auf einem GitHub-hosted Runner (`linux/amd64`) und pusht nach GHCR:
 
-**T-007 ist erst erledigt**, wenn das Repository auf GitHub liegt, Coolify die App mit Postgres und Volumes baut und `https://worldcraft.lagolago.at` per HTTPS die Startseite mit dem Datenbankwert zeigt.
+- `ghcr.io/diego-lagolago/worldcraft:main` — Tag für Coolify
+- `ghcr.io/diego-lagolago/worldcraft:<git-sha>` — unveränderlicher Snapshot
 
-Secrets (Discord-Secret, `BETTER_AUTH_SECRET`, Datenbankpasswort) nie im Chat und nie ins Repository legen — nur in `.env` und in Coolify.
+In Coolify **kein** Build Pack **Dockerfile** (das `next build` auf dem VPS hat den Host gekillt). Quelle auf **Docker Image** stellen, Image `ghcr.io/diego-lagolago/worldcraft:main`, Port **3000**, Volume **`/app/data/uploads`**. Für das private Package einen GitHub-PAT mit `read:packages` in den Coolify-Registry-Feldern hinterlegen (Wert nicht in den Chat). Env-Variablen unverändert (siehe `.env.example`); **kein** `ENABLE_TEST_LOGIN` in Produktion.
+
+Lokal bleiben `docker compose` (nur Postgres) und `npm run dev` wie oben.
+
+Schritte: [`.ai/infrastructure/deployment.md`](.ai/infrastructure/deployment.md).
+
+**T-007 ist erst erledigt**, wenn das Repository auf GitHub liegt, Actions das Image nach GHCR schiebt, Coolify dieses Image mit Postgres und Volumes **zieht** (nicht selbst baut) und `https://worldcraft.lagolago.at` per HTTPS die Startseite mit dem Datenbankwert zeigt.
+
+Secrets (Discord-Secret, `BETTER_AUTH_SECRET`, Datenbankpasswort, GHCR-Pull-Token) nie im Chat und nie ins Repository legen — nur in `.env` und in Coolify.

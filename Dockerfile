@@ -19,6 +19,9 @@ ENV DATABASE_URL=postgresql://stub:stub@localhost:5432/stub
 ENV BETTER_AUTH_SECRET=build-stub-secret-replaced-at-runtime-xxxxxxxxxxxxxxxx
 ENV BETTER_AUTH_URL=http://localhost:3000
 
+# GitHub-hosted runner hat genug RAM; Node defaulted den Heap sonst auf ~2 GB.
+ENV NODE_OPTIONS=--max-old-space-size=4096
+
 RUN npm run build
 
 # ---------- 3. Runtime ----------
