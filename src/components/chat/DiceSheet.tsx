@@ -102,7 +102,7 @@ function NumberStepper({
 export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) {
   const [draft, setDraft] = useState<DiceDraft>(DEFAULT_DICE_DRAFT);
   const [result, setResult] = useState<{ text: string; sum: number } | null>(null);
-  const [copiedHint, setCopiedHint] = useState(false);
+  const [resultHint, setResultHint] = useState<"copied" | "copy-failed" | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -120,12 +120,12 @@ export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) 
     if (!result) return;
     try {
       await navigator.clipboard.writeText(String(result.sum));
-      setCopiedHint(true);
-      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
-      copiedTimerRef.current = setTimeout(() => setCopiedHint(false), 1200);
+      setResultHint("copied");
     } catch {
-      /* clipboard may be denied */
+      setResultHint("copy-failed");
     }
+    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = setTimeout(() => setResultHint(null), 1200);
   }
 
   async function handleRoll() {
@@ -214,11 +214,17 @@ export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) 
               <p className="dice-preview">{preview}</p>
             </div>
             <div
-              className={`dice-result${result ? "" : " empty"}${copiedHint ? " copied" : ""}`}
+              className={`dice-result${result ? "" : " empty"}${resultHint === "copied" ? " copied" : ""}`}
               role={result ? "button" : undefined}
               tabIndex={result ? 0 : undefined}
               aria-live="polite"
-              aria-label={copiedHint ? "Kopiert" : "Wurfergebnis"}
+              aria-label={
+                resultHint === "copied"
+                  ? "Kopiert"
+                  : resultHint === "copy-failed"
+                    ? "Kopieren nicht möglich"
+                    : "Wurfergebnis"
+              }
               onClick={() => void copyResult()}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
@@ -227,7 +233,13 @@ export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) 
                 }
               }}
             >
-              <p>{copiedHint ? "Kopiert" : (result?.text ?? "—")}</p>
+              <p>
+                {resultHint === "copied"
+                  ? "Kopiert"
+                  : resultHint === "copy-failed"
+                    ? "Kopieren nicht möglich"
+                    : (result?.text ?? "—")}
+              </p>
             </div>
           </div>
           <div className="row step-row">

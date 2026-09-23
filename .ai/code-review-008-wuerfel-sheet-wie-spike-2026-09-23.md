@@ -15,7 +15,7 @@
 | CR-006 | Lesbarkeit & Wartbarkeit | niedrig | behoben | `allowNegative` steuert nur die Tastatur, nicht die Eingabe |
 | CR-007 | Runtime-Risiken | niedrig | behoben | `keepSelection` bleibt nach Tastatur-Fokus gesetzt und schluckt den nächsten Klick |
 | CR-008 | Runtime-Risiken | niedrig | verworfen | Index als React-Key bei entfernbaren Termen mit lokalem Stepper-State |
-| CR-009 | Fehlerbehandlung & Validierung | niedrig | offen | Kopieren schlägt still fehl (kein Feedback bei verweigerter Zwischenablage) |
+| CR-009 | Fehlerbehandlung & Validierung | niedrig | behoben | Kopieren schlägt still fehl (kein Feedback bei verweigerter Zwischenablage) |
 | CR-010 | Bad Practices | niedrig | offen | Hartkodierte Farbe `#1f1a0e` in `.dice-result.copied` statt App-Variable (W3) |
 
 ---
@@ -87,7 +87,7 @@
 - **Entscheidung (Owner, 2026-09-23, Plan-Review):** Minus im Anzahl-Feld ablehnen.
 - **Empfehlung:** Signatur `parseDraftInt(text: string, options?: { allowNegative?: boolean }): number | null`, Standard `allowNegative: false`. Ohne Freigabe liefert ein führendes Minus (ASCII oder U+2212) `null`, also ungültig wie bei leerer Eingabe (N1: Feld springt beim Verlassen auf den letzten Wert zurück). `NumberStepper` reicht seine Prop `allowNegative` an `parseDraftInt` weiter; der Bonus-Stepper setzt sie wie bisher.
 - **Abnahmekriterium:** (a) `dice-draft.test.ts`: `parseDraftInt("-3")` → `null`, `parseDraftInt("−3")` → `null`, `parseDraftInt("-3", { allowNegative: true })` → `-3`; bestehende Fälle mit Minus laufen mit `{ allowNegative: true }`. (b) Im Browser: „-3“ im Anzahl-Feld ändert die Vorschau nicht, beim Verlassen steht wieder der alte Wert. (c) Bonus „-4“ funktioniert unverändert.
-- **Umsetzung (2026-09-23):** `parseDraftInt` mit `allowNegative` (Default false); NumberStepper reicht die Prop durch. Tests angepasst. Commit `a987a50`. Features.md: N/A.
+- **Umsetzung (2026-09-23):** `parseDraftInt` mit `allowNegative` (Default false); NumberStepper reicht die Prop durch. Tests angepasst. Commit `6612349`. Features.md: N/A.
 
 ## CR-007 – `keepSelection` nach Tastatur-Fokus
 
@@ -120,6 +120,7 @@
 - **Beschreibung:** Verweigerte Zwischenablage (unsicherer Kontext, Berechtigung) und nicht gefundene Summe enden in einem leeren `catch` bzw. `return` ohne Rückmeldung. Der Nutzer tippt und nichts passiert. (Verhalten wie im Spike.)
 - **Empfehlung:** Im Fehlerfall zeigt das Ergebnisfeld 1,2 s lang „Kopieren nicht möglich“ (gleicher Timer und gleiche Darstellung wie „Kopiert“, ohne Akzentrahmen). Nach CR-002 entfällt der Fall „Summe nicht gefunden“.
 - **Abnahmekriterium:** Bei abgelehntem `navigator.clipboard.writeText` zeigt das Ergebnisfeld kurz einen Hinweis statt nichts.
+- **Umsetzung (2026-09-23):** Bei Clipboard-Fehler 1,2 s „Kopieren nicht möglich“ ohne `.copied`-Akzentrahmen. Commit `5a6db01`. Features.md: N/A.
 
 ## CR-010 – Hartkodierte Farbe in `.dice-result.copied`
 
