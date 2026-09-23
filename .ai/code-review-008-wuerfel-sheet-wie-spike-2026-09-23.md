@@ -16,7 +16,7 @@
 | CR-007 | Runtime-Risiken | niedrig | behoben | `keepSelection` bleibt nach Tastatur-Fokus gesetzt und schluckt den nächsten Klick |
 | CR-008 | Runtime-Risiken | niedrig | verworfen | Index als React-Key bei entfernbaren Termen mit lokalem Stepper-State |
 | CR-009 | Fehlerbehandlung & Validierung | niedrig | behoben | Kopieren schlägt still fehl (kein Feedback bei verweigerter Zwischenablage) |
-| CR-010 | Bad Practices | niedrig | offen | Hartkodierte Farbe `#1f1a0e` in `.dice-result.copied` statt App-Variable (W3) |
+| CR-010 | Bad Practices | niedrig | behoben | Hartkodierte Farbe `#1f1a0e` in `.dice-result.copied` statt App-Variable (W3) |
 
 ---
 

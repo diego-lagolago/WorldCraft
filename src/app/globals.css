@@ -10,6 +10,7 @@
   --muted: #9d9aa6;
   --accent: #f5b83d;
   --accent-ink: #1a1204;
+  --accent-soft: #1f1a0e;
   --blue: #6aa8ff;
   --red: #ff7a7a;
   --gm: #b69cff;
@@ -999,7 +1000,7 @@ textarea {
   margin-top: 2px;
   padding: 6px 10px;
   border-radius: 10px;
-  background: #1f1a0e;
+  background: var(--accent-soft);
   border: 1px solid #4a3a14;
   font-family: ui-monospace, Menlo, monospace;
   font-size: 14px;
@@ -1198,7 +1199,7 @@ textarea {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  background: #1f1a0e;
+  background: var(--accent-soft);
   border: 1px solid #4a3a14;
 }
 
@@ -1323,7 +1324,7 @@ textarea {
 
 .dice-result.copied {
   border-color: var(--accent);
-  background: #1f1a0e;
+  background: var(--accent-soft);
 }
 
 .dice-result p {
