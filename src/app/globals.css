@@ -1318,17 +1318,17 @@ textarea {
   }
 }
 
-/* Package version: always visible, above the bottom bar or composer on phones. */
+/* Package version: bottom-left, above the bottom bar or composer on phones. */
 .app-version {
   position: fixed;
   bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
-  right: 0.75rem;
+  left: max(0.75rem, env(safe-area-inset-left, 0px));
   z-index: 40;
   margin: 0;
   font-size: 0.7rem;
   line-height: 1;
-  color: #a8a8a8;
-  opacity: 0.65;
+  color: #c8c8c8;
+  opacity: 0.9;
   pointer-events: none;
   user-select: none;
 }
