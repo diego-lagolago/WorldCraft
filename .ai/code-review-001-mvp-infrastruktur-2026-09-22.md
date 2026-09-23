@@ -24,7 +24,7 @@
 | CR-005 | Runtime-Risiken | mittel | offen | Ungültige UUID bzw. ungültiges JSON führen in Karten- und Chat-Routen zu HTTP 500. Helfer in T-003; Anwendung folgt in T-007 bis T-014 |
 | CR-006 | Runtime-Risiken | mittel | offen | SSE-Reconnect lädt den Stand nicht neu, Ereignisse während der Trennung gehen verloren |
 | CR-007 | Runtime-Risiken | mittel | behoben | Realtime-Bus ohne Fehlerisolation pro Listener: Fehler landet nach dem DB-Write im POST-Handler |
-| CR-008 | Runtime-Risiken | mittel | offen | Mehrstufige Schreibvorgänge ohne Transaktion, Lost Update bei `use_count`, Get-or-create-Races |
+| CR-008 | Runtime-Risiken | mittel | behoben | Mehrstufige Schreibvorgänge ohne Transaktion, Lost Update bei `use_count`, Get-or-create-Races |
 | CR-009 | Runtime-Risiken | mittel | behoben | `composer-dom.ts:67` addiert einen String auf einen Zähler (`tsc`-Fehler, falsche Caret-Position) |
 | CR-010 | Testabdeckung | mittel | behoben | CI baut nur das Image, ohne `npm test`, `tsc` oder `eslint` |
 | CR-011 | Performance | mittel | offen | N+1-Queries in `listRelations`, `archiveMembershipAndParticipations` und `listWorldGeography` |
@@ -36,7 +36,7 @@
 | CR-017 | Fehlerbehandlung & Validierung | niedrig | behoben | Keine Startvalidierung für `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL`, localhost-Origins auch in Produktion vertraut |
 | CR-018 | Aufgaben-Abgleich | niedrig | behoben | 8 dokumentierte `TRIG-*`-Regeln fehlen in den Migrationen: alle bauen (Plan-Review) |
 | CR-019 | Sicherheit | niedrig | offen | Persistenz-Snapshot liefert `privat`-Tagebuchtexte an die Spielleitung, Journal auf archivierter Teilnahme möglich |
-| CR-020 | Aufgaben-Abgleich | niedrig | offen | Pin-Sperre (`locked`) nicht dokumentiert: übernehmen, nur Spielleitung (Plan-Review). Spalte in T-002; Rechte und UI folgen in T-013 |
+| CR-020 | Aufgaben-Abgleich | niedrig | behoben | Pin-Sperre (`locked`) nicht dokumentiert: übernehmen, nur Spielleitung (Plan-Review). Spalte in T-002; Rechte und UI folgen in T-013 |
 | CR-021 | Lesbarkeit & Wartbarkeit | niedrig | offen | Würfelausgabe: negative Würfelterme ohne Vorzeichen, versteckter `/roll`-Pfad ignoriert `dicePostToChat`. Schema `dice_terms` in T-002; Formatierer folgt in T-012 |
 | CR-022 | Bad Practices | niedrig | behoben | Editor-Spike: Link/Underline doppelt registriert (StarterKit v3), deutsche Identifier entgegen Konvention |
 | CR-023 | Bad Practices | niedrig | offen | Magic Numbers (`Date.now() % 1_000_000`, `15000`, `toFixed(7)` verstreut) |
@@ -98,6 +98,7 @@
 - **Abnahmekriterium:** `PATCH /api/spike/karte/pins/not-a-uuid`, `PATCH …/pins/<uuid>` mit Body `{` und `GET /api/spike/chat?channelId=abc&before=xyz` liefern 400 oder 404, nie 500. `/spike/chat?channel=abc` rendert den Default-Kanal.
 - **Teilfortschritt T-003 (2026-09-23):** `parseUuid` und `parseJsonBody` liegen in `src/lib/http.ts`. Die Produkt-APIs ab T-007 wenden sie an. Status bleibt `offen`.
 - **Teilfortschritt T-012 (2026-09-23):** Produkt-Chat nutzt `parseUuid`/`parseJsonBody`/`optionalUuid`. Ungültige Query-UUIDs sind 400; `/w/…/chat?channel=abc` fällt auf den Standardkanal zurück. Kartenrouten folgen in T-013. Status bleibt `offen`.
+- **Teilfortschritt T-013 (2026-09-23):** Kartenrouten nutzen `parseUuid`/`parseJsonBody`/`optionalUuid`. `PATCH …/pins/not-a-uuid` ist 404, kaputter JSON-Body 400. Status bleibt `offen`.
 - **Umsetzung (Plan 003 T-007, 2026-09-23):** Alle Produkt-Routen für Welten, Universen, Mitglieder und Einladungen laufen über `openWorldRequest` (`src/lib/route.ts`: Sitzung → `parseUuid` → Weltkontext) und `parseJsonBody`; Unter-IDs (`universeId`, `membershipId`, `inviteId`) werden vor dem DB-Zugriff geprüft, Einladungscodes per Regex (`inviteCodeSchema`). Seiten nutzen `requireWorldPage` bzw. `parseUuid` → `notFound()`. Nachweis: `src/app/api/worlds/worlds.api.test.ts` („CR-005: bad ids and bodies“). Status bleibt `offen`, bis T-008 bis T-014 ihre Routen ebenso gebaut haben und die Spike-Routen mit T-016 entfallen.
 - **Umsetzung (Plan 003 T-008, 2026-09-23):** Charakter- und Tagebuch-Routen nutzen `parseUuid`/`parseJsonBody`/`openWorldRequest`; `POST /api/files` mit kaputtem Body ist 400 statt 500. Nachweis: `src/app/api/characters/characters.api.test.ts` („CR-005: bad ids and bodies“). Status bleibt `offen`.
 - **Umsetzung (Plan 003 T-009, 2026-09-23):** Artikel-Routen nutzen `openWorldRequest`/`parseUuid`/`parseJsonBody`; ungültige `articleId` und kaputte Bodies sind 404/400. Nachweis: `src/app/api/worlds/[worldId]/articles/articles.api.test.ts` („CR-005: bad ids and bodies“). Status bleibt `offen`.
@@ -111,6 +112,7 @@
 - **Empfehlung:** Bei jedem `hello` außer dem ersten (bzw. bei `source.onopen` nach `onerror`) `loadState()` bzw. `loadStream()` für den aktuellen Kanal/Thread aufrufen. Alternativ `Last-Event-ID` mit einer Sequenznummer umsetzen.
 - **Abnahmekriterium:** Browser A trennt die SSE-Verbindung (DevTools offline, 5 s). Browser B verschiebt in dieser Zeit einen Pin und sendet eine Nachricht. Nach dem Reconnect zeigt A beide Änderungen ohne manuelles Neuladen an.
 - **Teilfortschritt T-012 (2026-09-23):** `nextHello` plus `useWorldRealtime` laden den Chat nach jedem `hello` außer dem ersten neu. Die Karte weist dasselbe in T-013 nach. Status bleibt `offen`.
+- **Teilfortschritt T-013 (2026-09-23):** Die Karte hängt an demselben `useWorldRealtime`/`nextHello` und ruft nach jedem späteren `hello` `reload` auf. Status bleibt `offen` bis T-016 die Spike-SSE entfernt.
 
 ### CR-007 – Realtime-Bus ohne Fehlerisolation
 - **Fundstelle:** `src/spike/chat/realtime-bus.ts:18-22`, `src/spike/karte/realtime-bus.ts:18-22`, `src/app/api/spike/*/events/route.ts:20-27`
@@ -135,7 +137,8 @@
 - **Empfehlung:** Mehrstufige Writes in `db.transaction` bündeln. Den Zähler atomar erhöhen (`set({ useCount: sql\`${inviteLinks.useCount} + 1\` })`). Beitritt per `insert … on conflict (world_id, user_id) do update`. Für die Default-Instanzen einen Unique-Index (`world_key` + Default-Flag) plus `on conflict do nothing` und anschließendes Select.
 - **Abnahmekriterium:** Die genannten Funktionen laufen in einer Transaktion bzw. atomar. Ein Test mit 10 parallelen `joinByInvite`-Aufrufen verschiedener Benutzer ergibt `use_count = 10`. Zwei parallele Beitritte desselben Benutzers liefern beide 2xx. Zwei parallele erste `GET /api/spike/chat` erzeugen genau einen Kanal.
 - **Umsetzung (Plan 003 T-007, 2026-09-23):** Teil Austritt, Einladung, Welt anlegen erledigt. `createWorld` legt Welt, Game-Master-Mitgliedschaft, „Hauptuniversum“ und Kanal „Allgemein“ in einer Transaktion an (`src/lib/domain/worlds.ts`); damit gibt es kein „get or create“ für den Standardkanal mehr. Austritt und Entfernen archivieren Mitgliedschaft und Teilnahmen in einer Transaktion (`archiveMembership`, `src/lib/domain/members.ts`). `joinByInvite` (`src/lib/domain/invites.ts`) läuft in einer Transaktion: `insert … on conflict (world_id, user_id) do update … where archived_at is not null` reaktiviert als Player, eine aktive Mitgliedschaft bleibt unverändert (2xx, `joined: false`), `use_count` steigt atomar nur bei echtem Beitritt. Nachweis: `src/lib/domain/invites.integration.test.ts` (10 parallele Beitritte → `use_count = 10`; zwei parallele Beitritte desselben Benutzers → beide ok, genau einer zählt), `npm run test:triggers`.
-- **Teilfortschritt T-012 (2026-09-23):** Thread, Eröffnungsnachricht und `opens_thread_id` entstehen in einer Transaktion (`createThreadWithOpening`). Offen bleibt das Ersetzen des Kartenbilds in T-013. Status bleibt `offen`.
+- **Teilfortschritt T-012 (2026-09-23):** Thread, Eröffnungsnachricht und `opens_thread_id` entstehen in einer Transaktion (`createThreadWithOpening`).
+- **Umsetzung T-013 (2026-09-23):** `createMapWithImage` sperrt das Universum (`FOR UPDATE`) und legt Datei plus Kartenzeile in einer Transaktion an; ein zweites Insert ist 409 (`APP-MAP-MVP-ONE`). Bild ersetzen ändert nur `maps.image_id` und räumt die alte Datei per `collectUnreferencedFiles` auf. Status `behoben`.
 
 ### CR-009 – Typfehler in `composer-dom.ts` (Caret-Offset)
 - **Fundstelle:** `src/spike/chat/composer-dom.ts:67`
@@ -166,6 +169,7 @@
 - **Empfehlung:** Sichtbarkeit gesammelt ermitteln: Mitgliedschaft einmal laden, IDs pro Art sammeln und je Art eine `inArray`-Query (bzw. ein Join) ausführen, danach in einer Map nachschlagen. Teilnahmen mit einem Update per `inArray` archivieren. Die Marker-Query mit `inArray(characterMarkers.mapId, mapIds)` einschränken.
 - **Abnahmekriterium:** In `listRelations`, beim Archivieren von Teilnahmen und in `listWorldGeography` (bzw. ihren MVP-Nachfolgern) wird keine DB-Query innerhalb einer Schleife über Datensätze ausgeführt (kein `await db…` in `for`/`map`/`filter`). Die Marker-Query ist auf die Karten-IDs der Welt eingeschränkt. Der Rechte-Integrationstest bleibt grün.
 - **Umsetzung (Plan 003 T-007, 2026-09-23):** Teil Teilnahmen archivieren erledigt: `archiveMembership` (`src/lib/domain/members.ts`) setzt alle eigenen Teilnahmen der Welt mit einem Update (`inArray` auf eine Unterabfrage der eigenen Charaktere), keine Schleife. Die Erwähnungsauflösung für Leseansichten (`resolveMentions`, `src/lib/domain/mention-resolve.ts`) lädt je Art eine `inArray`-Query. Nachweis: `worlds.api.test.ts` („(4) leaving and rejoining“), `npm run test:rechte` grün. Status bleibt `offen`: Relationen folgen in T-010, Karten/Pins/Marker in T-013.
+- **Teilfortschritt T-013 (2026-09-23):** Marker werden mit `eq(characterMarkers.mapId, dto.id)` geladen, `listLinked` macht eine Query je Inhaltsart. Relationen aus Artikeln bleiben T-010. Status bleibt `offen`.
 
 ### CR-012 – Duplizierte Spike-Infrastruktur und Konstanten
 - **Fundstelle:**
@@ -182,6 +186,7 @@
 - **Empfehlung:** Einen generischen `createRealtimeBus<T>(key)` und `createSseResponse(request, subscribe)` unter `src/lib/realtime/` anlegen, `requireSession` nach `src/lib/session.ts` verschieben, `escapeHtml` nach `src/lib/html.ts`. Pin-Typen und Positionsformat (`POSITION_DECIMALS`, `toDbPosition`, `fromDbPosition`) jeweils an einer Stelle definieren (z. B. `src/lib/map/`), abgeleitet vom Drizzle-Enum.
 - **Abnahmekriterium:** (Bis Plan 003 T-016 gilt es für `src/` ohne `src/spike/`, danach für ganz `src/`.) Es gibt genau eine Implementierung von Realtime-Bus, SSE-Response, Sitzungsprüfung und `escapeHtml` in `src/`. `grep -rn "toFixed(7)" src` findet höchstens die zentrale Hilfsfunktion. Die Pin-Typ-Liste existiert einmal und wird überall importiert.
 - **Teilfortschritt T-012 (2026-09-23):** Produktcode hat einen Bus (`src/lib/realtime/bus.ts`), eine SSE-Hilfe (`sse.ts`) und Route (`/api/worlds/[worldId]/events`), `requireProductSession` und `escapeHtml` (`src/lib/html.ts`). Pin-Typen und Positionsformat folgen in T-013, die Spike-Kopien in T-016. Status bleibt `offen`.
+- **Teilfortschritt T-013 (2026-09-23):** Pin-Typen (`src/lib/map/pin-types.ts`, Test gegen Drizzle-Enum) und Positionsrundung (`src/lib/map/coords.ts`, einziges `toFixed(7)` im Produktcode) liegen zentral. Spike-Kopien bleiben bis T-016. Status bleibt `offen`.
 
 ### CR-013 – Wiederholte Autorisierungsblöcke im Rechte-Repository
 - **Fundstelle:** `src/spike/rechte/repository.ts:1072-1251` (`placeMarker`, `moveMarker`, `deleteMarker`), sinngemäß auch `update*/delete*` für Artikel, Universum, Karte und Pin; `patch: Record<string, unknown>` bei :801, :879, :966, :1041
@@ -192,6 +197,7 @@
 - **Empfehlung:** Helfer wie `loadMarkerForEdit(actor, markerId)` bzw. `withStaffOnWorldOf(entity)` extrahieren, die Kontext und Gate liefern. Positionsprüfung ins Zod-Schema verschieben (`z.number().min(0).max(1)`). Patches als `Partial<typeof articles.$inferInsert>` typisieren. Die Datei nach Aggregaten aufteilen (`membership.ts`, `content.ts`, `geography.ts`, `relations.ts`).
 - **Abnahmekriterium:** (Bis Plan 003 T-016 gilt es für den Produktcode ohne `src/spike/`, danach für ganz `src/`.) Die Marker-Autorisierung steht in genau einer Funktion, die die drei Marker-Operationen nutzen. Kein `Record<string, unknown>` mehr in `repository.ts` bzw. im Nachfolgemodul. `npm run test:rechte` bleibt 15/15 grün.
 - **Teilfortschritt T-003 (2026-09-23):** Authz liegt in `src/lib/authz`, Patches als `ColumnPatch<T>`. Die eine Marker-Funktion folgt in T-013. Status bleibt `offen`.
+- **Teilfortschritt T-013 (2026-09-23):** `authorizeMarkerAction` und `authorizePinWrite` in `src/lib/authz`; place/move/delete nutzen dieselbe Marker-Funktion. Positionen per Zod `min(0).max(1)`. Spike-Repository bleibt bis T-016. Status bleibt `offen`.
 
 ### CR-014 – Fehlerbehandlung im Frontend
 - **Fundstelle:** `src/spike/karte/KarteBoard.tsx:198-216` (`persistPinMove`, `persistMarkerMove`), `:224-253` (`createPin`), `:168-170` und `ChatSpikePage.tsx:161-162` (`JSON.parse` im `onmessage`)
@@ -202,6 +208,7 @@
 - **Empfehlung:** Einen gemeinsamen `apiFetch`-Helfer mit `try/catch` und einheitlicher Fehlermeldung (Deutsch) bauen. Bei Fehlschlag den Zustand per `loadState()` zurückholen. `JSON.parse` absichern.
 - **Abnahmekriterium:** Marker bei „offline“ in den DevTools verschieben → sichtbare Fehlermeldung, Marker springt nach Reconnect auf die Serverposition zurück. Keine „Uncaught (in promise)“-Meldung in der Konsole.
 - **Teilfortschritt T-012 (2026-09-23):** Chat nutzt `apiFetch` (Fehlertext, Reload) und fängt `JSON.parse` im SSE-Handler. Die Karte folgt in T-013. Status bleibt `offen`.
+- **Teilfortschritt T-013 (2026-09-23):** Karte nutzt `apiFetch` inkl. FormData; fehlgeschlagene Moves rufen `reload` auf. Status bleibt `offen` bis T-016 den Spike entfernt.
 
 ### CR-015 – ESLint-Fehler und sehr große Komponenten
 - **Fundstelle:** `src/spike/karte/KarteBoard.tsx:151` (`openPinSheetRef.current = openPinSheet` beim Rendern, Regel `react-hooks/refs`); `KarteBoard.tsx` (1013 Zeilen), `ChatSpikePage.tsx` (705 Zeilen); sinngemäß `RichComposer.tsx:49` (`valueRef.current = value`)
@@ -213,6 +220,7 @@
 - **Abnahmekriterium:** `npx eslint .` meldet 0 Fehler. In Karten- und Chat-Komponenten (bzw. ihren MVP-Nachfolgern) liegen Realtime-Anbindung (SSE), Datenladen und Leaflet-Initialisierung jeweils in eigenen Hooks. Sheets und Formulare sind eigene Komponenten. Die Hauptkomponente enthält keinen `fetch`- und keinen `EventSource`-Aufruf direkt.
 - **Teilfortschritt T-001 (2026-09-23):** Die Ref-Zuweisung in `KarteBoard.tsx` liegt in `useEffect`; `npx eslint .` meldet 0 Fehler. Die Struktur (Hooks, Sheets) folgt in T-012/T-013. Status bleibt `offen`.
 - **Teilfortschritt T-012 (2026-09-23):** Chat: `useChatStream` (Laden), `useChatRealtime` (SSE), Sheets und Composer sind eigene Komponenten. Die Chat-Hauptkomponente ruft weder `fetch` noch `EventSource` auf. Die Karte folgt in T-013. Status bleibt `offen`.
+- **Teilfortschritt T-013 (2026-09-23):** Karte: `useMapState`, `useMapRealtime`, `useLeafletMap`; Sheets in `MapSheets.tsx`. `MapView` ruft weder `fetch` noch `EventSource` auf. Status bleibt `offen` bis T-016.
 
 ### CR-016 – Upload und Auslieferung des Kartenbilds
 - **Fundstelle:** `src/app/api/spike/karte/upload/route.ts:29-57`, `src/app/api/spike/karte/image/route.ts:26-34`
@@ -264,6 +272,7 @@
 - **Empfehlung (Entscheidung Projektinhaber, Plan-Review 2026-09-22): Übernehmen, nur die Spielleitung darf sperren.** Fachlich: Ein Pin hat die Eigenschaft **gesperrt** (ja/nein, Default nein). Nur Game Master und Master dürfen sperren und entsperren. Ein gesperrter Pin lässt sich weder verschieben noch bearbeiten noch löschen. Erlaubt ist nur das Entsperren durch die Spielleitung. Player sehen gesperrte Pins normal (optional mit Schloss-Symbol). Technisch: Spalte `pins.locked boolean NOT NULL DEFAULT false`, Prüfung in der Authz-Schicht (`requireStaff` für jede Änderung an `locked`; Änderungen an gesperrten Pins → 409). In `datenmodell-fachlich.md` (3.7 Pin und Rechte je Entität) und `datenmodell.md` (3.7 `pins.locked`, Zuordnungstabelle, `APP-PIN-LOCK`) am 2026-09-22 eingetragen. Umsetzung in Plan 003 T-002 (Spalte) und T-013 (Rechte, UI).
 - **Abnahmekriterium:** `datenmodell-fachlich.md` und `datenmodell.md` beschreiben `gesperrt`/`locked` samt Rechteregel. Im MVP-Code: Ein Player erhält beim Sperren oder Entsperren 403. Ein Master kann sperren. Verschieben, Bearbeiten oder Löschen eines gesperrten Pins liefert 409, auch für die Spielleitung, bis entsperrt wird. Die Fälle stehen im Rechte-Integrationstest.
 - **Teilfortschritt T-002 (2026-09-23):** Spalte `pins.locked boolean NOT NULL DEFAULT false` ist im Schema. Rechte und UI folgen in T-013. Status bleibt `offen`.
+- **Umsetzung T-013 (2026-09-23):** `authorizePinWrite` (nur Spielleitung, 409 solange gesperrt). Schloss-Symbol in der Pin-UI. Nachweis: `authz.test.ts`, `map.api.test.ts`. Status `behoben`.
 
 ### CR-021 – Uneinheitliche Würfelausgabe und versteckter `/roll`-Pfad
 - **Fundstelle:** `src/spike/chat/dice.ts:204-212` (`formatCompactRoll`), `src/spike/chat/dice-sides.ts:23-34` (`formatCompactFromDto`), `src/app/api/spike/chat/route.ts:170-183`, `:69-80`

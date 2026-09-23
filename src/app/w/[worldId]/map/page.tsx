@@ -1,7 +1,33 @@
-export default function MapPage() {
+import { MapPageClient } from "@/components/map/MapPageClient";
+import { optionalUuid } from "@/lib/chat/query";
+import { loadMapState } from "@/lib/map/repository";
+import { requireWorldPage } from "@/lib/page-context";
+
+export default async function MapPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ worldId: string }>;
+  searchParams: Promise<{ universe?: string; pin?: string }>;
+}) {
+  const { worldId } = await params;
+  const query = await searchParams;
+  const { world, membership, user } = await requireWorldPage(worldId);
+  const universe = optionalUuid(query.universe ?? null);
+  const pin = optionalUuid(query.pin ?? null);
+  const state = await loadMapState({
+    worldId: world.id,
+    actorId: user.id,
+    role: membership.role,
+    universeId: universe.ok ? universe.id : null,
+    pinId: pin.ok ? pin.id : null,
+  });
+  if (!state.ok) return <p className="empty">{state.error}</p>;
   return (
-    <div className="content">
-      <p className="empty">Die Karte des Universums erscheint hier.</p>
-    </div>
+    <MapPageClient
+      key={`${state.data.universe?.id ?? ""}:${state.data.map?.id ?? ""}:${state.data.highlightPinId ?? ""}`}
+      worldId={world.id}
+      initial={state.data}
+    />
   );
 }

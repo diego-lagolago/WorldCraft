@@ -128,6 +128,56 @@ export function canEditMarker(input: {
   return input.actorId === input.ownerId && input.mapVisibleToActor;
 }
 
+/**
+ * CR-013: place, move and delete all go through this. Staff may edit any marker
+ * on a visible map; a player may only edit their own.
+ */
+export function authorizeMarkerAction(
+  actor: MembershipRow | null,
+  marker: { ownerId: string } | null,
+  mapVisibleToActor: boolean,
+): AuthzResult<true> {
+  const denied = denyIfNoMembership(actor);
+  if (denied || !actor) return denied ?? fail(403, "Kein aktives Mitglied dieser Welt.");
+  if (!marker) return fail(404, "Diesen Marker gibt es nicht.");
+  if (
+    !canEditMarker({
+      role: actor.role,
+      actorId: actor.userId,
+      ownerId: marker.ownerId,
+      mapVisibleToActor,
+    })
+  ) {
+    return fail(403, "Du darfst nur eigene Charakter-Marker verschieben.");
+  }
+  return ok(true);
+}
+
+/** APP-PIN-LOCK: only unlock is allowed while locked; lock/unlock requires staff. */
+export function isUnlockOnlyPatch(patch: { locked?: boolean } & Record<string, unknown>): boolean {
+  const keys = Object.keys(patch).filter((key) => patch[key] !== undefined);
+  return keys.length === 1 && patch.locked === false;
+}
+
+export function authorizePinWrite(
+  actor: MembershipRow | null,
+  pin: { locked: boolean } | null,
+  action: "create" | "delete" | { locked?: boolean } & Record<string, unknown>,
+): AuthzResult<true> {
+  const staff = requireStaff(actor);
+  if (!staff.ok) return staff;
+  if (action === "create") return ok(true);
+  if (!pin) return fail(404, "Diesen Pin gibt es nicht.");
+  if (action === "delete") {
+    if (pin.locked) return fail(409, "Ein gesperrter Pin lässt sich nur entsperren.");
+    return ok(true);
+  }
+  if (pin.locked && !isUnlockOnlyPatch(action)) {
+    return fail(409, "Ein gesperrter Pin lässt sich nur entsperren.");
+  }
+  return ok(true);
+}
+
 export function relationVisible(input: {
   sourceVisible: boolean;
   targetVisible: boolean;

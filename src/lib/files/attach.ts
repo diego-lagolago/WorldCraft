@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import { fail, type AuthzResult } from "@/lib/authz";
 import { mapDbError } from "@/lib/domain/db-errors";
+import { worldEvents } from "@/lib/realtime/events";
 import { authorizeImageWrite, type ImageKind } from "./authorize";
 import { collectUnreferencedFiles } from "./gc";
 import { MAP_IMAGE_MAX_BYTES, OTHER_IMAGE_MAX_BYTES } from "./inspect";
@@ -171,7 +172,7 @@ async function linkStaffImage(
     return { ok: true, data: true };
   }
   const [map] = await db
-    .select({ id: maps.id })
+    .select({ id: maps.id, imageId: maps.imageId, universeId: maps.universeId })
     .from(maps)
     .innerJoin(universes, eq(universes.id, maps.universeId))
     .where(and(eq(maps.id, targetId), eq(universes.worldId, worldId)))
@@ -181,5 +182,7 @@ async function linkStaffImage(
     .update(maps)
     .set({ imageId: fileId, updatedAt: now, updatedBy: actorId })
     .where(eq(maps.id, map.id));
+  await collectUnreferencedFiles([map.imageId]);
+  worldEvents.publish({ type: "map.updated", worldId, universeId: map.universeId });
   return { ok: true, data: true };
 }

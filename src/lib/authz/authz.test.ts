@@ -3,8 +3,10 @@ import {
   authorizeDeleteChatMessage,
   authorizeJournalWrite,
   authorizeLeave,
-  requireCharacterOwner,
+  authorizeMarkerAction,
   authorizeMemberAdmin,
+  authorizePinWrite,
+  requireCharacterOwner,
   type MembershipRow,
   canEditMarker,
   canSeeCharacterInWorld,
@@ -13,6 +15,7 @@ import {
   canSeeVisibility,
   isGm,
   isStaff,
+  isUnlockOnlyPatch,
   relationVisible,
 } from "@/lib/authz";
 
@@ -121,6 +124,40 @@ describe("APP-AUTHZ Sichtbarkeit", () => {
         ownerId: "a",
         mapVisibleToActor: false,
       })).toBe(false);
+    expect(authorizeMarkerAction(row("player", { userId: "a" }), { ownerId: "a" }, true).ok).toBe(true);
+    expect(authorizeMarkerAction(row("player", { userId: "a" }), { ownerId: "b" }, true)).toMatchObject({
+      ok: false,
+      status: 403,
+    });
+    expect(authorizeMarkerAction(row("master"), { ownerId: "b" }, true).ok).toBe(true);
+    expect(authorizeMarkerAction(row("player"), null, true)).toMatchObject({ ok: false, status: 404 });
+    expect(authorizeMarkerAction(null, { ownerId: "a" }, true)).toMatchObject({ ok: false, status: 403 });
+  });
+
+  it("APP-PIN-LOCK: staff lock and unlock, locked pins only unlock", () => {
+    expect(isUnlockOnlyPatch({ locked: false })).toBe(true);
+    expect(isUnlockOnlyPatch({ locked: false, title: undefined })).toBe(true);
+    expect(isUnlockOnlyPatch({ locked: false, title: "X" })).toBe(false);
+    expect(authorizePinWrite(row("player"), { locked: false }, "create")).toMatchObject({
+      ok: false,
+      status: 403,
+    });
+    expect(authorizePinWrite(row("master"), null, "create").ok).toBe(true);
+    expect(authorizePinWrite(row("master"), { locked: true }, { posX: 0.2 })).toMatchObject({
+      ok: false,
+      status: 409,
+    });
+    expect(authorizePinWrite(row("game_master"), { locked: true }, { locked: false }).ok).toBe(true);
+    expect(authorizePinWrite(row("master"), { locked: true }, "delete")).toMatchObject({
+      ok: false,
+      status: 409,
+    });
+    expect(authorizePinWrite(row("master"), { locked: false }, "delete").ok).toBe(true);
+    expect(authorizePinWrite(row("player"), { locked: false }, { locked: true })).toMatchObject({
+      ok: false,
+      status: 403,
+    });
+    expect(authorizePinWrite(row("master"), null, { title: "x" })).toMatchObject({ ok: false, status: 404 });
   });
 
   it("relations need both ends visible", () => {

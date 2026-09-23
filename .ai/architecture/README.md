@@ -53,11 +53,12 @@ Isolierter Spike: `spikes/editor/` (Vite) — nur Editor-Beweis, nicht produktiv
 
 Test-Login (nur lokal): `POST /api/test-login` → gleiche Session-Form, Seed-User.
 
-### Karte (Spike / später Produkt)
+### Karte (Produkt)
 
-1. Upload → Volume + `files` / Map-Metadaten.
-2. Pins/Marker: Position relativ `{x,y}` ∈ [0,1].
-3. Nach **Drop**: Persistenz → SSE an andere Clients (kein Live-Drag).
+1. Upload → `files` + `maps.image_id` (eine Karte je Universum in der Anwendungslogik).
+2. Pins/Marker: Position relativ `{x,y}` ∈ [0,1], Pin-Typen zentral in `src/lib/map/pin-types.ts`.
+3. Nach **Drop**: Persistenz → SSE (`map.pin` / `map.marker`) an andere Clients derselben Welt (kein Live-Drag).
+4. Deep-Link `/w/[worldId]/map?pin=` zentriert und hebt den Pin hervor.
 
 ### Chat
 
