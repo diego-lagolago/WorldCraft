@@ -102,6 +102,42 @@ describe("Produkt-Chat", () => {
     await api(playerA, "PATCH", `/api/worlds/${worldId}/chat/settings`, { dicePostToChat: true });
   });
 
+  it("stores three dice terms plus bonus for a structured multi-term roll", async () => {
+    const state = await chat(gm);
+    const channelId = state.data.channel?.id as string;
+    await api(gm, "PATCH", `/api/worlds/${worldId}/chat/settings`, { dicePostToChat: true });
+    const rolled = await chat(gm, "", "POST", {
+      kind: "roll",
+      terms: [
+        { n: 1, m: 20 },
+        { n: 1, m: 6 },
+        { n: 2, m: 4 },
+      ],
+      modifier: 3,
+      channelId,
+    });
+    expect(rolled.status).toBe(201);
+    const message = (rolled.data as { message?: ChatMessageDto }).message;
+    expect(message?.dice).toBeTruthy();
+    const terms = message!.dice!.terms;
+    const diceTerms = terms.filter((term) => "sides" in term);
+    const bonusTerms = terms.filter((term) => "modifier" in term);
+    expect(diceTerms).toHaveLength(3);
+    expect(bonusTerms).toEqual([{ modifier: 3 }]);
+    expect(message!.dice!.expression).toBe("1d20+1d6+2d4+3");
+
+    const [row] = await sql<{ dice_terms: unknown; dice_expression: string }[]>`
+      SELECT dice_terms, dice_expression FROM chat_messages WHERE id = ${message!.id}
+    `;
+    expect(row.dice_expression).toBe("1d20+1d6+2d4+3");
+    expect(Array.isArray(row.dice_terms)).toBe(true);
+    const stored = row.dice_terms as unknown[];
+    expect(stored.filter((term) => term && typeof term === "object" && "sides" in term)).toHaveLength(3);
+    expect(stored.filter((term) => term && typeof term === "object" && "modifier" in term)).toEqual([
+      { modifier: 3 },
+    ]);
+  });
+
   it("enforces delete rules and channel administration", async () => {
     const state = await chat(gm);
     const channelId = state.data.channel?.id as string;
