@@ -15,11 +15,11 @@ export default async function QuestPage({ params }: PageProps<"/w/[worldId]/ques
   const { worldId, questId } = await params;
   const { world, membership } = await requireWorldPage(worldId);
   const id = parseUuid(questId);
-  const quest = id ? await getQuest(world.id, id, membership.role) : null;
+  const quest = id ? await getQuest(world.id, id, membership.role, membership.userId) : null;
   if (!quest) notFound();
 
   const doc = asRichDoc(quest.descriptionJson);
-  const mentions = await resolveMentions(world.id, membership.role, extractMentions(doc));
+  const mentions = await resolveMentions(world.id, membership.role, membership.userId, extractMentions(doc));
 
   return (
     <>
@@ -70,6 +70,7 @@ export default async function QuestPage({ params }: PageProps<"/w/[worldId]/ques
         <LinkedSection
           worldId={world.id}
           role={membership.role}
+          viewerId={membership.userId}
           kind="quest"
           id={quest.id}
           canEdit={isStaff(membership.role)}

@@ -28,7 +28,7 @@ export default async function JournalPage({ params }: PageProps<"/w/[worldId]/jo
   const entries = await listJournal({ worldId: world.id, characterId: character.id, viewerId: user.id, role: membership.role });
   if (!entries.ok) notFound();
   const docs = entries.data.map((entry) => asRichDoc(entry.bodyJson));
-  const mentions = await resolveMentions(world.id, membership.role, docs.flatMap((doc) => extractMentions(doc)));
+  const mentions = await resolveMentions(world.id, membership.role, membership.userId, docs.flatMap((doc) => extractMentions(doc)));
 
   return (
     <>

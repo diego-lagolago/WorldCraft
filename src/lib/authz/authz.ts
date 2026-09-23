@@ -72,11 +72,49 @@ export function authorizeLeave(membership: MembershipRow | null): AuthzResult<Me
   return ok(membership);
 }
 
+export type VisibilityLayer = {
+  visibility: VisibilityStatus | ContentVisibility;
+  ownerId?: string | null;
+};
+
 export function canSeePublishedLayer(
-  role: MembershipRole,
-  layers: Array<VisibilityStatus | ContentVisibility>,
+  viewer: { role: MembershipRole; userId: string },
+  layers: VisibilityLayer[],
 ): boolean {
-  return layers.every((layer) => canSeeVisibility(role, layer));
+  return layers.every((layer) =>
+    canSeeVisibility({
+      role: viewer.role,
+      visibility: layer.visibility,
+      viewerId: viewer.userId,
+      ownerId: layer.ownerId,
+    }),
+  );
+}
+
+/** Content write for article/quest/pin: staff + visible; setting owner_only only by owner (R2). */
+export function authorizeOwnedContentWrite(input: {
+  membership: MembershipRow | null;
+  content: { ownerId: string; visibility: ContentVisibility } | null;
+  nextVisibility?: ContentVisibility;
+  notFoundError: string;
+}): AuthzResult<true> {
+  const staff = requireStaff(input.membership);
+  if (!staff.ok) return staff;
+  if (!input.content) return fail(404, input.notFoundError);
+  if (
+    !canSeeVisibility({
+      role: staff.data.role,
+      visibility: input.content.visibility,
+      viewerId: staff.data.userId,
+      ownerId: input.content.ownerId,
+    })
+  ) {
+    return fail(404, input.notFoundError);
+  }
+  if (input.nextVisibility === "owner_only" && staff.data.userId !== input.content.ownerId) {
+    return fail(403, "Nur der Owner darf die Sichtbarkeit auf „nur ich“ setzen.");
+  }
+  return ok(true);
 }
 
 export function canSeeJournal(input: {
@@ -162,16 +200,29 @@ export function isUnlockOnlyPatch(patch: { locked?: boolean } & Record<string, u
 
 export function authorizePinWrite(
   actor: MembershipRow | null,
-  pin: { locked: boolean } | null,
-  action: "create" | "delete" | { locked?: boolean } & Record<string, unknown>,
+  pin: { locked: boolean; ownerId: string; visibility: ContentVisibility } | null,
+  action: "create" | "delete" | { locked?: boolean; visibility?: ContentVisibility } & Record<string, unknown>,
 ): AuthzResult<true> {
   const staff = requireStaff(actor);
   if (!staff.ok) return staff;
   if (action === "create") return ok(true);
   if (!pin) return fail(404, "Diesen Pin gibt es nicht.");
+  if (
+    !canSeeVisibility({
+      role: staff.data.role,
+      visibility: pin.visibility,
+      viewerId: staff.data.userId,
+      ownerId: pin.ownerId,
+    })
+  ) {
+    return fail(404, "Diesen Pin gibt es nicht.");
+  }
   if (action === "delete") {
     if (pin.locked) return fail(409, "Ein gesperrter Pin lässt sich nur entsperren.");
     return ok(true);
+  }
+  if (action.visibility === "owner_only" && staff.data.userId !== pin.ownerId) {
+    return fail(403, "Nur der Owner darf die Sichtbarkeit auf „nur ich“ setzen.");
   }
   if (pin.locked && !isUnlockOnlyPatch(action)) {
     return fail(409, "Ein gesperrter Pin lässt sich nur entsperren.");

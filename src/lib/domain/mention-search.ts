@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/client";
 import { articles, characters, quests, universes, worldParticipations } from "@/db/schema";
 import { isStaff, type MembershipRole } from "@/lib/authz";
@@ -30,9 +30,15 @@ function orderFor(column: TitleColumn, query: string): SQL[] {
   return [desc(sql`(${match.wordStart})`), asc(column)];
 }
 
-async function searchArticles(worldId: string, role: MembershipRole, query: string): Promise<MentionHit[]> {
+async function searchArticles(
+  worldId: string,
+  role: MembershipRole,
+  viewerId: string,
+  query: string,
+): Promise<MentionHit[]> {
   const filters: SQL[] = [eq(articles.worldId, worldId)];
   if (!isStaff(role)) filters.push(eq(articles.visibility, "published"));
+  else filters.push(or(ne(articles.visibility, "owner_only"), eq(articles.ownerId, viewerId))!);
   if (query) filters.push(titleMatch(articles.title, query).contains);
   const rows = await db
     .select({ id: articles.id, title: articles.title, templateType: articles.templateType })
@@ -69,9 +75,15 @@ async function searchCharacters(worldId: string, query: string): Promise<Mention
   return rows.map((row): MentionHit => ({ kind: "character", ...row }));
 }
 
-async function searchQuests(worldId: string, role: MembershipRole, query: string): Promise<MentionHit[]> {
+async function searchQuests(
+  worldId: string,
+  role: MembershipRole,
+  viewerId: string,
+  query: string,
+): Promise<MentionHit[]> {
   const filters: SQL[] = [eq(quests.worldId, worldId)];
   if (!isStaff(role)) filters.push(eq(quests.visibility, "published"));
+  else filters.push(or(ne(quests.visibility, "owner_only"), eq(quests.ownerId, viewerId))!);
   if (query) filters.push(titleMatch(quests.title, query).contains);
   const rows = await db
     .select({ id: quests.id, title: quests.title })
@@ -86,12 +98,13 @@ async function searchQuests(worldId: string, role: MembershipRole, query: string
 export async function searchMentionTargets(input: {
   worldId: string;
   role: MembershipRole;
+  viewerId: string;
   query: string;
 }): Promise<MentionHit[]> {
   const query = input.query.trim().slice(0, MENTION_QUERY_MAX);
   const [articleHits, questHits, universeHits, characterHits] = await Promise.all([
-    searchArticles(input.worldId, input.role, query),
-    searchQuests(input.worldId, input.role, query),
+    searchArticles(input.worldId, input.role, input.viewerId, query),
+    searchQuests(input.worldId, input.role, input.viewerId, query),
     searchUniverses(input.worldId, input.role, query),
     searchCharacters(input.worldId, query),
   ]);

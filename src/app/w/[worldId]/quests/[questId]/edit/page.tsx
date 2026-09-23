@@ -13,13 +13,13 @@ export default async function EditQuestPage({ params }: PageProps<"/w/[worldId]/
   const { world, membership } = await requireWorldPage(worldId);
   if (!isStaff(membership.role)) notFound();
   const id = parseUuid(questId);
-  const quest = id ? await getQuest(world.id, id, membership.role) : null;
+  const quest = id ? await getQuest(world.id, id, membership.role, membership.userId) : null;
   if (!quest) notFound();
 
   const doc = asRichDoc(quest.descriptionJson);
   const [characters, mentions] = await Promise.all([
     listWorldCharacters(world.id),
-    resolveMentions(world.id, membership.role, extractMentions(doc)),
+    resolveMentions(world.id, membership.role, membership.userId, extractMentions(doc)),
   ]);
 
   return (

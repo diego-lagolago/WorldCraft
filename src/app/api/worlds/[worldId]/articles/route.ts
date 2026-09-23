@@ -15,7 +15,7 @@ export async function GET(request: Request, ctx: Ctx) {
   const raw = new URL(request.url).searchParams.get("templateType");
   const templateType = raw && isTemplateType(raw) ? raw : "all";
   return NextResponse.json({
-    articles: await listArticles(req.context.world.id, req.context.membership.role, templateType),
+    articles: await listArticles(req.context.world.id, req.context.membership.role, req.context.membership.userId, templateType),
   });
 }
 

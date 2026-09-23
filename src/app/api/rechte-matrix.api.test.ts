@@ -379,16 +379,21 @@ describe("T-015 Rechte-Matrix (Produkt-APIs, Plan 001 T-011)", () => {
     expect((await api(master, "PATCH", w(`/map/markers/${markerA2}`), { posX: 0.55, posY: 0.56 })).status).toBe(200);
     expect((await api(master, "PATCH", w(`/map/markers/${markerB}`), { posX: 0.72, posY: 0.73 })).status).toBe(200);
 
-    expect(
-      (
-        await api(playerA, "POST", w("/map/markers"), {
-          mapId: publicMap,
-          characterId: charA1,
-          posX: 0.9,
-          posY: 0.9,
-        })
-      ).status,
-    ).toBe(409);
+    // Same character again: replace (one marker per character), not 409.
+    const replaced = await api<{ marker: { id: string } }>(playerA, "POST", w("/map/markers"), {
+      mapId: publicMap,
+      characterId: charA1,
+      posX: 0.9,
+      posY: 0.9,
+    });
+    expect(replaced.status).toBe(201);
+    markerA1 = replaced.data.marker.id;
+    const state = await api<{ markers: { id: string; characterId: string }[] }>(
+      playerA,
+      "GET",
+      w(`/map?map=${publicMap}`),
+    );
+    expect(state.data.markers.filter((row) => row.characterId === charA1)).toHaveLength(1);
   });
 
   it("kein zweiter GM; Master/Player dürfen nicht einladen oder Rollen ändern", async () => {
@@ -472,8 +477,8 @@ describe("T-015 Rechte-Matrix (Produkt-APIs, Plan 001 T-011)", () => {
     );
     const restored = mapRestored.data.markers.find((row) => row.id === markerA1);
     expect(restored).toBeTruthy();
-    expect(Number(restored!.posX)).toBeCloseTo(0.44);
-    expect(Number(restored!.posY)).toBeCloseTo(0.45);
+    expect(Number(restored!.posX)).toBeCloseTo(0.9);
+    expect(Number(restored!.posY)).toBeCloseTo(0.9);
 
     const relsAfter = await api<{ items: { kind: string; id: string }[] }>(
       playerA,

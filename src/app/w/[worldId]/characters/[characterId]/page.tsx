@@ -43,6 +43,7 @@ export default async function WorldCharacterPage({ params }: PageProps<"/w/[worl
       <LinkedSection
         worldId={world.id}
         role={membership.role}
+        viewerId={membership.userId}
         kind="character"
         id={sheet.id}
         canEdit={isStaff(membership.role)}

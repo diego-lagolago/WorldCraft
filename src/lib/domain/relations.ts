@@ -307,6 +307,7 @@ function counterpart(row: RelationRow, kind: ContentKind, id: string): { kind: C
 export async function listLinked(input: {
   worldId: string;
   role: MembershipRole;
+  viewerId: string;
   kind: ContentKind;
   id: string;
 }): Promise<LinkedItem[]> {
@@ -329,7 +330,7 @@ export async function listLinked(input: {
     if (other) others.push(other);
   }
 
-  const visible = await loadVisibleTargets(input.worldId, input.role, others);
+  const visible = await loadVisibleTargets(input.worldId, input.role, input.viewerId, others);
   const selfVisible = await isSelfVisible(input);
   const grouped = new Map<string, LinkedItem>();
 
@@ -361,16 +362,20 @@ export async function listLinked(input: {
 async function isSelfVisible(input: {
   worldId: string;
   role: MembershipRole;
+  viewerId: string;
   kind: ContentKind;
   id: string;
 }): Promise<boolean> {
-  const loaded = await loadVisibleTargets(input.worldId, input.role, [{ kind: input.kind, id: input.id }]);
+  const loaded = await loadVisibleTargets(input.worldId, input.role, input.viewerId, [
+    { kind: input.kind, id: input.id },
+  ]);
   return loaded.has(`${input.kind}:${input.id}`);
 }
 
 async function loadVisibleTargets(
   worldId: string,
   role: MembershipRole,
+  viewerId: string,
   refs: { kind: ContentKind; id: string }[],
 ): Promise<Map<string, Omit<LinkedItem, "originLabels" | "manualLabel">>> {
   const ids = (kind: ContentKind) => [...new Set(refs.filter((row) => row.kind === kind).map((row) => row.id))];
@@ -379,6 +384,7 @@ async function loadVisibleTargets(
   const characterIds = ids("character");
   const pinIds = ids("pin");
   const universeIds = ids("universe");
+  const viewer = { role, userId: viewerId };
 
   const [articleRows, questRows, characterRows, pinRows, universeRows] = await Promise.all([
     articleIds.length
@@ -387,6 +393,7 @@ async function loadVisibleTargets(
             id: articles.id,
             title: articles.title,
             visibility: articles.visibility,
+            ownerId: articles.ownerId,
             templateType: articles.templateType,
           })
           .from(articles)
@@ -394,7 +401,12 @@ async function loadVisibleTargets(
       : [],
     questIds.length
       ? db
-          .select({ id: quests.id, title: quests.title, visibility: quests.visibility })
+          .select({
+            id: quests.id,
+            title: quests.title,
+            visibility: quests.visibility,
+            ownerId: quests.ownerId,
+          })
           .from(quests)
           .where(and(eq(quests.worldId, worldId), inArray(quests.id, questIds)))
       : [],
@@ -422,6 +434,7 @@ async function loadVisibleTargets(
             id: pins.id,
             title: pins.title,
             visibility: pins.visibility,
+            ownerId: pins.ownerId,
             pinType: pins.pinType,
             mapName: maps.name,
             mapVisibility: maps.visibility,
@@ -442,7 +455,16 @@ async function loadVisibleTargets(
 
   const out = new Map<string, Omit<LinkedItem, "originLabels" | "manualLabel">>();
   for (const row of articleRows) {
-    if (!canSeeVisibility(role, row.visibility)) continue;
+    if (
+      !canSeeVisibility({
+        role,
+        visibility: row.visibility,
+        viewerId,
+        ownerId: row.ownerId,
+      })
+    ) {
+      continue;
+    }
     out.set(`article:${row.id}`, {
       kind: "article",
       id: row.id,
@@ -452,7 +474,16 @@ async function loadVisibleTargets(
     });
   }
   for (const row of questRows) {
-    if (!canSeeVisibility(role, row.visibility)) continue;
+    if (
+      !canSeeVisibility({
+        role,
+        visibility: row.visibility,
+        viewerId,
+        ownerId: row.ownerId,
+      })
+    ) {
+      continue;
+    }
     out.set(`quest:${row.id}`, {
       kind: "quest",
       id: row.id,
@@ -470,7 +501,15 @@ async function loadVisibleTargets(
     });
   }
   for (const row of pinRows) {
-    if (!canSeePublishedLayer(role, [row.universeVisibility, row.mapVisibility, row.visibility])) continue;
+    if (
+      !canSeePublishedLayer(viewer, [
+        { visibility: row.universeVisibility },
+        { visibility: row.mapVisibility },
+        { visibility: row.visibility, ownerId: row.ownerId },
+      ])
+    ) {
+      continue;
+    }
     out.set(`pin:${row.id}`, {
       kind: "pin",
       id: row.id,
@@ -481,7 +520,7 @@ async function loadVisibleTargets(
     });
   }
   for (const row of universeRows) {
-    if (!canSeeVisibility(role, row.visibility)) continue;
+    if (!canSeeVisibility({ role, visibility: row.visibility, viewerId })) continue;
     out.set(`universe:${row.id}`, {
       kind: "universe",
       id: row.id,
@@ -636,10 +675,20 @@ export async function listManualLabels(worldId: string): Promise<string[]> {
     .sort((a, b) => a.localeCompare(b, "de"));
 }
 
-export async function listRelationTargets(worldId: string, role: MembershipRole): Promise<RelationTargetOption[]> {
+export async function listRelationTargets(
+  worldId: string,
+  role: MembershipRole,
+  viewerId: string,
+): Promise<RelationTargetOption[]> {
+  const viewer = { role, userId: viewerId };
   const [articleRows, universeRows, characterRows, questRows, pinRows] = await Promise.all([
     db
-      .select({ id: articles.id, title: articles.title, visibility: articles.visibility })
+      .select({
+        id: articles.id,
+        title: articles.title,
+        visibility: articles.visibility,
+        ownerId: articles.ownerId,
+      })
       .from(articles)
       .where(eq(articles.worldId, worldId)),
     db
@@ -658,7 +707,12 @@ export async function listRelationTargets(worldId: string, role: MembershipRole)
         ),
       ),
     db
-      .select({ id: quests.id, title: quests.title, visibility: quests.visibility })
+      .select({
+        id: quests.id,
+        title: quests.title,
+        visibility: quests.visibility,
+        ownerId: quests.ownerId,
+      })
       .from(quests)
       .where(eq(quests.worldId, worldId)),
     db
@@ -666,6 +720,7 @@ export async function listRelationTargets(worldId: string, role: MembershipRole)
         id: pins.id,
         title: pins.title,
         visibility: pins.visibility,
+        ownerId: pins.ownerId,
         mapVisibility: maps.visibility,
         universeVisibility: universes.visibility,
       })
@@ -676,17 +731,43 @@ export async function listRelationTargets(worldId: string, role: MembershipRole)
   ]);
   const out: RelationTargetOption[] = [];
   for (const row of articleRows) {
-    if (canSeeVisibility(role, row.visibility)) out.push({ kind: "article", id: row.id, title: row.title });
+    if (
+      canSeeVisibility({
+        role,
+        visibility: row.visibility,
+        viewerId,
+        ownerId: row.ownerId,
+      })
+    ) {
+      out.push({ kind: "article", id: row.id, title: row.title });
+    }
   }
   for (const row of universeRows) {
-    if (canSeeVisibility(role, row.visibility)) out.push({ kind: "universe", id: row.id, title: row.title });
+    if (canSeeVisibility({ role, visibility: row.visibility, viewerId })) {
+      out.push({ kind: "universe", id: row.id, title: row.title });
+    }
   }
   for (const row of characterRows) out.push({ kind: "character", id: row.id, title: row.title });
   for (const row of questRows) {
-    if (canSeeVisibility(role, row.visibility)) out.push({ kind: "quest", id: row.id, title: row.title });
+    if (
+      canSeeVisibility({
+        role,
+        visibility: row.visibility,
+        viewerId,
+        ownerId: row.ownerId,
+      })
+    ) {
+      out.push({ kind: "quest", id: row.id, title: row.title });
+    }
   }
   for (const row of pinRows) {
-    if (canSeePublishedLayer(role, [row.universeVisibility, row.mapVisibility, row.visibility])) {
+    if (
+      canSeePublishedLayer(viewer, [
+        { visibility: row.universeVisibility },
+        { visibility: row.mapVisibility },
+        { visibility: row.visibility, ownerId: row.ownerId },
+      ])
+    ) {
       out.push({ kind: "pin", id: row.id, title: row.title });
     }
   }

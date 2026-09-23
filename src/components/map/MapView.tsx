@@ -72,7 +72,7 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
     onMarkerDrop: (marker) => void stream.dropMarker(marker),
   });
 
-  useMapRealtime(worldId, state.universe?.id ?? null, (event) => stream.applyEvent(event, leaflet.dragging), onResync);
+  useMapRealtime(worldId, state.universe?.id ?? null, (event) => void stream.applyEvent(event, leaflet.dragging), onResync);
 
   const mapPublished = state.map?.visibility === "published";
   const selectedOption = state.maps.find((row) => row.id === state.map?.id);

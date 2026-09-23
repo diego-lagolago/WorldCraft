@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import { characters, questParticipants, quests, worldParticipations } from "@/db/schema";
 import {
   CONTENT_VISIBILITIES,
+  authorizeOwnedContentWrite,
   canSeeVisibility,
   fail,
   ok,
@@ -70,6 +71,7 @@ export type QuestSummary = {
   title: string;
   status: QuestStatus;
   visibility: ContentVisibility;
+  ownerId: string;
   participants: QuestParticipant[];
 };
 
@@ -165,18 +167,25 @@ async function replaceParticipants(
 }
 
 /** Visible quests of a world, title A–Z. */
-export async function listQuests(worldId: string, role: MembershipRole): Promise<QuestSummary[]> {
+export async function listQuests(
+  worldId: string,
+  role: MembershipRole,
+  viewerId: string,
+): Promise<QuestSummary[]> {
   const rows = await db
     .select({
       id: quests.id,
       title: quests.title,
       status: quests.status,
       visibility: quests.visibility,
+      ownerId: quests.ownerId,
     })
     .from(quests)
     .where(eq(quests.worldId, worldId))
     .orderBy(asc(quests.title));
-  const visible = rows.filter((row) => canSeeVisibility(role, row.visibility));
+  const visible = rows.filter((row) =>
+    canSeeVisibility({ role, visibility: row.visibility, viewerId, ownerId: row.ownerId }),
+  );
   const participants = await loadParticipants(
     visible.map((row) => row.id),
     worldId,
@@ -186,6 +195,7 @@ export async function listQuests(worldId: string, role: MembershipRole): Promise
     title: row.title,
     status: asStatus(row.status),
     visibility: row.visibility,
+    ownerId: row.ownerId,
     participants: participants.get(row.id) ?? [],
   }));
 }
@@ -194,6 +204,7 @@ export async function getQuest(
   worldId: string,
   questId: string,
   role: MembershipRole,
+  viewerId: string,
 ): Promise<QuestDetails | null> {
   const [row] = await db
     .select({
@@ -202,12 +213,18 @@ export async function getQuest(
       title: quests.title,
       status: quests.status,
       visibility: quests.visibility,
+      ownerId: quests.ownerId,
       descriptionJson: quests.descriptionJson,
     })
     .from(quests)
     .where(and(eq(quests.id, questId), eq(quests.worldId, worldId)))
     .limit(1);
-  if (!row || !canSeeVisibility(role, row.visibility)) return null;
+  if (
+    !row ||
+    !canSeeVisibility({ role, visibility: row.visibility, viewerId, ownerId: row.ownerId })
+  ) {
+    return null;
+  }
   const participants = await loadParticipants([row.id], worldId);
   return {
     id: row.id,
@@ -215,6 +232,7 @@ export async function getQuest(
     title: row.title,
     status: asStatus(row.status),
     visibility: row.visibility,
+    ownerId: row.ownerId,
     descriptionJson: row.descriptionJson,
     participants: participants.get(row.id) ?? [],
   };
@@ -277,6 +295,7 @@ export async function createQuest(input: {
         title: quests.title,
         status: quests.status,
         visibility: quests.visibility,
+        ownerId: quests.ownerId,
       });
     await replaceParticipants(row.id, input.actorId, participants.data);
     await recalcQuestRelations(input.worldId, input.actorId, row.id);
@@ -286,6 +305,7 @@ export async function createQuest(input: {
       title: row.title,
       status: asStatus(row.status),
       visibility: row.visibility,
+      ownerId: row.ownerId,
       participants: loaded.get(row.id) ?? [],
     });
   } catch (error) {
@@ -306,13 +326,18 @@ export async function updateQuest(input: {
   visibility?: ContentVisibility;
   participantIds?: string[];
 }): Promise<AuthzResult<{ id: string }>> {
-  const staff = requireStaff(input.membership);
-  if (!staff.ok) return staff;
   const [current] = await db
-    .select({ id: quests.id })
+    .select({ id: quests.id, ownerId: quests.ownerId, visibility: quests.visibility })
     .from(quests)
     .where(and(eq(quests.id, input.questId), eq(quests.worldId, input.worldId)))
     .limit(1);
+  const allowed = authorizeOwnedContentWrite({
+    membership: input.membership,
+    content: current ? { ownerId: current.ownerId, visibility: current.visibility } : null,
+    nextVisibility: input.visibility,
+    notFoundError: NOT_FOUND,
+  });
+  if (!allowed.ok) return allowed;
   if (!current) return fail(404, NOT_FOUND);
 
   const patch = await toPatch(input);
@@ -348,13 +373,17 @@ export async function deleteQuest(input: {
   worldId: string;
   questId: string;
 }): Promise<AuthzResult<{ id: string }>> {
-  const staff = requireStaff(input.membership);
-  if (!staff.ok) return staff;
   const [current] = await db
-    .select({ id: quests.id })
+    .select({ id: quests.id, ownerId: quests.ownerId, visibility: quests.visibility })
     .from(quests)
     .where(and(eq(quests.id, input.questId), eq(quests.worldId, input.worldId)))
     .limit(1);
+  const allowed = authorizeOwnedContentWrite({
+    membership: input.membership,
+    content: current ? { ownerId: current.ownerId, visibility: current.visibility } : null,
+    notFoundError: NOT_FOUND,
+  });
+  if (!allowed.ok) return allowed;
   if (!current) return fail(404, NOT_FOUND);
   await db.delete(quests).where(eq(quests.id, current.id));
   return ok({ id: current.id });

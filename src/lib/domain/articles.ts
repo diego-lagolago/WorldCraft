@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import { articles, characters, worldParticipations } from "@/db/schema";
 import {
   CONTENT_VISIBILITIES,
+  authorizeOwnedContentWrite,
   canSeeVisibility,
   fail,
   ok,
@@ -71,7 +72,7 @@ export type ArticleSummary = {
   title: string;
   templateType: string;
   visibility: ContentVisibility;
-  ownerId?: string;
+  ownerId: string;
   firstEditedAt: Date | null;
   titleImageId: string | null;
 };
@@ -87,6 +88,7 @@ const summaryColumns = {
   title: articles.title,
   templateType: articles.templateType,
   visibility: articles.visibility,
+  ownerId: articles.ownerId,
   firstEditedAt: articles.firstEditedAt,
   titleImageId: articles.titleImageId,
 };
@@ -168,6 +170,7 @@ async function fieldsFrom(type: TemplateType, raw: unknown, worldId: string): Pr
 export async function listArticles(
   worldId: string,
   role: MembershipRole,
+  viewerId: string,
   templateType?: TemplateType | "all",
 ): Promise<ArticleSummary[]> {
   const rows = await db
@@ -176,7 +179,7 @@ export async function listArticles(
     .where(eq(articles.worldId, worldId))
     .orderBy(asc(articles.title));
   return rows.filter((row) => {
-    if (!canSeeVisibility(role, row.visibility)) return false;
+    if (!canSeeVisibility({ role, visibility: row.visibility, viewerId, ownerId: row.ownerId })) return false;
     if (!templateType || templateType === "all") return true;
     return row.templateType === templateType;
   });
@@ -186,6 +189,7 @@ export async function getArticle(
   worldId: string,
   articleId: string,
   role: MembershipRole,
+  viewerId: string,
 ): Promise<ArticleDetails | null> {
   const [row] = await db
     .select({
@@ -197,7 +201,12 @@ export async function getArticle(
     .from(articles)
     .where(and(eq(articles.id, articleId), eq(articles.worldId, worldId)))
     .limit(1);
-  if (!row || !canSeeVisibility(role, row.visibility)) return null;
+  if (
+    !row ||
+    !canSeeVisibility({ role, visibility: row.visibility, viewerId, ownerId: row.ownerId })
+  ) {
+    return null;
+  }
   return { ...row, templateFields: asFields(row.templateFields) };
 }
 
@@ -283,7 +292,7 @@ export async function createArticle(input: {
   }
 }
 
-/** Stub from the `@` flow: title only, `gm_only`, `first_edited_at` stays null. */
+/** Stub from the `@` flow: title only, `owner_only`, `first_edited_at` stays null. */
 export async function createArticleStub(input: {
   membership: MembershipRow | null;
   actorId: string;
@@ -307,8 +316,6 @@ export async function updateArticle(input: {
   visibility?: ContentVisibility;
   removeTitleImage?: true;
 }): Promise<AuthzResult<{ id: string }>> {
-  const staff = requireStaff(input.membership);
-  if (!staff.ok) return staff;
   const [current] = await db
     .select({
       id: articles.id,
@@ -317,10 +324,19 @@ export async function updateArticle(input: {
       bodyPlain: articles.bodyPlain,
       firstEditedAt: articles.firstEditedAt,
       titleImageId: articles.titleImageId,
+      ownerId: articles.ownerId,
+      visibility: articles.visibility,
     })
     .from(articles)
     .where(and(eq(articles.id, input.articleId), eq(articles.worldId, input.worldId)))
     .limit(1);
+  const allowed = authorizeOwnedContentWrite({
+    membership: input.membership,
+    content: current ? { ownerId: current.ownerId, visibility: current.visibility } : null,
+    nextVisibility: input.visibility,
+    notFoundError: NOT_FOUND,
+  });
+  if (!allowed.ok) return allowed;
   if (!current) return fail(404, NOT_FOUND);
   const patch = await toPatch(input.worldId, input, current);
   if (!patch.ok) return patch;
@@ -345,13 +361,22 @@ export async function deleteArticle(input: {
   worldId: string;
   articleId: string;
 }): Promise<AuthzResult<{ id: string }>> {
-  const staff = requireStaff(input.membership);
-  if (!staff.ok) return staff;
   const [current] = await db
-    .select({ id: articles.id, titleImageId: articles.titleImageId })
+    .select({
+      id: articles.id,
+      titleImageId: articles.titleImageId,
+      ownerId: articles.ownerId,
+      visibility: articles.visibility,
+    })
     .from(articles)
     .where(and(eq(articles.id, input.articleId), eq(articles.worldId, input.worldId)))
     .limit(1);
+  const allowed = authorizeOwnedContentWrite({
+    membership: input.membership,
+    content: current ? { ownerId: current.ownerId, visibility: current.visibility } : null,
+    notFoundError: NOT_FOUND,
+  });
+  if (!allowed.ok) return allowed;
   if (!current) return fail(404, NOT_FOUND);
   await db.delete(articles).where(eq(articles.id, current.id));
   await collectUnreferencedFiles([current.titleImageId]);

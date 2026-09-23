@@ -18,6 +18,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ worldId: st
   const hits = await searchMentionTargets({
     worldId: req.context.world.id,
     role: req.context.membership.role,
+    viewerId: req.context.membership.userId,
     query,
   });
   return NextResponse.json({ hits });

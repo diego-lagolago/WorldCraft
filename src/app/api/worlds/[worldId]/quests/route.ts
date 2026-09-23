@@ -12,7 +12,7 @@ export async function GET(_request: Request, ctx: Ctx) {
   const req = await openWorldRequest((await ctx.params).worldId);
   if (!req.ok) return req.response;
   return NextResponse.json({
-    quests: await listQuests(req.context.world.id, req.context.membership.role),
+    quests: await listQuests(req.context.world.id, req.context.membership.role, req.context.membership.userId),
   });
 }
 

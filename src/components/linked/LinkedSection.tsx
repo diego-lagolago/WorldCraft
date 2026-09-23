@@ -6,19 +6,21 @@ import { listLinked, listManualLabels, listRelationTargets } from "@/lib/domain/
 export async function LinkedSection({
   worldId,
   role,
+  viewerId,
   kind,
   id,
   canEdit,
 }: {
   worldId: string;
   role: MembershipRole;
+  viewerId: string;
   kind: ContentKind;
   id: string;
   canEdit: boolean;
 }) {
   const [items, targets, labels] = await Promise.all([
-    listLinked({ worldId, role, kind, id }),
-    canEdit ? listRelationTargets(worldId, role) : Promise.resolve([]),
+    listLinked({ worldId, role, viewerId, kind, id }),
+    canEdit ? listRelationTargets(worldId, role, viewerId) : Promise.resolve([]),
     canEdit ? listManualLabels(worldId) : Promise.resolve([]),
   ]);
   return (

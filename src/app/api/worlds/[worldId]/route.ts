@@ -24,7 +24,7 @@ export async function GET(_request: Request, ctx: Ctx) {
   const { world, membership } = req.context;
   const [details, universes] = await Promise.all([
     getWorldDetails(world.id),
-    listUniverses(world.id, membership.role),
+    listUniverses(world.id, membership.role, membership.userId),
   ]);
   return NextResponse.json({ world: details, role: membership.role, universes });
 }

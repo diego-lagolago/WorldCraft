@@ -36,7 +36,11 @@ export type UniverseSummary = {
 export type UniverseDetails = UniverseSummary & { worldId: string; descriptionJson: unknown };
 
 /** Visible universes of a world in display order (APP-VIS-INHERIT: no parent level). */
-export async function listUniverses(worldId: string, role: MembershipRole): Promise<UniverseSummary[]> {
+export async function listUniverses(
+  worldId: string,
+  role: MembershipRole,
+  viewerId: string,
+): Promise<UniverseSummary[]> {
   const rows = await db
     .select({
       id: universes.id,
@@ -47,7 +51,7 @@ export async function listUniverses(worldId: string, role: MembershipRole): Prom
     .from(universes)
     .where(eq(universes.worldId, worldId))
     .orderBy(asc(universes.sortOrder), asc(universes.name));
-  return rows.filter((row) => canSeeVisibility(role, row.visibility));
+  return rows.filter((row) => canSeeVisibility({ role, visibility: row.visibility, viewerId }));
 }
 
 /** A universe the actor may see, else null (callers answer 404). */
@@ -55,6 +59,7 @@ export async function getUniverse(
   worldId: string,
   universeId: string,
   role: MembershipRole,
+  viewerId: string,
 ): Promise<UniverseDetails | null> {
   const [row] = await db
     .select({
@@ -68,7 +73,7 @@ export async function getUniverse(
     .from(universes)
     .where(and(eq(universes.id, universeId), eq(universes.worldId, worldId)))
     .limit(1);
-  if (!row || !canSeeVisibility(role, row.visibility)) return null;
+  if (!row || !canSeeVisibility({ role, visibility: row.visibility, viewerId })) return null;
   return row;
 }
 

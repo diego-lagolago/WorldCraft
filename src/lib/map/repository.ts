@@ -151,8 +151,16 @@ async function loadMapRow(mapId: string, worldId: string) {
   return row ?? null;
 }
 
-function mapVisible(role: MembershipRole, universeVisibility: VisibilityStatus, mapVisibility: VisibilityStatus) {
-  return canSeePublishedLayer(role, [universeVisibility, mapVisibility]);
+function mapVisible(
+  role: MembershipRole,
+  universeVisibility: VisibilityStatus,
+  mapVisibility: VisibilityStatus,
+  viewerId: string,
+) {
+  return canSeePublishedLayer({ role, userId: viewerId }, [
+    { visibility: universeVisibility },
+    { visibility: mapVisibility },
+  ]);
 }
 
 export async function loadMapState(input: {
@@ -163,7 +171,7 @@ export async function loadMapState(input: {
   mapId: string | null;
   pinId: string | null;
 }): Promise<AuthzResult<MapState>> {
-  const universesVisible = await listUniverses(input.worldId, input.role);
+  const universesVisible = await listUniverses(input.worldId, input.role, input.actorId);
   const universeIds = universesVisible.map((row) => row.id);
   let highlightPinId: string | null = null;
   let preferredMapId = input.mapId;
@@ -181,6 +189,7 @@ export async function loadMapState(input: {
         universeVisibility: universes.visibility,
         mapVisibility: maps.visibility,
         pinVisibility: pins.visibility,
+        pinOwnerId: pins.ownerId,
       })
       .from(pins)
       .innerJoin(maps, eq(maps.id, pins.mapId))
@@ -189,7 +198,14 @@ export async function loadMapState(input: {
       .limit(1);
     if (
       pinRow &&
-      canSeePublishedLayer(input.role, [pinRow.universeVisibility, pinRow.mapVisibility, pinRow.pinVisibility])
+      canSeePublishedLayer(
+        { role: input.role, userId: input.actorId },
+        [
+          { visibility: pinRow.universeVisibility },
+          { visibility: pinRow.mapVisibility },
+          { visibility: pinRow.pinVisibility, ownerId: pinRow.pinOwnerId },
+        ],
+      )
     ) {
       preferredUniverseId = pinRow.universeId;
       preferredMapId = pinRow.mapId;
@@ -233,7 +249,7 @@ export async function loadMapState(input: {
 
   const options: MapOptionDto[] = [];
   for (const row of mapRows) {
-    if (!mapVisible(input.role, row.universeVisibility, row.map.visibility)) continue;
+    if (!mapVisible(input.role, row.universeVisibility, row.map.visibility, input.actorId)) continue;
     options.push({
       id: row.map.id,
       universeId: row.universeId,
@@ -249,7 +265,7 @@ export async function loadMapState(input: {
     preferredMapId &&
     mapRows.some((row) => {
       if (row.map.id !== preferredMapId) return false;
-      return !mapVisible(input.role, row.universeVisibility, row.map.visibility);
+      return !mapVisible(input.role, row.universeVisibility, row.map.visibility, input.actorId);
     });
 
   const selected =
@@ -284,7 +300,7 @@ export async function loadMapState(input: {
       : [];
     const allHiddenInFocus =
       mapsInFocus.length > 0 &&
-      mapsInFocus.every((row) => !mapVisible(input.role, row.universeVisibility, row.map.visibility));
+      mapsInFocus.every((row) => !mapVisible(input.role, row.universeVisibility, row.map.visibility, input.actorId));
     return emptyState({
       maps: options,
       universe: focusUniverse,
@@ -367,7 +383,16 @@ export async function loadMapState(input: {
     universe,
     map: dto,
     mapHidden: false,
-    pins: pinRows.map(serializePin).filter((pin) => canSeeVisibility(input.role, pin.visibility)),
+    pins: pinRows
+      .map(serializePin)
+      .filter((pin) =>
+        canSeeVisibility({
+          role: input.role,
+          visibility: pin.visibility,
+          viewerId: input.actorId,
+          ownerId: pin.ownerId,
+        }),
+      ),
     markers: markerRows.map(serializeMarker),
     characters: charactersOnMap,
     highlightPinId,
@@ -502,6 +527,7 @@ export async function updateMap(input: {
 export async function getPinDetails(input: {
   worldId: string;
   role: MembershipRole;
+  actorId: string;
   pinId: string;
 }): Promise<AuthzResult<PinDetails>> {
   const [row] = await db
@@ -512,17 +538,62 @@ export async function getPinDetails(input: {
     .where(and(eq(pins.id, input.pinId), eq(universes.worldId, input.worldId)))
     .limit(1);
   if (!row) return fail(404, "Diesen Pin gibt es nicht.");
-  if (!canSeePublishedLayer(input.role, [row.universeVisibility, row.mapVisibility, row.pin.visibility])) {
+  if (
+    !canSeePublishedLayer(
+      { role: input.role, userId: input.actorId },
+      [
+        { visibility: row.universeVisibility },
+        { visibility: row.mapVisibility },
+        { visibility: row.pin.visibility, ownerId: row.pin.ownerId },
+      ],
+    )
+  ) {
     return fail(404, "Diesen Pin gibt es nicht.");
   }
-  const linked = await listLinked({ worldId: input.worldId, role: input.role, kind: "pin", id: input.pinId });
+  const linked = await listLinked({
+    worldId: input.worldId,
+    role: input.role,
+    viewerId: input.actorId,
+    kind: "pin",
+    id: input.pinId,
+  });
   const dto = serializePin(row.pin);
   const mentions = await resolveMentions(
     input.worldId,
     input.role,
+    input.actorId,
     extractMentions(asRichDoc(dto.descriptionJson)),
   );
   return ok({ ...dto, linked, mentions });
+}
+
+export async function getMarkerDetails(input: {
+  worldId: string;
+  role: MembershipRole;
+  actorId: string;
+  markerId: string;
+}): Promise<AuthzResult<MarkerDto>> {
+  const loaded = await loadMarkerContext(input.worldId, input.markerId);
+  if (!loaded) return fail(404, "Diesen Marker gibt es nicht.");
+  if (
+    !mapVisible(input.role, loaded.universeVisibility, loaded.mapVisibility, input.actorId)
+  ) {
+    return fail(404, "Diesen Marker gibt es nicht.");
+  }
+  const [character] = await db
+    .select({ name: characters.name, portraitId: characters.portraitId, ownerId: characters.ownerId })
+    .from(characters)
+    .where(eq(characters.id, loaded.marker.characterId))
+    .limit(1);
+  if (!character) return fail(404, "Diesen Marker gibt es nicht.");
+  return ok(
+    serializeMarker({
+      ...loaded.marker,
+      name: character.name,
+      portraitId: character.portraitId,
+      ownerId: character.ownerId,
+    }),
+  );
 }
 
 export async function createPin(input: {
@@ -569,7 +640,12 @@ export async function createPin(input: {
       mentions: description.data.mentions,
     });
     const pin = serializePin(row);
-    worldEvents.publish({ type: "map.pin", worldId: input.worldId, pin });
+    worldEvents.publish({
+      type: "map.pin",
+      worldId: input.worldId,
+      pinId: row.id,
+      mapId: row.mapId,
+    });
     return ok({ pin });
   } catch (error) {
     const mapped = mapDbError(error);
@@ -643,7 +719,12 @@ export async function updatePin(input: {
       });
     }
     const pin = serializePin(updated);
-    worldEvents.publish({ type: "map.pin", worldId: input.worldId, pin });
+    worldEvents.publish({
+      type: "map.pin",
+      worldId: input.worldId,
+      pinId: updated.id,
+      mapId: updated.mapId,
+    });
     return ok({ pin });
   } catch (error) {
     const mapped = mapDbError(error);
@@ -706,7 +787,12 @@ export async function placeMarker(input: {
   const loaded = await loadMapRow(input.mapId, input.worldId);
   if (!loaded) return fail(404, "Diese Karte gibt es nicht.");
   if (!loaded.map.imageId) return fail(400, "Diese Karte hat noch kein Bild.");
-  const visible = mapVisible(input.membership?.role ?? "player", loaded.universeVisibility, loaded.map.visibility);
+  const visible = mapVisible(
+    input.membership?.role ?? "player",
+    loaded.universeVisibility,
+    loaded.map.visibility,
+    input.actorId,
+  );
   const [character] = await db
     .select({
       id: characters.id,
@@ -763,7 +849,12 @@ export async function placeMarker(input: {
         ownerId: character.ownerId,
       });
     });
-    worldEvents.publish({ type: "map.marker", worldId: input.worldId, marker });
+    worldEvents.publish({
+      type: "map.marker",
+      worldId: input.worldId,
+      markerId: marker.id,
+      mapId: marker.mapId,
+    });
     return ok({ marker });
   } catch (error) {
     const mapped = mapDbError(error, { unique: MARKER_ONE_MAP });
@@ -782,7 +873,12 @@ export async function moveMarker(input: {
 }): Promise<AuthzResult<{ marker: MarkerDto }>> {
   const loaded = await loadMarkerContext(input.worldId, input.markerId);
   const visible = loaded
-    ? mapVisible(input.membership?.role ?? "player", loaded.universeVisibility, loaded.mapVisibility)
+    ? mapVisible(
+        input.membership?.role ?? "player",
+        loaded.universeVisibility,
+        loaded.mapVisibility,
+        input.actorId,
+      )
     : false;
   const allowed = authorizeMarkerAction(input.membership, loaded ? { ownerId: loaded.ownerId } : null, visible);
   if (!allowed.ok) return allowed;
@@ -803,7 +899,12 @@ export async function moveMarker(input: {
     .where(eq(characters.id, row.characterId))
     .limit(1);
   const marker = serializeMarker({ ...row, ...character! });
-  worldEvents.publish({ type: "map.marker", worldId: input.worldId, marker });
+  worldEvents.publish({
+    type: "map.marker",
+    worldId: input.worldId,
+    markerId: marker.id,
+    mapId: marker.mapId,
+  });
   return ok({ marker });
 }
 
@@ -813,8 +914,14 @@ export async function deleteMarker(input: {
   markerId: string;
 }): Promise<AuthzResult<{ id: string }>> {
   const loaded = await loadMarkerContext(input.worldId, input.markerId);
+  const viewerId = input.membership?.userId ?? "";
   const visible = loaded
-    ? mapVisible(input.membership?.role ?? "player", loaded.universeVisibility, loaded.mapVisibility)
+    ? mapVisible(
+        input.membership?.role ?? "player",
+        loaded.universeVisibility,
+        loaded.mapVisibility,
+        viewerId,
+      )
     : false;
   const allowed = authorizeMarkerAction(input.membership, loaded ? { ownerId: loaded.ownerId } : null, visible);
   if (!allowed.ok) return allowed;

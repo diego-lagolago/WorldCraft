@@ -5,8 +5,11 @@ import {
   authorizeLeave,
   authorizeMarkerAction,
   authorizeMemberAdmin,
+  authorizeOwnedContentWrite,
   authorizePinWrite,
   requireCharacterOwner,
+  type ContentVisibility,
+  type MembershipRole,
   type MembershipRow,
   canEditMarker,
   canSeeCharacterInWorld,
@@ -19,19 +22,137 @@ import {
   relationVisible,
 } from "@/lib/authz";
 
+const OWNER = "owner-a";
+const OTHER = "other-b";
+const VISIBILITIES: ContentVisibility[] = ["owner_only", "gm_only", "published"];
+const ROLES: MembershipRole[] = ["game_master", "master", "player"];
+
 describe("APP-AUTHZ Sichtbarkeit", () => {
   it("staff sees gm_only, players do not", () => {
-    expect(canSeeVisibility("player", "published")).toBe(true);
-    expect(canSeeVisibility("player", "gm_only")).toBe(false);
-    expect(canSeeVisibility("master", "gm_only")).toBe(true);
-    expect(canSeeVisibility("game_master", "gm_only")).toBe(true);
+    expect(canSeeVisibility({ role: "player", visibility: "published", viewerId: OTHER })).toBe(true);
+    expect(canSeeVisibility({ role: "player", visibility: "gm_only", viewerId: OTHER })).toBe(false);
+    expect(canSeeVisibility({ role: "master", visibility: "gm_only", viewerId: OTHER })).toBe(true);
+    expect(canSeeVisibility({ role: "game_master", visibility: "gm_only", viewerId: OTHER })).toBe(true);
   });
 
   it("inherits universe → map → pin", () => {
-    expect(canSeePublishedLayer("player", ["gm_only", "published", "published"])).toBe(false);
-    expect(canSeePublishedLayer("master", ["gm_only", "published", "published"])).toBe(true);
-    expect(canSeePublishedLayer("player", ["published", "published", "gm_only"])).toBe(false);
-    expect(canSeePublishedLayer("player", ["published", "published", "published"])).toBe(true);
+    const player = { role: "player" as const, userId: OTHER };
+    const master = { role: "master" as const, userId: OTHER };
+    expect(
+      canSeePublishedLayer(player, [
+        { visibility: "gm_only" },
+        { visibility: "published" },
+        { visibility: "published" },
+      ]),
+    ).toBe(false);
+    expect(
+      canSeePublishedLayer(master, [
+        { visibility: "gm_only" },
+        { visibility: "published" },
+        { visibility: "published" },
+      ]),
+    ).toBe(true);
+    expect(
+      canSeePublishedLayer(player, [
+        { visibility: "published" },
+        { visibility: "published" },
+        { visibility: "gm_only" },
+      ]),
+    ).toBe(false);
+    expect(
+      canSeePublishedLayer(player, [
+        { visibility: "published" },
+        { visibility: "published" },
+        { visibility: "published" },
+      ]),
+    ).toBe(true);
+  });
+
+  it("APP-VIS-OWNER matrix: 3 × GM/Master/Player × owner yes/no (R1: player owner still false)", () => {
+    for (const visibility of VISIBILITIES) {
+      for (const role of ROLES) {
+        for (const isOwner of [true, false]) {
+          const viewerId = isOwner ? OWNER : OTHER;
+          const actual = canSeeVisibility({
+            role,
+            visibility,
+            viewerId,
+            ownerId: OWNER,
+          });
+          let expected: boolean;
+          if (visibility === "published") expected = true;
+          else if (visibility === "gm_only") expected = role === "game_master" || role === "master";
+          else {
+            // owner_only: staff AND owner; player as owner still false (R1)
+            expected = (role === "game_master" || role === "master") && isOwner;
+          }
+          expect(actual, `${visibility}/${role}/owner=${isOwner}`).toBe(expected);
+        }
+      }
+    }
+  });
+
+  it("owner_only pin layer requires matching ownerId", () => {
+    const viewer = { role: "master" as const, userId: OWNER };
+    expect(
+      canSeePublishedLayer(viewer, [
+        { visibility: "published" },
+        { visibility: "published" },
+        { visibility: "owner_only", ownerId: OWNER },
+      ]),
+    ).toBe(true);
+    expect(
+      canSeePublishedLayer(viewer, [
+        { visibility: "published" },
+        { visibility: "published" },
+        { visibility: "owner_only", ownerId: OTHER },
+      ]),
+    ).toBe(false);
+  });
+
+  it("authorizeOwnedContentWrite: visible content, R2 for owner_only", () => {
+    const masterA = row("master", { userId: OWNER });
+    const gm = row("game_master", { userId: "gm" });
+    const ownerOnly = { ownerId: OWNER, visibility: "owner_only" as const };
+    const gmOnly = { ownerId: OWNER, visibility: "gm_only" as const };
+
+    expect(
+      authorizeOwnedContentWrite({
+        membership: gm,
+        content: ownerOnly,
+        notFoundError: "missing",
+      }),
+    ).toMatchObject({ ok: false, status: 404 });
+    expect(
+      authorizeOwnedContentWrite({
+        membership: masterA,
+        content: ownerOnly,
+        notFoundError: "missing",
+      }).ok,
+    ).toBe(true);
+    expect(
+      authorizeOwnedContentWrite({
+        membership: gm,
+        content: gmOnly,
+        notFoundError: "missing",
+      }).ok,
+    ).toBe(true);
+    expect(
+      authorizeOwnedContentWrite({
+        membership: gm,
+        content: gmOnly,
+        nextVisibility: "owner_only",
+        notFoundError: "missing",
+      }),
+    ).toMatchObject({ ok: false, status: 403 });
+    expect(
+      authorizeOwnedContentWrite({
+        membership: masterA,
+        content: gmOnly,
+        nextVisibility: "owner_only",
+        notFoundError: "missing",
+      }).ok,
+    ).toBe(true);
   });
 
   it("journals: B never sees A's; staff only shared", () => {
@@ -135,29 +256,41 @@ describe("APP-AUTHZ Sichtbarkeit", () => {
   });
 
   it("APP-PIN-LOCK: staff lock and unlock, locked pins only unlock", () => {
+    const unlocked = { locked: false, ownerId: "master", visibility: "gm_only" as const };
+    const locked = { locked: true, ownerId: "master", visibility: "gm_only" as const };
     expect(isUnlockOnlyPatch({ locked: false })).toBe(true);
     expect(isUnlockOnlyPatch({ locked: false, title: undefined })).toBe(true);
     expect(isUnlockOnlyPatch({ locked: false, title: "X" })).toBe(false);
-    expect(authorizePinWrite(row("player"), { locked: false }, "create")).toMatchObject({
+    expect(authorizePinWrite(row("player"), unlocked, "create")).toMatchObject({
       ok: false,
       status: 403,
     });
     expect(authorizePinWrite(row("master"), null, "create").ok).toBe(true);
-    expect(authorizePinWrite(row("master"), { locked: true }, { posX: 0.2 })).toMatchObject({
+    expect(authorizePinWrite(row("master"), locked, { posX: 0.2 })).toMatchObject({
       ok: false,
       status: 409,
     });
-    expect(authorizePinWrite(row("game_master"), { locked: true }, { locked: false }).ok).toBe(true);
-    expect(authorizePinWrite(row("master"), { locked: true }, "delete")).toMatchObject({
+    expect(authorizePinWrite(row("game_master"), locked, { locked: false }).ok).toBe(true);
+    expect(authorizePinWrite(row("master"), locked, "delete")).toMatchObject({
       ok: false,
       status: 409,
     });
-    expect(authorizePinWrite(row("master"), { locked: false }, "delete").ok).toBe(true);
-    expect(authorizePinWrite(row("player"), { locked: false }, { locked: true })).toMatchObject({
+    expect(authorizePinWrite(row("master"), unlocked, "delete").ok).toBe(true);
+    expect(authorizePinWrite(row("player"), unlocked, { locked: true })).toMatchObject({
       ok: false,
       status: 403,
     });
     expect(authorizePinWrite(row("master"), null, { title: "x" })).toMatchObject({ ok: false, status: 404 });
+    expect(
+      authorizePinWrite(row("game_master", { userId: "gm" }), unlocked, { visibility: "owner_only" }),
+    ).toMatchObject({ ok: false, status: 403 });
+    expect(
+      authorizePinWrite(row("master", { userId: OTHER }), {
+        locked: false,
+        ownerId: OWNER,
+        visibility: "owner_only",
+      }, { title: "x" }),
+    ).toMatchObject({ ok: false, status: 404 });
   });
 
   it("relations need both ends visible", () => {

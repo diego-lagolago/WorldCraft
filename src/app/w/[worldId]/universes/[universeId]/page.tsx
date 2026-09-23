@@ -15,11 +15,11 @@ export default async function UniversePage({ params }: PageProps<"/w/[worldId]/u
   const { worldId, universeId } = await params;
   const { world, membership } = await requireWorldPage(worldId);
   const id = parseUuid(universeId);
-  const universe = id ? await getUniverse(world.id, id, membership.role) : null;
+  const universe = id ? await getUniverse(world.id, id, membership.role, membership.userId) : null;
   if (!universe) notFound();
 
   const doc = asRichDoc(universe.descriptionJson);
-  const mentions = await resolveMentions(world.id, membership.role, extractMentions(doc));
+  const mentions = await resolveMentions(world.id, membership.role, membership.userId, extractMentions(doc));
 
   return (
     <>
@@ -58,6 +58,7 @@ export default async function UniversePage({ params }: PageProps<"/w/[worldId]/u
           <LinkedSection
             worldId={world.id}
             role={membership.role}
+            viewerId={membership.userId}
             kind="universe"
             id={universe.id}
             canEdit={isStaff(membership.role)}

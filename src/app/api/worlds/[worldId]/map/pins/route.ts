@@ -5,7 +5,7 @@ import {
   pinTitleSchema,
   pinTypeSchema,
   positionSchema,
-  visibilitySchema,
+  contentVisibilitySchema,
 } from "@/lib/map/repository";
 import { failResponse, openWorldRequest, resultResponse } from "@/lib/route";
 
@@ -22,7 +22,7 @@ const createSchema = z
     description: z.unknown().optional(),
     posX: positionSchema,
     posY: positionSchema,
-    visibility: visibilitySchema.optional(),
+    visibility: contentVisibilitySchema.optional(),
   })
   .strict();
 

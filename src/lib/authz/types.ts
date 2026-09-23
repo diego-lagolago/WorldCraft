@@ -76,10 +76,17 @@ export function isGm(role: MembershipRole): boolean {
   return role === "game_master";
 }
 
-export function canSeeVisibility(
-  role: MembershipRole,
-  visibility: VisibilityStatus | ContentVisibility,
-): boolean {
-  // owner_only: vorläufig wie gm_only (T-004 ersetzt durch APP-VIS-OWNER).
-  return visibility === "published" || isStaff(role);
+/** APP-VIS-OWNER: published → member; gm_only → staff; owner_only → owner AND staff (R1: player rights rest). */
+export function canSeeVisibility(input: {
+  role: MembershipRole;
+  visibility: VisibilityStatus | ContentVisibility;
+  viewerId: string;
+  /** Required for owner_only; ignored for two-tier VisibilityStatus. */
+  ownerId?: string | null;
+}): boolean {
+  if (input.visibility === "published") return true;
+  if (input.visibility === "gm_only") return isStaff(input.role);
+  // owner_only
+  if (!isStaff(input.role)) return false;
+  return input.ownerId != null && input.viewerId === input.ownerId;
 }

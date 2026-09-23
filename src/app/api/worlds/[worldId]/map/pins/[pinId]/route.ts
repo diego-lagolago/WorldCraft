@@ -7,7 +7,7 @@ import {
   pinTypeSchema,
   positionSchema,
   updatePin,
-  visibilitySchema,
+  contentVisibilitySchema,
 } from "@/lib/map/repository";
 import { failResponse, notFoundResponse, openWorldRequest, resultResponse } from "@/lib/route";
 
@@ -23,7 +23,7 @@ const patchSchema = z
     description: z.unknown().optional(),
     posX: positionSchema.optional(),
     posY: positionSchema.optional(),
-    visibility: visibilitySchema.optional(),
+    visibility: contentVisibilitySchema.optional(),
     locked: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0);
@@ -44,6 +44,7 @@ export async function GET(_request: Request, ctx: Ctx) {
     await getPinDetails({
       worldId: opened.req.context.world.id,
       role: opened.req.context.membership.role,
+      actorId: opened.req.user.id,
       pinId: opened.pinId,
     }),
   );

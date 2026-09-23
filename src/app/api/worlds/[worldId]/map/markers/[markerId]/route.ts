@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { parseJsonBody, parseUuid } from "@/lib/http";
-import { deleteMarker, moveMarker, positionSchema } from "@/lib/map/repository";
+import { deleteMarker, getMarkerDetails, moveMarker, positionSchema } from "@/lib/map/repository";
 import { failResponse, notFoundResponse, openWorldRequest, resultResponse } from "@/lib/route";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +22,19 @@ async function openMarker(ctx: Ctx) {
   const markerId = parseUuid(raw);
   if (!markerId) return { ok: false as const, response: notFoundResponse("Diesen Marker gibt es nicht.") };
   return { ok: true as const, req, markerId };
+}
+
+export async function GET(_request: Request, ctx: Ctx) {
+  const opened = await openMarker(ctx);
+  if (!opened.ok) return opened.response;
+  return resultResponse(
+    await getMarkerDetails({
+      worldId: opened.req.context.world.id,
+      role: opened.req.context.membership.role,
+      actorId: opened.req.user.id,
+      markerId: opened.markerId,
+    }),
+  );
 }
 
 export async function PATCH(request: Request, ctx: Ctx) {

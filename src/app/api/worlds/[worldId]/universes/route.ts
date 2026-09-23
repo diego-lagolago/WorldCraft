@@ -19,7 +19,7 @@ export async function GET(_request: Request, ctx: Ctx) {
   const req = await openWorldRequest((await ctx.params).worldId);
   if (!req.ok) return req.response;
   const { world, membership } = req.context;
-  return NextResponse.json({ universes: await listUniverses(world.id, membership.role) });
+  return NextResponse.json({ universes: await listUniverses(world.id, membership.role, membership.userId) });
 }
 
 export async function POST(request: Request, ctx: Ctx) {

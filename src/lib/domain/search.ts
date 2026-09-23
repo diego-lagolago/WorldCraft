@@ -9,7 +9,7 @@ import {
   universes,
   worldParticipations,
 } from "@/db/schema";
-import { canSeePublishedLayer, canSeeVisibility, type MembershipRole } from "@/lib/authz";
+import { canSeePublishedLayer, canSeeVisibility, isStaff, type MembershipRole } from "@/lib/authz";
 import { contentHref } from "@/lib/content-href";
 import { escapeLikePattern } from "@/lib/editor/mentions";
 import {
@@ -72,11 +72,12 @@ type RawHit = {
 
 /**
  * World search for the campaign hub (and later MCP `suchen`). Journal is never
- * included. Visibility follows APP-AUTHZ / APP-VIS-INHERIT.
+ * included. Visibility follows APP-AUTHZ / APP-VIS-INHERIT / APP-VIS-OWNER.
  */
 export async function searchWorld(input: {
   worldId: string;
   role: MembershipRole;
+  viewerId: string;
   query: string;
   limit?: number;
   kind?: SearchKind | "all";
@@ -85,12 +86,13 @@ export async function searchWorld(input: {
   if (query.length < SEARCH_QUERY_MIN) return [];
   const limit = clampSearchLimit(input.limit);
   const kinds = !input.kind || input.kind === "all" ? SEARCH_KINDS : [input.kind];
+  const viewer = { role: input.role, userId: input.viewerId };
 
   const parts: Promise<RawHit[]>[] = [];
-  if (kinds.includes("article")) parts.push(searchArticles(input.worldId, input.role, query));
-  if (kinds.includes("quest")) parts.push(searchQuests(input.worldId, input.role, query));
-  if (kinds.includes("universe")) parts.push(searchUniverses(input.worldId, input.role, query));
-  if (kinds.includes("pin")) parts.push(searchPins(input.worldId, input.role, query));
+  if (kinds.includes("article")) parts.push(searchArticles(input.worldId, viewer, query));
+  if (kinds.includes("quest")) parts.push(searchQuests(input.worldId, viewer, query));
+  if (kinds.includes("universe")) parts.push(searchUniverses(input.worldId, viewer, query));
+  if (kinds.includes("pin")) parts.push(searchPins(input.worldId, viewer, query));
   if (kinds.includes("character")) parts.push(searchCharacters(input.worldId, query));
 
   const rows = (await Promise.all(parts)).flat();
@@ -106,12 +108,14 @@ export async function searchWorld(input: {
   }));
 }
 
-async function searchArticles(worldId: string, role: MembershipRole, query: string): Promise<RawHit[]> {
+type Viewer = { role: MembershipRole; userId: string };
+
+async function searchArticles(worldId: string, viewer: Viewer, query: string): Promise<RawHit[]> {
   const filters: SQL[] = [
     eq(articles.worldId, worldId),
     matchTitleOrPlain(articles.title, sql`coalesce(${articles.bodyPlain}, '')`, articles.bodyTsv, query),
   ];
-  if (!canSeeVisibility(role, "gm_only")) filters.push(eq(articles.visibility, "published"));
+  if (!isStaff(viewer.role)) filters.push(eq(articles.visibility, "published"));
   const rows = await db
     .select({
       id: articles.id,
@@ -119,11 +123,19 @@ async function searchArticles(worldId: string, role: MembershipRole, query: stri
       plain: articles.bodyPlain,
       templateType: articles.templateType,
       visibility: articles.visibility,
+      ownerId: articles.ownerId,
     })
     .from(articles)
     .where(and(...filters));
   return rows
-    .filter((row) => canSeeVisibility(role, row.visibility))
+    .filter((row) =>
+      canSeeVisibility({
+        role: viewer.role,
+        visibility: row.visibility,
+        viewerId: viewer.userId,
+        ownerId: row.ownerId,
+      }),
+    )
     .map((row) => ({
       kind: "article" as const,
       id: row.id,
@@ -133,32 +145,40 @@ async function searchArticles(worldId: string, role: MembershipRole, query: stri
     }));
 }
 
-async function searchQuests(worldId: string, role: MembershipRole, query: string): Promise<RawHit[]> {
+async function searchQuests(worldId: string, viewer: Viewer, query: string): Promise<RawHit[]> {
   const filters: SQL[] = [
     eq(quests.worldId, worldId),
     matchTitleOrPlain(quests.title, sql`coalesce(${quests.descriptionPlain}, '')`, quests.descriptionTsv, query),
   ];
-  if (!canSeeVisibility(role, "gm_only")) filters.push(eq(quests.visibility, "published"));
+  if (!isStaff(viewer.role)) filters.push(eq(quests.visibility, "published"));
   const rows = await db
     .select({
       id: quests.id,
       title: quests.title,
       plain: quests.descriptionPlain,
       visibility: quests.visibility,
+      ownerId: quests.ownerId,
     })
     .from(quests)
     .where(and(...filters));
   return rows
-    .filter((row) => canSeeVisibility(role, row.visibility))
+    .filter((row) =>
+      canSeeVisibility({
+        role: viewer.role,
+        visibility: row.visibility,
+        viewerId: viewer.userId,
+        ownerId: row.ownerId,
+      }),
+    )
     .map((row) => ({ kind: "quest" as const, id: row.id, title: row.title, plain: row.plain }));
 }
 
-async function searchUniverses(worldId: string, role: MembershipRole, query: string): Promise<RawHit[]> {
+async function searchUniverses(worldId: string, viewer: Viewer, query: string): Promise<RawHit[]> {
   const filters: SQL[] = [
     eq(universes.worldId, worldId),
     matchTitleOrPlain(universes.name, sql`coalesce(${universes.descriptionPlain}, '')`, universes.descriptionTsv, query),
   ];
-  if (!canSeeVisibility(role, "gm_only")) filters.push(eq(universes.visibility, "published"));
+  if (!isStaff(viewer.role)) filters.push(eq(universes.visibility, "published"));
   const rows = await db
     .select({
       id: universes.id,
@@ -169,11 +189,13 @@ async function searchUniverses(worldId: string, role: MembershipRole, query: str
     .from(universes)
     .where(and(...filters));
   return rows
-    .filter((row) => canSeeVisibility(role, row.visibility))
+    .filter((row) =>
+      canSeeVisibility({ role: viewer.role, visibility: row.visibility, viewerId: viewer.userId }),
+    )
     .map((row) => ({ kind: "universe" as const, id: row.id, title: row.title, plain: row.plain }));
 }
 
-async function searchPins(worldId: string, role: MembershipRole, query: string): Promise<RawHit[]> {
+async function searchPins(worldId: string, viewer: Viewer, query: string): Promise<RawHit[]> {
   const filters: SQL[] = [
     eq(universes.worldId, worldId),
     matchTitleOrPlain(pins.title, sql`coalesce(${pins.descriptionPlain}, '')`, pins.descriptionTsv, query),
@@ -184,6 +206,7 @@ async function searchPins(worldId: string, role: MembershipRole, query: string):
       title: pins.title,
       plain: pins.descriptionPlain,
       visibility: pins.visibility,
+      ownerId: pins.ownerId,
       mapVisibility: maps.visibility,
       universeVisibility: universes.visibility,
     })
@@ -192,7 +215,13 @@ async function searchPins(worldId: string, role: MembershipRole, query: string):
     .innerJoin(universes, eq(universes.id, maps.universeId))
     .where(and(...filters));
   return rows
-    .filter((row) => canSeePublishedLayer(role, [row.universeVisibility, row.mapVisibility, row.visibility]))
+    .filter((row) =>
+      canSeePublishedLayer(viewer, [
+        { visibility: row.universeVisibility },
+        { visibility: row.mapVisibility },
+        { visibility: row.visibility, ownerId: row.ownerId },
+      ]),
+    )
     .map((row) => ({ kind: "pin" as const, id: row.id, title: row.title, plain: row.plain }));
 }
 

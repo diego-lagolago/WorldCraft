@@ -28,6 +28,7 @@ export async function GET(request: Request, ctx: Ctx) {
   const hits = await searchWorld({
     worldId: req.context.world.id,
     role: req.context.membership.role,
+    viewerId: req.context.membership.userId,
     query,
     limit: limit === null ? undefined : Number(limit),
     kind,

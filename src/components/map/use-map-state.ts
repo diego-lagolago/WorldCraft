@@ -246,12 +246,80 @@ export function useMapState(worldId: string, initial: MapState) {
     });
   }
 
-  function applyEvent(event: WorldRealtimeEvent, dragging: Set<string>) {
+  async function applyEvent(event: WorldRealtimeEvent, dragging: Set<string>) {
     if (event.type === "map.updated") {
       void reload();
       return;
     }
-    setState((current) => applyMapEvent(current, event, dragging));
+    if (event.type === "map.pin.deleted" || event.type === "map.marker.deleted") {
+      setState((current) => applyMapEvent(current, event));
+      return;
+    }
+    if (event.type === "map.pin") {
+      if (dragging.has(event.pinId)) return;
+      const result = await apiFetch<PinDetails>(`/api/worlds/${worldId}/map/pins/${event.pinId}`);
+      if (!result.ok) {
+        setState((current) => ({
+          ...current,
+          pins: current.pins.filter((pin) => pin.id !== event.pinId),
+        }));
+        return;
+      }
+      const pin = result.data;
+      setState((current) => {
+        if (current.map && pin.mapId !== current.map.id) return current;
+        return {
+          ...current,
+          pins: [...current.pins.filter((row) => row.id !== pin.id), pin],
+        };
+      });
+      return;
+    }
+    if (event.type === "map.marker") {
+      if (dragging.has(event.markerId)) return;
+      const result = await apiFetch<MarkerDto>(`/api/worlds/${worldId}/map/markers/${event.markerId}`);
+      if (!result.ok) {
+        setState((current) => {
+          const removed = current.markers.find((row) => row.id === event.markerId);
+          return {
+            ...current,
+            markers: current.markers.filter((row) => row.id !== event.markerId),
+            characters: current.characters.map((row) =>
+              removed?.characterId === row.id ? { ...row, placed: false, placedElsewhere: false } : row,
+            ),
+          };
+        });
+        return;
+      }
+      const marker = result.data;
+      setState((current) => {
+        if (current.map && marker.mapId !== current.map.id) {
+          return {
+            ...current,
+            markers: current.markers.filter((row) => row.characterId !== marker.characterId),
+            characters: current.characters.map((row) =>
+              row.id === marker.characterId
+                ? { ...row, placed: false, placedElsewhere: true }
+                : row,
+            ),
+          };
+        }
+        return {
+          ...current,
+          markers: [
+            ...current.markers.filter(
+              (row) => row.id !== marker.id && row.characterId !== marker.characterId,
+            ),
+            marker,
+          ],
+          characters: current.characters.map((row) =>
+            row.id === marker.characterId
+              ? { ...row, placed: true, placedElsewhere: false }
+              : row,
+          ),
+        };
+      });
+    }
   }
 
   return {

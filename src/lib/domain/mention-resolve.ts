@@ -23,6 +23,7 @@ function idsOf(refs: readonly MentionRef[], kind: MentionableKind): string[] {
 export async function resolveMentions(
   worldId: string,
   role: MembershipRole,
+  viewerId: string,
   refs: readonly MentionRef[],
 ): Promise<Record<string, ResolvedMention>> {
   const articleIds = idsOf(refs, "article");
@@ -37,6 +38,7 @@ export async function resolveMentions(
             id: articles.id,
             title: articles.title,
             visibility: articles.visibility,
+            ownerId: articles.ownerId,
             firstEditedAt: articles.firstEditedAt,
           })
           .from(articles)
@@ -44,7 +46,12 @@ export async function resolveMentions(
       : [],
     questIds.length
       ? db
-          .select({ id: quests.id, title: quests.title, visibility: quests.visibility })
+          .select({
+            id: quests.id,
+            title: quests.title,
+            visibility: quests.visibility,
+            ownerId: quests.ownerId,
+          })
           .from(quests)
           .where(and(eq(quests.worldId, worldId), inArray(quests.id, questIds)))
       : [],
@@ -77,13 +84,33 @@ export async function resolveMentions(
     out[mentionKey({ kind, id })] = { state, title, href: mentionHref(worldId, { kind, id }) };
   };
   for (const row of articleRows) {
-    if (canSeeVisibility(role, row.visibility)) put("article", row.id, row.title, row.firstEditedAt ? "linked" : "stub");
+    if (
+      canSeeVisibility({
+        role,
+        visibility: row.visibility,
+        viewerId,
+        ownerId: row.ownerId,
+      })
+    ) {
+      put("article", row.id, row.title, row.firstEditedAt ? "linked" : "stub");
+    }
   }
   for (const row of questRows) {
-    if (canSeeVisibility(role, row.visibility)) put("quest", row.id, row.title, "linked");
+    if (
+      canSeeVisibility({
+        role,
+        visibility: row.visibility,
+        viewerId,
+        ownerId: row.ownerId,
+      })
+    ) {
+      put("quest", row.id, row.title, "linked");
+    }
   }
   for (const row of universeRows) {
-    if (canSeeVisibility(role, row.visibility)) put("universe", row.id, row.title, "linked");
+    if (canSeeVisibility({ role, visibility: row.visibility, viewerId })) {
+      put("universe", row.id, row.title, "linked");
+    }
   }
   for (const row of characterRows) put("character", row.id, row.title, "linked");
   return out;

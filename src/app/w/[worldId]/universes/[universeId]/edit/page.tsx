@@ -14,11 +14,11 @@ export default async function EditUniversePage({
   const { world, membership } = await requireWorldPage(worldId);
   if (!isStaff(membership.role)) notFound();
   const id = parseUuid(universeId);
-  const universe = id ? await getUniverse(world.id, id, membership.role) : null;
+  const universe = id ? await getUniverse(world.id, id, membership.role, membership.userId) : null;
   if (!universe) notFound();
 
   const description = asRichDoc(universe.descriptionJson);
-  const mentions = await resolveMentions(world.id, membership.role, extractMentions(description));
+  const mentions = await resolveMentions(world.id, membership.role, membership.userId, extractMentions(description));
 
   return (
     <UniverseForm

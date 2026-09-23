@@ -22,10 +22,10 @@ export default async function CampaignHubPage({ params, searchParams }: PageProp
   const filter = typeof template === "string" && isTemplateType(template) ? template : "all";
   const [details, universes, myWorlds, articles, quests] = await Promise.all([
     getWorldDetails(world.id),
-    listUniverses(world.id, membership.role),
+    listUniverses(world.id, membership.role, membership.userId),
     listMyWorlds(user.id),
-    listArticles(world.id, membership.role, filter),
-    listQuests(world.id, membership.role),
+    listArticles(world.id, membership.role, membership.userId, filter),
+    listQuests(world.id, membership.role, membership.userId),
   ]);
   const staff = isStaff(membership.role);
 

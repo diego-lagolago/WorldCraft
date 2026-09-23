@@ -16,7 +16,7 @@ export async function GET(_request: Request, ctx: Ctx) {
   if (!req.ok) return req.response;
   const questId = parseUuid(params.questId);
   if (!questId) return notFoundResponse(NOT_FOUND);
-  const quest = await getQuest(req.context.world.id, questId, req.context.membership.role);
+  const quest = await getQuest(req.context.world.id, questId, req.context.membership.role, req.context.membership.userId);
   if (!quest) return notFoundResponse(NOT_FOUND);
   return NextResponse.json({ quest });
 }

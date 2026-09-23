@@ -84,17 +84,17 @@ describe("T-009 (2)/(5): fields, refs and first_edited_at", () => {
     const stub = await create(master, { title: "Neuer Stub" });
     stubId = stub.id;
     expect(stub.firstEditedAt).toBeNull();
-    expect((await api(gm, "PATCH", w(`/articles/${stubId}`), { title: "Neuer Stub umbenannt" })).status).toBe(200);
-    expect((await api(gm, "PATCH", w(`/articles/${stubId}`), { visibility: "published" })).status).toBe(200);
+    expect((await api(master, "PATCH", w(`/articles/${stubId}`), { title: "Neuer Stub umbenannt" })).status).toBe(200);
+    expect((await api(master, "PATCH", w(`/articles/${stubId}`), { visibility: "published" })).status).toBe(200);
     const still = await sql`SELECT first_edited_at FROM articles WHERE id = ${stubId}`;
     expect(still[0].first_edited_at).toBeNull();
 
-    expect((await api(gm, "PATCH", w(`/articles/${stubId}`), { body: doc("Erster Satz") })).status).toBe(200);
+    expect((await api(master, "PATCH", w(`/articles/${stubId}`), { body: doc("Erster Satz") })).status).toBe(200);
     const edited = await sql`SELECT first_edited_at, body_plain FROM articles WHERE id = ${stubId}`;
     expect(edited[0].first_edited_at).not.toBeNull();
     expect(edited[0].body_plain).toBe("Erster Satz");
 
-    expect((await api(gm, "PATCH", w(`/articles/${stubId}`), { body: doc("") })).status).toBe(200);
+    expect((await api(master, "PATCH", w(`/articles/${stubId}`), { body: doc("") })).status).toBe(200);
     const emptied = await sql`SELECT first_edited_at, body_plain FROM articles WHERE id = ${stubId}`;
     expect(emptied[0].first_edited_at).not.toBeNull();
     expect(emptied[0].body_plain).toBeNull();

@@ -16,7 +16,7 @@ export async function GET(_request: Request, ctx: Ctx) {
   if (!req.ok) return req.response;
   const articleId = parseUuid(params.articleId);
   if (!articleId) return notFoundResponse(NOT_FOUND);
-  const article = await getArticle(req.context.world.id, articleId, req.context.membership.role);
+  const article = await getArticle(req.context.world.id, articleId, req.context.membership.role, req.context.membership.userId);
   if (!article) return notFoundResponse(NOT_FOUND);
   return NextResponse.json({ article });
 }

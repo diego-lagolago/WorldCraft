@@ -35,13 +35,13 @@ beforeAll(async () => {
     VALUES (${worldId}, 'Hauptuniversum', 0, 'published', ${gm.user.id}, ${gm.user.id})
   `;
   await sql`
-    INSERT INTO articles (world_id, title, template_type, visibility, first_edited_at, created_by, updated_by)
+    INSERT INTO articles (world_id, title, template_type, visibility, owner_id, first_edited_at, created_by, updated_by)
     VALUES
-      (${worldId}, 'Tore von Wertheim', 'place', 'published', now(), ${gm.user.id}, ${gm.user.id}),
-      (${worldId}, 'Burgtor', 'place', 'published', now(), ${gm.user.id}, ${gm.user.id}),
-      (${worldId}, 'Torheit der Alten', 'none', 'gm_only', now(), ${gm.user.id}, ${gm.user.id}),
-      (${worldId}, '50% Rabatt', 'none', 'published', now(), ${gm.user.id}, ${gm.user.id}),
-      (${worldId}, 'Gottschleim', 'none', 'published', now(), ${gm.user.id}, ${gm.user.id})
+      (${worldId}, 'Tore von Wertheim', 'place', 'published', ${gm.user.id}, now(), ${gm.user.id}, ${gm.user.id}),
+      (${worldId}, 'Burgtor', 'place', 'published', ${gm.user.id}, now(), ${gm.user.id}, ${gm.user.id}),
+      (${worldId}, 'Torheit der Alten', 'none', 'gm_only', ${gm.user.id}, now(), ${gm.user.id}, ${gm.user.id}),
+      (${worldId}, '50% Rabatt', 'none', 'published', ${gm.user.id}, now(), ${gm.user.id}, ${gm.user.id}),
+      (${worldId}, 'Gottschleim', 'none', 'published', ${gm.user.id}, now(), ${gm.user.id}, ${gm.user.id})
   `;
   await sql`
     INSERT INTO universes (world_id, name, sort_order, visibility, created_by, updated_by)
@@ -115,8 +115,8 @@ describe("GET /api/worlds/[worldId]/mentions", () => {
 
   it("includes quest titles (T-011 (4))", async () => {
     await sql`
-      INSERT INTO quests (world_id, title, visibility, created_by, updated_by)
-      VALUES (${worldId}, 'Töte den Gottschleim', 'published', ${gm.user.id}, ${gm.user.id})
+      INSERT INTO quests (world_id, title, visibility, owner_id, created_by, updated_by)
+      VALUES (${worldId}, 'Töte den Gottschleim', 'published', ${gm.user.id}, ${gm.user.id}, ${gm.user.id})
     `;
     const res = await search(gm, "schleim");
     expect(res.data.hits?.map((hit) => hit.title)).toEqual([
@@ -147,10 +147,11 @@ describe("POST /api/worlds/[worldId]/articles (stub from @)", () => {
     const [row] = await sql`
       SELECT visibility, first_edited_at FROM articles WHERE id = ${res.data.article?.id ?? ""}
     `;
-    expect(row).toMatchObject({ visibility: "gm_only", first_edited_at: null });
+    expect(row).toMatchObject({ visibility: "owner_only", first_edited_at: null });
 
-    const found = await search(gm, "Neuer Ort");
+    const found = await search(master, "Neuer Ort");
     expect(found.data.hits?.map((hit) => hit.id)).toEqual([res.data.article?.id]);
+    expect((await search(gm, "Neuer Ort")).data.hits).toEqual([]);
     expect((await search(playerA, "Neuer Ort")).data.hits).toEqual([]);
   });
 

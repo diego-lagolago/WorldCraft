@@ -4,6 +4,7 @@ export {
   authorizeLeave,
   authorizeMarkerAction,
   authorizeMemberAdmin,
+  authorizeOwnedContentWrite,
   authorizePinWrite,
   canEditMarker,
   canSeeCharacterInWorld,
@@ -15,6 +16,7 @@ export {
   requireCharacterOwner,
   requireGm,
   requireStaff,
+  type VisibilityLayer,
 } from "./authz";
 export {
   CONTENT_KINDS,

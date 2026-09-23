@@ -33,7 +33,7 @@ export async function GET(_request: Request, ctx: Ctx) {
   if (!req.ok) return req.response;
   const universeId = parseUuid(params.universeId);
   if (!universeId) return notFoundResponse(NOT_FOUND);
-  const universe = await getUniverse(req.context.world.id, universeId, req.context.membership.role);
+  const universe = await getUniverse(req.context.world.id, universeId, req.context.membership.role, req.context.membership.userId);
   if (!universe) return notFoundResponse(NOT_FOUND);
   return NextResponse.json({ universe });
 }

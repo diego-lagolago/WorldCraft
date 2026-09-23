@@ -287,8 +287,8 @@ describe("Produkt-Karte", () => {
 
   it("creates mention relations from the pin description", async () => {
     const [article] = await sql<{ id: string }[]>`
-      INSERT INTO articles (world_id, title, visibility, created_by, updated_by)
-      VALUES (${worldId}, 'Gottschleim', 'published', ${gm.user.id}, ${gm.user.id})
+      INSERT INTO articles (world_id, title, visibility, owner_id, created_by, updated_by)
+      VALUES (${worldId}, 'Gottschleim', 'published', ${gm.user.id}, ${gm.user.id}, ${gm.user.id})
       RETURNING id
     `;
     const mapId =

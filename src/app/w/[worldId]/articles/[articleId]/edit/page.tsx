@@ -12,11 +12,11 @@ export default async function EditArticlePage({ params }: PageProps<"/w/[worldId
   const { world, membership } = await requireWorldPage(worldId);
   if (!isStaff(membership.role)) notFound();
   const id = parseUuid(articleId);
-  const article = id ? await getArticle(world.id, id, membership.role) : null;
+  const article = id ? await getArticle(world.id, id, membership.role, membership.userId) : null;
   if (!article) notFound();
   const body = asRichDoc(article.bodyJson);
   const [mentions, refOptions] = await Promise.all([
-    resolveMentions(world.id, membership.role, extractMentions(body)),
+    resolveMentions(world.id, membership.role, membership.userId, extractMentions(body)),
     listArticleRefOptions(world.id),
   ]);
 

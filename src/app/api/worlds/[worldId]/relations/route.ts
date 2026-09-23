@@ -23,6 +23,7 @@ export async function GET(request: Request, ctx: Ctx) {
     items: await listLinked({
       worldId: req.context.world.id,
       role: req.context.membership.role,
+      viewerId: req.context.membership.userId,
       kind,
       id,
     }),
