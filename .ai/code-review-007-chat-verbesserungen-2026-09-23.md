@@ -13,7 +13,7 @@
 | CR-005 | Fehlerbehandlung & Validierung | mittel | behoben | PATCH Nachricht: jeder Validierungsfehler (auch 2001 Zeichen) meldet „Zum Entfernen löschen.“; Validierung doppelt |
 | CR-006 | Aufgaben-Abgleich | mittel | behoben | Alias `/r` für Würfelbefehle ändert das Sendeverhalten (Scope Creep), ohne Tests und Doku |
 | CR-007 | Testabdeckung | mittel | behoben | Keine Tests für `withMessage`/`withThread`, `messageCopyText`, `CHK-OPENER-BODY`-Inserts |
-| CR-008 | Aufgaben-Abgleich | mittel | offen (Teil 1 erledigt) | T-007 als erledigt markiert, Smoketest-Punkte C7.1–C7.8 stehen auf „offen“ — T-007 zurückgesetzt; Smoketest C7.* Owner ausstehend |
+| CR-008 | Aufgaben-Abgleich | mittel | behoben | T-007 als erledigt markiert, Smoketest-Punkte C7.1–C7.8 stehen auf „offen“ — T-007 zurückgesetzt; Smoketest C7.* Owner ausstehend |
 | CR-009 | Fehlerbehandlung & Validierung | niedrig | behoben | Bearbeiten/Umbenennen im archivierten Kanal: erlaubt, Norm fehlt |
 | CR-010 | Bad Practices | niedrig | behoben | `authorizeEditChatMessage` meldet 422 vor 403 – Nicht-Autor bekommt bei Würfelwurf 422 |
 | CR-011 | Duplizierung & Modularisierung | niedrig | behoben | `renameChatThread`: redundantes `actorId`, eigene Reply-Count-Abfrage, abweichender Statuscode zu `createThreadWithOpening` |
@@ -64,6 +64,7 @@
 - **Entscheidung (Projektinhaber, Plan-Review 2026-09-23):** **`useEffect`-Muster wie in `HomeRedirect.tsx`** (zusammen mit CR-016).
 - **Empfehlung:** `useState<Record<string, boolean>>({})`; in einem `useEffect(() => setExpanded(readExpanded()), [])` nach dem Mount lesen. Ein kurzes Umspringen direkt nach dem Laden ist akzeptiert.
 - **Abnahmekriterium:** Mit gespeichertem `worldcraft:chat-expanded`, das vom Standard abweicht, zeigt ein Neuladen von `/w/<id>/chat` keine Hydration-Warnung in der Konsole, und der gespeicherte Auf-/Zu-Zustand wird angezeigt.
+- **Review-Check 2026-09-23:** behoben, inzwischen anders gelöst: Nachtrag N2 aus Plan 007 ersetzt das `useEffect`-Lesen aus `localStorage` durch ein Cookie je Welt, das der Server liest (`src/lib/chat/expanded-state.ts`, `page.tsx`). Damit kein Hydration-Mismatch und kein Umspringen mehr; im Browser geprüft (C7.11).
 
 ### CR-004 – Lösch-Dialog kann per Enter unbeabsichtigt löschen
 - **Fundstelle:** `src/components/ui/confirm-dialog.ts` (`confirmDialogKey`), `src/components/ui/ConfirmDialog.tsx` Zeilen 34–48
@@ -114,6 +115,7 @@
 - **Entscheidung (Projektinhaber, Plan-Review 2026-09-23):** **T-007 zurücksetzen.**
 - **Empfehlung:** In `.ai/feature-tasks/007-chat-verbesserungen.md` T-007 auf `- [ ]` setzen. Der Projektinhaber durchläuft den Smoketest C7.1–C7.9 (C7.9 aus CR-006) erst, wenn alle übrigen Findings erledigt sind; danach T-007 wieder abhaken.
 - **Abnahmekriterium:** T-007 steht auf `- [ ]`, solange nicht alle C7.x mit Datum auf „ok“ stehen.
+- **Review-Check 2026-09-23:** Status `offen (Teil 1 erledigt)` → `behoben`. C7.1–C7.8 vom Projektinhaber bestanden (Commit `764f233`), C7.9–C7.12 im Browser geprüft und eingetragen; T-007 danach wieder `[x]` (Commit `f669783`).
 
 ### CR-009 – Bearbeiten/Umbenennen in archivierten Kanälen möglich
 - **Fundstelle:** `src/lib/chat/repository.ts`, `editChatMessage` und `renameChatThread`
@@ -143,6 +145,7 @@
 - **Entscheidung (Projektinhaber, Plan-Review 2026-09-23):** **Ungültiger Thread-Titel → 422 bei Anlage und Umbenennen.**
 - **Empfehlung:** `actorId` aus `membership.userId` ableiten; Titelvalidierung an einer Stelle; Reply-Count über eine gemeinsame Hilfsfunktion. Für 422 bei der Anlage: `src/app/api/worlds/[worldId]/chat/threads/route.ts` validiert `title` heute per `parseJsonBody(request, bodySchema)` (→ 400); wie in der Umbenenn-Route auf `parseJsonBody(request, z.unknown())` + `safeParse` umstellen und Titelfehler mit 422 beantworten (ungültige `channelId` bleibt 400). `createThreadWithOpening` gibt ebenfalls 422 statt 400 zurück.
 - **Abnahmekriterium:** `renameChatThread` hat keinen `actorId`-Parameter mehr; es gibt genau eine Funktion zum Zählen der Antworten eines Threads; Anlage und Umbenennung liefern für einen 81 Zeichen langen Titel denselben Statuscode.
+- **Review-Check 2026-09-23:** bleibt `behoben`. `renameChatThread` ohne `actorId`, Titelprüfung nur im Repository, Anlage und Umbenennung liefern 422 (API-Test mit 81 Zeichen). Restpunkt ohne Statuswirkung: `loadChatState` zählt die Antworten aller Threads weiterhin in einer eigenen, gruppierten Abfrage; `threadReplyCount` deckt nur den Einzelfall ab.
 
 ### CR-012 – Kopier- und Vorschautext doppelt und am falschen Ort
 - **Fundstelle:** `src/components/chat/MessageList.tsx` Zeilen 40–62; Import in `ChatView.tsx`
@@ -191,6 +194,7 @@
 - **Abhängigkeiten:** zusammen mit CR-003 umsetzen (dieselbe Stelle in `ChannelList.tsx`).
 - **Empfehlung:** `toggleExpanded` setzt nur den State; das Schreiben passiert in einem `useEffect` auf `expanded`. Das Schreiben erst nach dem ersten Lesen erlauben (z. B. Ref `loaded`), damit der leere Anfangszustand aus CR-003 den Speicher nicht überschreibt. Im Modul-Kommentar von `src/lib/client/chat-expanded.ts` festhalten: „Keine Obergrenze: wenige Bytes pro Kanal, bewusst so entschieden (Plan-Review 2026-09-23, CR-016).“
 - **Abnahmekriterium:** Kein `writeExpanded`-Aufruf innerhalb eines `setState`-Updaters; Neuladen verliert gespeicherte Einträge nicht; der Modul-Kommentar enthält die Begründung für die fehlende Obergrenze.
+- **Review-Check 2026-09-23:** bleibt `behoben`. Kein Schreiben im Updater mehr (`useEffect` in `ChannelList.tsx`). Die Entscheidung „keine Obergrenze“ ist durch Nachtrag N2 überholt: Das Cookie ist auf 3500 Zeichen begrenzt (älteste Einträge fallen weg), Begründung im Modul-Kommentar von `src/lib/chat/expanded-state.ts`.
 
 ### CR-017 – Backfill-Migration prüft Host ungenau
 - **Fundstelle:** `src/db/migrations/0016_static_avatars.sql` Zeile 5
@@ -243,3 +247,47 @@
 7. **CR-018**, **CR-008** (Teil 1) – Plan 007 anpassen: Abnahme T-001 ändern, T-007 auf `[ ]`.
 8. **CR-011**, **CR-012**, **CR-014**, **CR-015**, **CR-017**, **CR-019**, **CR-020** – Aufräumen. (CR-013 verworfen.)
 9. **CR-008** (Teil 2) – Zum Schluss: Projektinhaber durchläuft den Smoketest C7.1–C7.9 und hakt T-007 ab.
+
+---
+
+## Review-Check 2026-09-23
+
+**Geprüfter Stand:** Commit `f669783` (`main`, HEAD) in einem isolierten Working Tree, verglichen mit der Baseline `02203fd`. Tests wurden hier nicht erneut ausgeführt; `npm test`, `lint`, `typecheck` und `build` liefen im Commit `f669783` grün.
+
+### Statusänderungen
+
+| ID | Vorher | Nachher | Beleg |
+|----|--------|---------|-------|
+| CR-008 | offen (Teil 1 erledigt) | behoben | Smoketest C7.1–C7.12 bestanden; T-007 `[x]` |
+
+Alle übrigen 18 Findings standen auf `behoben` und bleiben es (CR-013 `verworfen`, übersprungen). Keine Regression, kein `drift`. Vermerke zu CR-003 und CR-016 (durch Nachtrag N2 anders gelöst) und CR-011 (Restpunkt Zählung) stehen im Detailabschnitt.
+
+| ID | Beleg im aktuellen Code |
+|----|-------------------------|
+| CR-001 | `0018`: `DROP NOT NULL` vor dem `UPDATE`; auf Wegwerf-DB mit Eröffnungsnachricht geprüft |
+| CR-002 | `chat.message.edited` in `events.ts`, `editChatMessage` publiziert nur dieses; `withEditedMessage` in `stream-state.ts` mit Tests |
+| CR-004 | `confirmDialogKey(key, focusedConfirm)`, `nextFocusIndex`; Tests in `confirm-dialog.test.ts` |
+| CR-005 | Route nur `z.object({ body: z.string() })`; Repository meldet leer/zu lang; API-Test prüft beide Meldungen |
+| CR-006 | `/r` in `APP-DICE-SERVER`/`APP-CHAT-EDIT`; Tests in `dice.test.ts` und `chat.api.test.ts`; C7.9 im Smoketest |
+| CR-007 | `stream-state.test.ts`, `message-text.test.ts`, fehlschlagende Inserts gegen `CHK-OPENER-BODY` in `chat.api.test.ts` |
+| CR-009 | `datenmodell.md`: beide Regeln gelten auch in archivierten Kanälen |
+| CR-010 | Autorprüfung vor den 422-Prüfungen; Test mit `authorId: "someone", hasDice: true` → 403 |
+| CR-012 | `src/lib/chat/message-text.ts`; `MessageList.tsx` exportiert nur die Komponente |
+| CR-014 | `ConfirmDialog` mit `hint`-Prop und neutralem `confirmLabel`; Shift-Hinweis kommt aus `ChatView` |
+| CR-015 | Sheets in `ChatSheets.tsx`, `THREAD_TITLE_MAX`; kein `maxLength={80}` mehr |
+| CR-017 | `0016`: `~* '^https://cdn\.discordapp\.com/'` |
+| CR-018 | Abnahme von T-001 in Plan 007 angepasst |
+| CR-019 | Kommentar in `createThreadWithOpening`; T-008 sagt „hinterlässt keinen `body`“ |
+| CR-020 | `.more` 44 × 44 px unter `@media (hover: none)` |
+
+### Nicht abgedeckte Änderungen
+
+1. **Nachtrag N1–N3 aus Plan 007** (`f669783`): Cookie für den Aufklapp-Zustand (`expanded-state.ts`, `chat-expanded.ts`, `ChannelList.tsx`, `ChatView.tsx`, Chat-Seite) und CSS für Nachrichten (Hintergrund entfernt, Zeilen-Hervorhebung, Abstand).
+2. **Plan 008, Würfel-Sheet** (`12553e6`, `f6f075a`): `DiceSheet.tsx`, `dice-draft.ts`, `roll` in `use-chat-stream.ts`, Würfel-CSS; nicht Teil von Plan 007.
+3. **Plan 004** (`105767c`–`1084d7e`): Tests und `quests.ts`, nicht chatbezogen.
+4. Versionssprung auf `0.1.3` (`f0a73d9`).
+
+### Empfehlung
+
+Kein erneuter `/code-review` für Plan 007 nötig: Alle Findings sind umgesetzt oder bewusst entschieden. Der Nachtrag N1–N3 ist klein und im Browser geprüft; die Würfel-Änderungen gehören in ein eigenes `/code-review` für Plan 008.
+
