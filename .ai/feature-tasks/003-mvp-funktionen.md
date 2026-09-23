@@ -404,11 +404,26 @@ Regeln:
 - Umsetzung (Plan 003 T-018, 2026-09-23): Abschnitt *Abgleich Plan 002 nach MVP* in `.ai/tech-stack.md` (M1–M7). Keine neuen Kernabweichungen; Staging- und Parameter-Rückfragen wiederholt; TipTap→Markdown noch fehlend.
 
 ### T-019: Verschobene Browser-Abnahmen
-- [ ] Beschreibung: Abnahmekriterien, die der Projektinhaber auf die Zeit nach der Umsetzung aller Aufgaben verschoben hat, lokal im Browser (Test-Login, Testwelt, ~390 px und Desktop) prüfen und das Ergebnis je Kriterium (bestanden / nicht bestanden) in dieser Aufgabe festhalten. Nicht bestandene Punkte werden behoben oder als neue Aufgabe gemeldet. Verschoben (Entscheidung Projektinhaber 2026-09-23):
+- [x] Beschreibung: Abnahmekriterien, die der Projektinhaber auf die Zeit nach der Umsetzung aller Aufgaben verschoben hat, lokal im Browser (Test-Login, Testwelt, ~390 px und Desktop) prüfen und das Ergebnis je Kriterium (bestanden / nicht bestanden) in dieser Aufgabe festhalten. Nicht bestandene Punkte werden behoben oder als neue Aufgabe gemeldet. Verschoben (Entscheidung Projektinhaber 2026-09-23):
   - T-005 (1): Plan `001` T-005 (2)–(6) im Editor der Next-App gegen eine Testwelt — Werkzeugleiste mit genau den erlaubten Formatierungen; eingefügte Bilder/Tabellen verschwinden, Text bleibt; `@` mit Kategorien laut Fachmodell 2.4 (`@schleim` findet Artikel und Quest, sobald T-009/T-011 umgesetzt sind); gespeichertes JSON lädt identisch; Weltbeschreibung ohne Vorschlagsliste. Dazu T-005 (2) und (3) in der Oberfläche: `@Tore von Wer` mitten im Satz, „Neuen Artikel anlegen“ und rote Erwähnung bis zur ersten Bearbeitung.
   - T-006 (1)–(4): Bottom-Bar bei 390 px einhändig erreichbar und beschriftet; Tabwechsel ohne Neuladen der Session mit bleibendem Weltkontext; im Chat verdeckt der Composer die Bar, auf Karte/Menü/Kampagne nicht; Desktop zeigt die vier Ziele dauerhaft (nicht Hover-only).
 - Abhängigkeiten: T-016
 - Abnahmekriterium: Jedes oben gelistete Kriterium ist mit Ergebnis und Datum vermerkt; kein Punkt bleibt ohne Ergebnis.
+- Ergebnis (Plan 003 T-019, lokal 2026-09-23, Testwelt „Smoke“, Test-Login `test-gm`, Viewport 390×844 und Desktop 1280):
+
+| Kriterium | Ergebnis | Beobachtung |
+|---|---|---|
+| T-005 / 001 (2) Werkzeugleiste | **bestanden** | Gruppen Formatierung / Listen / Stilmittel / Link; Formatierung: H2, H3, Fett, Kursiv, Unterstrichen, Durchgestrichen |
+| T-005 / 001 (3) Paste Bild/Tabelle | **bestanden** | Einfügen mit `<img>`/`<table>`: kein Bild/keine Tabelle, Klartext bleibt |
+| T-005 / 001 (4) `@schleim` Kategorien | **bestanden** | Listbox: „Gottschleim“ Artikel, „Töte den Gottschleim“ Quest |
+| T-005 / 001 (5) JSON neu laden | **bestanden** | Nach Speichern/Reload: Mention `Tore von Wer` + Text unverändert in `bodyJson` |
+| T-005 / 001 (6) Weltbeschreibung ohne `@` | **bestanden** | Menü-Weltbeschreibung: Hinweis „ohne @-Erwähnungen“; `@x` öffnet keine Erwähnungs-Listbox |
+| T-005 (2) `@Tore von Wer` mitten im Satz | **bestanden** | Query „Tore von Wer“; Option „Neuen Artikel anlegen“ |
+| T-005 (3) Stub rot bis Bearbeitung | **bestanden** | Stub `Tore von Wer` mit `mention-stub`; `first_edited_at` null |
+| T-006 (1) Bottom-Bar 390 px | **bestanden** | fixed unten, 4 Tabs beschriftet, ~97×63 px Hit-Ziele |
+| T-006 (2) Tabwechsel / Weltkontext | **bestanden** | Kampagne→Karte→Chat→Menü; Topbar „Smoke“, `localStorage` last-world |
+| T-006 (3) Composer verdeckt Bar | **bestanden** | Mit `?channel=`: `chat-composer-open`, nav `display:none`; auf Menü/Karte sichtbar |
+| T-006 (4) Desktop dauerhaft | **bestanden** | 1280 px: sticky Sidebar, Brand + 4 Ziele dauerhaft sichtbar |
 
 ## Reihenfolge (Abhängigkeitsgraph)
 
