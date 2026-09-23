@@ -490,6 +490,31 @@ export const quests = pgTable(
   ],
 );
 
+export const questChapters = pgTable(
+  "quest_chapters",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    questId: uuid("quest_id")
+      .notNull()
+      .references(() => quests.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    bodyJson: jsonb("body_json"),
+    bodyPlain: text("body_plain"),
+    bodyTsv: tsvector("body_tsv").generatedAlwaysAs(plainTsv("body_plain")),
+    position: integer("position").notNull(),
+    visibility: contentVisibility("visibility").default("owner_only").notNull(),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => users.id),
+    ...protocol,
+  },
+  (t) => [
+    index("quest_chapters_quest_position").on(t.questId, t.position),
+    index("quest_chapters_body_tsv").using("gin", t.bodyTsv),
+    check("quest_chapters_title_length", sql`char_length(${t.title}) BETWEEN 1 AND 200`),
+  ],
+);
+
 export const questParticipants = pgTable(
   "quest_participants",
   {

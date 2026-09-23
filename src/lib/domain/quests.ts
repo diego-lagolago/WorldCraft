@@ -21,8 +21,11 @@ import {
   type QuestStatus,
 } from "@/lib/quests/status";
 import { mapDbError } from "./db-errors";
+import { listVisibleChapters, type ChapterSummary } from "./quest-chapters";
 import { recalcQuestRelations } from "./relations";
 import { richFieldFromInput } from "./rich-field";
+
+export type { ChapterSummary } from "./quest-chapters";
 
 export {
   QUEST_STATUS_LABEL,
@@ -78,6 +81,7 @@ export type QuestSummary = {
 export type QuestDetails = QuestSummary & {
   worldId: string;
   descriptionJson: unknown;
+  chapters: ChapterSummary[];
 };
 
 function asStatus(value: string): QuestStatus {
@@ -226,6 +230,7 @@ export async function getQuest(
     return null;
   }
   const participants = await loadParticipants([row.id], worldId);
+  const chapters = (await listVisibleChapters(worldId, row.id, role, viewerId)) ?? [];
   return {
     id: row.id,
     worldId: row.worldId,
@@ -235,6 +240,7 @@ export async function getQuest(
     ownerId: row.ownerId,
     descriptionJson: row.descriptionJson,
     participants: participants.get(row.id) ?? [],
+    chapters,
   };
 }
 
