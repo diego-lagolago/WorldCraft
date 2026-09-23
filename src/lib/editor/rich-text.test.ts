@@ -93,7 +93,7 @@ describe("sanitizeRichDoc", () => {
 
   it("rejects mentions in the world description (APP-WORLD-NO-MENTIONS)", () => {
     const result = sanitizeRichDoc(sample, { mentions: false });
-    expect(result).toEqual({ ok: false, error: "Die Weltbeschreibung darf keine Erwähnungen enthalten." });
+    expect(result).toEqual({ ok: false, error: "Dieser Text darf keine Erwähnungen enthalten." });
   });
 
   it("accepts a plain @ in the world description", () => {

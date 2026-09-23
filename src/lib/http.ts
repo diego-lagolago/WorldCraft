@@ -7,6 +7,9 @@ export function parseUuid(value: unknown): string | null {
   return parsed.success ? parsed.data : null;
 }
 
+/** Custom issues with `params: { [USER_MESSAGE]: true }` show their (German) message instead of the generic one. */
+export const USER_MESSAGE = "userMessage";
+
 export type JsonBodyResult<T> =
   | { ok: true; data: T }
   | { ok: false; status: 400; error: string };
@@ -27,7 +30,8 @@ export async function parseJsonBody<T extends z.ZodType>(
   }
   const parsed = schema.safeParse(json);
   if (!parsed.success) {
-    return { ok: false, status: 400, error: "Die Eingaben sind ungültig." };
+    const shown = parsed.error.issues.find((issue) => issue.code === "custom" && issue.params?.[USER_MESSAGE]);
+    return { ok: false, status: 400, error: shown?.message ?? "Die Eingaben sind ungültig." };
   }
   return { ok: true, data: parsed.data };
 }

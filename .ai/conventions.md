@@ -20,14 +20,16 @@
 spikes/editor/          isolierter Editor-Spike (Vite), nicht Teil der Next-App
 src/
   app/                  Next.js App Router (Seiten, Route Handlers)
-    api/                HTTP-APIs (auth, test-login, worlds/…, spike/*)
+    api/                HTTP-APIs (auth, test-login, worlds/…, characters, spike/*)
+    characters/         eigene Charaktere (weltunabhängig, Shell ohne Welt)
     w/[worldId]/        Produktseiten im Weltkontext (Shell aus components/shell)
     invite/[code]/      Einladung annehmen (außerhalb der Welt-Shell)
     spike/              Spike-Routen /spike/karte, /spike/chat
-  components/           wiederverwendbare UI (shell/, editor/, auth/, world/ …)
+  components/           wiederverwendbare UI (shell/, editor/, auth/, world/, characters/ …)
   db/                   Drizzle-Schema, Migrationen
   lib/                  Auth, Env, Hilfen
     authz/              Rechteschicht (eine Schicht für HTTP, Loader, später MCP)
+    characters/         reine Bogenregeln (Attribute, Fertigkeiten, Fähigkeiten)
     domain/             Anwendungslogik je Fachbereich (DB-Zugriffe, Transaktionen)
     editor/             reine Editor-Logik (Sanitizing, Klartext, Erwähnungen)
     client/             reine Browser-Hilfen (localStorage, fetch-Helfer `apiRequest`)

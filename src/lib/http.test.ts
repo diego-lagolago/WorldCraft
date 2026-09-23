@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { parseJsonBody, parseUuid } from "./http";
+import { USER_MESSAGE, parseJsonBody, parseUuid } from "./http";
 
 describe("parseUuid", () => {
   it("accepts a uuid and rejects everything else", () => {
@@ -34,5 +34,17 @@ describe("parseJsonBody", () => {
     expect(await parseJsonBody(broken, schema)).toMatchObject({ ok: false, status: 400 });
     expect(await parseJsonBody(invalid, schema)).toMatchObject({ ok: false, status: 400 });
     expect(await parseJsonBody(valid, schema)).toEqual({ ok: true, data: { name: "Welt" } });
+  });
+
+  it("shows only messages marked for the user", async () => {
+    const post = (body: unknown) =>
+      new Request("http://localhost/x", { method: "POST", body: JSON.stringify(body) });
+    const marked = z.string().superRefine((value, ctx) => {
+      if (value === "x") ctx.addIssue({ code: "custom", message: "Nicht x.", params: { [USER_MESSAGE]: true } });
+    });
+    const unmarked = z.string().refine((value) => value !== "x", { message: "internal" });
+
+    expect(await parseJsonBody(post("x"), marked)).toMatchObject({ error: "Nicht x." });
+    expect(await parseJsonBody(post("x"), unmarked)).toMatchObject({ error: "Die Eingaben sind ungültig." });
   });
 });

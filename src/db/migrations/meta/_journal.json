@@ -71,6 +71,13 @@
       "when": 1790146400000,
       "tag": "0009_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790151324871,
+      "tag": "0010_character_sheet_lists",
+      "breakpoints": true
     }
   ]
 }

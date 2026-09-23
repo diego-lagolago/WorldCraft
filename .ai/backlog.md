@@ -21,6 +21,10 @@ Verbindlich dort: Query nur `@`→Caret; `allowSpaces`; Anlegen, wenn kein Treff
 
 Später, nicht MVP-jetzt: **„Auswahl zur Erwähnung machen“** (markierten Text nachträglich zur Erwähnung machen).
 
+## 2026-09-23 – Erwähnungen in der Charakter-Bio
+
+**Quelle:** Projektinhaber während Plan 003 T-008. Im MVP ist die Bio ohne Erwähnungen (`APP-BIO-NO-MENTIONS`), weil ein Charakter keiner Welt gehört und `@` eine Welt zum Suchen braucht. Später klären: Suche im Weltkontext der Seite oder Weltauswahl im Editor, Relationen nur in Welten mit aktiver Teilnahme; dann Fachmodell 3.8, `datenmodell.md` (`APP-REL-RECALC`) und „Verknüpft“ am Charakter anpassen.
+
 ## 2026-09-22 – Chat: Channel-Verwaltung & Thread-UX
 
 **Erledigt in Plan `003` T-012** (2026-09-23). Kanalverwaltung und eingerückte Threads mit Chevron liegen in der Produktroute `/w/[worldId]/chat`.

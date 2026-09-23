@@ -65,8 +65,8 @@ beforeAll(async () => {
   await sql`
     INSERT INTO characters (id, owner_id, name, skills, created_by, updated_by)
     VALUES
-      (${characterId}, ${gmId}, 'Held', '{}'::jsonb, ${gmId}, ${gmId}),
-      (${outsiderCharacterId}, ${outsiderId}, 'Gast', '{}'::jsonb, ${outsiderId}, ${outsiderId})
+      (${characterId}, ${gmId}, 'Held', '[]'::jsonb, ${gmId}, ${gmId}),
+      (${outsiderCharacterId}, ${outsiderId}, 'Gast', '[]'::jsonb, ${outsiderId}, ${outsiderId})
   `;
   await sql`
     INSERT INTO world_participations (character_id, world_id, created_by, updated_by)

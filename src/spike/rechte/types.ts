@@ -42,31 +42,4 @@ export type PinType = (typeof PIN_TYPES)[number];
 export const INVITE_VALIDITIES = ["one_day", "seven_days", "unlimited"] as const;
 export type InviteValidity = (typeof INVITE_VALIDITIES)[number];
 
-export const SKILL_KEYS = [
-  "athletics",
-  "acrobatics",
-  "sleight_of_hand",
-  "stealth",
-  "arcana",
-  "history",
-  "investigation",
-  "nature",
-  "religion",
-  "animal_handling",
-  "insight",
-  "medicine",
-  "perception",
-  "survival",
-  "deception",
-  "intimidation",
-  "performance",
-  "persuasion",
-] as const;
-
-export const DEFAULT_SKILLS: Record<(typeof SKILL_KEYS)[number], "untrained"> =
-  Object.fromEntries(SKILL_KEYS.map((key) => [key, "untrained"])) as Record<
-    (typeof SKILL_KEYS)[number],
-    "untrained"
-  >;
-
 export const FIRST_UNIVERSE_NAME = "Hauptuniversum";

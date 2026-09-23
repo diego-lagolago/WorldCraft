@@ -160,7 +160,7 @@ describe("T-007 (4): leaving and rejoining", () => {
   it("archives membership and participations, keeps content, rejoins as player", async () => {
     await sql`
       INSERT INTO characters (id, owner_id, name, skills, created_by, updated_by)
-      VALUES (${characterId}, ${playerA.user.id}, 'Austrittsheld', '{}'::jsonb, ${playerA.user.id}, ${playerA.user.id})
+      VALUES (${characterId}, ${playerA.user.id}, 'Austrittsheld', '[]'::jsonb, ${playerA.user.id}, ${playerA.user.id})
     `;
     await sql`
       INSERT INTO world_participations (character_id, world_id, created_by, updated_by)

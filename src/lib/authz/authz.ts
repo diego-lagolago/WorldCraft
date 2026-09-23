@@ -91,14 +91,31 @@ export function canSeeJournal(input: {
   return isStaff(input.role);
 }
 
-export function canSeeCharacterInWorld(input: {
+/**
+ * Inside a world the viewer is already an active member (`loadWorldContext`),
+ * so only the participation decides; archived hides it from everyone (R-3.9-4).
+ */
+export function canSeeCharacterInWorld(participation: { archivedAt: Date | null } | null): boolean {
+  return participation !== null && participation.archivedAt === null;
+}
+
+/** Only the owner changes a character, its images and its world participations. */
+export function requireCharacterOwner(actorId: string, ownerId: string): AuthzResult<true> {
+  return actorId === ownerId ? ok(true) : fail(403, "Nur der Besitzer darf diesen Charakter ändern.");
+}
+
+/** CR-019 b: journal entries need the owner and an active participation in this world. */
+export function authorizeJournalWrite(input: {
   actorId: string;
-  isMember: boolean;
   ownerId: string;
-  participationArchived: boolean;
-}): boolean {
-  if (input.actorId === input.ownerId && !input.participationArchived) return true;
-  return input.isMember && !input.participationArchived;
+  participation: { archivedAt: Date | null } | null;
+}): AuthzResult<true> {
+  const owner = requireCharacterOwner(input.actorId, input.ownerId);
+  if (!owner.ok) return fail(403, "Nur der Besitzer des Charakters schreibt ins Tagebuch.");
+  if (!canSeeCharacterInWorld(input.participation)) {
+    return fail(400, "Der Charakter ist nicht in diese Welt mitgebracht.");
+  }
+  return ok(true);
 }
 
 export function canEditMarker(input: {

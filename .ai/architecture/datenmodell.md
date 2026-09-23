@@ -247,7 +247,7 @@ Bild ersetzen: `image_id` wechseln. Pins/Marker bleiben über relative `pos_x`/`
 | `ideals` | text | – | max. 1000 |
 | `bonds` | text | – | max. 1000 |
 | `flaws` | text | – | max. 1000 |
-| `bio_json` | jsonb | – | Rich-Text; Erwähnungen erzeugen Relationen |
+| `bio_json` | jsonb | – | Rich-Text **ohne** Erwähnungen im MVP (`APP-BIO-NO-MENTIONS`, Projektinhaber 2026-09-23); keine Relationen aus der Bio |
 | `bio_plain` | text | – | |
 | Protokollfelder | | ✅ | |
 
@@ -1000,7 +1000,8 @@ Default neuer Inhalte: `gm_only`, außer erstes Universum (`published`).
 | `APP-INVITE-JOIN` | gültigen Link prüfen → bestehende aktive Mitgliedschaft: no-op → archivierte: `archived_at` leeren, Rolle `player` → sonst INSERT player; `use_count++` |
 | `APP-MEMBER-ARCHIVE` | Mitgliedschaft archivieren; alle eigenen `world_participations` der Welt archivieren; Marker/Relationen/Tagebuch unverändert |
 | `APP-PART-REACTIVATE` | archivierte Teilnahme finden und leeren, sonst INSERT |
-| `APP-REL-RECALC` | beim Speichern von Artikel, Quest, Pin, Charakter-Bio, Universum: outgoing auto-Relationen der Quelle löschen, aus Mentions + Vorlagenfeldern + Quest-Beteiligten neu anlegen |
+| `APP-REL-RECALC` | beim Speichern von Artikel, Quest, Pin, Universum: outgoing auto-Relationen der Quelle löschen, aus Mentions + Vorlagenfeldern + Quest-Beteiligten neu anlegen. Die Charakter-Bio hat im MVP keine Erwähnungen (`APP-BIO-NO-MENTIONS`) |
+| `APP-BIO-NO-MENTIONS` | Charakter-Bio wird wie die Weltbeschreibung ohne Erwähnungen gespeichert; ein Dokument mit `mention`-Knoten wird mit 400 abgelehnt (Projektinhaber 2026-09-23) |
 | `APP-MAP-MVP-ONE` | zweites `maps`-INSERT für dasselbe Universum im MVP ablehnen (HTTP-Fehler). Constraint absichtlich nicht gesetzt |
 | `APP-FILE-GC` | nach Löschen einer Welt/eines Bildes Dateien ohne verbleibende FK vom Volume nehmen |
 | `APP-USER-SYNC` | bei jedem Discord-Login `name`, `image` und `email` aus dem Discord-Profil schreiben |

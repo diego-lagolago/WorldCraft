@@ -1,5 +1,6 @@
 export {
   authorizeDeleteChatMessage,
+  authorizeJournalWrite,
   authorizeLeave,
   authorizeMemberAdmin,
   canEditMarker,
@@ -8,6 +9,7 @@ export {
   canSeePublishedLayer,
   denyIfNoMembership,
   relationVisible,
+  requireCharacterOwner,
   requireGm,
   requireStaff,
 } from "./authz";

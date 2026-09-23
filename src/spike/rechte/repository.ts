@@ -19,6 +19,7 @@ import {
   worlds,
 } from "@/db/schema";
 import {
+  authorizeJournalWrite,
   canEditMarker,
   canSeeCharacterInWorld,
   canSeeJournal,
@@ -29,7 +30,6 @@ import {
   requireStaff,
 } from "./authz";
 import {
-  DEFAULT_SKILLS,
   FIRST_UNIVERSE_NAME,
   fail,
   isStaff,
@@ -254,13 +254,7 @@ export async function isContentVisibleFor(
         ),
       )
       .limit(1);
-    if (!part) return false;
-    return canSeeCharacterInWorld({
-      actorId: actor.id,
-      isMember: true,
-      ownerId: character.ownerId,
-      participationArchived: Boolean(part.archivedAt),
-    });
+    return canSeeCharacterInWorld(part ?? null);
   }
   return false;
 }
@@ -574,7 +568,6 @@ export async function createCharacter(actor: Actor, input: { name: string }) {
     .values({
       ownerId: actor.id,
       name,
-      skills: DEFAULT_SKILLS,
       ...protocol(actor.id),
     })
     .returning();
@@ -679,9 +672,6 @@ export async function createJournal(
     .where(eq(characters.id, input.characterId))
     .limit(1);
   if (!character) return fail(404, "Charakter nicht gefunden.");
-  if (character.ownerId !== actor.id) {
-    return fail(403, "Nur der Besitzer schreibt Tagebucheinträge.");
-  }
   const [part] = await db
     .select()
     .from(worldParticipations)
@@ -692,7 +682,8 @@ export async function createJournal(
       ),
     )
     .limit(1);
-  if (!part) return fail(400, "Der Charakter ist nicht in dieser Welt mitgebracht.");
+  const allowed = authorizeJournalWrite({ actorId: actor.id, ownerId: character.ownerId, participation: part ?? null });
+  if (!allowed.ok) return allowed;
   const body = input.body.trim();
   if (!body) return fail(400, "Tagebuchtext fehlt.");
   const [row] = await db

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   authorizeDeleteChatMessage,
+  authorizeJournalWrite,
   authorizeLeave,
+  requireCharacterOwner,
   authorizeMemberAdmin,
   type MembershipRow,
   canEditMarker,
@@ -67,13 +69,31 @@ describe("APP-AUTHZ Sichtbarkeit", () => {
       })).toBe(false);
   });
 
-  it("archived participation hides the character from the world", () => {
-    expect(canSeeCharacterInWorld({
-        actorId: "gm",
-        isMember: true,
-        ownerId: "a",
-        participationArchived: true,
-      })).toBe(false);
+  it("archived or missing participation hides the character from the world", () => {
+    expect(canSeeCharacterInWorld({ archivedAt: new Date() })).toBe(false);
+    expect(canSeeCharacterInWorld(null)).toBe(false);
+    expect(canSeeCharacterInWorld({ archivedAt: null })).toBe(true);
+  });
+
+  it("CR-019 b: journal writes need the owner and an active participation", () => {
+    const active = { archivedAt: null };
+    expect(authorizeJournalWrite({ actorId: "a", ownerId: "a", participation: active }).ok).toBe(true);
+    expect(authorizeJournalWrite({ actorId: "b", ownerId: "a", participation: active })).toMatchObject({
+      ok: false,
+      status: 403,
+    });
+    expect(
+      authorizeJournalWrite({ actorId: "a", ownerId: "a", participation: { archivedAt: new Date() } }),
+    ).toMatchObject({ ok: false, status: 400 });
+    expect(authorizeJournalWrite({ actorId: "a", ownerId: "a", participation: null })).toMatchObject({
+      ok: false,
+      status: 400,
+    });
+  });
+
+  it("only the owner changes a character", () => {
+    expect(requireCharacterOwner("a", "a").ok).toBe(true);
+    expect(requireCharacterOwner("b", "a")).toMatchObject({ ok: false, status: 403 });
   });
 
   it("player moves own marker, staff both, owner only on visible map", () => {

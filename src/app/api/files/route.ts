@@ -15,7 +15,10 @@ export async function POST(request: Request) {
   const { session, response } = await requireProductSession();
   if (response || !session) return response;
 
-  const form = await request.formData();
+  const form = await request.formData().catch(() => null);
+  if (!form) {
+    return NextResponse.json({ error: "Bitte ein Bild als Formular senden." }, { status: 400 });
+  }
   const file = form.get("image");
   const kindRaw = form.get("kind");
   if (!(file instanceof File) || typeof kindRaw !== "string" || !isImageKind(kindRaw)) {

@@ -61,7 +61,7 @@ export function sanitizeRichDoc(
   const state: WalkState = { mentionsAllowed: options.mentions, mentionFound: false };
   const content = sanitizeBlocks(input.content, state, 0);
   if (!options.mentions && state.mentionFound) {
-    return { ok: false, error: "Die Weltbeschreibung darf keine Erwähnungen enthalten." };
+    return { ok: false, error: "Dieser Text darf keine Erwähnungen enthalten." };
   }
   const doc: RichDoc = {
     type: "doc",

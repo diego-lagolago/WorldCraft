@@ -1,4 +1,4 @@
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   articles,
@@ -10,6 +10,7 @@ import {
   worlds,
 } from "@/db/schema";
 import { fail, type AuthzResult } from "@/lib/authz";
+import { mapDbError } from "@/lib/domain/db-errors";
 import { authorizeImageWrite, type ImageKind } from "./authorize";
 import { collectUnreferencedFiles } from "./gc";
 import { MAP_IMAGE_MAX_BYTES, OTHER_IMAGE_MAX_BYTES } from "./inspect";
@@ -117,16 +118,19 @@ export async function attachImage(input: {
       await db.insert(characterImages).values({
         characterId: character.id,
         fileId: saved.id,
-        sortOrder: imageCount?.value ?? 0,
+        sortOrder: sql`(SELECT coalesce(max(${characterImages.sortOrder}), -1) + 1 FROM ${characterImages} WHERE ${characterImages.characterId} = ${character.id})`,
         createdBy: input.actorId,
         updatedBy: input.actorId,
       });
     }
   } catch (error) {
     await removeStoredFile(saved.id);
+    const mapped = mapDbError(error, { unique: "Bitte das Bild erneut hochladen." });
+    if (mapped) return mapped;
     throw error;
   }
 
+  if (input.kind === "character_portrait") await collectUnreferencedFiles([character.portraitId]);
   return { ok: true, data: { fileId: saved.id } };
 }
 

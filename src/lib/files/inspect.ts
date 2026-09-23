@@ -2,7 +2,7 @@ import { imageSize } from "image-size";
 
 export const MAP_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
 export const OTHER_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
-export const MAX_CHARACTER_IMAGES = 10;
+export { CHARACTER_IMAGES_MAX as MAX_CHARACTER_IMAGES } from "@/lib/characters/sheet";
 
 const ALLOWED = {
   jpg: { mime: "image/jpeg", ext: "jpg" },

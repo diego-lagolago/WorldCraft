@@ -7,7 +7,7 @@
 
 ## Kontext
 
-Der Artikeltext (und gleichartig: Questbeschreibung, Pinbeschreibung, Charakter-Bio, Tagebuch, Universumsbeschreibung) ist Rich-Text **ohne Bilder im Text**. Erlaubt: Überschriften 2 und 3, fett, kursiv, unterstrichen, durchgestrichen, Aufzählung, nummerierte Liste, Zitat, Trennlinie, externer Link, Erwähnung (`@`). Nicht erlaubt: Bilder, Tabellen, eingebettete Medien; beim Einfügen aus der Zwischenablage werden sie verworfen, der übrige Text bleibt. Die Weltbeschreibung nutzt denselben Editor **ohne** Erwähnungen.
+Der Artikeltext (und gleichartig: Questbeschreibung, Pinbeschreibung, Charakter-Bio, Tagebuch, Universumsbeschreibung) ist Rich-Text **ohne Bilder im Text**. Erlaubt: Überschriften 2 und 3, fett, kursiv, unterstrichen, durchgestrichen, Aufzählung, nummerierte Liste, Zitat, Trennlinie, externer Link, Erwähnung (`@`). Nicht erlaubt: Bilder, Tabellen, eingebettete Medien; beim Einfügen aus der Zwischenablage werden sie verworfen, der übrige Text bleibt. Die Weltbeschreibung und im MVP auch die Charakter-Bio (`APP-BIO-NO-MENTIONS`, Projektinhaber 2026-09-23) nutzen denselben Editor **ohne** Erwähnungen.
 
 Speicherung: TipTap-JSON plus abgeleiteter Klartext für die Suche. Nur Open-Source-Erweiterungen, keine TipTap-Pro-Pakete.
 

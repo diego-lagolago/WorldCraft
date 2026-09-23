@@ -73,7 +73,7 @@ Regeln:
 
 ### 2.3 Rich-Text
 
-Formatierter Text aus dem Artikel-Editor (TipTap) mit dem in Plan 001 festgelegten Funktionsumfang, inkl. Erwähnungen (`@Name`) als Inhaltsverweise. Wird zusätzlich als Klartext für die Suche vorgehalten. Rich-Text wird verwendet für: Weltbeschreibung (**ohne** Erwähnungen), Universumsbeschreibung, Artikelinhalt, Questbeschreibung, Pinbeschreibung, Charakter-Bio und Tagebucheinträge.
+Formatierter Text aus dem Artikel-Editor (TipTap) mit dem in Plan 001 festgelegten Funktionsumfang, inkl. Erwähnungen (`@Name`) als Inhaltsverweise. Wird zusätzlich als Klartext für die Suche vorgehalten. Rich-Text wird verwendet für: Weltbeschreibung (**ohne** Erwähnungen), Universumsbeschreibung, Artikelinhalt, Questbeschreibung, Pinbeschreibung, Charakter-Bio (im MVP **ohne** Erwähnungen, siehe 3.8) und Tagebucheinträge.
 
 ### 2.4 Erwähnung & Erwähnungssuche
 
@@ -233,7 +233,7 @@ Gehört einem Benutzer, unabhängig von Welten.
 | Ideale | Text, max. 1000 | – | |
 | Bindungen | Text, max. 1000 | – | |
 | Makel | Text, max. 1000 | – | |
-| Bio | Rich-Text | – | Hintergrundgeschichte, Aussehen usw.; Erwähnungen erzeugen Relationen |
+| Bio | Rich-Text | – | Hintergrundgeschichte, Aussehen usw.; im MVP **ohne** Erwähnungen (`@` ist ein normales Zeichen), weil ein Charakter keiner Welt gehört und die Suche eine Welt bräuchte (Entscheidung Projektinhaber 2026-09-23, Plan 003 T-008; Erwähnungen mit Relationen später, siehe Backlog) |
 | Bildanhänge | Liste von Bildern (JPG/PNG/WebP, je max. 10 MB, höchstens 10) mit optionaler Bildunterschrift (Text, max. 200) | – | Reihenfolge änderbar |
 
 Bewusst **nicht** enthalten (OF-08): Volk, Stufe, Trefferpunkte, Rüstungsklasse, Rettungswürfe, Inventar, Zauber. (Der Übungsbonus ist seit 2026-09-22 enthalten, siehe oben.)
