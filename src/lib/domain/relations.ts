@@ -6,6 +6,7 @@ import {
   characters,
   maps,
   pins,
+  questChapters,
   questParticipants,
   quests,
   relations,
@@ -271,7 +272,11 @@ export async function recalcOutgoingParticipations(input: {
   });
 }
 
-/** Load quest description + participants and rebuild outgoing auto-relations. */
+/**
+ * Load quest description + published chapters (APP-CHAPTER-REL) + participants
+ * and rebuild outgoing auto-relations. Manual and participation stay intact
+ * across mention recalcs; participation is rebuilt separately from participants.
+ */
 export async function recalcQuestRelations(worldId: string, actorId: string, questId: string): Promise<void> {
   const [row] = await db
     .select({ descriptionJson: quests.descriptionJson })
@@ -279,13 +284,24 @@ export async function recalcQuestRelations(worldId: string, actorId: string, que
     .where(and(eq(quests.id, questId), eq(quests.worldId, worldId)))
     .limit(1);
   if (!row) return;
+
+  const publishedChapters = await db
+    .select({ bodyJson: questChapters.bodyJson })
+    .from(questChapters)
+    .where(and(eq(questChapters.questId, questId), eq(questChapters.visibility, "published")));
+
+  const mentions = [
+    ...extractMentions(asRichDoc(row.descriptionJson)),
+    ...publishedChapters.flatMap((chapter) => extractMentions(asRichDoc(chapter.bodyJson))),
+  ];
+
   await Promise.all([
     recalcOutgoingMentions({
       worldId,
       actorId,
       sourceKind: "quest",
       sourceId: questId,
-      mentions: extractMentions(asRichDoc(row.descriptionJson)),
+      mentions,
     }),
     recalcOutgoingParticipations({ worldId, actorId, questId }),
   ]);

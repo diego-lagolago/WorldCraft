@@ -5,6 +5,7 @@ import {
   characters,
   maps,
   pins,
+  questChapters,
   quests,
   universes,
   worldParticipations,
@@ -161,7 +162,7 @@ async function searchQuests(worldId: string, viewer: Viewer, query: string): Pro
     })
     .from(quests)
     .where(and(...filters));
-  return rows
+  const fromDescription = rows
     .filter((row) =>
       canSeeVisibility({
         role: viewer.role,
@@ -171,6 +172,69 @@ async function searchQuests(worldId: string, viewer: Viewer, query: string): Pro
       }),
     )
     .map((row) => ({ kind: "quest" as const, id: row.id, title: row.title, plain: row.plain }));
+
+  const fromChapters = await searchQuestChapters(worldId, viewer, query);
+  const byId = new Map<string, RawHit>();
+  for (const hit of fromDescription) byId.set(hit.id, hit);
+  for (const hit of fromChapters) {
+    if (!byId.has(hit.id)) byId.set(hit.id, hit);
+  }
+  return [...byId.values()];
+}
+
+/**
+ * Chapter text hits the quest (APP-VIS-OWNER + inheritance). Snippet from the
+ * matching chapter. Notes are not searched.
+ */
+async function searchQuestChapters(worldId: string, viewer: Viewer, query: string): Promise<RawHit[]> {
+  const filters: SQL[] = [
+    eq(quests.worldId, worldId),
+    matchTitleOrPlain(
+      questChapters.title,
+      sql`coalesce(${questChapters.bodyPlain}, '')`,
+      questChapters.bodyTsv,
+      query,
+    ),
+  ];
+  if (!isStaff(viewer.role)) {
+    filters.push(eq(quests.visibility, "published"));
+    filters.push(eq(questChapters.visibility, "published"));
+  }
+  const rows = await db
+    .select({
+      id: quests.id,
+      title: quests.title,
+      plain: questChapters.bodyPlain,
+      chapterTitle: questChapters.title,
+      questVisibility: quests.visibility,
+      questOwnerId: quests.ownerId,
+      chapterVisibility: questChapters.visibility,
+      chapterOwnerId: questChapters.ownerId,
+    })
+    .from(questChapters)
+    .innerJoin(quests, eq(quests.id, questChapters.questId))
+    .where(and(...filters));
+
+  const byQuest = new Map<string, RawHit>();
+  for (const row of rows) {
+    const questVisible = canSeeVisibility({
+      role: viewer.role,
+      visibility: row.questVisibility,
+      viewerId: viewer.userId,
+      ownerId: row.questOwnerId,
+    });
+    const chapterVisible = canSeeVisibility({
+      role: viewer.role,
+      visibility: row.chapterVisibility,
+      viewerId: viewer.userId,
+      ownerId: row.chapterOwnerId,
+    });
+    if (!questVisible || !chapterVisible) continue;
+    if (byQuest.has(row.id)) continue;
+    const plain = row.plain?.trim() ? row.plain : row.chapterTitle;
+    byQuest.set(row.id, { kind: "quest", id: row.id, title: row.title, plain });
+  }
+  return [...byQuest.values()];
 }
 
 async function searchUniverses(worldId: string, viewer: Viewer, query: string): Promise<RawHit[]> {

@@ -292,3 +292,221 @@ describe("T-006 (6): title validation", () => {
     ).toBe(400);
   });
 });
+
+const mentionDoc = (id: string, kind: string, label: string) => ({
+  type: "doc",
+  content: [
+    {
+      type: "paragraph",
+      content: [{ type: "mention", attrs: { id, kind, label, mentionSuggestionChar: "@" } }],
+    },
+  ],
+});
+
+const textDoc = (text: string) => ({
+  type: "doc",
+  content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+});
+
+describe("T-007 (1)/(2): chapter mentions and recalc", () => {
+  it("creates mention relations only from published chapters; manuals and participation stay", async () => {
+    const article = await api<{ article: { id: string } }>(gm, "POST", w("/articles"), {
+      title: "Gottschleim",
+      visibility: "published",
+    });
+    expect(article.status).toBe(201);
+    const articleId = article.data.article.id;
+
+    const char = await api<{ id: string }>(player, "POST", "/api/characters", {
+      name: "Kapitelheld",
+    });
+    expect(char.status).toBe(201);
+    expect((await api(player, "POST", w("/characters"), { characterId: char.data.id })).status).toBe(
+      200,
+    );
+
+    const quest = await createQuest(gm, {
+      title: "Erlege den Wolf",
+      visibility: "published",
+      participantIds: [char.data.id],
+    });
+
+    const manual = await api<{ id: string }>(gm, "POST", w("/relations"), {
+      sourceKind: "quest",
+      sourceId: quest.id,
+      targetKind: "article",
+      targetId: articleId,
+      label: "betrifft",
+    });
+    expect(manual.status).toBe(201);
+
+    const chapter = await createChapter(gm, quest.id, {
+      title: "Finde den Wolf",
+      visibility: "gm_only",
+      body: mentionDoc(articleId, "article", "Gottschleim"),
+    });
+
+    const linkedHidden = await api<{ items: { id: string; originLabels: string[]; manualLabel: string | null }[] }>(
+      gm,
+      "GET",
+      w(`/relations?kind=quest&id=${quest.id}`),
+    );
+    expect(linkedHidden.status).toBe(200);
+    expect(
+      linkedHidden.data.items.some(
+        (item) =>
+          item.id === articleId && item.originLabels.includes("Erwähnung") && !item.manualLabel,
+      ),
+    ).toBe(false);
+    expect(
+      linkedHidden.data.items.some(
+        (item) => item.id === articleId && item.manualLabel === "betrifft",
+      ),
+    ).toBe(true);
+    expect(
+      linkedHidden.data.items.some(
+        (item) => item.id === char.data.id && item.originLabels.includes("Beteiligung"),
+      ),
+    ).toBe(true);
+
+    expect(
+      (
+        await api(gm, "PATCH", chapterPath(quest.id, chapter.id), {
+          visibility: "published",
+        })
+      ).status,
+    ).toBe(200);
+
+    const linkedPublished = await api<{
+      items: { id: string; originLabels: string[]; manualLabel: string | null }[];
+    }>(gm, "GET", w(`/relations?kind=quest&id=${quest.id}`));
+    expect(
+      linkedPublished.data.items.some(
+        (item) =>
+          item.id === articleId && item.originLabels.includes("Erwähnung") && !item.manualLabel,
+      ),
+    ).toBe(true);
+    expect(
+      linkedPublished.data.items.some(
+        (item) => item.id === articleId && item.manualLabel === "betrifft",
+      ),
+    ).toBe(true);
+    expect(
+      linkedPublished.data.items.some(
+        (item) => item.id === char.data.id && item.originLabels.includes("Beteiligung"),
+      ),
+    ).toBe(true);
+
+    const linkedArticle = await api<{ items: { id: string; originLabels: string[] }[] }>(
+      gm,
+      "GET",
+      w(`/relations?kind=article&id=${articleId}`),
+    );
+    expect(
+      linkedArticle.data.items.some(
+        (item) => item.id === quest.id && item.originLabels.includes("Erwähnung"),
+      ),
+    ).toBe(true);
+
+    expect(
+      (
+        await api(gm, "PATCH", chapterPath(quest.id, chapter.id), {
+          visibility: "gm_only",
+        })
+      ).status,
+    ).toBe(200);
+
+    const linkedReverted = await api<{
+      items: { id: string; originLabels: string[]; manualLabel: string | null }[];
+    }>(gm, "GET", w(`/relations?kind=quest&id=${quest.id}`));
+    expect(
+      linkedReverted.data.items.some(
+        (item) =>
+          item.id === articleId && item.originLabels.includes("Erwähnung") && !item.manualLabel,
+      ),
+    ).toBe(false);
+    expect(
+      linkedReverted.data.items.some(
+        (item) => item.id === articleId && item.manualLabel === "betrifft",
+      ),
+    ).toBe(true);
+    expect(
+      linkedReverted.data.items.some(
+        (item) => item.id === char.data.id && item.originLabels.includes("Beteiligung"),
+      ),
+    ).toBe(true);
+
+    expect(
+      (
+        await api(gm, "PATCH", chapterPath(quest.id, chapter.id), {
+          visibility: "published",
+        })
+      ).status,
+    ).toBe(200);
+    expect((await api(gm, "DELETE", chapterPath(quest.id, chapter.id))).status).toBe(200);
+
+    const linkedDeleted = await api<{
+      items: { id: string; originLabels: string[]; manualLabel: string | null }[];
+    }>(gm, "GET", w(`/relations?kind=quest&id=${quest.id}`));
+    expect(
+      linkedDeleted.data.items.some(
+        (item) =>
+          item.id === articleId && item.originLabels.includes("Erwähnung") && !item.manualLabel,
+      ),
+    ).toBe(false);
+    expect(
+      linkedDeleted.data.items.some(
+        (item) => item.id === articleId && item.manualLabel === "betrifft",
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("T-007 (3): hub search from chapters", () => {
+  it("finds quest from visible chapter text only", async () => {
+    const quest = await createQuest(gm, {
+      title: "Suchquest Kapitel",
+      visibility: "published",
+    });
+    await createChapter(gm, quest.id, {
+      title: "Geheimkapitel",
+      visibility: "gm_only",
+      body: textDoc("Nur hier steht Quellwasserfall"),
+    });
+    await createChapter(gm, quest.id, {
+      title: "Öffentliches Kapitel",
+      visibility: "published",
+      body: textDoc("Hier steht der Mondsteinbruch"),
+    });
+
+    const staffHidden = await api<{ hits: { id: string; kind: string; snippet: string }[] }>(
+      gm,
+      "GET",
+      w(`/search?q=${encodeURIComponent("Quellwasserfall")}`),
+    );
+    expect(staffHidden.status).toBe(200);
+    const staffHit = staffHidden.data.hits.find((hit) => hit.id === quest.id && hit.kind === "quest");
+    expect(staffHit).toBeTruthy();
+    expect(staffHit!.snippet).toMatch(/Quellwasserfall/);
+
+    const playerHidden = await api<{ hits: { id: string }[] }>(
+      player,
+      "GET",
+      w(`/search?q=${encodeURIComponent("Quellwasserfall")}`),
+    );
+    expect(playerHidden.status).toBe(200);
+    expect(playerHidden.data.hits.some((hit) => hit.id === quest.id)).toBe(false);
+
+    const playerPublished = await api<{ hits: { id: string; kind: string; snippet: string }[] }>(
+      player,
+      "GET",
+      w(`/search?q=${encodeURIComponent("Mondsteinbruch")}`),
+    );
+    expect(playerPublished.status).toBe(200);
+    const playerHit = playerPublished.data.hits.find(
+      (hit) => hit.id === quest.id && hit.kind === "quest",
+    );
+    expect(playerHit).toBeTruthy();
+    expect(playerHit!.snippet).toMatch(/Mondsteinbruch/);
+  });
+});
