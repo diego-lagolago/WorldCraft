@@ -4,17 +4,12 @@ import { db } from "@/db/client";
 import { characterImages, characters, users, worldParticipations, worlds } from "@/db/schema";
 import { fail, ok, requireCharacterOwner, type AuthzResult } from "@/lib/authz";
 import {
-  CHARACTER_CLASS_MAX,
   CHARACTER_NAME_MAX,
-  CHARACTER_TRAIT_MAX,
   IMAGE_CAPTION_MAX,
-  PROFICIENCY_MAX,
-  PROFICIENCY_MIN,
-  abilitiesSchema,
   attributesSchema,
   readAbilities,
   readSkills,
-  skillsSchema,
+  sheetSchema,
   type Ability,
   type Attributes,
   type Skill,
@@ -37,15 +32,15 @@ function optionalText(max: number) {
 
 const characterFields = {
   name: z.string().trim().min(1).max(CHARACTER_NAME_MAX),
-  class: optionalText(CHARACTER_CLASS_MAX),
+  class: sheetSchema.shape.class,
   attributes: attributesSchema.partial(),
-  proficiencyBonus: z.number().int().min(PROFICIENCY_MIN).max(PROFICIENCY_MAX),
-  skills: skillsSchema,
-  abilities: abilitiesSchema,
-  personality: optionalText(CHARACTER_TRAIT_MAX),
-  ideals: optionalText(CHARACTER_TRAIT_MAX),
-  bonds: optionalText(CHARACTER_TRAIT_MAX),
-  flaws: optionalText(CHARACTER_TRAIT_MAX),
+  proficiencyBonus: sheetSchema.shape.proficiencyBonus,
+  skills: sheetSchema.shape.skills,
+  abilities: sheetSchema.shape.abilities,
+  personality: sheetSchema.shape.personality,
+  ideals: sheetSchema.shape.ideals,
+  bonds: sheetSchema.shape.bonds,
+  flaws: sheetSchema.shape.flaws,
   /** APP-BIO-NO-MENTIONS: rich text without `@`. */
   bio: z.unknown(),
   removePortrait: z.literal(true),

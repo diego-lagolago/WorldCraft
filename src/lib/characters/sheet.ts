@@ -150,6 +150,34 @@ export const attributesSchema = z.object({
   cha: attributeValueSchema,
 });
 
+/** Empty or whitespace-only text is stored as null (shared by character and monster sheets). */
+function optionalSheetText(max: number) {
+  return z
+    .string()
+    .trim()
+    .max(max)
+    .nullable()
+    .transform((value) => (value ? value : null));
+}
+
+/**
+ * Shared character-sheet fields (Fachmodell 3.8 without owner, images, bio).
+ * Character and monster compose this with their own identity/media/bio rules.
+ */
+export const sheetSchema = z.object({
+  class: optionalSheetText(CHARACTER_CLASS_MAX),
+  attributes: attributesSchema,
+  proficiencyBonus: z.number().int().min(PROFICIENCY_MIN).max(PROFICIENCY_MAX),
+  skills: skillsSchema,
+  abilities: abilitiesSchema,
+  personality: optionalSheetText(CHARACTER_TRAIT_MAX),
+  ideals: optionalSheetText(CHARACTER_TRAIT_MAX),
+  bonds: optionalSheetText(CHARACTER_TRAIT_MAX),
+  flaws: optionalSheetText(CHARACTER_TRAIT_MAX),
+});
+
+export type SheetFields = z.infer<typeof sheetSchema>;
+
 /** Stored JSON is trusted only after parsing; broken rows show as empty lists. */
 export function readSkills(value: unknown): Skill[] {
   const parsed = z.array(skillSchema).safeParse(value);

@@ -71,3 +71,26 @@ describe("skill and ability lists", () => {
     expect(readSkills([{ name: "Reiten", level: "trained", attr: "dex" }])).toHaveLength(1);
   });
 });
+
+describe("sheetSchema", () => {
+  it("accepts a full shared sheet payload", async () => {
+    const { sheetSchema, EMPTY_ATTRIBUTES, PROFICIENCY_DEFAULT } = await import("./sheet");
+    const parsed = sheetSchema.safeParse({
+      class: "Waldläuferin",
+      attributes: { ...EMPTY_ATTRIBUTES, dex: 17 },
+      proficiencyBonus: PROFICIENCY_DEFAULT,
+      skills: [{ name: "Heimlichkeit", level: "trained", attr: "dex" }],
+      abilities: [{ text: "Zwei Pfeile", attr: "dex" }],
+      personality: "ruhig",
+      ideals: "",
+      bonds: null,
+      flaws: "  ",
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.ideals).toBeNull();
+      expect(parsed.data.flaws).toBeNull();
+      expect(parsed.data.bonds).toBeNull();
+    }
+  });
+});
