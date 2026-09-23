@@ -420,6 +420,42 @@ textarea {
   border-color: #5b1f24;
 }
 
+.badge.rarity-common {
+  color: #c4c4c8;
+  border-color: #4a4a54;
+  background: #1e1e26;
+}
+
+.badge.rarity-uncommon {
+  color: #6ee7a8;
+  border-color: #1f5a3f;
+  background: #12241c;
+}
+
+.badge.rarity-rare {
+  color: #6aa8ff;
+  border-color: #2a4a7a;
+  background: #121c30;
+}
+
+.badge.rarity-epic {
+  color: #c4a0ff;
+  border-color: #5a3c8a;
+  background: #1c1530;
+}
+
+.badge.rarity-legendary {
+  color: #f5a05a;
+  border-color: #7a4a1a;
+  background: #2a1c10;
+}
+
+.badge.legendary-flag {
+  color: #f5b83d;
+  border-color: #6a4e1a;
+  background: #2a2210;
+}
+
 .av {
   flex: none;
   display: grid;

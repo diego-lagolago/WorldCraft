@@ -1,7 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { articles, monsterDanger, monsterKind, monsterRarity, monsterSize, monsters } from "@/db/schema";
+import { articles, monsters } from "@/db/schema";
 import {
   authorizeOwnedContentWrite,
   canSeeContent,
@@ -31,61 +31,36 @@ import {
 } from "@/lib/characters/sheet";
 import { parseUuid, USER_MESSAGE } from "@/lib/http";
 import { collectUnreferencedFiles } from "@/lib/files/gc";
+import {
+  MONSTER_DANGERS,
+  MONSTER_KINDS,
+  MONSTER_RARITIES,
+  MONSTER_SIZES,
+  type MonsterDanger,
+  type MonsterKind,
+  type MonsterRarity,
+  type MonsterSize,
+} from "@/lib/monsters/labels";
 import { mapDbError } from "./db-errors";
 import { recalcMonsterRelations } from "./relations";
 import { richFieldFromInput } from "./rich-field";
 import { visibleContentWhere } from "./visibility-sql";
 
-export const MONSTER_KINDS = monsterKind.enumValues;
-export type MonsterKind = (typeof MONSTER_KINDS)[number];
-
-export const MONSTER_RARITIES = monsterRarity.enumValues;
-export type MonsterRarity = (typeof MONSTER_RARITIES)[number];
-
-export const MONSTER_DANGERS = monsterDanger.enumValues;
-export type MonsterDanger = (typeof MONSTER_DANGERS)[number];
-
-export const MONSTER_SIZES = monsterSize.enumValues;
-export type MonsterSize = (typeof MONSTER_SIZES)[number];
-
-export const MONSTER_KIND_LABEL: Record<MonsterKind, string> = {
-  beast: "Bestie",
-  undead: "Untoter",
-  demon: "Dämon",
-  dragon: "Drache",
-  humanoid: "Humanoid",
-  construct: "Konstrukt",
-  aberration: "Aberration",
-  plant: "Pflanze",
-  magical: "Magisch",
-  other: "sonstiges",
-};
-
-/** Rarity pill labels stay English (Plan 005 Begriffe). */
-export const MONSTER_RARITY_LABEL: Record<MonsterRarity, string> = {
-  common: "Common",
-  uncommon: "Uncommon",
-  rare: "Rare",
-  epic: "Epic",
-  legendary: "Legendary",
-};
-
-export const MONSTER_DANGER_LABEL: Record<MonsterDanger, string> = {
-  harmless: "Harmlos",
-  dangerous: "Gefährlich",
-  deadly: "Tödlich",
-  devastating: "Verheerend",
-  divine: "Göttlich",
-  apocalyptic: "Apokalyptisch",
-};
-
-export const MONSTER_SIZE_LABEL: Record<MonsterSize, string> = {
-  tiny: "Winzig",
-  small: "Klein",
-  medium: "Durchschnitt",
-  large: "Groß",
-  gigantic: "Gigantisch",
-};
+export {
+  MONSTER_DANGER_LABEL,
+  MONSTER_DANGERS,
+  MONSTER_KIND_LABEL,
+  MONSTER_KINDS,
+  MONSTER_RARITIES,
+  MONSTER_RARITY_LABEL,
+  MONSTER_SIZE_LABEL,
+  MONSTER_SIZES,
+  isMonsterKind,
+  type MonsterDanger,
+  type MonsterKind,
+  type MonsterRarity,
+  type MonsterSize,
+} from "@/lib/monsters/labels";
 
 export const monsterKindSchema = z.enum(MONSTER_KINDS);
 export const monsterRaritySchema = z.enum(MONSTER_RARITIES);
@@ -542,8 +517,4 @@ export async function deleteMonster(input: {
   await db.delete(monsters).where(eq(monsters.id, current.id));
   await collectUnreferencedFiles([current.portraitId]);
   return ok({ id: current.id });
-}
-
-export function isMonsterKind(value: string): value is MonsterKind {
-  return (MONSTER_KINDS as readonly string[]).includes(value);
 }

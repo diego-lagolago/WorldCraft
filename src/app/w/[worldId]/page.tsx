@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArticleList } from "@/components/articles/ArticleList";
+import { MonsterList } from "@/components/monsters/MonsterList";
 import { QuestList } from "@/components/quests/QuestList";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { worldPath } from "@/components/shell/nav";
@@ -8,24 +9,34 @@ import { Hero, VisibilityBadge } from "@/components/world/display";
 import { ROLE_LABEL } from "@/components/world/labels";
 import { isStaff } from "@/lib/authz/types";
 import { listArticles } from "@/lib/domain/articles";
+import { isMonsterKind, listMonsters } from "@/lib/domain/monsters";
 import { listQuests } from "@/lib/domain/quests";
 import { listUniverses } from "@/lib/domain/universes";
 import { getWorldDetails, listMyWorlds } from "@/lib/domain/worlds";
 import { asRichDoc } from "@/lib/editor/rich-text";
+import type { HubFilterParams } from "@/lib/hub-filter-href";
 import { requireWorldPage } from "@/lib/page-context";
 import { isTemplateType } from "@/lib/templates/registry";
 
 export default async function CampaignHubPage({ params, searchParams }: PageProps<"/w/[worldId]">) {
   const { worldId } = await params;
-  const { template } = await searchParams;
+  const query = await searchParams;
   const { world, membership, user } = await requireWorldPage(worldId);
-  const filter = typeof template === "string" && isTemplateType(template) ? template : "all";
-  const [details, universes, myWorlds, articles, quests] = await Promise.all([
+  const templateRaw = typeof query.template === "string" ? query.template : undefined;
+  const kindRaw = typeof query.kind === "string" ? query.kind : undefined;
+  const filter = templateRaw && isTemplateType(templateRaw) ? templateRaw : "all";
+  const kindFilter = kindRaw && isMonsterKind(kindRaw) ? kindRaw : "all";
+  const hubFilters: HubFilterParams = {
+    ...(filter !== "all" ? { template: filter } : {}),
+    ...(kindFilter !== "all" ? { kind: kindFilter } : {}),
+  };
+  const [details, universes, myWorlds, articles, quests, monsters] = await Promise.all([
     getWorldDetails(world.id),
     listUniverses(world.id, membership.role, membership.userId),
     listMyWorlds(user.id),
     listArticles(world.id, membership.role, membership.userId, filter),
     listQuests(world.id, membership.role, membership.userId),
+    listMonsters(world.id, membership.role, membership.userId, kindFilter),
   ]);
   const staff = isStaff(membership.role);
 
@@ -83,7 +94,21 @@ export default async function CampaignHubPage({ params, searchParams }: PageProp
 
       <QuestList worldId={world.id} quests={quests} canCreate={staff} />
 
-      <ArticleList worldId={world.id} articles={articles} canCreate={staff} filter={filter} />
+      <MonsterList
+        worldId={world.id}
+        monsters={monsters}
+        canCreate={staff}
+        filter={kindFilter}
+        hubFilters={hubFilters}
+      />
+
+      <ArticleList
+        worldId={world.id}
+        articles={articles}
+        canCreate={staff}
+        filter={filter}
+        hubFilters={hubFilters}
+      />
     </>
   );
 }

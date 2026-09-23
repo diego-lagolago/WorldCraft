@@ -2,6 +2,7 @@ import Link from "next/link";
 import { worldPath } from "@/components/shell/nav";
 import { VisibilityBadge } from "@/components/world/display";
 import type { ArticleSummary } from "@/lib/domain/articles";
+import { hubFilterHref, type HubFilterParams } from "@/lib/hub-filter-href";
 import { TEMPLATES, TEMPLATE_TYPES, templateBadge, type TemplateType } from "@/lib/templates/registry";
 
 const FILTERS: { value: "all" | TemplateType; label: string }[] = [
@@ -14,11 +15,14 @@ export function ArticleList({
   articles,
   canCreate,
   filter = "all",
+  hubFilters = {},
 }: {
   worldId: string;
   articles: ArticleSummary[];
   canCreate: boolean;
   filter?: "all" | TemplateType;
+  /** Current hub query so Bestiarium `kind` survives template chips (PR6). */
+  hubFilters?: HubFilterParams;
 }) {
   return (
     <>
@@ -34,7 +38,7 @@ export function ArticleList({
         {FILTERS.map((entry) => (
           <Link
             key={entry.value}
-            href={entry.value === "all" ? worldPath(worldId) : `${worldPath(worldId)}?template=${entry.value}`}
+            href={hubFilterHref(worldId, hubFilters, "template", entry.value)}
             className={filter === entry.value ? "chip on" : "chip"}
           >
             {entry.label}

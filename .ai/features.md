@@ -40,7 +40,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 
 | Feature | Was es tut | Status |
 |---|---|---|
-| Kampagnen-Hub | Welt wechseln, Universen, Artikel-/Quest-Listen, Live-Suche | MVP / shipped |
+| Kampagnen-Hub | Welt wechseln, Universen, Bestiarium-/Artikel-/Quest-Listen, Live-Suche | MVP / shipped |
 | Weltsuche | Suche in der Welt (Artikel, Quests, Charaktere, Pins, Universen, Monster); kein Tagebuch | MVP / shipped |
 
 ## Artikel & Editor
@@ -57,8 +57,9 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 
 | Feature | Was es tut | Status |
 |---|---|---|
-| Monster-API | Anlegen/Ändern/Löschen nur Spielleitung; Liste (Filter Art), Detail; dreistufige Sichtbarkeit (Default `nur ich`); Charakterblatt + Art/Seltenheit/Legendär/Gefahr/Größe/Lebensraum; Bio mit `@`; Lebensraum → Ort-Artikel | Plan 005 T-005 / API |
-| Monster-Profilbild | Genau ein Bild (`monster_portrait`, max. 10 MB, JPG/PNG/WebP); Upload nur für Bearbeiter; Auslieferung nur für Sichtberechtigte; Ersetzen inkl. GC des alten Bildes | Plan 005 T-006 / API |
+| Bestiarium-UI | Sektion „Bestiarium“ im Kampagnen-Hub (über Glossar); Filter-Chips nach Art (`?kind=`, unabhängig von Glossar `?template=`); Anlegen/Detail/Bearbeiten; Seltenheits-Pills (englisch); Profilbild beim Anlegen; Rich-Text-Bio mit `@`; Lebensraum-Auswahl | Plan 005 T-008 / shipped |
+| Monster-API | Anlegen/Ändern/Löschen nur Spielleitung; Liste (Filter Art), Detail; dreistufige Sichtbarkeit (Default `nur ich`); Charakterblatt + Art/Seltenheit/Legendär/Gefahr/Größe/Lebensraum; Bio mit `@`; Lebensraum → Ort-Artikel | Plan 005 T-005 / shipped |
+| Monster-Profilbild | Genau ein Bild (`monster_portrait`, max. 10 MB, JPG/PNG/WebP); Upload nur für Bearbeiter; Auslieferung nur für Sichtberechtigte; Ersetzen inkl. GC des alten Bildes | Plan 005 T-006 / shipped |
 | Monster Relationen & Suche | Bio-Erwähnungen und Lebensraum erzeugen Relationen; `@`- und Volltextsuche finden sichtbare Monster; „Verknüpft“ und Mentions kennen `monster`; keine Stub-Monster per `@` | Plan 005 T-007 / shipped |
 
 ## Relationen

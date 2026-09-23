@@ -13,6 +13,7 @@ describe("activeNavTab", () => {
   it.each([
     [`/w/${W}`, "campaign"],
     [`/w/${W}/articles/x`, "campaign"],
+    [`/w/${W}/monsters/x`, "campaign"],
     [`/w/${W}/quests/x`, "campaign"],
     [`/w/${W}/universes/x`, "campaign"],
     [`/w/${W}/map`, "map"],

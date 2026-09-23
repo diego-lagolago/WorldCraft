@@ -11,6 +11,7 @@ import {
   type Attributes,
   type Skill,
 } from "@/lib/characters/sheet";
+import type { ResolvedMention } from "@/lib/domain/mention-resolve";
 import { asRichDoc } from "@/lib/editor/rich-text";
 import "./sheet.css";
 
@@ -38,10 +39,13 @@ export function SheetBodyView({
   sheet,
   bioEmpty,
   afterBio,
+  mentions,
 }: {
   sheet: SheetBodyData;
   bioEmpty?: ReactNode;
   afterBio?: ReactNode;
+  /** When set (e.g. monster bio), `@`-mentions render as links. */
+  mentions?: Record<string, ResolvedMention>;
 }) {
   return (
     <div className="stack">
@@ -98,7 +102,11 @@ export function SheetBodyView({
 
       <div className="card">
         <h2>Bio</h2>
-        <RichTextView doc={asRichDoc(sheet.bioJson)} empty={bioEmpty ?? <p className="muted">Noch keine Bio.</p>} />
+        <RichTextView
+          doc={asRichDoc(sheet.bioJson)}
+          mentions={mentions}
+          empty={bioEmpty ?? <p className="muted">Noch keine Bio.</p>}
+        />
       </div>
       {afterBio}
     </div>
