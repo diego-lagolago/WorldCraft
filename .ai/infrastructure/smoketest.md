@@ -84,11 +84,56 @@ Produktion liefert `POST /api/test-login` → **404** (geprüft 2026-09-22). `te
 
 ## Offene UX (Backlog / iterativ, kein T-014-Blocker)
 
-- Karten-Zoom (gestuft vs. weich / größere Schritte) — `.ai/backlog.md`
-- Chat: Channel-Verwaltung & Thread-UX — `.ai/backlog.md`
 - Weitere Composer-/Karten-UX nach Owner-Feedback: nach und nach; keine neuen Spezifikationen hier erfinden
+- Quest-Kapitel / Owner-Sichtbarkeit: **geplant** (Plan `004`), hier **nicht** als shipped prüfen
 
 ## Agent-seitig erledigt (Protokoll-Historie)
 
 - Prod-Homepage, Test-Login-404, Rechte-Skript lokal 15/15.
 - Owner 2026-09-22: Smoketest insgesamt erfolgreich → T-014 für den Plan abgeschlossen.
+
+---
+
+## MVP F1–F10 / Nachzüge Smoketest-Fixes (T-017)
+
+**Zweck:** Owner-Protokoll für den produktiven MVP-Stand (Plan `003` T-017) plus nachgezogene UX-Fixes.  
+**Umgebung:** Prod `https://worldcraft.lagolago.at` (Discord); Test-Login / Rechte-Skript nur lokal.  
+**Ergebnis je Zeile:** bestanden / nicht bestanden / N/A — ggf. Prod vs. lokal vermerken.
+
+### Kernpfad F1–F10 (Stichprobe)
+
+| # | Kriterium | Wo | Ergebnis | Beobachtung |
+|---|---|---|---|---|
+| F.1 | Discord-Login → Welt öffnen / anlegen | Prod | | |
+| F.2 | Artikel mit Erwähnung speichern | Prod | | |
+| F.3 | Karte: Bild + Pin setzen | Prod | | |
+| F.4 | Chat: Nachricht senden | Prod | | |
+| F.5 | Rechte-Skript (`npm run test:rechte`) | Lokal | | |
+| F.6 | `ENABLE_TEST_LOGIN` in Coolify unset; Test-Login auf Prod 404 | Prod | | |
+| F.7 | Phone-first ~390 px: Shell, Karte, Chat, Editor stichprobenartig | Prod/Lokal | | |
+
+### Offene Multi-Personen-Tests
+
+Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-017 / Realtime-Vertrauen.
+
+| # | Kriterium | Wo | Ergebnis | Beobachtung |
+|---|---|---|---|---|
+| M.1 | **Chat-Realtime:** A schreibt → B sieht ohne Reload | Prod | | |
+| M.2 | **Pin-Realtime:** A setzt/verschiebt Pin (nach Drop) → B sieht Sync | Prod | | |
+| M.3 | **Optional Marker:** A verschiebt eigenen Marker → B sieht Update; B kann Markers von A nicht verschieben | Prod | | N/A wenn kein zweites Konto |
+
+### Nachzüge Smoketest-Fixes (shipped UX)
+
+| # | Kriterium | Wo | Ergebnis | Beobachtung |
+|---|---|---|---|---|
+| N.1 | **Discord-Allowlist:** nicht erlaubte Discord-ID → klare Fehlermeldung auf Login (kein stiller Fail) | Prod | | |
+| N.2 | **@-Erwähnung:** Bestätigen mit **Tab** (neben Enter/Klick) | Prod/Lokal | | |
+| N.3 | **Karten-Leerzustand:** Prompt mittig; Chips überlappen Text nicht | Prod/Lokal | | |
+| N.4 | **Chat:** Leerzeichen ohne Cursor-Sprung; Absätze (Shift+Enter) in Nachrichten sichtbar | Prod/Lokal | | |
+| N.5 | **Würfel:** Spielleitung kann Würfel-Nachricht löschen; Player nicht | Prod/Lokal | | |
+| N.6 | **Würfel-UI** am ui-prototype (Grid, fette Summe, Toast) — stichprobenartig | Prod/Lokal | | |
+| N.7 | **Karten-Zoom/Scroll** fühlt sich näher am Prototyp an (kein extremes Nachziehen) | Prod/Lokal | | |
+| N.8 | **Karten-Hinweistext** entfernt | Prod/Lokal | | |
+| N.9 | **Karten-Sichtbarkeit:** Auge-Icon in Toolbar (offen = sichtbar, durchgestrichen = SL-only) | Prod/Lokal | | |
+| N.10 | **Pins:** Mentions als blaue Links im Beschreibungstext; kein „Verknüpft“-Panel im Pin-Sheet | Prod/Lokal | | |
+| N.11 | **Versionsbadge** unten links, hellgrau lesbar; Version **0.1.1+** sichtbar | Prod/Lokal | | |

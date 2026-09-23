@@ -1,0 +1,120 @@
+# Features (Produktkatalog)
+
+**Status:** Lebender Katalog — **verbindlich nachzuziehen**, wenn sich die Produktoberfläche ändert (siehe [conventions.md](conventions.md) § Features-Katalog).  
+**Quellen:** Plan `001` F1–F10, Plan `003` MVP, Fachmodell, nachgezogene UX.  
+**Nicht enthalten:** geplante, noch nicht gebaute Features (z. B. Quest-Kapitel / Owner-Sichtbarkeit aus Plan `004`).
+
+Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (meist ebenfalls shipped).
+
+---
+
+## Auth & Zugang
+
+| Feature | Was es tut | Status |
+|---|---|---|
+| Discord-Login | Anmelden per Discord-OAuth (Scopes identify + email); Session same-origin | MVP / shipped |
+| Discord-Allowlist | Nur IDs in `ALLOWED_DISCORD_IDS`; nicht erlaubte ID → klare Fehlermeldung (kein stiller Fail) | shipped |
+| Test-Login | Seed-User lokal bei `ENABLE_TEST_LOGIN=true`; auf Prod nie (404 / Start-Guard) | MVP / shipped |
+| Abmelden | Beendet die Sitzung | MVP / shipped |
+
+## Shell & Navigation
+
+| Feature | Was es tut | Status |
+|---|---|---|
+| App-Shell | Chrome nach Login: Weltkontext, Topbar, Mobile Bottom-Bar / Desktop-Sidebar | MVP / shipped |
+| Vier Tabs | Kampagne · Karte · Chat · Menü (Reihenfolge und Labels fest) | MVP / shipped |
+| Chat verdeckt Bar | Im Chat blendet der Composer die Bottom-Bar aus | MVP / shipped |
+| Onboarding | Angemeldet ohne Welt: Welt anlegen oder Einladung einlösen | MVP / shipped |
+| Versionsbadge | App-Version unten links, hellgrau lesbar (`package.json`, z. B. 0.1.1+) | shipped |
+
+## Welten & Mitglieder
+
+| Feature | Was es tut | Status |
+|---|---|---|
+| Welten | Anlegen, bearbeiten, löschen (nur GM); Name, Beschreibung ohne `@`, optionales Titelbild | MVP F1 / shipped |
+| Universen | Mehrere pro Welt; Name, Beschreibung mit `@`, Reihenfolge, Sichtbarkeit; MVP je Universum eine Karte | MVP F1 / shipped |
+| Mitglieder & Rollen | GM / Master / Player; Rollen ändern und entfernen nur GM; Austreten archiviert | MVP F6 / shipped |
+| Einladungslinks | GM erzeugt Links (1 Tag / 7 Tage / unbegrenzt), widerrufbar; Beitritt inkl. Reaktivierung | MVP F6 / shipped |
+
+## Kampagne (Hub)
+
+| Feature | Was es tut | Status |
+|---|---|---|
+| Kampagnen-Hub | Welt wechseln, Universen, Artikel-/Quest-Listen, Live-Suche | MVP / shipped |
+| Weltsuche | Suche in der Welt (Artikel, Quests, Charaktere, Pins, Universen); kein Tagebuch | MVP / shipped |
+
+## Artikel & Editor
+
+| Feature | Was es tut | Status |
+|---|---|---|
+| Artikel | Titel, Titelbild, Rich-Text, Sichtbarkeit; Default `nur Spielleitung` | MVP F2 / shipped |
+| Vorlagen | Typen Person / Ort / Organisation / Gegenstand / ohne; strukturierte Felder | MVP F3 / shipped |
+| TipTap-Editor | Erlaubte Formatierungen laut Plan 001; Paste ohne Bilder/Tabellen | MVP / shipped |
+| Erwähnungen (`@`) | Teilwortsuche mit Kategorie; Bestätigen per Enter, Tab oder Klick; Stub rot → blau | MVP F2 / shipped |
+| Stub-Artikel | Über `@` angelegt; `first_edited_at` erst bei echtem Inhalt | MVP / shipped |
+
+## Relationen
+
+| Feature | Was es tut | Status |
+|---|---|---|
+| Automatische Relationen | Aus Erwähnungen / Vorlagenfeldern / Quest-Beteiligung neu berechnet | MVP F2 / shipped |
+| Manuelle Relationen | Spielleitung: Bezeichnung (+ optionale Gegenbezeichnung) zwischen Inhaltsarten | MVP F2 / shipped |
+| „Verknüpft“ | Ein-/ausgehende Relationen auf Artikel, Quest, Charakter, Universum (nicht als Pin-Panel) | MVP F2 / shipped |
+
+## Quests
+
+| Feature | Was es tut | Status |
+|---|---|---|
+| Quests | Titel, Beschreibung mit `@`, Status offen/aktiv/abgeschlossen/gescheitert, Sichtbarkeit | MVP F7 / shipped |
+| Quest-Beteiligte | Mitgebrachte Charaktere zuordnen; erzeugt `participation`-Relationen | MVP F7 / shipped |
+
+## Charaktere & Tagebuch
+
+| Feature | Was es tut | Status |
+|---|---|---|
+| Charakterbogen | Weltunabhängig: Attribute, Fertigkeiten, Fähigkeiten, Persönlichkeit, Bio, Bilder | MVP F8 / shipped |
+| Mitbringen | Charakter in eine/mehrere Welten; mehrere gleichzeitig spielbar | MVP F8 / shipped |
+| Tagebuch | Einträge pro Welt; Sichtbarkeit privat oder mit Spielleitung geteilt | MVP F9 / shipped |
+
+## Karte
+
+| Feature | Was es tut | Status |
+|---|---|---|
+| Kartenbild | Upload als Whiteboard-Hintergrund (Leaflet `CRS.Simple`); Zoom/Pan | MVP F4 / shipped |
+| Pins | 12 Typen; Titel + Rich-Text-Beschreibung; Drag, Sync nach Drop | MVP F5 / shipped |
+| Pin-Mentions | Erwähnungen in der Pin-Beschreibung als blaue Links; kein „Verknüpft“-Panel im Pin-Sheet | shipped |
+| Charakter-Marker | Profilbild/Name auf der Karte; Besitzer oder Spielleitung platziert | MVP F5 / shipped |
+| Pin-Sperre | Sperren/Entsperren nur Spielleitung | shipped |
+| Karten-Sichtbarkeit | Auge-Icon in Toolbar (offen = sichtbar, durchgestrichen = nur Spielleitung) | shipped |
+| Deep-Link | `/map?pin=` zentriert und hebt den Pin hervor | MVP F5 / shipped |
+| Leerzustand | Mittiger Prompt zum Upload; Chips überlappen den Text nicht | shipped |
+| Zoom/Scroll | Weiches Zoomen näher am UI-Prototyp (kein extremes Nachziehen) | shipped |
+
+## Chat & Würfel
+
+| Feature | Was es tut | Status |
+|---|---|---|
+| Gruppenchat | Kanäle, Threads (eingerückt + Chevron), SSE-Realtime | MVP F10 / shipped |
+| Kanalverwaltung | Anlegen, umbenennen, Reihenfolge, archivieren/wiederherstellen (Spielleitung) | shipped |
+| Composer | Leerzeichen ohne Cursor-Sprung; Absätze (Shift+Enter) in Nachrichten sichtbar | shipped |
+| Würfel | Serverseitige Auswertung; UI am Prototyp (Grid, fette Summe, Toast) | MVP F10 / shipped |
+| Nachrichten löschen | Autor oder Spielleitung; Würfel nur Spielleitung (Player nicht) | shipped |
+
+## Rechte & Sichtbarkeit
+
+| Feature | Was es tut | Status |
+|---|---|---|
+| Rechteschicht | Eine TypeScript-Schicht für HTTP, Loader (später MCP); keine Rechte nur in der UI | MVP / shipped |
+| Sichtbarkeit | `veröffentlicht` / `nur Spielleitung`; Vererbung Universum → Karte → Pin/Marker | MVP / shipped |
+| Archivierung | Austritt/Entfernen archiviert Mitgliedschaft, Teilnahmen, Marker, Relationen | MVP / shipped |
+
+## Uploads & Realtime
+
+| Feature | Was es tut | Status |
+|---|---|---|
+| Datei-Uploads | JPG/PNG/WebP; Limits Karte 20 MB, sonst 10 MB; Volume + Tabelle `files` | MVP / shipped |
+| SSE-Realtime | Chat und Karte über gemeinsamen Bus; Sync nach Speichern/Drop, nicht während Drag | MVP / shipped |
+
+## Geplant (nicht shipped)
+
+Siehe Pläne unter `.ai/feature-tasks/` und [backlog.md](backlog.md) — u. a. MCP (Plan `002`), Quest-Kapitel / Owner-Sichtbarkeit (Plan `004`). Hier nicht als Produktfeatures führen, bis sie gebaut sind.

@@ -1,7 +1,7 @@
 # Conventions (verbindlich)
 
 **Status:** Festgehalten durch Plan `001` T-013 (2026-09-22).  
-**Ergänzt:** [tech-stack.md](tech-stack.md), [architecture/README.md](architecture/README.md), Standards unter `.ai/standards/`.
+**Ergänzt:** [architecture.md](architecture.md), [features.md](features.md), [architecture/README.md](architecture/README.md), Standards unter `.ai/standards/`.
 
 ## Sprache
 
@@ -94,6 +94,19 @@ Neue Rechtefälle: zuerst in `src/lib/authz` plus Test, nicht nur in der UI und 
 - Persistenz: Postgres-Volume + Upload-Volume `/app/data/uploads`.
 - **App-Version:** `package.json` (Versionsbadge) soll **automatisch mit Releases/Deploys mitlaufen**. **Git-Tags** setzen wir nicht — taggen müssen wir nicht.
 - Details: [infrastructure/deployment.md](infrastructure/deployment.md).
+
+## Features-Katalog (verbindlich)
+
+**Jede Aufgabe**, die die Produktoberfläche oder das nutzbare Verhalten ändert, **muss** [features.md](features.md) ergänzen oder anpassen:
+
+| Fall | Pflicht |
+|---|---|
+| Neues Feature | Eintrag anlegen (Kurzname, 1-Zeilen-Beschreibung, Status) |
+| Geändertes Verhalten | bestehenden Eintrag anpassen |
+| Entferntes Feature | Eintrag entfernen oder als entfernt kennzeichnen |
+| Keine Feature-Wirkung | kurz **N/A** in der Task-Umsetzung vermerken — oder mit Urteil weglassen |
+
+Gilt für Plan-Aufgaben (`T-…`), Bugfixes mit Feature-Wirkung und `/plan-run`. Default: bei Oberflächen-/Verhaltensänderung **nachziehen**, nicht erst am Planende. Katalog: [features.md](features.md).
 
 ## Backlog vs. Normen
 
