@@ -118,6 +118,16 @@ Schlägt eines fehl → nicht committen, pausieren. Push auf `main` nur nach aus
 
 Gilt für Plan-Aufgaben (`T-…`), Bugfixes mit Feature-Wirkung und `/plan-run`. Default: bei Oberflächen-/Verhaltensänderung **nachziehen**, nicht erst am Planende. Katalog: [features.md](features.md).
 
+## Migrationen
+
+**Ergänzt:** CR-016 (2026-09-23).
+
+- Migrationen werden **von Hand** als `NNNN_beschreibung.sql` unter `src/db/migrations/` geschrieben; Nummerierung fortlaufend (0000, 0001, …).
+- Bestehende Daten erhalten — keine destruktiven Änderungen ohne explizite Entscheidung.
+- Drizzle-Journal (`meta/_journal.json`) und Snapshots sind bei **0010** eingefroren; **nicht** aktualisieren.
+- `npm run db:generate` nur als Entwurfshilfe: generiertes Diff manuell kürzen, die generierte Datei danach löschen; Journal unverändert lassen.
+- Verbindlich für Anwendung und Tracking ist `scripts/migrate.mjs` (Dateiname in `schema_migrations`).
+
 ## Backlog vs. Normen
 
 Kurze Restpunkte ohne Plan: [backlog.md](backlog.md). Normen hier und unter `.ai/standards/` haben Vorrang vor Spike-WIP.

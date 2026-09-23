@@ -2,7 +2,7 @@
 
 import type { WorldRealtimeEvent } from "@/lib/realtime/events";
 import {
-  canSeeVisibility,
+  canSeeContent,
   fail,
   isGm,
   isStaff,
@@ -83,12 +83,7 @@ export function canSeePublishedLayer(
   layers: VisibilityLayer[],
 ): boolean {
   return layers.every((layer) =>
-    canSeeVisibility({
-      role: viewer.role,
-      visibility: layer.visibility,
-      viewerId: viewer.userId,
-      ownerId: layer.ownerId,
-    }),
+    canSeeContent(viewer, { visibility: layer.visibility, ownerId: layer.ownerId }),
   );
 }
 
@@ -146,12 +141,10 @@ export function authorizeOwnedContentWrite(input: {
   if (!staff.ok) return staff;
   if (!input.content) return fail(404, input.notFoundError);
   if (
-    !canSeeVisibility({
-      role: staff.data.role,
-      visibility: input.content.visibility,
-      viewerId: staff.data.userId,
-      ownerId: input.content.ownerId,
-    })
+    !canSeeContent(
+      { role: staff.data.role, userId: staff.data.userId },
+      { visibility: input.content.visibility, ownerId: input.content.ownerId },
+    )
   ) {
     return fail(404, input.notFoundError);
   }
@@ -247,26 +240,22 @@ export function authorizePinWrite(
   pin: { locked: boolean; ownerId: string; visibility: ContentVisibility } | null,
   action: "create" | "delete" | { locked?: boolean; visibility?: ContentVisibility } & Record<string, unknown>,
 ): AuthzResult<true> {
-  const staff = requireStaff(actor);
-  if (!staff.ok) return staff;
-  if (action === "create") return ok(true);
-  if (!pin) return fail(404, "Diesen Pin gibt es nicht.");
-  if (
-    !canSeeVisibility({
-      role: staff.data.role,
-      visibility: pin.visibility,
-      viewerId: staff.data.userId,
-      ownerId: pin.ownerId,
-    })
-  ) {
-    return fail(404, "Diesen Pin gibt es nicht.");
+  if (action === "create") {
+    const staff = requireStaff(actor);
+    if (!staff.ok) return staff;
+    return ok(true);
   }
+  const write = authorizeOwnedContentWrite({
+    membership: actor,
+    content: pin,
+    nextVisibility: typeof action === "object" ? action.visibility : undefined,
+    notFoundError: "Diesen Pin gibt es nicht.",
+  });
+  if (!write.ok) return write;
+  if (!pin) return fail(404, "Diesen Pin gibt es nicht.");
   if (action === "delete") {
     if (pin.locked) return fail(409, "Ein gesperrter Pin lässt sich nur entsperren.");
     return ok(true);
-  }
-  if (action.visibility === "owner_only" && staff.data.userId !== pin.ownerId) {
-    return fail(403, "Nur der Owner darf die Sichtbarkeit auf „nur ich“ setzen.");
   }
   if (pin.locked && !isUnlockOnlyPatch(action)) {
     return fail(409, "Ein gesperrter Pin lässt sich nur entsperren.");
@@ -352,12 +341,7 @@ export function canReadArticleTitleFile(
   article: { visibility: ContentVisibility; ownerId: string },
 ): boolean {
   if (!viewer) return false;
-  return canSeeVisibility({
-    role: viewer.role,
-    visibility: article.visibility,
-    viewerId: viewer.userId,
-    ownerId: article.ownerId,
-  });
+  return canSeeContent(viewer, { visibility: article.visibility, ownerId: article.ownerId });
 }
 
 /** CR-003 / T-008: character portrait or attachment — owner always; else shared active world. */

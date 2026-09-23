@@ -462,6 +462,112 @@ describe("T-007 (1)/(2): chapter mentions and recalc", () => {
   });
 });
 
+describe("CR-011: parallel chapter create positions", () => {
+  it("assigns distinct positions 0–4 for five concurrent POSTs", async () => {
+    const quest = await createQuest(gm, {
+      title: "Parallel-Anlage",
+      visibility: "published",
+    });
+
+    const results = await Promise.all(
+      Array.from({ length: 5 }, (_, index) =>
+        api<{ chapter: { position: number } }>(gm, "POST", chaptersPath(quest.id), {
+          title: `Kapitel ${index + 1}`,
+          visibility: "published",
+        }),
+      ),
+    );
+
+    for (const res of results) {
+      expect(res.status).toBe(201);
+    }
+    const positions = results.map((res) => res.data.chapter.position).sort((a, b) => a - b);
+    expect(positions).toEqual([0, 1, 2, 3, 4]);
+  });
+});
+
+describe("CR-012: reorder skips unchanged chapters", () => {
+  it("does not touch updated_by/updated_at of invisible owner_only chapters", async () => {
+    const quest = await createQuest(gm, {
+      title: "Reorder-Protokoll",
+      visibility: "published",
+    });
+    const k1 = await createChapter(gm, quest.id, { title: "K1", visibility: "published" });
+    const k2 = await createChapter(masterB, quest.id, {
+      title: "K2",
+      visibility: "owner_only",
+    });
+    const k3 = await createChapter(gm, quest.id, { title: "K3", visibility: "published" });
+
+    const [before] = await sql`
+      SELECT updated_at, updated_by FROM quest_chapters WHERE id = ${k2.id}
+    `;
+    expect(before).toBeTruthy();
+
+    const reorder = await api<{ chapterIds: string[] }>(masterA, "PUT", orderPath(quest.id), {
+      chapterIds: [k3.id, k1.id],
+    });
+    expect(reorder.status).toBe(200);
+
+    const [after] = await sql`
+      SELECT updated_at, updated_by FROM quest_chapters WHERE id = ${k2.id}
+    `;
+    expect(after.updated_at?.toISOString?.() ?? after.updated_at).toBe(
+      before.updated_at?.toISOString?.() ?? before.updated_at,
+    );
+    expect(after.updated_by).toBe(before.updated_by);
+  });
+});
+
+describe("CR-015: chapter edit skips participation recalc", () => {
+  it("keeps participation relation ids and created_by after body PATCH", async () => {
+    const char = await api<{ id: string }>(player, "POST", "/api/characters", {
+      name: "Teilnehmer CR-015",
+    });
+    expect(char.status).toBe(201);
+    expect((await api(player, "POST", w("/characters"), { characterId: char.data.id })).status).toBe(
+      200,
+    );
+
+    const quest = await createQuest(gm, {
+      title: "Teilnahme-Stabilität",
+      visibility: "published",
+      participantIds: [char.data.id],
+    });
+    const chapter = await createChapter(gm, quest.id, {
+      title: "Kapitel",
+      visibility: "published",
+      body: textDoc("Anfangstext"),
+    });
+
+    const before = await sql`
+      SELECT id, created_by FROM relations
+      WHERE world_id = ${worldId}
+        AND source_quest_id = ${quest.id}
+        AND origin = 'participation'
+    `;
+    expect(before.length).toBeGreaterThan(0);
+
+    expect(
+      (
+        await api(gm, "PATCH", chapterPath(quest.id, chapter.id), {
+          body: textDoc("Geänderter Text"),
+        })
+      ).status,
+    ).toBe(200);
+
+    const after = await sql`
+      SELECT id, created_by FROM relations
+      WHERE world_id = ${worldId}
+        AND source_quest_id = ${quest.id}
+        AND origin = 'participation'
+    `;
+    expect(after.map((row) => ({ id: row.id, created_by: row.created_by }))).toEqual(
+      before.map((row) => ({ id: row.id, created_by: row.created_by })),
+    );
+  });
+});
+
 describe("T-007 (3): hub search from chapters", () => {
   it("finds quest from visible chapter text only", async () => {
     const quest = await createQuest(gm, {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { worldPath } from "@/components/shell/nav";
-import { GmBadge } from "@/components/world/display";
+import { VisibilityBadge } from "@/components/world/display";
 import type { ArticleSummary } from "@/lib/domain/articles";
 import { TEMPLATES, TEMPLATE_TYPES, templateBadge, type TemplateType } from "@/lib/templates/registry";
 
@@ -52,7 +52,7 @@ export function ArticleList({
                 <span className={stub ? "stub-title" : undefined}>{article.title}</span>
                 <div className="kind">{[badge, stub ? "noch leer" : null].filter(Boolean).join(" · ")}</div>
               </div>
-              <GmBadge visibility={article.visibility} />
+              <VisibilityBadge visibility={article.visibility} />
               <span className="muted" aria-hidden="true">
                 ›
               </span>

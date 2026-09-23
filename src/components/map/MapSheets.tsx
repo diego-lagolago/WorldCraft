@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { RichTextView } from "@/components/editor/RichTextView";
-import { GmBadge } from "@/components/world/display";
+import { VisibilityBadge } from "@/components/world/display";
 import { ContentVisibilitySelect } from "@/components/world/VisibilitySelect";
 import { PIN_TYPE_META, pinTypeIconUrl, type PinType } from "@/lib/map/pin-types";
 import type { MarkerDto, PinDetails, PlaceableCharacterDto } from "@/lib/map/types";
@@ -48,7 +48,7 @@ export function PinViewSheet({
         <img src={pinTypeIconUrl(pin.pinType)} width={36} height={44} alt="" />
         <div className="grow">
           <div className="kind">{PIN_TYPE_META.find((row) => row.id === pin.pinType)?.label}</div>
-          <GmBadge visibility={pin.visibility} />
+          <VisibilityBadge visibility={pin.visibility} />
           {pin.locked ? <span className="badge">gesperrt</span> : null}
         </div>
       </div>

@@ -5,17 +5,15 @@ import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { Sheet } from "@/components/map/MapSheets";
 import { apiRequest } from "@/lib/client/api";
-import type { ResolvedMention } from "@/lib/domain/mention-resolve";
 import type { MentionState } from "@/lib/editor/mentions";
 import { asRichDoc, emptyDoc, type RichDoc } from "@/lib/editor/rich-text";
-
-export type QuestNoteView = {
-  bodyJson: unknown;
-  version: number;
-  updatedAt: string | null;
-  updatedByName: string | null;
-  mentions: Record<string, ResolvedMention>;
-};
+import {
+  interpretNoteReload,
+  interpretNoteSave,
+  noteSaveDisabled,
+  prepareNoteView,
+  type QuestNoteView,
+} from "./quest-note-state";
 
 function hasNoteContent(bodyJson: unknown): boolean {
   const doc = asRichDoc(bodyJson);
@@ -33,22 +31,6 @@ function formatUpdatedAt(iso: string | null): string {
   });
 }
 
-function normalizeNote(note: QuestNoteView): QuestNoteView {
-  const updatedAt = note.updatedAt;
-  return {
-    bodyJson: note.bodyJson,
-    version: note.version,
-    updatedAt:
-      typeof updatedAt === "string"
-        ? updatedAt
-        : updatedAt
-          ? new Date(updatedAt as unknown as string).toISOString()
-          : null,
-    updatedByName: note.updatedByName ?? null,
-    mentions: note.mentions ?? {},
-  };
-}
-
 export function QuestNotesSheet({
   worldId,
   questId,
@@ -63,7 +45,7 @@ export function QuestNotesSheet({
   initialNote: QuestNoteView;
 }) {
   const [open, setOpen] = useState(false);
-  const [note, setNote] = useState(() => normalizeNote(initialNote));
+  const [note, setNote] = useState(() => prepareNoteView(initialNote));
   const [draft, setDraft] = useState<RichDoc | null>(null);
   const [editing, setEditing] = useState(false);
   const [conflict, setConflict] = useState(false);
@@ -101,22 +83,19 @@ export function QuestNotesSheet({
       version: note.version,
     });
     setPending(false);
-    if (result.ok) {
-      setNote(normalizeNote(result.data.note));
+    const outcome = interpretNoteSave(result);
+    if (outcome.action === "success") {
+      setNote(outcome.note);
       setDraft(null);
       setConflict(false);
       setEditing(false);
       return;
     }
-    if (result.status === 409) {
+    if (outcome.action === "conflict") {
       setConflict(true);
-      const payload = result.body;
-      if (payload && typeof payload === "object" && "version" in payload && typeof payload.version === "number") {
-        setNote((current) => ({ ...current, version: payload.version as number }));
-      }
       return;
     }
-    setError(result.error);
+    setError(outcome.error);
   }
 
   async function onReload() {
@@ -124,11 +103,12 @@ export function QuestNotesSheet({
     setError(null);
     const result = await apiRequest<{ note: QuestNoteView }>(base, "GET");
     setPending(false);
-    if (!result.ok) {
-      setError(result.error);
+    const outcome = interpretNoteReload(result);
+    if (outcome.action === "error") {
+      setError(outcome.error);
       return;
     }
-    setNote(normalizeNote(result.data.note));
+    setNote(outcome.note);
     setDraft(null);
     setConflict(false);
     setEditorKey((value) => value + 1);
@@ -166,7 +146,8 @@ export function QuestNotesSheet({
                 Neu laden
               </button>
               <div className="small muted" style={{ marginTop: 6 }}>
-                Dein Text bleibt im Editor, bis du neu lädst.
+                Speichern ist gesperrt. Kopiere deinen Text, bevor du neu lädst — „Neu laden“ ersetzt
+                deinen Entwurf mit dem Stand vom Server.
               </div>
             </div>
           ) : null}
@@ -190,7 +171,12 @@ export function QuestNotesSheet({
                 Tippe <b>@</b> für Erwähnungen.
               </p>
               <div className="row wrap" style={{ marginTop: 12 }}>
-                <button type="button" className="btn primary grow" disabled={pending} onClick={() => void onSave()}>
+                <button
+                  type="button"
+                  className="btn primary grow"
+                  disabled={noteSaveDisabled(pending, conflict)}
+                  onClick={() => void onSave()}
+                >
                   Speichern
                 </button>
                 <button

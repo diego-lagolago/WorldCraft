@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { worldPath } from "@/components/shell/nav";
-import type { VisibilityStatus } from "@/lib/authz/types";
+import { CONTENT_VISIBILITY_LABEL, type VisibilityStatus } from "@/lib/authz/types";
 import { apiRequest } from "@/lib/client/api";
 import type { MentionState } from "@/lib/editor/mentions";
 import type { RichDoc } from "@/lib/editor/rich-text";
@@ -95,7 +95,7 @@ export function UniverseForm({ worldId, universe, mentionStates }: Props) {
         <span>
           Veröffentlicht
           <br />
-          <span className="small muted">aus = nur Spielleitung</span>
+          <span className="small muted">aus = {CONTENT_VISIBILITY_LABEL.gm_only}</span>
         </span>
         <button
           type="button"

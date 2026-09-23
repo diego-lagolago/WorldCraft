@@ -4,7 +4,7 @@ import { QuestList } from "@/components/quests/QuestList";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { worldPath } from "@/components/shell/nav";
 import { CampaignSearch } from "@/components/world/CampaignSearch";
-import { GmBadge, Hero } from "@/components/world/display";
+import { Hero, VisibilityBadge } from "@/components/world/display";
 import { ROLE_LABEL } from "@/components/world/labels";
 import { isStaff } from "@/lib/authz/types";
 import { listArticles } from "@/lib/domain/articles";
@@ -73,7 +73,7 @@ export default async function CampaignHubPage({ params, searchParams }: PageProp
               🪐
             </span>
             <div className="grow">{universe.name}</div>
-            <GmBadge visibility={universe.visibility} />
+            <VisibilityBadge visibility={universe.visibility} />
             <span className="muted" aria-hidden="true">
               ›
             </span>

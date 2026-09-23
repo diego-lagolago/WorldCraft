@@ -5,10 +5,10 @@ import { RichTextView } from "@/components/editor/RichTextView";
 import { QuestChapters } from "@/components/quests/QuestChapters";
 import { QuestNotesSheet } from "@/components/quests/QuestNotesSheet";
 import { worldPath } from "@/components/shell/nav";
-import { GmBadge } from "@/components/world/display";
+import { VisibilityBadge } from "@/components/world/display";
 import { isStaff } from "@/lib/authz/types";
 import { editorMentionStates, resolveMentions } from "@/lib/domain/mention-resolve";
-import { getQuestNote } from "@/lib/domain/quest-notes";
+import { getQuestNote, serializeQuestNoteClient } from "@/lib/domain/quest-notes";
 import { getQuest, QUEST_STATUS_LABEL } from "@/lib/domain/quests";
 import { asRichDoc, extractMentions } from "@/lib/editor/rich-text";
 import { parseUuid } from "@/lib/http";
@@ -28,6 +28,12 @@ export default async function QuestPage({ params }: PageProps<"/w/[worldId]/ques
     questId: quest.id,
     role: membership.role,
     viewerId: membership.userId,
+    quest: {
+      id: quest.id,
+      worldId: quest.worldId,
+      visibility: quest.visibility,
+      ownerId: quest.ownerId,
+    },
   });
   const note = noteResult.ok ? noteResult.data : null;
   const mentions = await resolveMentions(world.id, membership.role, membership.userId, [
@@ -46,7 +52,7 @@ export default async function QuestPage({ params }: PageProps<"/w/[worldId]/ques
       <h1 style={{ fontSize: 24, marginBottom: 8 }}>{quest.title}</h1>
       <div className="row wrap" style={{ marginBottom: 14 }}>
         <span className="badge">Quest</span>
-        <GmBadge visibility={quest.visibility} />
+        <VisibilityBadge visibility={quest.visibility} />
         <span className={`badge st-${quest.status}`}>{QUEST_STATUS_LABEL[quest.status]}</span>
         {staff ? (
           <Link className="btn sm" style={{ marginLeft: "auto" }} href={worldPath(world.id, `/quests/${quest.id}/edit`)}>
@@ -92,13 +98,7 @@ export default async function QuestPage({ params }: PageProps<"/w/[worldId]/ques
                 questId={quest.id}
                 canCreateArticle={staff}
                 mentionStates={allMentionStates}
-                initialNote={{
-                  bodyJson: note.bodyJson,
-                  version: note.version,
-                  updatedAt: note.updatedAt ? note.updatedAt.toISOString() : null,
-                  updatedByName: note.updatedByName,
-                  mentions: note.mentions,
-                }}
+                initialNote={serializeQuestNoteClient(note)}
               />
             </div>
           ) : null}

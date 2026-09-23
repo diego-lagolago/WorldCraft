@@ -2,7 +2,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { articles, characters, quests, universes, worldParticipations } from "@/db/schema";
 import { contentHref } from "@/lib/content-href";
-import { canSeeVisibility, type MembershipRole } from "@/lib/authz";
+import { canSeeContent, type MembershipRole } from "@/lib/authz";
 import { mentionKey, type MentionRef, type MentionState, type MentionableKind } from "@/lib/editor/mentions";
 
 /** Reader view of one mention: a link, a red stub link, or plain text when missing or hidden. */
@@ -85,30 +85,26 @@ export async function resolveMentions(
   };
   for (const row of articleRows) {
     if (
-      canSeeVisibility({
-        role,
-        visibility: row.visibility,
-        viewerId,
-        ownerId: row.ownerId,
-      })
+      canSeeContent(
+        { role, userId: viewerId },
+        { visibility: row.visibility, ownerId: row.ownerId },
+      )
     ) {
       put("article", row.id, row.title, row.firstEditedAt ? "linked" : "stub");
     }
   }
   for (const row of questRows) {
     if (
-      canSeeVisibility({
-        role,
-        visibility: row.visibility,
-        viewerId,
-        ownerId: row.ownerId,
-      })
+      canSeeContent(
+        { role, userId: viewerId },
+        { visibility: row.visibility, ownerId: row.ownerId },
+      )
     ) {
       put("quest", row.id, row.title, "linked");
     }
   }
   for (const row of universeRows) {
-    if (canSeeVisibility({ role, visibility: row.visibility, viewerId })) {
+    if (canSeeContent({ role, userId: viewerId }, { visibility: row.visibility })) {
       put("universe", row.id, row.title, "linked");
     }
   }

@@ -4,7 +4,7 @@ import { ArticleFields } from "@/components/articles/ArticleFields";
 import { LinkedSection } from "@/components/linked/LinkedSection";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { worldPath } from "@/components/shell/nav";
-import { GmBadge, Hero } from "@/components/world/display";
+import { Hero, VisibilityBadge } from "@/components/world/display";
 import { isStaff } from "@/lib/authz/types";
 import { getArticle } from "@/lib/domain/articles";
 import { resolveMentions } from "@/lib/domain/mention-resolve";
@@ -41,7 +41,7 @@ export default async function ArticlePage({ params }: PageProps<"/w/[worldId]/ar
       <Hero title={article.title} imageId={article.titleImageId} />
       <div className="row wrap" style={{ marginBottom: 12 }}>
         {badge ? <span className="badge">{badge}</span> : null}
-        <GmBadge visibility={article.visibility} />
+        <VisibilityBadge visibility={article.visibility} />
         {isStaff(membership.role) ? (
           <Link className="btn sm" style={{ marginLeft: "auto" }} href={worldPath(world.id, `/articles/${article.id}/edit`)}>
             Bearbeiten

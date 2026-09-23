@@ -5,18 +5,14 @@ import { useState } from "react";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { Sheet } from "@/components/map/MapSheets";
-import { GmBadge } from "@/components/world/display";
-import {
-  CONTENT_VISIBILITY_LABEL,
-  ContentVisibilitySelect,
-} from "@/components/world/VisibilitySelect";
+import { VisibilityBadge } from "@/components/world/display";
+import { ContentVisibilitySelect } from "@/components/world/VisibilitySelect";
 import type { ContentVisibility } from "@/lib/authz/types";
+import { CHAPTER_TITLE_MAX } from "@/lib/quests/status";
 import { apiRequest } from "@/lib/client/api";
 import type { ResolvedMention } from "@/lib/domain/mention-resolve";
 import type { MentionState } from "@/lib/editor/mentions";
 import { asRichDoc, emptyDoc, type RichDoc } from "@/lib/editor/rich-text";
-
-const CHAPTER_TITLE_MAX = 200;
 
 export type QuestChapterView = {
   id: string;
@@ -125,27 +121,17 @@ export function QuestChapters({
             <div className="ch-h">
               <span className="ch-num">{index + 1}.</span>
               <b className="grow">{chapter.title}</b>
-              <GmBadge visibility={chapter.visibility} />
+              <VisibilityBadge visibility={chapter.visibility} />
               {staff ? (
                 <div className="ch-actions">
-                  <select
-                    style={{ width: "auto", padding: "6px 8px", fontSize: 12 }}
+                  <ContentVisibilitySelect
+                    compact
                     value={chapter.visibility}
-                    aria-label={`Sichtbarkeit von ${chapter.title}`}
+                    onChange={(visibility) => void onVisibilityChange(chapter, visibility)}
+                    allowOwner={chapter.ownerId === actorId}
+                    ariaLabel={`Sichtbarkeit von ${chapter.title}`}
                     disabled={pending}
-                    onChange={(event) =>
-                      void onVisibilityChange(chapter, event.target.value as ContentVisibility)
-                    }
-                  >
-                    {(chapter.ownerId === actorId
-                      ? (["owner_only", "gm_only", "published"] as const)
-                      : (["gm_only", "published"] as const)
-                    ).map((value) => (
-                      <option key={value} value={value}>
-                        {CONTENT_VISIBILITY_LABEL[value]}
-                      </option>
-                    ))}
-                  </select>
+                  />
                   <button
                     type="button"
                     className="btn sm"

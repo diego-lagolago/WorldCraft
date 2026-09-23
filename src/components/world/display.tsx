@@ -1,9 +1,14 @@
-import type { ContentVisibility, VisibilityStatus } from "@/lib/authz/types";
+import { CONTENT_VISIBILITY_LABEL, type ContentVisibility, type VisibilityStatus } from "@/lib/authz/types";
 
 /** Staff see badges for non-published content they can view. */
-export function GmBadge({ visibility }: { visibility: VisibilityStatus | ContentVisibility }) {
-  if (visibility === "owner_only") return <span className="badge owner">nur ich</span>;
-  return visibility === "gm_only" ? <span className="badge gm">nur Spielleitung</span> : null;
+export function VisibilityBadge({ visibility }: { visibility: VisibilityStatus | ContentVisibility }) {
+  if (visibility === "owner_only") {
+    return <span className="badge owner">{CONTENT_VISIBILITY_LABEL.owner_only}</span>;
+  }
+  if (visibility === "gm_only") {
+    return <span className="badge gm">{CONTENT_VISIBILITY_LABEL.gm_only}</span>;
+  }
+  return null;
 }
 
 function hue(value: string): number {

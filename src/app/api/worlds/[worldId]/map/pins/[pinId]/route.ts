@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { parseJsonBody, parseUuid } from "@/lib/http";
+import { contentVisibilitySchema } from "@/lib/authz";
 import {
   deletePin,
   getPinDetails,
@@ -7,7 +8,6 @@ import {
   pinTypeSchema,
   positionSchema,
   updatePin,
-  contentVisibilitySchema,
 } from "@/lib/map/repository";
 import { failResponse, notFoundResponse, openWorldRequest, resultResponse } from "@/lib/route";
 

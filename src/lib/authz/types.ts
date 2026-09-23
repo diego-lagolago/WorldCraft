@@ -10,6 +10,19 @@ export type VisibilityStatus = (typeof VISIBILITY_STATUSES)[number];
 export const CONTENT_VISIBILITIES = ["owner_only", "gm_only", "published"] as const;
 export type ContentVisibility = (typeof CONTENT_VISIBILITIES)[number];
 
+export const CONTENT_VISIBILITY_LABEL: Record<ContentVisibility, string> = {
+  owner_only: "nur ich",
+  gm_only: "nur Spielleitung",
+  published: "veröffentlicht",
+};
+
+/** Dreistufige Sichtbarkeit (Artikel, Quest, Kapitel, Pin). R2: „nur ich“ nur für den Owner. */
+export function contentVisibilityOptions(allowOwner: boolean): ContentVisibility[] {
+  return allowOwner
+    ? [...CONTENT_VISIBILITIES]
+    : (CONTENT_VISIBILITIES.filter((entry) => entry !== "owner_only") as ContentVisibility[]);
+}
+
 export const JOURNAL_VISIBILITIES = ["private", "shared_with_gm"] as const;
 export type JournalVisibility = (typeof JOURNAL_VISIBILITIES)[number];
 
@@ -89,4 +102,17 @@ export function canSeeVisibility(input: {
   // owner_only
   if (!isStaff(input.role)) return false;
   return input.ownerId != null && input.viewerId === input.ownerId;
+}
+
+/** Same rule as `canSeeVisibility`, with viewer/content shaped for call sites. */
+export function canSeeContent(
+  viewer: { role: MembershipRole; userId: string },
+  content: { visibility: VisibilityStatus | ContentVisibility; ownerId?: string | null },
+): boolean {
+  return canSeeVisibility({
+    role: viewer.role,
+    visibility: content.visibility,
+    viewerId: viewer.userId,
+    ownerId: content.ownerId,
+  });
 }

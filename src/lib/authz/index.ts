@@ -29,12 +29,15 @@ export {
 } from "./authz";
 export {
   CONTENT_KINDS,
+  CONTENT_VISIBILITY_LABEL,
   CONTENT_VISIBILITIES,
   JOURNAL_VISIBILITIES,
   MEMBERSHIP_ROLES,
   RELATION_ORIGINS,
   VISIBILITY_STATUSES,
+  canSeeContent,
   canSeeVisibility,
+  contentVisibilityOptions,
   fail,
   isGm,
   isStaff,
@@ -52,3 +55,4 @@ export {
   type RelationOrigin,
   type VisibilityStatus,
 } from "./types";
+export { contentVisibilitySchema, visibilityStatusSchema } from "./schemas";

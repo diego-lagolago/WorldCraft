@@ -1,11 +1,11 @@
-import { and, asc, eq, max } from "drizzle-orm";
+import { and, asc, eq, max, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { questChapters, quests } from "@/db/schema";
 import {
-  CONTENT_VISIBILITIES,
   authorizeOwnedContentWrite,
-  canSeeVisibility,
+  canSeeContent,
+  contentVisibilitySchema,
   fail,
   ok,
   requireStaff,
@@ -14,14 +14,18 @@ import {
   type MembershipRole,
   type MembershipRow,
 } from "@/lib/authz";
+import { CHAPTER_TITLE_MAX } from "@/lib/quests/status";
 import { mapDbError } from "./db-errors";
-import { recalcQuestRelations } from "./relations";
+import {
+  canSeeQuest,
+  loadQuestRow,
+  loadVisibleQuest,
+  type QuestAccessRow,
+} from "./quest-access";
+import { recalcQuestMentions } from "./relations";
 import { richFieldFromInput } from "./rich-field";
 
-export const CHAPTER_TITLE_MAX = 200;
-
 export const chapterTitleSchema = z.string().trim().min(1).max(CHAPTER_TITLE_MAX);
-export const visibilitySchema = z.enum(CONTENT_VISIBILITIES);
 
 const QUEST_NOT_FOUND = "Diese Quest gibt es nicht.";
 const CHAPTER_NOT_FOUND = "Dieses Kapitel gibt es nicht.";
@@ -30,7 +34,7 @@ const ORDER_INVALID = "Die Reihenfolge muss alle sichtbaren Kapitel genau einmal
 const chapterFields = {
   title: chapterTitleSchema,
   body: z.unknown(),
-  visibility: visibilitySchema,
+  visibility: contentVisibilitySchema,
 };
 
 export const chapterCreateSchema = z.object({
@@ -60,13 +64,6 @@ export type ChapterSummary = {
   position: number;
 };
 
-type QuestRow = {
-  id: string;
-  worldId: string;
-  visibility: ContentVisibility;
-  ownerId: string;
-};
-
 type ChapterRow = {
   id: string;
   questId: string;
@@ -75,6 +72,12 @@ type ChapterRow = {
   visibility: ContentVisibility;
   ownerId: string;
   position: number;
+};
+
+type WritableChapterRow = {
+  id: string;
+  ownerId: string;
+  visibility: ContentVisibility;
 };
 
 function toSummary(row: ChapterRow): ChapterSummary {
@@ -88,48 +91,19 @@ function toSummary(row: ChapterRow): ChapterSummary {
   };
 }
 
-async function loadQuest(worldId: string, questId: string): Promise<QuestRow | null> {
-  const [row] = await db
-    .select({
-      id: quests.id,
-      worldId: quests.worldId,
-      visibility: quests.visibility,
-      ownerId: quests.ownerId,
-    })
-    .from(quests)
-    .where(and(eq(quests.id, questId), eq(quests.worldId, worldId)))
-    .limit(1);
-  return row ?? null;
-}
-
-function canSeeQuest(
-  quest: QuestRow,
-  role: MembershipRole,
-  viewerId: string,
-): boolean {
-  return canSeeVisibility({
-    role,
-    visibility: quest.visibility,
-    viewerId,
-    ownerId: quest.ownerId,
-  });
-}
-
 /** APP-VIS-INHERIT: chapter visible only if quest and chapter are visible. */
 function canSeeChapter(
-  quest: QuestRow,
+  quest: QuestAccessRow,
   chapter: { visibility: ContentVisibility; ownerId: string },
   role: MembershipRole,
   viewerId: string,
 ): boolean {
   return (
-    canSeeQuest(quest, role, viewerId) &&
-    canSeeVisibility({
-      role,
-      visibility: chapter.visibility,
-      viewerId,
-      ownerId: chapter.ownerId,
-    })
+    canSeeQuest(quest, { role, userId: viewerId }) &&
+    canSeeContent(
+      { role, userId: viewerId },
+      { visibility: chapter.visibility, ownerId: chapter.ownerId },
+    )
   );
 }
 
@@ -149,6 +123,18 @@ async function loadChapters(questId: string): Promise<ChapterRow[]> {
     .orderBy(asc(questChapters.position), asc(questChapters.createdAt));
 }
 
+/** Visible chapters when the quest is already loaded and checked. */
+export async function listVisibleChaptersForQuest(
+  quest: QuestAccessRow,
+  role: MembershipRole,
+  viewerId: string,
+): Promise<ChapterSummary[]> {
+  const rows = await loadChapters(quest.id);
+  return rows
+    .filter((row) => canSeeChapter(quest, row, role, viewerId))
+    .map(toSummary);
+}
+
 /** Visible chapters of a quest for the viewer, sorted by position. */
 export async function listVisibleChapters(
   worldId: string,
@@ -156,21 +142,18 @@ export async function listVisibleChapters(
   role: MembershipRole,
   viewerId: string,
 ): Promise<ChapterSummary[] | null> {
-  const quest = await loadQuest(worldId, questId);
-  if (!quest || !canSeeQuest(quest, role, viewerId)) return null;
-  const rows = await loadChapters(questId);
-  return rows
-    .filter((row) => canSeeChapter(quest, row, role, viewerId))
-    .map(toSummary);
+  const quest = await loadVisibleQuest(worldId, questId, { role, userId: viewerId });
+  if (!quest) return null;
+  return listVisibleChaptersForQuest(quest, role, viewerId);
 }
 
 type ChapterPatch = Partial<typeof questChapters.$inferInsert>;
 
-async function toPatch(input: {
+function toPatch(input: {
   title?: string;
   body?: unknown;
   visibility?: ContentVisibility;
-}): Promise<AuthzResult<ChapterPatch>> {
+}): AuthzResult<ChapterPatch> {
   const patch: ChapterPatch = {};
   if (input.title !== undefined) patch.title = input.title;
   if (input.visibility !== undefined) patch.visibility = input.visibility;
@@ -181,6 +164,59 @@ async function toPatch(input: {
     patch.bodyPlain = body.data.plain;
   }
   return ok(patch);
+}
+
+function needsMentionRecalc(input: {
+  body?: unknown;
+  visibility?: ContentVisibility;
+}): boolean {
+  return input.body !== undefined || input.visibility !== undefined;
+}
+
+async function loadWritableChapter(
+  input: {
+    membership: MembershipRow | null;
+    worldId: string;
+    questId: string;
+    chapterId: string;
+    nextVisibility?: ContentVisibility;
+  },
+  notFoundError = CHAPTER_NOT_FOUND,
+): Promise<
+  AuthzResult<{
+    staff: MembershipRow;
+    quest: QuestAccessRow;
+    chapter: WritableChapterRow;
+  }>
+> {
+  const staff = requireStaff(input.membership);
+  if (!staff.ok) return staff;
+
+  const viewer = { role: staff.data.role, userId: staff.data.userId };
+  const quest = await loadQuestRow(input.worldId, input.questId);
+  if (!quest) return fail(404, QUEST_NOT_FOUND);
+  if (!canSeeQuest(quest, viewer)) return fail(404, notFoundError);
+
+  const [chapter] = await db
+    .select({
+      id: questChapters.id,
+      ownerId: questChapters.ownerId,
+      visibility: questChapters.visibility,
+    })
+    .from(questChapters)
+    .where(and(eq(questChapters.id, input.chapterId), eq(questChapters.questId, quest.id)))
+    .limit(1);
+
+  const allowed = authorizeOwnedContentWrite({
+    membership: staff.data,
+    content: chapter ? { ownerId: chapter.ownerId, visibility: chapter.visibility } : null,
+    nextVisibility: input.nextVisibility,
+    notFoundError,
+  });
+  if (!allowed.ok) return allowed;
+  if (!chapter) return fail(404, notFoundError);
+
+  return ok({ staff: staff.data, quest, chapter });
 }
 
 export async function createChapter(input: {
@@ -195,22 +231,26 @@ export async function createChapter(input: {
   const staff = requireStaff(input.membership);
   if (!staff.ok) return staff;
 
-  const quest = await loadQuest(input.worldId, input.questId);
-  if (!quest || !canSeeQuest(quest, staff.data.role, staff.data.userId)) {
-    return fail(404, QUEST_NOT_FOUND);
-  }
+  const quest = await loadVisibleQuest(input.worldId, input.questId, {
+    role: staff.data.role,
+    userId: staff.data.userId,
+  });
+  if (!quest) return fail(404, QUEST_NOT_FOUND);
 
-  const patch = await toPatch(input);
+  const patch = toPatch(input);
   if (!patch.ok) return patch;
-
-  const [agg] = await db
-    .select({ maxPos: max(questChapters.position) })
-    .from(questChapters)
-    .where(eq(questChapters.questId, quest.id));
-  const position = (agg?.maxPos ?? -1) + 1;
 
   try {
     const row = await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT 1 FROM ${quests} WHERE ${quests.id} = ${quest.id} AND ${quests.worldId} = ${input.worldId} FOR UPDATE`,
+      );
+      const [agg] = await tx
+        .select({ maxPos: max(questChapters.position) })
+        .from(questChapters)
+        .where(eq(questChapters.questId, quest.id));
+      const position = (agg?.maxPos ?? -1) + 1;
+
       const [created] = await tx
         .insert(questChapters)
         .values({
@@ -231,7 +271,7 @@ export async function createChapter(input: {
           ownerId: questChapters.ownerId,
           position: questChapters.position,
         });
-      await recalcQuestRelations(input.worldId, input.actorId, quest.id, tx);
+      await recalcQuestMentions(input.worldId, input.actorId, quest.id, tx);
       return created;
     });
     return ok(toSummary(row));
@@ -252,37 +292,20 @@ export async function updateChapter(input: {
   body?: unknown;
   visibility?: ContentVisibility;
 }): Promise<AuthzResult<{ id: string }>> {
-  const quest = await loadQuest(input.worldId, input.questId);
-  if (!quest) return fail(404, QUEST_NOT_FOUND);
-
-  const [current] = await db
-    .select({
-      id: questChapters.id,
-      ownerId: questChapters.ownerId,
-      visibility: questChapters.visibility,
-    })
-    .from(questChapters)
-    .where(and(eq(questChapters.id, input.chapterId), eq(questChapters.questId, quest.id)))
-    .limit(1);
-
-  if (
-    !input.membership ||
-    !canSeeQuest(quest, input.membership.role, input.membership.userId)
-  ) {
-    return fail(404, CHAPTER_NOT_FOUND);
-  }
-
-  const allowed = authorizeOwnedContentWrite({
+  const loaded = await loadWritableChapter({
     membership: input.membership,
-    content: current ? { ownerId: current.ownerId, visibility: current.visibility } : null,
+    worldId: input.worldId,
+    questId: input.questId,
+    chapterId: input.chapterId,
     nextVisibility: input.visibility,
-    notFoundError: CHAPTER_NOT_FOUND,
   });
-  if (!allowed.ok) return allowed;
-  if (!current) return fail(404, CHAPTER_NOT_FOUND);
+  if (!loaded.ok) return loaded;
+  const { quest, chapter } = loaded.data;
 
-  const patch = await toPatch(input);
+  const patch = toPatch(input);
   if (!patch.ok) return patch;
+
+  const recalcMentions = needsMentionRecalc(input);
 
   try {
     await db.transaction(async (tx) => {
@@ -290,16 +313,18 @@ export async function updateChapter(input: {
         await tx
           .update(questChapters)
           .set({ ...patch.data, updatedAt: new Date(), updatedBy: input.actorId })
-          .where(eq(questChapters.id, current.id));
+          .where(eq(questChapters.id, chapter.id));
       }
-      await recalcQuestRelations(input.worldId, input.actorId, quest.id, tx);
+      if (recalcMentions) {
+        await recalcQuestMentions(input.worldId, input.actorId, quest.id, tx);
+      }
     });
   } catch (error) {
     const mapped = mapDbError(error);
     if (mapped) return mapped;
     throw error;
   }
-  return ok({ id: current.id });
+  return ok({ id: chapter.id });
 }
 
 export async function deleteChapter(input: {
@@ -309,39 +334,20 @@ export async function deleteChapter(input: {
   questId: string;
   chapterId: string;
 }): Promise<AuthzResult<{ id: string }>> {
-  const quest = await loadQuest(input.worldId, input.questId);
-  if (!quest) return fail(404, QUEST_NOT_FOUND);
-
-  const [current] = await db
-    .select({
-      id: questChapters.id,
-      ownerId: questChapters.ownerId,
-      visibility: questChapters.visibility,
-    })
-    .from(questChapters)
-    .where(and(eq(questChapters.id, input.chapterId), eq(questChapters.questId, quest.id)))
-    .limit(1);
-
-  if (
-    !input.membership ||
-    !canSeeQuest(quest, input.membership.role, input.membership.userId)
-  ) {
-    return fail(404, CHAPTER_NOT_FOUND);
-  }
-
-  const allowed = authorizeOwnedContentWrite({
+  const loaded = await loadWritableChapter({
     membership: input.membership,
-    content: current ? { ownerId: current.ownerId, visibility: current.visibility } : null,
-    notFoundError: CHAPTER_NOT_FOUND,
+    worldId: input.worldId,
+    questId: input.questId,
+    chapterId: input.chapterId,
   });
-  if (!allowed.ok) return allowed;
-  if (!current) return fail(404, CHAPTER_NOT_FOUND);
+  if (!loaded.ok) return loaded;
+  const { quest, chapter } = loaded.data;
 
   await db.transaction(async (tx) => {
-    await tx.delete(questChapters).where(eq(questChapters.id, current.id));
-    await recalcQuestRelations(input.worldId, input.actorId, quest.id, tx);
+    await tx.delete(questChapters).where(eq(questChapters.id, chapter.id));
+    await recalcQuestMentions(input.worldId, input.actorId, quest.id, tx);
   });
-  return ok({ id: current.id });
+  return ok({ id: chapter.id });
 }
 
 /**
@@ -358,52 +364,80 @@ export async function reorderChapters(input: {
   const staff = requireStaff(input.membership);
   if (!staff.ok) return staff;
 
-  const quest = await loadQuest(input.worldId, input.questId);
-  if (!quest || !canSeeQuest(quest, staff.data.role, staff.data.userId)) {
-    return fail(404, QUEST_NOT_FOUND);
-  }
-
-  const all = await loadChapters(quest.id);
-  const visible = all.filter((row) =>
-    canSeeVisibility({
-      role: staff.data.role,
-      visibility: row.visibility,
-      viewerId: staff.data.userId,
-      ownerId: row.ownerId,
-    }),
-  );
-  const visibleIds = new Set(visible.map((row) => row.id));
-  const unique = new Set(input.chapterIds);
-  if (
-    input.chapterIds.length !== visible.length ||
-    unique.size !== input.chapterIds.length ||
-    input.chapterIds.some((id) => !visibleIds.has(id))
-  ) {
-    return fail(400, ORDER_INVALID);
-  }
-
-  const sentQueue = [...input.chapterIds];
-  const orderedIds: string[] = [];
-  for (const row of all) {
-    if (visibleIds.has(row.id)) {
-      orderedIds.push(sentQueue.shift()!);
-    } else {
-      orderedIds.push(row.id);
-    }
-  }
-
-  await db.transaction(async (tx) => {
-    for (let index = 0; index < orderedIds.length; index += 1) {
-      await tx
-        .update(questChapters)
-        .set({
-          position: index,
-          updatedAt: new Date(),
-          updatedBy: input.actorId,
-        })
-        .where(and(eq(questChapters.id, orderedIds[index]!), eq(questChapters.questId, quest.id)));
-    }
+  const quest = await loadVisibleQuest(input.worldId, input.questId, {
+    role: staff.data.role,
+    userId: staff.data.userId,
   });
+  if (!quest) return fail(404, QUEST_NOT_FOUND);
 
-  return ok({ chapterIds: orderedIds });
+  const viewer = { role: staff.data.role, userId: staff.data.userId };
+
+  try {
+    const orderedIds = await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT 1 FROM ${quests} WHERE ${quests.id} = ${quest.id} AND ${quests.worldId} = ${input.worldId} FOR UPDATE`,
+      );
+
+      const all = await tx
+        .select({
+          id: questChapters.id,
+          questId: questChapters.questId,
+          title: questChapters.title,
+          bodyJson: questChapters.bodyJson,
+          visibility: questChapters.visibility,
+          ownerId: questChapters.ownerId,
+          position: questChapters.position,
+        })
+        .from(questChapters)
+        .where(eq(questChapters.questId, quest.id))
+        .orderBy(asc(questChapters.position), asc(questChapters.createdAt));
+
+      const visible = all.filter((row) =>
+        canSeeContent(viewer, { visibility: row.visibility, ownerId: row.ownerId }),
+      );
+      const visibleIds = new Set(visible.map((row) => row.id));
+      const unique = new Set(input.chapterIds);
+      if (
+        input.chapterIds.length !== visible.length ||
+        unique.size !== input.chapterIds.length ||
+        input.chapterIds.some((id) => !visibleIds.has(id))
+      ) {
+        throw Object.assign(new Error("order"), { orderInvalid: true });
+      }
+
+      const sentQueue = [...input.chapterIds];
+      const nextOrderedIds: string[] = [];
+      for (const row of all) {
+        if (visibleIds.has(row.id)) {
+          nextOrderedIds.push(sentQueue.shift()!);
+        } else {
+          nextOrderedIds.push(row.id);
+        }
+      }
+
+      const positionById = new Map(all.map((row) => [row.id, row.position]));
+      for (let index = 0; index < nextOrderedIds.length; index += 1) {
+        const chapterId = nextOrderedIds[index]!;
+        const currentPosition = positionById.get(chapterId);
+        if (currentPosition === index) continue;
+        await tx
+          .update(questChapters)
+          .set({
+            position: index,
+            updatedAt: new Date(),
+            updatedBy: input.actorId,
+          })
+          .where(and(eq(questChapters.id, chapterId), eq(questChapters.questId, quest.id)));
+      }
+
+      return nextOrderedIds;
+    });
+
+    return ok({ chapterIds: orderedIds });
+  } catch (error) {
+    if (error && typeof error === "object" && "orderInvalid" in error) {
+      return fail(400, ORDER_INVALID);
+    }
+    throw error;
+  }
 }

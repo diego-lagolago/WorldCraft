@@ -1,18 +1,17 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { questNotes, quests, users } from "@/db/schema";
+import { questNotes, users } from "@/db/schema";
 import {
-  canSeeVisibility,
   fail,
   ok,
   type AuthzResult,
-  type ContentVisibility,
   type MembershipRole,
 } from "@/lib/authz";
 import { asRichDoc, extractMentions } from "@/lib/editor/rich-text";
 import { mapDbError } from "./db-errors";
 import { resolveMentions, type ResolvedMention } from "./mention-resolve";
+import { loadVisibleQuest, type QuestAccessRow } from "./quest-access";
 import { richFieldFromInput } from "./rich-field";
 
 const QUEST_NOT_FOUND = "Diese Quest gibt es nicht.";
@@ -41,35 +40,28 @@ export type NoteConflict = {
 
 export type NoteSaveResult = AuthzResult<QuestNote> | NoteConflict;
 
-type QuestRow = {
-  id: string;
-  visibility: ContentVisibility;
-  ownerId: string;
+type QuestNoteRow = {
+  bodyJson: unknown;
+  version: number;
+  updatedAt: Date | null;
+  updatedBy: string | null;
+  updatedByName: string | null;
 };
 
-function canSeeQuest(quest: QuestRow, role: MembershipRole, viewerId: string): boolean {
-  return canSeeVisibility({
-    role,
-    visibility: quest.visibility,
-    viewerId,
-    ownerId: quest.ownerId,
-  });
-}
+const EMPTY_NOTE_ROW: QuestNoteRow = {
+  bodyJson: null,
+  version: 0,
+  updatedAt: null,
+  updatedBy: null,
+  updatedByName: null,
+};
 
-async function loadQuest(worldId: string, questId: string): Promise<QuestRow | null> {
-  const [row] = await db
-    .select({
-      id: quests.id,
-      visibility: quests.visibility,
-      ownerId: quests.ownerId,
-    })
-    .from(quests)
-    .where(and(eq(quests.id, questId), eq(quests.worldId, worldId)))
-    .limit(1);
-  return row ?? null;
-}
+type NoteViewer = {
+  role: MembershipRole;
+  viewerId: string;
+};
 
-async function loadNoteRow(questId: string) {
+async function loadNoteRow(questId: string): Promise<QuestNoteRow | null> {
   const [row] = await db
     .select({
       bodyJson: questNotes.bodyJson,
@@ -87,25 +79,63 @@ async function loadNoteRow(questId: string) {
 
 async function withMentions(
   worldId: string,
-  role: MembershipRole,
-  viewerId: string,
-  bodyJson: unknown,
-  version: number,
-  updatedAt: Date | null,
-  updatedBy: string | null,
-  updatedByName: string | null,
+  viewer: NoteViewer,
+  row: QuestNoteRow,
 ): Promise<QuestNote> {
   const mentions = await resolveMentions(
     worldId,
-    role,
-    viewerId,
-    extractMentions(asRichDoc(bodyJson)),
+    viewer.role,
+    viewer.viewerId,
+    extractMentions(asRichDoc(row.bodyJson)),
   );
-  return { bodyJson, version, updatedAt, updatedBy, updatedByName, mentions };
+  return {
+    bodyJson: row.bodyJson,
+    version: row.version,
+    updatedAt: row.updatedAt,
+    updatedBy: row.updatedBy,
+    updatedByName: row.updatedByName,
+    mentions,
+  };
+}
+
+export type QuestNoteClient = {
+  bodyJson: unknown;
+  version: number;
+  updatedAt: string | null;
+  updatedByName: string | null;
+  mentions: Record<string, ResolvedMention>;
+};
+
+/** ISO date strings for JSON and SSR props; convert once at the server boundary. */
+export function serializeQuestNoteClient(note: QuestNote): QuestNoteClient {
+  return {
+    bodyJson: note.bodyJson,
+    version: note.version,
+    updatedAt: note.updatedAt ? note.updatedAt.toISOString() : null,
+    updatedByName: note.updatedByName,
+    mentions: note.mentions,
+  };
 }
 
 function conflict(version: number): NoteConflict {
   return { ok: false, status: 409, error: VERSION_CONFLICT, version };
+}
+
+/** Load note for a quest that is already visibility-checked. */
+export async function getQuestNoteForQuest(input: {
+  worldId: string;
+  quest: QuestAccessRow;
+  role: MembershipRole;
+  viewerId: string;
+}): Promise<AuthzResult<QuestNote>> {
+  const row = await loadNoteRow(input.quest.id);
+  return ok(
+    await withMentions(
+      input.worldId,
+      { role: input.role, viewerId: input.viewerId },
+      row ?? EMPTY_NOTE_ROW,
+    ),
+  );
 }
 
 /**
@@ -117,27 +147,22 @@ export async function getQuestNote(input: {
   questId: string;
   role: MembershipRole;
   viewerId: string;
+  /** When set, skips loading and checking the quest row. */
+  quest?: QuestAccessRow;
 }): Promise<AuthzResult<QuestNote>> {
-  const quest = await loadQuest(input.worldId, input.questId);
-  if (!quest || !canSeeQuest(quest, input.role, input.viewerId)) {
-    return fail(404, QUEST_NOT_FOUND);
-  }
-  const row = await loadNoteRow(quest.id);
-  if (!row) {
-    return ok(await withMentions(input.worldId, input.role, input.viewerId, null, 0, null, null, null));
-  }
-  return ok(
-    await withMentions(
-      input.worldId,
-      input.role,
-      input.viewerId,
-      row.bodyJson,
-      row.version,
-      row.updatedAt,
-      row.updatedBy,
-      row.updatedByName,
-    ),
-  );
+  const quest =
+    input.quest ??
+    (await loadVisibleQuest(input.worldId, input.questId, {
+      role: input.role,
+      userId: input.viewerId,
+    }));
+  if (!quest) return fail(404, QUEST_NOT_FOUND);
+  return getQuestNoteForQuest({
+    worldId: input.worldId,
+    quest,
+    role: input.role,
+    viewerId: input.viewerId,
+  });
 }
 
 /**
@@ -152,10 +177,11 @@ export async function saveQuestNote(input: {
   bodyJson: unknown;
   version: number;
 }): Promise<NoteSaveResult> {
-  const quest = await loadQuest(input.worldId, input.questId);
-  if (!quest || !canSeeQuest(quest, input.role, input.actorId)) {
-    return fail(404, QUEST_NOT_FOUND);
-  }
+  const quest = await loadVisibleQuest(input.worldId, input.questId, {
+    role: input.role,
+    userId: input.actorId,
+  });
+  if (!quest) return fail(404, QUEST_NOT_FOUND);
 
   const body = richFieldFromInput(input.bodyJson, { mentions: true });
   if (!body.ok) return body;
@@ -206,16 +232,14 @@ export async function saveQuestNote(input: {
   }
 
   const saved = await loadNoteRow(quest.id);
+  const row: QuestNoteRow = saved ?? {
+    bodyJson: body.data.json,
+    version: nextVersion,
+    updatedAt: now,
+    updatedBy: input.actorId,
+    updatedByName: null,
+  };
   return ok(
-    await withMentions(
-      input.worldId,
-      input.role,
-      input.actorId,
-      saved?.bodyJson ?? body.data.json,
-      saved?.version ?? nextVersion,
-      saved?.updatedAt ?? now,
-      saved?.updatedBy ?? input.actorId,
-      saved?.updatedByName ?? null,
-    ),
+    await withMentions(input.worldId, { role: input.role, viewerId: input.actorId }, row),
   );
 }

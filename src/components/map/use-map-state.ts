@@ -6,6 +6,15 @@ import type { MapState, MarkerDto, PinDetails, PinDto } from "@/lib/map/types";
 import type { PinType } from "@/lib/map/pin-types";
 import type { RichDoc } from "@/lib/editor/rich-text";
 import type { ContentVisibility, VisibilityStatus } from "@/lib/authz";
+import {
+  clearDeletedOnSync,
+  forgetDeleted,
+  nextRefetchSeq,
+  rememberDeleted,
+  resolveRefetchResponse,
+  shouldFetchPinForMap,
+  shouldScheduleReload,
+} from "./map-refetch";
 import { applyMapEvent } from "./use-map-realtime";
 import type { WorldRealtimeEvent } from "@/lib/realtime/events";
 
@@ -19,9 +28,22 @@ export function useMapState(worldId: string, initial: MapState) {
   const [state, setState] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const stateRef = useRef(state);
+  const pinSeqRef = useRef(new Map<string, number>());
+  const markerSeqRef = useRef(new Map<string, number>());
+  const pinDeletedRef = useRef(new Set<string>());
+  const markerDeletedRef = useRef(new Set<string>());
+  const reloadPendingRef = useRef(false);
+  const waitResyncRef = useRef(false);
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  const clearRefetchTracking = useCallback(() => {
+    pinDeletedRef.current = clearDeletedOnSync();
+    markerDeletedRef.current = clearDeletedOnSync();
+    pinSeqRef.current.clear();
+    markerSeqRef.current.clear();
+  }, []);
 
   const failAndReload = useCallback(
     async (message: string) => {
@@ -40,8 +62,23 @@ export function useMapState(worldId: string, initial: MapState) {
       setError(result.error);
       return;
     }
+    clearRefetchTracking();
     setState(result.data);
-  }, [worldId]);
+  }, [worldId, clearRefetchTracking]);
+
+  const scheduleRefetchReload = useCallback(() => {
+    if (!shouldScheduleReload(reloadPendingRef.current)) return;
+    reloadPendingRef.current = true;
+    void reload().finally(() => {
+      reloadPendingRef.current = false;
+    });
+  }, [reload]);
+
+  const onResync = useCallback(() => {
+    waitResyncRef.current = false;
+    reloadPendingRef.current = false;
+    void reload();
+  }, [reload]);
 
   const selectMap = useCallback(
     async (mapId: string) => {
@@ -50,6 +87,7 @@ export function useMapState(worldId: string, initial: MapState) {
         setError(result.error);
         return;
       }
+      clearRefetchTracking();
       setState(result.data);
       if (typeof window !== "undefined") {
         const url = new URL(window.location.href);
@@ -59,7 +97,7 @@ export function useMapState(worldId: string, initial: MapState) {
         window.history.replaceState(null, "", url.pathname + url.search);
       }
     },
-    [worldId],
+    [worldId, clearRefetchTracking],
   );
 
   const loadPin = useCallback(
@@ -246,79 +284,160 @@ export function useMapState(worldId: string, initial: MapState) {
     });
   }
 
+  function bumpSeq(ref: { current: Map<string, number> }, id: string): number {
+    const seq = nextRefetchSeq(ref.current.get(id) ?? 0);
+    ref.current.set(id, seq);
+    return seq;
+  }
+
+  function applyPinRefetchOutcome(
+    pinId: string,
+    seq: number,
+    status: number,
+    data: PinDetails | undefined,
+  ) {
+    const outcome = resolveRefetchResponse({
+      seq,
+      latestSeq: pinSeqRef.current.get(pinId) ?? 0,
+      status,
+      data,
+      deleted: pinDeletedRef.current,
+      id: pinId,
+    });
+    if (outcome.action === "ignore") return;
+    if (outcome.action === "remove") {
+      pinDeletedRef.current = rememberDeleted(pinDeletedRef.current, pinId);
+      setState((current) => ({
+        ...current,
+        pins: current.pins.filter((pin) => pin.id !== pinId),
+      }));
+      return;
+    }
+    if (outcome.action === "keep_and_reload") {
+      scheduleRefetchReload();
+      return;
+    }
+    if (outcome.action === "keep_and_wait_resync") {
+      waitResyncRef.current = true;
+      return;
+    }
+    if (outcome.action !== "upsert") return;
+    const pin = outcome.data;
+    setState((current) => {
+      if (current.map && pin.mapId !== current.map.id) return current;
+      return {
+        ...current,
+        pins: [...current.pins.filter((row) => row.id !== pin.id), pin],
+      };
+    });
+  }
+
+  function applyMarkerRefetchOutcome(
+    markerId: string,
+    seq: number,
+    status: number,
+    data: MarkerDto | undefined,
+  ) {
+    const outcome = resolveRefetchResponse({
+      seq,
+      latestSeq: markerSeqRef.current.get(markerId) ?? 0,
+      status,
+      data,
+      deleted: markerDeletedRef.current,
+      id: markerId,
+    });
+    if (outcome.action === "ignore") return;
+    if (outcome.action === "remove") {
+      markerDeletedRef.current = rememberDeleted(markerDeletedRef.current, markerId);
+      setState((current) => {
+        const removed = current.markers.find((row) => row.id === markerId);
+        return {
+          ...current,
+          markers: current.markers.filter((row) => row.id !== markerId),
+          characters: current.characters.map((row) =>
+            removed?.characterId === row.id ? { ...row, placed: false, placedElsewhere: false } : row,
+          ),
+        };
+      });
+      return;
+    }
+    if (outcome.action === "keep_and_reload") {
+      scheduleRefetchReload();
+      return;
+    }
+    if (outcome.action === "keep_and_wait_resync") {
+      waitResyncRef.current = true;
+      return;
+    }
+    if (outcome.action !== "upsert") return;
+    const marker = outcome.data;
+    setState((current) => {
+      if (current.map && marker.mapId !== current.map.id) {
+        return {
+          ...current,
+          markers: current.markers.filter((row) => row.characterId !== marker.characterId),
+          characters: current.characters.map((row) =>
+            row.id === marker.characterId
+              ? { ...row, placed: false, placedElsewhere: true }
+              : row,
+          ),
+        };
+      }
+      return {
+        ...current,
+        markers: [
+          ...current.markers.filter(
+            (row) => row.id !== marker.id && row.characterId !== marker.characterId,
+          ),
+          marker,
+        ],
+        characters: current.characters.map((row) =>
+          row.id === marker.characterId
+            ? { ...row, placed: true, placedElsewhere: false }
+            : row,
+        ),
+      };
+    });
+  }
+
   async function applyEvent(event: WorldRealtimeEvent, dragging: Set<string>) {
     if (event.type === "map.updated") {
       void reload();
       return;
     }
-    if (event.type === "map.pin.deleted" || event.type === "map.marker.deleted") {
+    if (event.type === "map.pin.deleted") {
+      pinDeletedRef.current = rememberDeleted(pinDeletedRef.current, event.pinId);
+      bumpSeq(pinSeqRef, event.pinId);
+      setState((current) => applyMapEvent(current, event));
+      return;
+    }
+    if (event.type === "map.marker.deleted") {
+      markerDeletedRef.current = rememberDeleted(markerDeletedRef.current, event.markerId);
+      bumpSeq(markerSeqRef, event.markerId);
       setState((current) => applyMapEvent(current, event));
       return;
     }
     if (event.type === "map.pin") {
       if (dragging.has(event.pinId)) return;
+      if (!shouldFetchPinForMap(event.mapId, stateRef.current.map?.id)) return;
+      // New upsert signal (e.g. published after gm_only) must clear a prior delete marker.
+      pinDeletedRef.current = forgetDeleted(pinDeletedRef.current, event.pinId);
+      const seq = bumpSeq(pinSeqRef, event.pinId);
       const result = await apiFetch<PinDetails>(`/api/worlds/${worldId}/map/pins/${event.pinId}`);
-      if (!result.ok) {
-        setState((current) => ({
-          ...current,
-          pins: current.pins.filter((pin) => pin.id !== event.pinId),
-        }));
-        return;
-      }
-      const pin = result.data;
-      setState((current) => {
-        if (current.map && pin.mapId !== current.map.id) return current;
-        return {
-          ...current,
-          pins: [...current.pins.filter((row) => row.id !== pin.id), pin],
-        };
-      });
+      applyPinRefetchOutcome(event.pinId, seq, result.status, result.ok ? result.data : undefined);
       return;
     }
     if (event.type === "map.marker") {
       if (dragging.has(event.markerId)) return;
+      markerDeletedRef.current = forgetDeleted(markerDeletedRef.current, event.markerId);
+      const seq = bumpSeq(markerSeqRef, event.markerId);
       const result = await apiFetch<MarkerDto>(`/api/worlds/${worldId}/map/markers/${event.markerId}`);
-      if (!result.ok) {
-        setState((current) => {
-          const removed = current.markers.find((row) => row.id === event.markerId);
-          return {
-            ...current,
-            markers: current.markers.filter((row) => row.id !== event.markerId),
-            characters: current.characters.map((row) =>
-              removed?.characterId === row.id ? { ...row, placed: false, placedElsewhere: false } : row,
-            ),
-          };
-        });
-        return;
-      }
-      const marker = result.data;
-      setState((current) => {
-        if (current.map && marker.mapId !== current.map.id) {
-          return {
-            ...current,
-            markers: current.markers.filter((row) => row.characterId !== marker.characterId),
-            characters: current.characters.map((row) =>
-              row.id === marker.characterId
-                ? { ...row, placed: false, placedElsewhere: true }
-                : row,
-            ),
-          };
-        }
-        return {
-          ...current,
-          markers: [
-            ...current.markers.filter(
-              (row) => row.id !== marker.id && row.characterId !== marker.characterId,
-            ),
-            marker,
-          ],
-          characters: current.characters.map((row) =>
-            row.id === marker.characterId
-              ? { ...row, placed: true, placedElsewhere: false }
-              : row,
-          ),
-        };
-      });
+      applyMarkerRefetchOutcome(
+        event.markerId,
+        seq,
+        result.status,
+        result.ok ? result.data : undefined,
+      );
     }
   }
 
@@ -327,6 +446,7 @@ export function useMapState(worldId: string, initial: MapState) {
     error,
     setError,
     applyEvent,
+    onResync,
     reload,
     selectMap,
     loadPin,

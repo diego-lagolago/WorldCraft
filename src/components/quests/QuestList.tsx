@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { worldPath } from "@/components/shell/nav";
-import { GmBadge } from "@/components/world/display";
+import { VisibilityBadge } from "@/components/world/display";
 import type { QuestSummary } from "@/lib/domain/quests";
 import { QUEST_STATUS_LABEL, type QuestStatus } from "@/lib/quests/status";
 
@@ -37,7 +37,7 @@ export function QuestList({
                 {quest.title}
                 {names ? <div className="kind">{names}</div> : null}
               </div>
-              <GmBadge visibility={quest.visibility} />
+              <VisibilityBadge visibility={quest.visibility} />
               <StatusBadge status={quest.status} />
             </Link>
           );

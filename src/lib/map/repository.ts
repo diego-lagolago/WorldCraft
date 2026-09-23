@@ -12,12 +12,10 @@ import {
   worldParticipations,
 } from "@/db/schema";
 import {
-  CONTENT_VISIBILITIES,
-  VISIBILITY_STATUSES,
   authorizeMarkerAction,
   authorizePinWrite,
   canSeePublishedLayer,
-  canSeeVisibility,
+  canSeeContent,
   fail,
   isStaff,
   ok,
@@ -55,8 +53,6 @@ export const MAP_NAME_MAX = 120;
 export const PIN_TITLE_MAX = 120;
 export const mapNameSchema = z.string().trim().min(1).max(MAP_NAME_MAX);
 export const pinTitleSchema = z.string().trim().min(1).max(PIN_TITLE_MAX);
-export const visibilitySchema = z.enum(VISIBILITY_STATUSES);
-export const contentVisibilitySchema = z.enum(CONTENT_VISIBILITIES);
 export const pinTypeSchema = z.enum(PIN_TYPES);
 export const positionSchema = z.number().min(0).max(1);
 
@@ -404,12 +400,10 @@ export async function loadMapState(input: {
     pins: pinRows
       .map(serializePin)
       .filter((pin) =>
-        canSeeVisibility({
-          role: input.role,
-          visibility: pin.visibility,
-          viewerId: input.actorId,
-          ownerId: pin.ownerId,
-        }),
+        canSeeContent(
+          { role: input.role, userId: input.actorId },
+          { visibility: pin.visibility, ownerId: pin.ownerId },
+        ),
       ),
     markers: markerRows.map(serializeMarker),
     characters: charactersOnMap,

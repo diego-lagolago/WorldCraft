@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { parseJsonBody } from "@/lib/http";
+import { contentVisibilitySchema } from "@/lib/authz";
 import {
   createPin,
   pinTitleSchema,
   pinTypeSchema,
   positionSchema,
-  contentVisibilitySchema,
 } from "@/lib/map/repository";
 import { failResponse, openWorldRequest, resultResponse } from "@/lib/route";
 

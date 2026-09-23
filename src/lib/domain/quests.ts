@@ -1,13 +1,12 @@
-import { and, asc, eq, inArray, isNull, ne, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db, type DbTx } from "@/db/client";
 import { characters, questParticipants, quests, worldParticipations } from "@/db/schema";
 import {
-  CONTENT_VISIBILITIES,
   authorizeOwnedContentWrite,
-  canSeeVisibility,
+  canSeeContent,
+  contentVisibilitySchema,
   fail,
-  isStaff,
   ok,
   requireStaff,
   type AuthzResult,
@@ -22,8 +21,10 @@ import {
   type QuestStatus,
 } from "@/lib/quests/status";
 import { mapDbError } from "./db-errors";
-import { listVisibleChapters, type ChapterSummary } from "./quest-chapters";
+import { loadVisibleQuestDetails } from "./quest-access";
+import { listVisibleChaptersForQuest, type ChapterSummary } from "./quest-chapters";
 import { recalcQuestRelations } from "./relations";
+import { visibleContentWhere } from "./visibility-sql";
 import { richFieldFromInput } from "./rich-field";
 
 export type { ChapterSummary } from "./quest-chapters";
@@ -39,7 +40,6 @@ export const QUEST_TITLE_MAX = 200;
 
 export const questTitleSchema = z.string().trim().min(1).max(QUEST_TITLE_MAX);
 export const questStatusSchema = z.enum(QUEST_STATUSES);
-export const visibilitySchema = z.enum(CONTENT_VISIBILITIES);
 
 const NOT_FOUND = "Diese Quest gibt es nicht.";
 
@@ -47,7 +47,7 @@ const questFields = {
   title: questTitleSchema,
   description: z.unknown(),
   status: questStatusSchema,
-  visibility: visibilitySchema,
+  visibility: contentVisibilitySchema,
   /** Active brought characters of this world; empty array clears active participants (snapshots kept on update). */
   participantIds: z.array(z.uuid()),
   addParticipantIds: z.array(z.uuid()),
@@ -325,9 +325,10 @@ export async function listQuests(
   role: MembershipRole,
   viewerId: string,
 ): Promise<QuestSummary[]> {
-  const filters = [eq(quests.worldId, worldId)];
-  if (!isStaff(role)) filters.push(eq(quests.visibility, "published"));
-  else filters.push(or(ne(quests.visibility, "owner_only"), eq(quests.ownerId, viewerId))!);
+  const filters = [
+    eq(quests.worldId, worldId),
+    visibleContentWhere({ visibility: quests.visibility, ownerId: quests.ownerId }, { role, userId: viewerId }),
+  ];
 
   const rows = await db
     .select({
@@ -341,7 +342,7 @@ export async function listQuests(
     .where(and(...filters))
     .orderBy(asc(quests.title));
   const visible = rows.filter((row) =>
-    canSeeVisibility({ role, visibility: row.visibility, viewerId, ownerId: row.ownerId }),
+    canSeeContent({ role, userId: viewerId }, { visibility: row.visibility, ownerId: row.ownerId }),
   );
   const participants = await loadParticipants(
     visible.map((row) => row.id),
@@ -363,27 +364,10 @@ export async function getQuest(
   role: MembershipRole,
   viewerId: string,
 ): Promise<QuestDetails | null> {
-  const [row] = await db
-    .select({
-      id: quests.id,
-      worldId: quests.worldId,
-      title: quests.title,
-      status: quests.status,
-      visibility: quests.visibility,
-      ownerId: quests.ownerId,
-      descriptionJson: quests.descriptionJson,
-    })
-    .from(quests)
-    .where(and(eq(quests.id, questId), eq(quests.worldId, worldId)))
-    .limit(1);
-  if (
-    !row ||
-    !canSeeVisibility({ role, visibility: row.visibility, viewerId, ownerId: row.ownerId })
-  ) {
-    return null;
-  }
+  const row = await loadVisibleQuestDetails(worldId, questId, { role, userId: viewerId });
+  if (!row) return null;
   const participants = await loadParticipants([row.id], worldId);
-  const chapters = (await listVisibleChapters(worldId, row.id, role, viewerId)) ?? [];
+  const chapters = await listVisibleChaptersForQuest(row, role, viewerId);
   return {
     id: row.id,
     worldId: row.worldId,

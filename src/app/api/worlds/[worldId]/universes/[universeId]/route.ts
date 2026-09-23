@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { visibilityStatusSchema } from "@/lib/authz";
 import {
   deleteUniverse,
   getUniverse,
   moveUniverse,
   universeNameSchema,
   updateUniverse,
-  visibilitySchema,
 } from "@/lib/domain/universes";
 import { parseJsonBody, parseUuid } from "@/lib/http";
 import { failResponse, notFoundResponse, openWorldRequest, resultResponse } from "@/lib/route";
@@ -22,7 +22,7 @@ const patchSchema = z
   .object({
     name: universeNameSchema.optional(),
     description: z.unknown().optional(),
-    visibility: visibilitySchema.optional(),
+    visibility: visibilityStatusSchema.optional(),
     move: z.enum(["up", "down"]).optional(),
   })
   .refine((value) => Object.keys(value).length > 0);

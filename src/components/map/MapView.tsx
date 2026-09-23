@@ -2,6 +2,7 @@
 
 import { Eye, EyeOff, ImageUp, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CONTENT_VISIBILITY_LABEL } from "@/lib/authz/types";
 import { rememberUniverse } from "@/lib/client/last-context";
 import type { MapDto, MapState, MarkerDto, PinDetails } from "@/lib/map/types";
 import { useMapRealtime } from "./use-map-realtime";
@@ -48,7 +49,7 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
   }, [worldId, state.universe]);
 
   const onResync = useCallback(() => {
-    void stream.reload();
+    stream.onResync();
   }, [stream]);
 
   const leafletMap = mapHasImage(state.map) ? state.map : null;
@@ -224,7 +225,11 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
               type="button"
               className="zbtn"
               aria-label={mapPublished ? "Karte freigegeben" : "Karte versteckt"}
-              title={mapPublished ? "Karte freigegeben (für alle sichtbar)" : "Karte versteckt (nur Spielleitung)"}
+              title={
+                mapPublished
+                  ? "Karte freigegeben (für alle sichtbar)"
+                  : `Karte versteckt (${CONTENT_VISIBILITY_LABEL.gm_only})`
+              }
               onClick={() =>
                 void stream.setMapVisibility(state.map!.id, mapPublished ? "gm_only" : "published")
               }

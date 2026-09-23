@@ -1,5 +1,7 @@
 /** Client-safe quest status labels (no DB). */
 
+export const CHAPTER_TITLE_MAX = 200;
+
 export const QUEST_STATUSES = ["open", "active", "completed", "failed"] as const;
 export type QuestStatus = (typeof QUEST_STATUSES)[number];
 

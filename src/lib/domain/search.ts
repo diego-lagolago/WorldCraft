@@ -1,4 +1,4 @@
-import { and, eq, ilike, isNull, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
+import { and, asc, eq, ilike, isNull, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   articles,
@@ -10,8 +10,9 @@ import {
   universes,
   worldParticipations,
 } from "@/db/schema";
-import { canSeePublishedLayer, canSeeVisibility, isStaff, type MembershipRole } from "@/lib/authz";
+import { canSeeContent, canSeePublishedLayer, isStaff, type MembershipRole } from "@/lib/authz";
 import { contentHref } from "@/lib/content-href";
+import { visibleContentWhere } from "./visibility-sql";
 import { escapeLikePattern } from "@/lib/editor/mentions";
 import {
   clampSearchLimit,
@@ -120,8 +121,8 @@ async function searchArticles(
   const filters: SQL[] = [
     eq(articles.worldId, worldId),
     matchTitleOrPlain(articles.title, sql`coalesce(${articles.bodyPlain}, '')`, articles.bodyTsv, query),
+    visibleContentWhere({ visibility: articles.visibility, ownerId: articles.ownerId }, viewer),
   ];
-  if (!isStaff(viewer.role)) filters.push(eq(articles.visibility, "published"));
   const rows = await db
     .select({
       id: articles.id,
@@ -136,12 +137,7 @@ async function searchArticles(
     .limit(limit);
   return rows
     .filter((row) =>
-      canSeeVisibility({
-        role: viewer.role,
-        visibility: row.visibility,
-        viewerId: viewer.userId,
-        ownerId: row.ownerId,
-      }),
+      canSeeContent(viewer, { visibility: row.visibility, ownerId: row.ownerId }),
     )
     .map((row) => ({
       kind: "article" as const,
@@ -161,8 +157,8 @@ async function searchQuests(
   const filters: SQL[] = [
     eq(quests.worldId, worldId),
     matchTitleOrPlain(quests.title, sql`coalesce(${quests.descriptionPlain}, '')`, quests.descriptionTsv, query),
+    visibleContentWhere({ visibility: quests.visibility, ownerId: quests.ownerId }, viewer),
   ];
-  if (!isStaff(viewer.role)) filters.push(eq(quests.visibility, "published"));
   const rows = await db
     .select({
       id: quests.id,
@@ -176,12 +172,7 @@ async function searchQuests(
     .limit(limit);
   const fromDescription = rows
     .filter((row) =>
-      canSeeVisibility({
-        role: viewer.role,
-        visibility: row.visibility,
-        viewerId: viewer.userId,
-        ownerId: row.ownerId,
-      }),
+      canSeeContent(viewer, { visibility: row.visibility, ownerId: row.ownerId }),
     )
     .map((row) => ({ kind: "quest" as const, id: row.id, title: row.title, plain: row.plain }));
 
@@ -212,13 +203,14 @@ async function searchQuestChapters(
       questChapters.bodyTsv,
       query,
     ),
+    visibleContentWhere({ visibility: quests.visibility, ownerId: quests.ownerId }, viewer),
+    visibleContentWhere(
+      { visibility: questChapters.visibility, ownerId: questChapters.ownerId },
+      viewer,
+    ),
   ];
-  if (!isStaff(viewer.role)) {
-    filters.push(eq(quests.visibility, "published"));
-    filters.push(eq(questChapters.visibility, "published"));
-  }
   const rows = await db
-    .select({
+    .selectDistinctOn([quests.id], {
       id: quests.id,
       title: quests.title,
       plain: questChapters.bodyPlain,
@@ -231,28 +223,27 @@ async function searchQuestChapters(
     .from(questChapters)
     .innerJoin(quests, eq(quests.id, questChapters.questId))
     .where(and(...filters))
+    .orderBy(quests.id, asc(questChapters.position))
     .limit(limit);
 
-  const byQuest = new Map<string, RawHit>();
-  for (const row of rows) {
-    const questVisible = canSeeVisibility({
-      role: viewer.role,
-      visibility: row.questVisibility,
-      viewerId: viewer.userId,
-      ownerId: row.questOwnerId,
-    });
-    const chapterVisible = canSeeVisibility({
-      role: viewer.role,
-      visibility: row.chapterVisibility,
-      viewerId: viewer.userId,
-      ownerId: row.chapterOwnerId,
-    });
-    if (!questVisible || !chapterVisible) continue;
-    if (byQuest.has(row.id)) continue;
-    const plain = row.plain?.trim() ? row.plain : row.chapterTitle;
-    byQuest.set(row.id, { kind: "quest", id: row.id, title: row.title, plain });
-  }
-  return [...byQuest.values()];
+  return rows
+    .filter((row) => {
+      const questVisible = canSeeContent(viewer, {
+        visibility: row.questVisibility,
+        ownerId: row.questOwnerId,
+      });
+      const chapterVisible = canSeeContent(viewer, {
+        visibility: row.chapterVisibility,
+        ownerId: row.chapterOwnerId,
+      });
+      return questVisible && chapterVisible;
+    })
+    .map((row) => ({
+      kind: "quest" as const,
+      id: row.id,
+      title: row.title,
+      plain: row.plain?.trim() ? row.plain : row.chapterTitle,
+    }));
 }
 
 async function searchUniverses(
@@ -278,7 +269,7 @@ async function searchUniverses(
     .limit(limit);
   return rows
     .filter((row) =>
-      canSeeVisibility({ role: viewer.role, visibility: row.visibility, viewerId: viewer.userId }),
+      canSeeContent(viewer, { visibility: row.visibility }),
     )
     .map((row) => ({ kind: "universe" as const, id: row.id, title: row.title, plain: row.plain }));
 }
@@ -292,11 +283,11 @@ async function searchPins(
   const filters: SQL[] = [
     eq(universes.worldId, worldId),
     matchTitleOrPlain(pins.title, sql`coalesce(${pins.descriptionPlain}, '')`, pins.descriptionTsv, query),
+    visibleContentWhere({ visibility: pins.visibility, ownerId: pins.ownerId }, viewer),
   ];
   if (!isStaff(viewer.role)) {
     filters.push(eq(universes.visibility, "published"));
     filters.push(eq(maps.visibility, "published"));
-    filters.push(eq(pins.visibility, "published"));
   }
   const rows = await db
     .select({

@@ -22,6 +22,7 @@ import {
   canReadWorldTitleFile,
   canSeeCharacterInWorld,
   canSeeJournal,
+  canSeeContent,
   canSeePublishedLayer,
   canSeeVisibility,
   eventForViewer,
@@ -38,6 +39,15 @@ const VISIBILITIES: ContentVisibility[] = ["owner_only", "gm_only", "published"]
 const ROLES: MembershipRole[] = ["game_master", "master", "player"];
 
 describe("APP-AUTHZ Sichtbarkeit", () => {
+  it("canSeeContent delegates to canSeeVisibility", () => {
+    expect(canSeeContent({ role: "master", userId: OWNER }, { visibility: "owner_only", ownerId: OWNER })).toBe(
+      true,
+    );
+    expect(canSeeContent({ role: "player", userId: OWNER }, { visibility: "owner_only", ownerId: OWNER })).toBe(
+      false,
+    );
+  });
+
   it("staff sees gm_only, players do not", () => {
     expect(canSeeVisibility({ role: "player", visibility: "published", viewerId: OTHER })).toBe(true);
     expect(canSeeVisibility({ role: "player", visibility: "gm_only", viewerId: OTHER })).toBe(false);

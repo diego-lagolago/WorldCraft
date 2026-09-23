@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createUniverse, listUniverses, universeNameSchema, visibilitySchema } from "@/lib/domain/universes";
+import { visibilityStatusSchema } from "@/lib/authz";
+import { createUniverse, listUniverses, universeNameSchema } from "@/lib/domain/universes";
 import { parseJsonBody } from "@/lib/http";
 import { failResponse, openWorldRequest, resultResponse } from "@/lib/route";
 
@@ -12,7 +13,7 @@ type Ctx = { params: Promise<{ worldId: string }> };
 const createSchema = z.object({
   name: universeNameSchema,
   description: z.unknown().optional(),
-  visibility: visibilitySchema.optional(),
+  visibility: visibilityStatusSchema.optional(),
 });
 
 export async function GET(_request: Request, ctx: Ctx) {

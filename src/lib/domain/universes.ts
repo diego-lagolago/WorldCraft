@@ -3,8 +3,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { maps, universes, worlds } from "@/db/schema";
 import {
-  VISIBILITY_STATUSES,
-  canSeeVisibility,
+  canSeeContent,
   fail,
   ok,
   requireStaff,
@@ -22,7 +21,6 @@ import { richFieldFromInput } from "./rich-field";
 
 export const UNIVERSE_NAME_MAX = 120;
 export const universeNameSchema = z.string().trim().min(1).max(UNIVERSE_NAME_MAX);
-export const visibilitySchema = z.enum(VISIBILITY_STATUSES);
 
 const DUPLICATE_NAME = "In dieser Welt gibt es schon ein Universum mit diesem Namen.";
 
@@ -51,7 +49,7 @@ export async function listUniverses(
     .from(universes)
     .where(eq(universes.worldId, worldId))
     .orderBy(asc(universes.sortOrder), asc(universes.name));
-  return rows.filter((row) => canSeeVisibility({ role, visibility: row.visibility, viewerId }));
+  return rows.filter((row) => canSeeContent({ role, userId: viewerId }, { visibility: row.visibility }));
 }
 
 /** A universe the actor may see, else null (callers answer 404). */
@@ -73,7 +71,7 @@ export async function getUniverse(
     .from(universes)
     .where(and(eq(universes.id, universeId), eq(universes.worldId, worldId)))
     .limit(1);
-  if (!row || !canSeeVisibility({ role, visibility: row.visibility, viewerId })) return null;
+  if (!row || !canSeeContent({ role, userId: viewerId }, { visibility: row.visibility })) return null;
   return row;
 }
 

@@ -14,8 +14,8 @@ import {
   worldParticipations,
 } from "@/db/schema";
 import {
+  canSeeContent,
   canSeePublishedLayer,
-  canSeeVisibility,
   fail,
   ok,
   requireStaff,
@@ -288,12 +288,8 @@ export async function recalcOutgoingParticipations(
   );
 }
 
-/**
- * Load quest description + published chapters (APP-CHAPTER-REL) + participants
- * and rebuild outgoing auto-relations. Manual and participation stay intact
- * across mention recalcs; participation is rebuilt separately from participants.
- */
-export async function recalcQuestRelations(
+/** Rebuild outgoing mention relations from quest description and published chapters. */
+export async function recalcQuestMentions(
   worldId: string,
   actorId: string,
   questId: string,
@@ -316,7 +312,6 @@ export async function recalcQuestRelations(
     ...publishedChapters.flatMap((chapter) => extractMentions(asRichDoc(chapter.bodyJson))),
   ];
 
-  // Sequential writes on the same tx (CR-006).
   await recalcOutgoingMentions(
     {
       worldId,
@@ -327,6 +322,20 @@ export async function recalcQuestRelations(
     },
     tx,
   );
+}
+
+/**
+ * Load quest description + published chapters (APP-CHAPTER-REL) + participants
+ * and rebuild outgoing auto-relations. Manual rows stay intact.
+ */
+export async function recalcQuestRelations(
+  worldId: string,
+  actorId: string,
+  questId: string,
+  tx: DbTx,
+): Promise<void> {
+  // Sequential writes on the same tx (CR-006).
+  await recalcQuestMentions(worldId, actorId, questId, tx);
   await recalcOutgoingParticipations({ worldId, actorId, questId }, tx);
 }
 
@@ -495,12 +504,10 @@ async function loadVisibleTargets(
   const out = new Map<string, Omit<LinkedItem, "originLabels" | "manualLabel">>();
   for (const row of articleRows) {
     if (
-      !canSeeVisibility({
-        role,
-        visibility: row.visibility,
-        viewerId,
-        ownerId: row.ownerId,
-      })
+      !canSeeContent(
+        { role, userId: viewerId },
+        { visibility: row.visibility, ownerId: row.ownerId },
+      )
     ) {
       continue;
     }
@@ -514,12 +521,10 @@ async function loadVisibleTargets(
   }
   for (const row of questRows) {
     if (
-      !canSeeVisibility({
-        role,
-        visibility: row.visibility,
-        viewerId,
-        ownerId: row.ownerId,
-      })
+      !canSeeContent(
+        { role, userId: viewerId },
+        { visibility: row.visibility, ownerId: row.ownerId },
+      )
     ) {
       continue;
     }
@@ -559,7 +564,7 @@ async function loadVisibleTargets(
     });
   }
   for (const row of universeRows) {
-    if (!canSeeVisibility({ role, visibility: row.visibility, viewerId })) continue;
+    if (!canSeeContent({ role, userId: viewerId }, { visibility: row.visibility })) continue;
     out.set(`universe:${row.id}`, {
       kind: "universe",
       id: row.id,
@@ -583,60 +588,10 @@ export const manualRelationSchema = z.object({
   counterLabel: z.string().trim().max(RELATION_LABEL_MAX).optional(),
 });
 
-async function loadEnd(
-  worldId: string,
-  kind: ContentKind,
-  id: string,
-): Promise<{ kind: ContentKind; id: string } | null> {
-  if (kind === "article") {
-    const [row] = await db
-      .select({ id: articles.id })
-      .from(articles)
-      .where(and(eq(articles.id, id), eq(articles.worldId, worldId)))
-      .limit(1);
-    return row ? { kind, id: row.id } : null;
-  }
-  if (kind === "quest") {
-    const [row] = await db
-      .select({ id: quests.id })
-      .from(quests)
-      .where(and(eq(quests.id, id), eq(quests.worldId, worldId)))
-      .limit(1);
-    return row ? { kind, id: row.id } : null;
-  }
-  if (kind === "universe") {
-    const [row] = await db
-      .select({ id: universes.id })
-      .from(universes)
-      .where(and(eq(universes.id, id), eq(universes.worldId, worldId)))
-      .limit(1);
-    return row ? { kind, id: row.id } : null;
-  }
-  if (kind === "character") {
-    const [row] = await db
-      .select({ id: characters.id })
-      .from(characters)
-      .innerJoin(
-        worldParticipations,
-        and(eq(worldParticipations.characterId, characters.id), eq(worldParticipations.worldId, worldId)),
-      )
-      .where(eq(characters.id, id))
-      .limit(1);
-    return row ? { kind, id: row.id } : null;
-  }
-  const [row] = await db
-    .select({ id: pins.id })
-    .from(pins)
-    .innerJoin(maps, eq(maps.id, pins.mapId))
-    .innerJoin(universes, eq(universes.id, maps.universeId))
-    .where(and(eq(pins.id, id), eq(universes.worldId, worldId)))
-    .limit(1);
-  return row ? { kind, id: row.id } : null;
-}
-
 /**
- * CR-004: both ends must exist in this world. Missing or foreign IDs are 404
- * so existence in another world is not distinguishable from absence.
+ * CR-004 / CR-002: both ends must exist in this world and be visible to the
+ * actor. Missing, foreign, or invisible IDs are 404 so existence of
+ * `owner_only` content is not distinguishable from absence.
  */
 export async function createManualRelation(input: {
   membership: MembershipRow | null;
@@ -654,11 +609,16 @@ export async function createManualRelation(input: {
   if (input.sourceKind === input.targetKind && input.sourceId === input.targetId) {
     return fail(400, "Quelle und Ziel dürfen nicht identisch sein.");
   }
-  const [source, target] = await Promise.all([
-    loadEnd(input.worldId, input.sourceKind, input.sourceId),
-    loadEnd(input.worldId, input.targetKind, input.targetId),
+  const visible = await loadVisibleTargets(input.worldId, staff.data.role, staff.data.userId, [
+    { kind: input.sourceKind, id: input.sourceId },
+    { kind: input.targetKind, id: input.targetId },
   ]);
-  if (!source || !target) return fail(404, "Quelle oder Ziel gibt es in dieser Welt nicht.");
+  if (
+    !visible.has(`${input.sourceKind}:${input.sourceId}`) ||
+    !visible.has(`${input.targetKind}:${input.targetId}`)
+  ) {
+    return fail(404, "Quelle oder Ziel gibt es in dieser Welt nicht.");
+  }
   const counter = input.counterLabel?.trim() || null;
   try {
     const [row] = await db
@@ -692,12 +652,31 @@ export async function deleteManualRelation(input: {
   const id = parseUuid(input.relationId);
   if (!id) return fail(404, "Diese Verknüpfung gibt es nicht.");
   const [row] = await db
-    .select({ id: relations.id, origin: relations.origin })
+    .select({
+      id: relations.id,
+      origin: relations.origin,
+      sourceKind: relations.sourceKind,
+      sourceId: relations.sourceId,
+      targetKind: relations.targetKind,
+      targetId: relations.targetId,
+    })
     .from(relations)
     .where(and(eq(relations.id, id), eq(relations.worldId, input.worldId)))
     .limit(1);
-  if (!row) return fail(404, "Diese Verknüpfung gibt es nicht.");
+  if (!row || !row.sourceKind || !row.sourceId || !row.targetKind || !row.targetId) {
+    return fail(404, "Diese Verknüpfung gibt es nicht.");
+  }
   if (row.origin !== "manual") return fail(400, "Automatische Verknüpfungen entstehen beim Speichern.");
+  const visible = await loadVisibleTargets(input.worldId, staff.data.role, staff.data.userId, [
+    { kind: row.sourceKind, id: row.sourceId },
+    { kind: row.targetKind, id: row.targetId },
+  ]);
+  if (
+    !visible.has(`${row.sourceKind}:${row.sourceId}`) ||
+    !visible.has(`${row.targetKind}:${row.targetId}`)
+  ) {
+    return fail(404, "Diese Verknüpfung gibt es nicht.");
+  }
   await db.delete(relations).where(eq(relations.id, row.id));
   return ok({ id: row.id });
 }
@@ -771,30 +750,26 @@ export async function listRelationTargets(
   const out: RelationTargetOption[] = [];
   for (const row of articleRows) {
     if (
-      canSeeVisibility({
-        role,
-        visibility: row.visibility,
-        viewerId,
-        ownerId: row.ownerId,
-      })
+      canSeeContent(
+        { role, userId: viewerId },
+        { visibility: row.visibility, ownerId: row.ownerId },
+      )
     ) {
       out.push({ kind: "article", id: row.id, title: row.title });
     }
   }
   for (const row of universeRows) {
-    if (canSeeVisibility({ role, visibility: row.visibility, viewerId })) {
+    if (canSeeContent({ role, userId: viewerId }, { visibility: row.visibility })) {
       out.push({ kind: "universe", id: row.id, title: row.title });
     }
   }
   for (const row of characterRows) out.push({ kind: "character", id: row.id, title: row.title });
   for (const row of questRows) {
     if (
-      canSeeVisibility({
-        role,
-        visibility: row.visibility,
-        viewerId,
-        ownerId: row.ownerId,
-      })
+      canSeeContent(
+        { role, userId: viewerId },
+        { visibility: row.visibility, ownerId: row.ownerId },
+      )
     ) {
       out.push({ kind: "quest", id: row.id, title: row.title });
     }

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { getQuestNote, noteUpdateSchema, saveQuestNote } from "@/lib/domain/quest-notes";
+import {
+  getQuestNote,
+  noteUpdateSchema,
+  saveQuestNote,
+  serializeQuestNoteClient,
+} from "@/lib/domain/quest-notes";
 import { parseJsonBody, parseUuid } from "@/lib/http";
 import { failResponse, notFoundResponse, openWorldRequest, resultResponse } from "@/lib/route";
 
@@ -22,7 +27,9 @@ export async function GET(_request: Request, ctx: Ctx) {
     role: req.context.membership.role,
     viewerId: req.context.membership.userId,
   });
-  return resultResponse(note.ok ? { ok: true as const, data: { note: note.data } } : note);
+  return resultResponse(
+    note.ok ? { ok: true as const, data: { note: serializeQuestNoteClient(note.data) } } : note,
+  );
 }
 
 export async function PUT(request: Request, ctx: Ctx) {
@@ -50,5 +57,5 @@ export async function PUT(request: Request, ctx: Ctx) {
     }
     return failResponse(saved);
   }
-  return NextResponse.json({ note: saved.data });
+  return NextResponse.json({ note: serializeQuestNoteClient(saved.data) });
 }

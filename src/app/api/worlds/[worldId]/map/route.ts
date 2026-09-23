@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { optionalUuid } from "@/lib/chat/query";
 import { parseJsonBody } from "@/lib/http";
+import { visibilityStatusSchema } from "@/lib/authz";
 import {
   createMap,
   deleteMap,
   loadMapState,
   mapNameSchema,
   updateMap,
-  visibilitySchema,
 } from "@/lib/map/repository";
 import { failResponse, openWorldRequest, resultResponse } from "@/lib/route";
 
@@ -21,7 +21,7 @@ const patchSchema = z
   .object({
     mapId: z.uuid(),
     name: mapNameSchema.optional(),
-    visibility: visibilitySchema.optional(),
+    visibility: visibilityStatusSchema.optional(),
   })
   .refine((value) => value.name !== undefined || value.visibility !== undefined);
 

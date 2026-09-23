@@ -1,13 +1,12 @@
-import { and, asc, eq, inArray, isNull, ne, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { articles, characters, worldParticipations } from "@/db/schema";
 import {
-  CONTENT_VISIBILITIES,
   authorizeOwnedContentWrite,
-  canSeeVisibility,
+  canSeeContent,
+  contentVisibilitySchema,
   fail,
-  isStaff,
   ok,
   requireStaff,
   type AuthzResult,
@@ -30,13 +29,13 @@ import {
   type TemplateType,
 } from "@/lib/templates/registry";
 import { mapDbError } from "./db-errors";
+import { visibleContentWhere } from "./visibility-sql";
 import { recalcArticleRelations } from "./relations";
 import { richFieldFromInput } from "./rich-field";
 
 export const ARTICLE_TITLE_MAX = 200;
 export const articleTitleSchema = z.string().trim().min(1).max(ARTICLE_TITLE_MAX);
 export const articleTemplateSchema = z.enum(TEMPLATE_TYPES);
-export const visibilitySchema = z.enum(CONTENT_VISIBILITIES);
 
 const NOT_FOUND = "Diesen Artikel gibt es nicht.";
 
@@ -45,7 +44,7 @@ const articleFields = {
   templateType: articleTemplateSchema,
   templateFields: z.unknown(),
   body: z.unknown(),
-  visibility: visibilitySchema,
+  visibility: contentVisibilitySchema,
   removeTitleImage: z.literal(true),
 };
 
@@ -177,9 +176,10 @@ export async function listArticles(
   viewerId: string,
   templateType?: TemplateType | "all",
 ): Promise<ArticleSummary[]> {
-  const filters = [eq(articles.worldId, worldId)];
-  if (!isStaff(role)) filters.push(eq(articles.visibility, "published"));
-  else filters.push(or(ne(articles.visibility, "owner_only"), eq(articles.ownerId, viewerId))!);
+  const filters = [
+    eq(articles.worldId, worldId),
+    visibleContentWhere({ visibility: articles.visibility, ownerId: articles.ownerId }, { role, userId: viewerId }),
+  ];
   if (templateType && templateType !== "all") filters.push(eq(articles.templateType, templateType));
 
   const rows = await db
@@ -188,7 +188,7 @@ export async function listArticles(
     .where(and(...filters))
     .orderBy(asc(articles.title));
   return rows.filter((row) =>
-    canSeeVisibility({ role, visibility: row.visibility, viewerId, ownerId: row.ownerId }),
+    canSeeContent({ role, userId: viewerId }, { visibility: row.visibility, ownerId: row.ownerId }),
   );
 }
 
@@ -210,7 +210,7 @@ export async function getArticle(
     .limit(1);
   if (
     !row ||
-    !canSeeVisibility({ role, visibility: row.visibility, viewerId, ownerId: row.ownerId })
+    !canSeeContent({ role, userId: viewerId }, { visibility: row.visibility, ownerId: row.ownerId })
   ) {
     return null;
   }

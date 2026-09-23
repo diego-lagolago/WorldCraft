@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { LinkedSection } from "@/components/linked/LinkedSection";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { worldPath } from "@/components/shell/nav";
-import { GmBadge } from "@/components/world/display";
+import { VisibilityBadge } from "@/components/world/display";
 import { isStaff } from "@/lib/authz/types";
 import { resolveMentions } from "@/lib/domain/mention-resolve";
 import { getUniverse } from "@/lib/domain/universes";
@@ -29,7 +29,7 @@ export default async function UniversePage({ params }: PageProps<"/w/[worldId]/u
       <h1 style={{ fontSize: 24, marginBottom: 8 }}>🪐 {universe.name}</h1>
       <div className="row wrap" style={{ marginBottom: 14 }}>
         <span className="badge">Universum</span>
-        <GmBadge visibility={universe.visibility} />
+        <VisibilityBadge visibility={universe.visibility} />
         {isStaff(membership.role) ? (
           <Link
             className="btn sm"
