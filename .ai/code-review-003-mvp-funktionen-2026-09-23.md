@@ -251,3 +251,48 @@ Maßgeblich sind `.ai/architecture/datenmodell-fachlich.md` (fachliche Regeln, V
 5. **CR-009**, **CR-013**, **CR-014** — kleinere Robustheitsthemen.
 6. **CR-010**, **CR-011**, **CR-012**, **CR-015** — Aufräumen und Performance.
 7. **CR-016** — Review 001 per `/review-check` nachführen.
+
+---
+
+## Review-Check 2026-09-23
+
+**Geprüfter Stand:** Commit `32c9083` (`main`, HEAD) in einem isolierten Working Tree. Verglichen mit der Baseline `fa7e347` (23 Commits, 112 Dateien). Uncommittete Änderungen im Haupt-Arbeitsverzeichnis (u. a. `src/lib/authz/*`, `src/lib/chat/*`, `src/db/schema.ts`, Migrationen `0016`/`0017`, `DiceSheet.tsx`, `discord-profile.ts`) sind **nicht** Teil dieser Prüfung. Tests wurden nicht ausgeführt, geprüft wurde der Code gegen die Abnahmekriterien.
+
+### Statusänderungen
+
+Keine. Alle 17 Findings standen auf `behoben` und bleiben `behoben`. Keine Regression, kein `drift`.
+
+| ID | Geprüft | Beleg im aktuellen Code |
+|----|---------|-------------------------|
+| CR-001 | behoben | `eventForViewer`/`canReceiveWorldEvent` in `src/lib/authz/authz.ts`, alle `map.*`-Events tragen `layers` (`mapEventLayers`/`pinEventLayers`, auch `attach.ts`), unsichtbare Upserts werden zu `*.deleted`; Tests in `authz.test.ts` und `events.api.test.ts` |
+| CR-002 | behoben | `removeMember`/`leaveWorld` publizieren `membership.changed`; SSE-Route ruft `stop()`; API-Tests für Entfernen und Austritt |
+| CR-003 | behoben | `src/lib/files/authorize-file-read.ts` (Welt, Karte, Artikel, Portrait, Charakterbild, unreferenziert → Hochlader), Route liefert sonst 404; `files.api.test.ts` inkl. Cache-Header |
+| CR-004 | behoben | `parseRefValue` prüft `parseUuid`, `assertRefTargets` prüft vor der Query; API-Test für Anlegen und Bearbeiten |
+| CR-005 | behoben | `addParticipantIds`/`removeParticipantIds`, Snapshots bleiben bei `participantIds`; Formular zeigt „nicht mehr in der Welt“; API-Tests (1)–(5) |
+| CR-006 | behoben | Artikel, Quest, Universum und Pin schreiben inkl. Recalc in einer `db.transaction` mit `tx`; `relations-transaction.integration.test.ts` |
+| CR-007 | behoben | Unit-Tests der Filterfunktion in `authz.test.ts`; `test:rechte` umfasst alle `*.api.test.ts`, also auch Stream-Test (`events.api.test.ts`) und Dateifälle (`files.api.test.ts`). Die Rechte-Matrix selbst wurde nicht erweitert, das Kriterium ist trotzdem erfüllt |
+| CR-008 | behoben | `placeMarker`: ein `DELETE … RETURNING`, Events nach der Transaktion |
+| CR-009 | behoben | `maxBytesFor(kind)` vor `arrayBuffer()`; `route.test.ts` mit 11-MB-Datei prüft, dass `arrayBuffer` nicht aufgerufen wird |
+| CR-010 | behoben | Chat nutzt `CHANNEL_NAME_MAX`/`THREAD_TITLE_MAX` aus `types.ts`, keine Literale; Karten-Route ohne `20 MB`/`120` |
+| CR-011 | behoben | Multipart-Zweig entfernt (415), `createMapWithImage` = `createMap` + `setMapImage`, kein `@deprecated`; Integrationstest mit PNG/GIF |
+| CR-012 | behoben | Sichtbarkeit im `WHERE` bei Artikeln, Quests und Tagebuch (Player ohne Besitz → keine Query); jede Such-Teilquery mit `.limit(limit)` |
+| CR-013 | behoben | Archivieren unter `SELECT … FOR UPDATE` in einer Transaktion; `archive-channel.integration.test.ts` |
+| CR-014 | behoben | `ensureDefaultChannel` entfernt, `loadChatState` ohne Insert; Hinweistexte in `ChatView.tsx`. Die Browser-Prüfung aus dem Abnahmekriterium ist hier nicht nachvollziehbar |
+| CR-015 | behoben | `FILE_REFERENCE_COLUMNS` im Schema, `gc.test.ts` vergleicht mit allen FKs auf `files.id` |
+| CR-016 | behoben | Review 001: CR-004, CR-021, CR-023 auf `behoben`; CR-001 mit Vermerk zum ausstehenden Prod-Cleanup |
+| CR-017 | behoben | `changeMemberRole` publiziert `membership.changed`; API-Test „Herabstufung → Stream zu, neuer Stream filtert als Player“. Die Browser-Prüfung (2) ist hier nicht nachvollziehbar |
+
+### Nicht abgedeckte Änderungen
+
+Seit der Baseline wurden Teile von Plan 004 (`.ai/feature-tasks/004-quest-kapitel-und-owner-sichtbarkeit.md`, T-001 bis T-010) und Plan 008 (T-001, T-002) in dieselben Dateien committet. Diese Änderungen sind von keinem Finding dieses Reviews abgedeckt:
+
+1. **Dreistufige Sichtbarkeit mit Owner-Stufe** (`owner_only`, `ownerId`): `src/lib/authz/authz.ts`/`types.ts` (`canSeeVisibility` mit `viewerId`/`ownerId`, `authorizeOwnedContentWrite`), Migration `0013_content_visibility_owner.sql`, `VisibilitySelect.tsx`. Das ändert die Filterlogik, auf der CR-001, CR-003 und CR-012 aufsetzen, z. B. Pin-Events mit Owner-Schicht und Staff-Filter `visibility <> 'owner_only' OR owner = viewer`.
+2. **Neuer Default für Pins:** `createPin` legt Pins jetzt mit `owner_only` statt `gm_only` an (`src/lib/map/repository.ts`).
+3. **Quest-Kapitel:** `src/lib/domain/quest-chapters.ts`, neue Routen unter `quests/[questId]/chapters`, `QuestChapters.tsx`, Migration `0014`, Kapitel in Relationen (`relations.ts`, großer Umbau) und Suche (`searchQuestChapters` in `search.ts`).
+4. **Quest-Notizblock:** `src/lib/domain/quest-notes.ts`, Route `quests/[questId]/notes`, `QuestNotesSheet.tsx`, Migration `0015`.
+5. **Würfel (Plan 008):** Client-Roll mit mehreren Termen (Commit `14402f2`).
+6. **UI-Prototyp** `spikes/ui-prototype` (Commit `11d697d`) und Layout-Fix für den Karten-Austausch (`11a29f3`).
+
+### Empfehlung
+
+Kein erneuter `/code-review` für Plan 003 nötig: Alle Findings sind umgesetzt und im Code belegt. Die nicht abgedeckten Änderungen gehören zu Plan 004 und Plan 008. Dafür ist ein **eigener `/code-review` für Plan 004** sinnvoll, sobald dessen Aufgaben abgeschlossen sind. Vor allem die Owner-Stufe greift in die Sichtbarkeits- und Realtime-Filter aus CR-001, CR-003 und CR-012 ein und sollte dort mitgeprüft werden.
