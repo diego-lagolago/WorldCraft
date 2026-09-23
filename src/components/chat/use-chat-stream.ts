@@ -102,7 +102,11 @@ export function useChatStream(worldId: string, initial: ChatState) {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      await failAndReload(res.error);
+      // Sheet shows the error; reload only when channel/thread/rights may have changed.
+      // status 0 = network (no HTTP); 400 = validation — neither reloads.
+      if (res.status >= 401) {
+        await reload();
+      }
       return { ok: false, error: res.error };
     }
     setError(null);

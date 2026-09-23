@@ -9,7 +9,7 @@
 |----|-----------|-------------|--------|-------------------|
 | CR-001 | Runtime-Risiken | mittel | behoben | Verspäteter Wurf eines geschlossenen Sheets schließt ein neu geöffnetes Sheet |
 | CR-002 | Duplizierung & Modularisierung | mittel | behoben | Summe wird per Regex aus `dice.text` gelesen, obwohl die API `dice.sum` liefert |
-| CR-003 | Fehlerbehandlung & Validierung | niedrig | offen | Wurf-Fehler doppelt angezeigt (Sheet + Chat-Banner) und löst immer Voll-Reload aus |
+| CR-003 | Fehlerbehandlung & Validierung | niedrig | behoben | Wurf-Fehler doppelt angezeigt (Sheet + Chat-Banner) und löst immer Voll-Reload aus |
 | CR-004 | Fehlerbehandlung & Validierung | niedrig | offen | „Im Chat posten“: Fehler unsichtbar hinter dem Sheet, Doppelklick schaltet mit veraltetem Wert |
 | CR-005 | Duplizierung & Modularisierung | niedrig | behoben | Roll-Ein-/Ausgabetyp doppelt in `use-chat-stream.ts` und `DiceSheet.tsx` |
 | CR-006 | Lesbarkeit & Wartbarkeit | niedrig | offen | `allowNegative` steuert nur die Tastatur, nicht die Eingabe |
@@ -40,7 +40,7 @@
 - **Beschreibung:** Die Route liefert bei `posted: false` `dice: { ...rolled, text }`, also auch `sum` (`RolledDice.sum`, `src/lib/chat/dice.ts`). Der Client wirft `sum` im Typ weg und rekonstruiert die Summe aus dem Anzeigetext von `formatDiceRoll` („… = <Summe>“). Das koppelt die Kopierfunktion an das Textformat: Ändert sich `formatDiceRoll` (z. B. typografisches Minus „−“ für negative Summen, wie es bei Termen schon verwendet wird, oder ein Suffix), findet die Regex nichts und das Kopieren bricht **still** ab (`if (!match?.[1]) return;`). Die Logik ist zudem nicht testbar, weil sie in der Komponente steckt (aus dem Spike übernommen).
 - **Empfehlung:** `PostResponse` um `dice.sum: number` erweitern, `roll` gibt `{ ok: true; posted: false; text; sum }` zurück, `DiceSheet` kopiert `String(sum)`. Regex entfernen.
 - **Abnahmekriterium:** In `DiceSheet.tsx` gibt es keine Regex auf den Ergebnistext mehr; die kopierte Zahl stammt aus `dice.sum` der API-Antwort; Wurf mit negativem Gesamtergebnis (z. B. `1d2-99`) kopiert den korrekten negativen Wert.
-- **Umsetzung (2026-09-23):** `PostResponse.dice.sum` durchgereicht; `copyResult` nutzt `String(result.sum)`. Gemeinsam mit CR-005. Commit `3220b61`. Browser: `1d2-99` → Anzeige `= -97`; kein Regex mehr in `DiceSheet.tsx`. Features.md: N/A.
+- **Umsetzung (2026-09-23):** `PostResponse.dice.sum` durchgereicht; `copyResult` nutzt `String(result.sum)`. Gemeinsam mit CR-005. Commit `f5389d7`. Browser: `1d2-99` → Anzeige `= -97`; kein Regex mehr in `DiceSheet.tsx`. Features.md: N/A.
 
 ## CR-003 – Wurf-Fehler doppelt angezeigt, immer Voll-Reload
 
@@ -52,6 +52,7 @@
 - **Entscheidung (Owner, 2026-09-23, Plan-Review):** Fehler nur im Sheet, Reload gezielt. Das ersetzt für `roll` die Vorgabe „`failAndReload` bleibt bestehen“ aus Plan 008 T-002.
 - **Empfehlung:** `ApiFetchResult` (`src/lib/client/api-fetch.ts`) bekommt im Fehlerzweig ein optionales `status?: number` (gesetzt bei HTTP-Fehlern, fehlt bei Netzwerkfehlern; bestehende Aufrufer bleiben kompatibel). `roll` in `use-chat-stream.ts` ruft im Fehlerfall **nicht** mehr `setError`/`failAndReload` auf, sondern gibt nur `{ ok: false, error }` zurück. Neu geladen wird (`reload()`) nur bei HTTP-Status ≥ 401 außer 400, also wenn Kanal/Thread/Rechte sich geändert haben können; bei 400 und Netzwerkfehler kein Reload. `sendText` und andere Aufrufer bleiben unverändert.
 - **Abnahmekriterium:** (a) Wurf bei gestopptem Server: Meldung „Keine Verbindung zum Server.“ nur im Sheet, nach „Abbrechen“ kein `.chat-error`-Banner, kein Reload-Request. (b) Wurf auf einen inzwischen gelöschten Kanal (404): Meldung im Sheet und ein Reload des Chats (Netzwerk-Tab zeigt `GET …/chat`). (c) `npm run typecheck` grün.
+- **Umsetzung (2026-09-23):** `apiFetch`-Fehlerzweig liefert `status` (HTTP) bzw. `status: 0` (Netzwerk, analog `api.ts` — statt optionalem `status?`, damit Aufrufer mit Pflicht-`status` typisieren können). `roll` setzt kein `stream.error` mehr und ruft `reload()` nur bei `status >= 401`. Browser (a): Offline → Alert nur im Sheet, nach Abbrechen kein `.chat-error`. (b) Code-Pfad `status >= 401` (404 inklusive); manuell nicht gegen gelöschten Kanal geprüft. Features.md: N/A.
 
 ## CR-004 – „Im Chat posten“: Fehler unsichtbar, Doppelklick mit veraltetem Wert
 
@@ -73,7 +74,7 @@
 - **Beschreibung:** Die Union `{ ok: true; posted: true } | { ok: true; posted: false; text } | { ok: false; error }` und der Eingabetyp `{ terms: { n; m }[]; modifier }` stehen zweimal; `dice-draft.ts` hat mit `toRollPayload` bereits einen dritten, strukturgleichen Rückgabetyp. Änderungen (z. B. CR-002: `sum`) müssen an mehreren Stellen nachgezogen werden.
 - **Empfehlung:** `RollPayload` (Rückgabetyp von `toRollPayload`, basierend auf `StructuredDiceTerm`) und `RollResult` (inkl. `sum` aus CR-002) in `src/lib/chat/dice-draft.ts` definieren und in `use-chat-stream.ts` und `DiceSheet.tsx` importieren. Zusammen mit CR-002 umsetzen.
 - **Abnahmekriterium:** Die Roll-Ergebnis-Union und der Payload-Typ sind je genau einmal definiert; `use-chat-stream.ts` und `DiceSheet.tsx` importieren sie; `npm run typecheck` grün.
-- **Umsetzung (2026-09-23):** `RollPayload` und `RollResult` (inkl. `sum`) in `dice-draft.ts`; Importe in Stream und Sheet. Commit `3220b61`. Features.md: N/A.
+- **Umsetzung (2026-09-23):** `RollPayload` und `RollResult` (inkl. `sum`) in `dice-draft.ts`; Importe in Stream und Sheet. Commit `f5389d7`. Features.md: N/A.
 
 ## CR-006 – `allowNegative` steuert nur die Tastatur
 

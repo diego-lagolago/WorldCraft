@@ -1,6 +1,6 @@
 export type ApiFetchResult<T> =
   | { ok: true; status: number; data: T }
-  | { ok: false; error: string };
+  | { ok: false; error: string; status: number };
 
 /** Fetch with a German error string. Network failures never become unhandled rejections. */
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<ApiFetchResult<T>> {
@@ -15,10 +15,11 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
     });
     const data = (await response.json().catch(() => ({}))) as { error?: string };
     if (!response.ok) {
-      return { ok: false, error: data.error ?? "Das hat nicht geklappt." };
+      return { ok: false, error: data.error ?? "Das hat nicht geklappt.", status: response.status };
     }
     return { ok: true, status: response.status, data: data as T };
   } catch {
-    return { ok: false, error: "Keine Verbindung zum Server." };
+    // status 0 = no HTTP response (network). Callers treat only real HTTP codes (≥ 400).
+    return { ok: false, error: "Keine Verbindung zum Server.", status: 0 };
   }
 }
