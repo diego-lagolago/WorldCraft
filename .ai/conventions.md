@@ -92,6 +92,7 @@ Neue Rechtefälle: zuerst in `src/lib/authz` plus Test, nicht nur in der UI und 
 
 - Build: GitHub Actions → GHCR. Coolify: Image pull, kein Dockerfile-Build auf dem VPS.
 - Persistenz: Postgres-Volume + Upload-Volume `/app/data/uploads`.
+- **App-Version:** `package.json` (Versionsbadge) soll **automatisch mit Releases/Deploys mitlaufen**. **Git-Tags** setzen wir nicht — taggen müssen wir nicht.
 - Details: [infrastructure/deployment.md](infrastructure/deployment.md).
 
 ## Backlog vs. Normen
