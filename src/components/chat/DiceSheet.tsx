@@ -5,6 +5,7 @@ import { ALLOWED_SIDES, MAX_DICE_TERMS, formatStructuredPreview } from "@/lib/ch
 import {
   DEFAULT_DICE_DRAFT,
   addTerm,
+  parseDraftInt,
   removeTerm,
   setModifier,
   setTermCount,
@@ -25,6 +26,73 @@ type Props = {
   onRoll: (input: { terms: { n: number; m: number }[]; modifier: number }) => Promise<RollResult>;
   onClose: () => void;
 };
+
+/**
+ * Stepper with an inline-editable number (Plan 008, Nachtrag nach Smoketest 2026-09-23).
+ * Focus selects the whole number so typing replaces it; valid input applies immediately
+ * (setters clamp), blur shows the clamped value again.
+ */
+function NumberStepper({
+  value,
+  label,
+  decreaseLabel,
+  increaseLabel,
+  allowNegative = false,
+  onChange,
+}: {
+  value: number;
+  label: string;
+  decreaseLabel: string;
+  increaseLabel: string;
+  allowNegative?: boolean;
+  onChange: (next: number) => void;
+}) {
+  const [text, setText] = useState<string | null>(null);
+  const keepSelection = useRef(false);
+
+  return (
+    <div className="stepper">
+      <button type="button" aria-label={decreaseLabel} onClick={() => onChange(value - 1)}>
+        −
+      </button>
+      <input
+        className="stepper-in"
+        type="text"
+        // iOS number pads have no minus key, so the bonus keeps the regular keyboard.
+        inputMode={allowNegative ? "text" : "numeric"}
+        enterKeyHint="done"
+        autoComplete="off"
+        aria-label={label}
+        value={text ?? String(value)}
+        onFocus={(event) => {
+          setText(String(value));
+          event.currentTarget.select();
+          keepSelection.current = true;
+        }}
+        onMouseUp={(event) => {
+          // A click would otherwise place the caret and drop the selection made on focus.
+          if (keepSelection.current) event.preventDefault();
+          keepSelection.current = false;
+        }}
+        onChange={(event) => {
+          setText(event.target.value);
+          const parsed = parseDraftInt(event.target.value);
+          if (parsed !== null) onChange(parsed);
+        }}
+        onBlur={() => setText(null)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+        }}
+      />
+      <button type="button" aria-label={increaseLabel} onClick={() => onChange(value + 1)}>
+        +
+      </button>
+    </div>
+  );
+}
 
 export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) {
   const [draft, setDraft] = useState<DiceDraft>(DEFAULT_DICE_DRAFT);
@@ -94,23 +162,13 @@ export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) 
                   </button>
                 ) : null}
               </div>
-              <div className="stepper">
-                <button
-                  type="button"
-                  aria-label="Weniger Würfel"
-                  onClick={() => setDraft((current) => setTermCount(current, index, term.n - 1))}
-                >
-                  −
-                </button>
-                <strong>{term.n}</strong>
-                <button
-                  type="button"
-                  aria-label="Mehr Würfel"
-                  onClick={() => setDraft((current) => setTermCount(current, index, term.n + 1))}
-                >
-                  +
-                </button>
-              </div>
+              <NumberStepper
+                value={term.n}
+                label="Anzahl Würfel"
+                decreaseLabel="Weniger Würfel"
+                increaseLabel="Mehr Würfel"
+                onChange={(n) => setDraft((current) => setTermCount(current, index, n))}
+              />
               <div className="dice-sides">
                 {ALLOWED_SIDES.map((sides) => (
                   <button
@@ -137,23 +195,14 @@ export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) 
           <div className="dice-bonus-row">
             <div className="dice-bonus-block">
               <span>Bonus</span>
-              <div className="stepper">
-                <button
-                  type="button"
-                  aria-label="Bonus verringern"
-                  onClick={() => setDraft((current) => setModifier(current, current.modifier - 1))}
-                >
-                  −
-                </button>
-                <strong>{draft.modifier}</strong>
-                <button
-                  type="button"
-                  aria-label="Bonus erhöhen"
-                  onClick={() => setDraft((current) => setModifier(current, current.modifier + 1))}
-                >
-                  +
-                </button>
-              </div>
+              <NumberStepper
+                value={draft.modifier}
+                label="Bonus"
+                decreaseLabel="Bonus verringern"
+                increaseLabel="Bonus erhöhen"
+                allowNegative
+                onChange={(modifier) => setDraft((current) => setModifier(current, modifier))}
+              />
               <p className="dice-preview">{preview}</p>
             </div>
             <div

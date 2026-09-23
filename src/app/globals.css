@@ -1409,11 +1409,29 @@ textarea {
   gap: 8px;
 }
 
-.stepper strong {
-  min-width: 40px;
-  text-align: center;
-  font-size: 20px;
+.stepper-in {
+  width: 56px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
   color: var(--text);
+  font: inherit;
+  /* >= 16px keeps iOS from zooming into the field */
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.stepper-in:hover {
+  border-color: var(--line);
+}
+
+.stepper-in:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--panel2);
 }
 
 .stepper button {

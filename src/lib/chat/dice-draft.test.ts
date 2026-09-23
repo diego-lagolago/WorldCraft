@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_DICE_DRAFT,
   addTerm,
+  parseDraftInt,
   removeTerm,
   setModifier,
   setTermCount,
@@ -47,5 +48,24 @@ describe("dice-draft", () => {
       ],
       modifier: 2,
     });
+  });
+
+  it("parses typed stepper values for inline editing", () => {
+    expect(parseDraftInt("7")).toBe(7);
+    expect(parseDraftInt(" 12 ")).toBe(12);
+    expect(parseDraftInt("-5")).toBe(-5);
+    expect(parseDraftInt("\u22123")).toBe(-3);
+    expect(parseDraftInt("-0")).toBe(0);
+    expect(parseDraftInt("")).toBeNull();
+    expect(parseDraftInt("-")).toBeNull();
+    expect(parseDraftInt("1.5")).toBeNull();
+    expect(parseDraftInt("abc")).toBeNull();
+    expect(parseDraftInt("12345")).toBeNull();
+  });
+
+  it("clamps typed values through the setters", () => {
+    expect(setTermCount(DEFAULT_DICE_DRAFT, 0, parseDraftInt("50")!).terms[0]?.n).toBe(20);
+    expect(setTermCount(DEFAULT_DICE_DRAFT, 0, parseDraftInt("0")!).terms[0]?.n).toBe(1);
+    expect(setModifier(DEFAULT_DICE_DRAFT, parseDraftInt("-150")!).modifier).toBe(-99);
   });
 });

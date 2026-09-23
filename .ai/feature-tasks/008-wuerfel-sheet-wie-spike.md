@@ -37,6 +37,7 @@ Beim Ausbau des Chats in Plan `003` wurde das Würfel-Sheet vereinfacht nachgeba
 | W7 | Zurücksetzen beim Öffnen (Plan-Review 2026-09-23) | Ist-Verhalten (bedingtes Rendern) ist bereits korrekt und bleibt; kein Umbau in `ChatView.tsx` nötig. |
 | W8 | Manuelle Abnahme (Plan-Review 2026-09-23) | Agent vergleicht die App im Browser-Pane mit der Spike-Quelle (`git show b5d28e8:…`), kein paralleler Spike-Start. Den Smoketest-Punkt macht der Owner; T-004 ist erst nach dessen OK erledigt. |
 | W9 | Smoketest und Spikes (Plan-Review 2026-09-23) | Eigener Smoketest WS.1–WS.6 in diesem Plan, `smoketest.md` bleibt unverändert. Spikes (inkl. `spikes/ui-prototype/`) werden **nicht** angepasst; sie sollen mittelfristig gelöscht werden, sobald ihre Funktionalität in der App nachgebaut ist. Beim Würfel-Sheet hat der Chat-Spike Vorrang vor `ui-prototype`. |
+| N1 | Nachtrag nach Smoketest (Projektinhaber, 2026-09-23): Anzahl und Bonus direkt eingeben? | **Ja, Inline-Eingabe** zwischen − und +. Beim Hineinklicken wird die ganze Zahl markiert (wie Strg+A), Tippen ersetzt sie. Gültige Eingaben wirken sofort (Vorschau), die Grenzen 1–20 bzw. −99…99 bleiben; ungültige oder leere Eingabe springt beim Verlassen auf den letzten Wert zurück. Enter übernimmt. Umsetzung: `NumberStepper` in `DiceSheet.tsx`, `parseDraftInt` in `dice-draft.ts`. Beim Bonus bleibt die normale Tastatur, weil die iOS-Zifferntastatur kein Minus hat. |
 
 ## Begriffe & Systeme
 
@@ -81,9 +82,10 @@ Beim Ausbau des Chats in Plan `003` wurde das Würfel-Sheet vereinfacht nachgeba
 - Abnahmekriterium: Agent prüft die laufende App im Browser-Pane (375 px und Desktop) gegen die Spike-Quelle `git show b5d28e8:src/spike/chat/ChatSpikePage.tsx` (Abschnitt `sheet === "dice"`), **ohne** den Spike selbst zu starten (W8): gleiche Bedienelemente in gleicher Reihenfolge und mit gleichen Texten, gleiche Grenzen (Anzahl 20 → „+“ ohne Wirkung; Bonus −99/99); siebter Term nicht möglich; nicht geposteter Wurf bleibt im Sheet sichtbar, Antippen des Ergebnisfelds legt nur die Summe in die Zwischenablage und zeigt „Kopiert“; nach Schließen und erneutem Öffnen steht wieder 1d20/Bonus 0; mobil (375 px) ohne horizontales Scrollen, Touch-Ziele ≥ 44 px; `npm run lint` grün.
 
 ### T-004: Tests und Smoketest
-- [ ] Beschreibung: Unit-Test `src/lib/chat/dice-draft.test.ts` für die Draft-Logik aus T-003 (W4): Term hinzufügen/entfernen (neuer Term 1d4, siebter Term nicht möglich, Term 1 nicht entfernbar), Grenzen (Anzahl 1–20, Bonus −99…99), `toRollPayload`. Kein React-Komponententest. `src/app/api/worlds/[worldId]/chat/chat.api.test.ts` um einen Fall ergänzen (bisher nur Würfe mit einem Term): `kind: "roll"` mit drei Termen und Bonus, erwartet werden drei gespeicherte Würfel-Terme plus Bonus-Term in `dice_terms` und der Bonus in `dice.text`. Die Datei läuft nicht mit `npm test`, sondern mit `npm run test:rechte` (Dev-Server mit `.env` muss laufen, W5); Smoketest WS.1–WS.6 (Abschnitt *Smoketest Plan 008* unten) wird vom Owner durchlaufen und das Ergebnis dort eingetragen. `.ai/infrastructure/smoketest.md` bleibt unverändert (N.6 ist ein historisches Ergebnis) (W9).
+- [x] Beschreibung: Unit-Test `src/lib/chat/dice-draft.test.ts` für die Draft-Logik aus T-003 (W4): Term hinzufügen/entfernen (neuer Term 1d4, siebter Term nicht möglich, Term 1 nicht entfernbar), Grenzen (Anzahl 1–20, Bonus −99…99), `toRollPayload`. Kein React-Komponententest. `src/app/api/worlds/[worldId]/chat/chat.api.test.ts` um einen Fall ergänzen (bisher nur Würfe mit einem Term): `kind: "roll"` mit drei Termen und Bonus, erwartet werden drei gespeicherte Würfel-Terme plus Bonus-Term in `dice_terms` und der Bonus in `dice.text`. Die Datei läuft nicht mit `npm test`, sondern mit `npm run test:rechte` (Dev-Server mit `.env` muss laufen, W5); Smoketest WS.1–WS.6 (Abschnitt *Smoketest Plan 008* unten) wird vom Owner durchlaufen und das Ergebnis dort eingetragen. `.ai/infrastructure/smoketest.md` bleibt unverändert (N.6 ist ein historisches Ergebnis) (W9).
 - Abhängigkeiten: T-003
 - Abnahmekriterium: Neue Tests grün; `npm run test:rechte` bei laufendem Dev-Server grün; WS.1–WS.6 vom **Owner** lokal durchlaufen und im Abschnitt *Smoketest Plan 008* mit Datum als bestanden eingetragen (W8, T-004 erst danach abhaken); `npm test`, `npm run lint`, `npm run build` grün.
+- Umsetzungsvermerk (2026-09-23): WS.1–WS.6 vom Owner bestanden; `npm test` und `npm run test:rechte` (17 Dateien, 139 Tests) grün, `lint` und `build` grün. Nachtrag N1 (Inline-Eingabe) umgesetzt, WS.7 im Browser geprüft.
 
 ## Smoketest Plan 008
 
@@ -91,9 +93,10 @@ Lokal, mobil (375 px) und Desktop; vom Owner durchzuführen (W8, W9). Ergebnis u
 
 | # | Kriterium | Ergebnis | Beobachtung |
 |---|---|---|---|
-| WS.1 | Sheet zeigt „Würfel“ mit Anzahl-Stepper und d2–d100; „Weiteren Würfel“ fügt „Plus-Würfel 2“ … mit 1d4 hinzu; bei 6 Termen verschwindet „Weiteren Würfel“; „Entfernen“ ab Term 2 | offen | |
-| WS.2 | Grenzen: Anzahl 1–20 („+“ bei 20 ohne Wirkung), Bonus −99…99; Vorschau unter dem Bonus (z. B. `1d20+1d4+2`) stimmt | offen | |
-| WS.3 | „Im Chat posten“ aus: Sheet bleibt offen, Ergebnisfeld zeigt den Wurf, kein Toast; Antippen kopiert nur die Summe und zeigt kurz „Kopiert“ | offen | |
-| WS.4 | „Im Chat posten“ an: Wurf mit mehreren Termen und Bonus erscheint im Chat, Sheet schließt | offen | |
-| WS.5 | Schließen und erneut öffnen: wieder 1d20, Bonus 0, Ergebnisfeld „—“ | offen | |
-| WS.6 | 375 px: kein horizontales Scrollen, Touch-Ziele ≥ 44 px; Fehlerfall (z. B. Server gestoppt) zeigt Meldung im Sheet, Sheet bleibt offen | offen | |
+| WS.1 | Sheet zeigt „Würfel“ mit Anzahl-Stepper und d2–d100; „Weiteren Würfel“ fügt „Plus-Würfel 2“ … mit 1d4 hinzu; bei 6 Termen verschwindet „Weiteren Würfel“; „Entfernen“ ab Term 2 | **bestanden** | Owner 2026-09-23. |
+| WS.2 | Grenzen: Anzahl 1–20 („+“ bei 20 ohne Wirkung), Bonus −99…99; Vorschau unter dem Bonus (z. B. `1d20+1d4+2`) stimmt | **bestanden** | Owner 2026-09-23. |
+| WS.3 | „Im Chat posten“ aus: Sheet bleibt offen, Ergebnisfeld zeigt den Wurf, kein Toast; Antippen kopiert nur die Summe und zeigt kurz „Kopiert“ | **bestanden** | Owner 2026-09-23. |
+| WS.4 | „Im Chat posten“ an: Wurf mit mehreren Termen und Bonus erscheint im Chat, Sheet schließt | **bestanden** | Owner 2026-09-23. |
+| WS.5 | Schließen und erneut öffnen: wieder 1d20, Bonus 0, Ergebnisfeld „—“ | **bestanden** | Owner 2026-09-23. |
+| WS.6 | 375 px: kein horizontales Scrollen, Touch-Ziele ≥ 44 px; Fehlerfall (z. B. Server gestoppt) zeigt Meldung im Sheet, Sheet bleibt offen | **bestanden** | Owner 2026-09-23. |
+| WS.7 | **Inline-Eingabe** (Nachtrag N1): Klick in Anzahl oder Bonus markiert die ganze Zahl; Tippen ersetzt sie; Vorschau läuft mit; Enter übernimmt; zu große Werte werden begrenzt (z. B. Anzahl 50 → 20); leeres Feld springt beim Verlassen auf den alten Wert | **bestanden** | Claude im Browser 2026-09-23 (Test-GM): `1` → `3`, `0` → `-4`, Vorschau `3d20-4`; `50` → `20`; leer → alter Wert. |

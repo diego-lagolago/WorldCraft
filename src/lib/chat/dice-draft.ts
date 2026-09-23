@@ -58,6 +58,15 @@ export function setModifier(draft: DiceDraft, modifier: number): DiceDraft {
   return { ...draft, modifier: clampModifier(modifier) };
 }
 
+/** Parses a typed stepper value (inline edit): whole number, optional leading minus
+ * (ASCII or U+2212). Returns null for empty or invalid input; clamping is left to the setters. */
+export function parseDraftInt(text: string): number | null {
+  const match = /^\s*([-\u2212]?)(\d{1,4})\s*$/.exec(text);
+  if (!match) return null;
+  const value = Number(match[2]);
+  return match[1] && value !== 0 ? -value : value;
+}
+
 export function toRollPayload(draft: DiceDraft): {
   terms: StructuredDiceTerm[];
   modifier: number;
