@@ -19,7 +19,7 @@ import { Sheet } from "./ChannelList";
 
 type Props = {
   postToChat: boolean;
-  onPostToChat: (next: boolean) => void;
+  onPostToChat: (next: boolean) => Promise<{ ok: true } | { ok: false; error: string }>;
   onRoll: (input: RollPayload) => Promise<RollResult>;
   onClose: () => void;
 };
@@ -230,7 +230,12 @@ export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) 
               role="switch"
               aria-checked={postToChat}
               aria-label="Im Chat posten"
-              onClick={() => onPostToChat(!postToChat)}
+              onClick={() => {
+                void onPostToChat(!postToChat).then((res) => {
+                  if (!res.ok) setError(res.error);
+                  else setError(null);
+                });
+              }}
             />
           </div>
         </div>

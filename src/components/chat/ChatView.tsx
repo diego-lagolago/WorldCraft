@@ -175,7 +175,7 @@ export function ChatView({
       {diceOpen && state ? (
         <DiceSheet
           postToChat={state.dicePostToChat}
-          onPostToChat={(next) => void stream.setPostToChat(next)}
+          onPostToChat={(next) => stream.setPostToChat(next)}
           onRoll={(input) => stream.roll(input)}
           onClose={() => setDiceOpen(false)}
         />

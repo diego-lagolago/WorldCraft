@@ -10,7 +10,7 @@
 | CR-001 | Runtime-Risiken | mittel | behoben | Verspäteter Wurf eines geschlossenen Sheets schließt ein neu geöffnetes Sheet |
 | CR-002 | Duplizierung & Modularisierung | mittel | behoben | Summe wird per Regex aus `dice.text` gelesen, obwohl die API `dice.sum` liefert |
 | CR-003 | Fehlerbehandlung & Validierung | niedrig | behoben | Wurf-Fehler doppelt angezeigt (Sheet + Chat-Banner) und löst immer Voll-Reload aus |
-| CR-004 | Fehlerbehandlung & Validierung | niedrig | offen | „Im Chat posten“: Fehler unsichtbar hinter dem Sheet, Doppelklick schaltet mit veraltetem Wert |
+| CR-004 | Fehlerbehandlung & Validierung | niedrig | behoben | „Im Chat posten“: Fehler unsichtbar hinter dem Sheet, Doppelklick schaltet mit veraltetem Wert |
 | CR-005 | Duplizierung & Modularisierung | niedrig | behoben | Roll-Ein-/Ausgabetyp doppelt in `use-chat-stream.ts` und `DiceSheet.tsx` |
 | CR-006 | Lesbarkeit & Wartbarkeit | niedrig | offen | `allowNegative` steuert nur die Tastatur, nicht die Eingabe |
 | CR-007 | Runtime-Risiken | niedrig | offen | `keepSelection` bleibt nach Tastatur-Fokus gesetzt und schluckt den nächsten Klick |
@@ -52,7 +52,7 @@
 - **Entscheidung (Owner, 2026-09-23, Plan-Review):** Fehler nur im Sheet, Reload gezielt. Das ersetzt für `roll` die Vorgabe „`failAndReload` bleibt bestehen“ aus Plan 008 T-002.
 - **Empfehlung:** `ApiFetchResult` (`src/lib/client/api-fetch.ts`) bekommt im Fehlerzweig ein optionales `status?: number` (gesetzt bei HTTP-Fehlern, fehlt bei Netzwerkfehlern; bestehende Aufrufer bleiben kompatibel). `roll` in `use-chat-stream.ts` ruft im Fehlerfall **nicht** mehr `setError`/`failAndReload` auf, sondern gibt nur `{ ok: false, error }` zurück. Neu geladen wird (`reload()`) nur bei HTTP-Status ≥ 401 außer 400, also wenn Kanal/Thread/Rechte sich geändert haben können; bei 400 und Netzwerkfehler kein Reload. `sendText` und andere Aufrufer bleiben unverändert.
 - **Abnahmekriterium:** (a) Wurf bei gestopptem Server: Meldung „Keine Verbindung zum Server.“ nur im Sheet, nach „Abbrechen“ kein `.chat-error`-Banner, kein Reload-Request. (b) Wurf auf einen inzwischen gelöschten Kanal (404): Meldung im Sheet und ein Reload des Chats (Netzwerk-Tab zeigt `GET …/chat`). (c) `npm run typecheck` grün.
-- **Umsetzung (2026-09-23):** `apiFetch`-Fehlerzweig liefert `status` (HTTP) bzw. `status: 0` (Netzwerk, analog `api.ts` — statt optionalem `status?`, damit Aufrufer mit Pflicht-`status` typisieren können). `roll` setzt kein `stream.error` mehr und ruft `reload()` nur bei `status >= 401`. Browser (a): Offline → Alert nur im Sheet, nach Abbrechen kein `.chat-error`. (b) Code-Pfad `status >= 401` (404 inklusive); manuell nicht gegen gelöschten Kanal geprüft. Features.md: N/A.
+- **Umsetzung (2026-09-23):** `apiFetch`-Fehlerzweig liefert `status` (HTTP) bzw. `status: 0` (Netzwerk, analog `api.ts` — statt optionalem `status?`, damit Aufrufer mit Pflicht-`status` typisieren können). `roll` setzt kein `stream.error` mehr und ruft `reload()` nur bei `status >= 401`. Commit `ba33d16`. Browser (a): Offline → Alert nur im Sheet, nach Abbrechen kein `.chat-error`. (b) Code-Pfad `status >= 401` (404 inklusive); manuell nicht gegen gelöschten Kanal geprüft. Features.md: N/A.
 
 ## CR-004 – „Im Chat posten“: Fehler unsichtbar, Doppelklick mit veraltetem Wert
 
@@ -64,6 +64,7 @@
 - **Entscheidung (Owner, 2026-09-23, Plan-Review):** Optimistisch umschalten, bei Fehler zurücksetzen.
 - **Empfehlung:** `setPostToChat(next)` in `use-chat-stream.ts` setzt `state.dicePostToChat` sofort auf `next`, sendet dann den PATCH und gibt `{ ok: true } | { ok: false; error: string }` zurück (kein `setError` mehr für diesen Pfad). Bei Fehler wird auf den Wert **vor diesem Klick** zurückgesetzt, aber nur, wenn seither kein neuerer Klick kam (Request-Zähler/Ref); die Server-Antwort überschreibt den State nicht. `DiceSheet` zeigt den Fehler im bestehenden `role="alert"`-Bereich über den Knöpfen. „Würfeln“ wartet auf einen noch laufenden PATCH (Promise im Ref), bevor der Wurf gesendet wird, weil der Server die Einstellung aus der DB liest.
 - **Abnahmekriterium:** (a) Klick schaltet sofort sichtbar um. (b) Schneller Doppelklick endet im Ausgangszustand, Server-Wert (`GET …/chat`, `dicePostToChat`) stimmt damit überein. (c) PATCH schlägt fehl (Server gestoppt): Schalter springt zurück, Meldung im Sheet, kein `.chat-error`-Banner. (d) Umschalten und sofort „Würfeln“: Der Wurf folgt der neuen Einstellung.
+- **Umsetzung (2026-09-23):** Optimistisches `setPostToChat` mit Seq-Ref-Rollback; Fehler nur im Sheet; `roll` wartet auf pending PATCH. Browser (a)/(b): Sofort-Umschalten und Doppelklick sichtbar ok. (c) Localhost-Offline greift nicht zuverlässig; Rollback-Pfad im Code. (d) `await postToChatPendingRef` vor dem Wurf. Features.md: N/A.
 
 ## CR-005 – Roll-Typen doppelt gepflegt
 

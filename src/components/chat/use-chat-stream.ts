@@ -18,8 +18,12 @@ export function useChatStream(worldId: string, initial: ChatState) {
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const stateRef = useRef(state);
+  const postToChatSeqRef = useRef(0);
+  const postToChatPendingRef = useRef(Promise.resolve());
+  const dicePostToChatRef = useRef(initial.dicePostToChat);
   useEffect(() => {
     stateRef.current = state;
+    if (state) dicePostToChatRef.current = state.dicePostToChat;
   }, [state]);
 
   const reload = useCallback(async () => {
@@ -90,6 +94,8 @@ export function useChatStream(worldId: string, initial: ChatState) {
     if (!state?.channel) {
       return { ok: false, error: "Kein Kanal geladen." };
     }
+    // Server reads dicePostToChat from DB — wait for any in-flight setting PATCH.
+    await postToChatPendingRef.current;
     const body: Record<string, unknown> = {
       kind: "roll",
       terms: input.terms,
@@ -120,16 +126,42 @@ export function useChatStream(worldId: string, initial: ChatState) {
     return { ok: true, posted: true };
   }
 
-  async function setPostToChat(next: boolean): Promise<void> {
-    const res = await apiFetch<{ dicePostToChat: boolean }>(`/api/worlds/${worldId}/chat/settings`, {
-      method: "PATCH",
-      body: JSON.stringify({ dicePostToChat: next }),
-    });
-    if (!res.ok) {
-      setError(res.error);
-      return;
-    }
-    setState((prev) => (prev ? { ...prev, dicePostToChat: res.data.dicePostToChat } : prev));
+  async function setPostToChat(
+    next: boolean,
+  ): Promise<{ ok: true } | { ok: false; error: string }> {
+    const previous = dicePostToChatRef.current;
+    const seq = ++postToChatSeqRef.current;
+    dicePostToChatRef.current = next;
+    setState((prev) => (prev ? { ...prev, dicePostToChat: next } : prev));
+
+    const task = (async (): Promise<{ ok: true } | { ok: false; error: string }> => {
+      const res = await apiFetch<{ dicePostToChat: boolean }>(
+        `/api/worlds/${worldId}/chat/settings`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ dicePostToChat: next }),
+        },
+      );
+      if (!res.ok) {
+        if (seq === postToChatSeqRef.current) {
+          dicePostToChatRef.current = previous;
+          setState((prev) => (prev ? { ...prev, dicePostToChat: previous } : prev));
+        }
+        return { ok: false, error: res.error };
+      }
+      // Keep the optimistic value; do not overwrite from the response.
+      return { ok: true };
+    })();
+
+    postToChatPendingRef.current = Promise.all([
+      postToChatPendingRef.current,
+      task.then(
+        () => undefined,
+        () => undefined,
+      ),
+    ]).then(() => undefined);
+
+    return task;
   }
 
   async function deleteMessage(messageId: string): Promise<void> {
