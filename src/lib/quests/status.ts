@@ -11,6 +11,8 @@ export const QUEST_STATUS_LABEL: Record<QuestStatus, string> = {
 };
 
 export type QuestParticipant = {
+  /** `quest_participants.id` — needed to remove deleted-character snapshots. */
+  id: string;
   characterId: string | null;
   characterName: string;
   /** Link only when the character is still actively brought into the world. */

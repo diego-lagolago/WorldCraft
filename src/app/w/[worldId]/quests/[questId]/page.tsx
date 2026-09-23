@@ -2,10 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LinkedSection } from "@/components/linked/LinkedSection";
 import { RichTextView } from "@/components/editor/RichTextView";
+import { QuestChapters } from "@/components/quests/QuestChapters";
 import { worldPath } from "@/components/shell/nav";
 import { GmBadge } from "@/components/world/display";
 import { isStaff } from "@/lib/authz/types";
-import { resolveMentions } from "@/lib/domain/mention-resolve";
+import { editorMentionStates, resolveMentions } from "@/lib/domain/mention-resolve";
 import { getQuest, QUEST_STATUS_LABEL } from "@/lib/domain/quests";
 import { asRichDoc, extractMentions } from "@/lib/editor/rich-text";
 import { parseUuid } from "@/lib/http";
@@ -19,7 +20,12 @@ export default async function QuestPage({ params }: PageProps<"/w/[worldId]/ques
   if (!quest) notFound();
 
   const doc = asRichDoc(quest.descriptionJson);
-  const mentions = await resolveMentions(world.id, membership.role, membership.userId, extractMentions(doc));
+  const chapterRefs = quest.chapters.flatMap((chapter) => extractMentions(asRichDoc(chapter.bodyJson)));
+  const mentions = await resolveMentions(world.id, membership.role, membership.userId, [
+    ...extractMentions(doc),
+    ...chapterRefs,
+  ]);
+  const staff = isStaff(membership.role);
 
   return (
     <>
@@ -31,7 +37,7 @@ export default async function QuestPage({ params }: PageProps<"/w/[worldId]/ques
         <span className="badge">Quest</span>
         <GmBadge visibility={quest.visibility} />
         <span className={`badge st-${quest.status}`}>{QUEST_STATUS_LABEL[quest.status]}</span>
-        {isStaff(membership.role) ? (
+        {staff ? (
           <Link className="btn sm" style={{ marginLeft: "auto" }} href={worldPath(world.id, `/quests/${quest.id}/edit`)}>
             Bearbeiten
           </Link>
@@ -48,14 +54,14 @@ export default async function QuestPage({ params }: PageProps<"/w/[worldId]/ques
                 {quest.participants.map((entry) =>
                   entry.href && entry.characterId ? (
                     <Link
-                      key={`${entry.characterId}-${entry.characterName}`}
+                      key={entry.id}
                       className="chip"
                       href={worldPath(world.id, `/characters/${entry.characterId}`)}
                     >
                       {entry.characterName}
                     </Link>
                   ) : (
-                    <span key={`text-${entry.characterName}`} className="chip">
+                    <span key={entry.id} className="chip">
                       {entry.characterName}
                     </span>
                   ),
@@ -73,9 +79,18 @@ export default async function QuestPage({ params }: PageProps<"/w/[worldId]/ques
           viewerId={membership.userId}
           kind="quest"
           id={quest.id}
-          canEdit={isStaff(membership.role)}
+          canEdit={staff}
         />
       </div>
+      <QuestChapters
+        worldId={world.id}
+        questId={quest.id}
+        chapters={quest.chapters}
+        actorId={membership.userId}
+        staff={staff}
+        mentions={mentions}
+        mentionStates={editorMentionStates(mentions)}
+      />
     </>
   );
 }

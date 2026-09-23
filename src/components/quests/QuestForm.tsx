@@ -46,13 +46,22 @@ export function QuestForm({
   const [title, setTitle] = useState(quest?.title ?? "");
   const [status, setStatus] = useState<QuestStatus>(quest?.status ?? "open");
   const [visibility, setVisibility] = useState<ContentVisibility>(quest?.visibility ?? "owner_only");
-  const [participantIds, setParticipantIds] = useState<string[]>(
-    () => quest?.participants.map((entry) => entry.characterId).filter((id): id is string => Boolean(id)) ?? [],
-  );
+  const initialActive = () =>
+    new Set(
+      (quest?.participants ?? [])
+        .filter((entry) => entry.href && entry.characterId)
+        .map((entry) => entry.characterId as string),
+    );
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(initialActive);
+  const [removedSnapshotIds, setRemovedSnapshotIds] = useState<string[]>([]);
   const [description, setDescription] = useState<RichDoc | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const allowOwner = !quest || quest.ownerId === actorId;
+
+  const snapshots = (quest?.participants ?? []).filter(
+    (entry) => !entry.href && !removedSnapshotIds.includes(entry.id),
+  );
 
   const base = `/api/worlds/${worldId}/quests`;
   const viewPath = (id: string) => worldPath(worldId, `/quests/${id}`);
@@ -67,28 +76,46 @@ export function QuestForm({
   }
 
   function toggleParticipant(id: string) {
-    setParticipantIds((current) =>
-      current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id],
-    );
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    const payload = {
-      title,
-      status,
-      visibility,
-      participantIds,
-      ...(description ? { description } : {}),
-    };
     if (quest) {
+      const initial = initialActive();
+      const addParticipantIds = [...selectedIds].filter((id) => !initial.has(id));
+      const removeParticipantIds = [
+        ...[...initial].filter((id) => !selectedIds.has(id)),
+        ...removedSnapshotIds,
+      ];
+      const payload: Record<string, unknown> = {
+        title,
+        status,
+        visibility,
+        ...(description ? { description } : {}),
+      };
+      if (addParticipantIds.length > 0) payload.addParticipantIds = addParticipantIds;
+      if (removeParticipantIds.length > 0) payload.removeParticipantIds = removeParticipantIds;
       const saved = await run(apiRequest(`${base}/${quest.id}`, "PATCH", payload));
       if (saved.ok) {
         router.push(viewPath(quest.id));
         router.refresh();
       }
     } else {
-      const created = await run(apiRequest<{ quest: { id: string } }>(base, "POST", payload));
+      const created = await run(
+        apiRequest<{ quest: { id: string } }>(base, "POST", {
+          title,
+          status,
+          visibility,
+          participantIds: [...selectedIds],
+          ...(description ? { description } : {}),
+        }),
+      );
       if (created.ok) {
         router.push(viewPath(created.data.quest.id));
         router.refresh();
@@ -137,12 +164,12 @@ export function QuestForm({
 
       <div className="card stack">
         <h2 style={{ margin: 0 }}>Beteiligte</h2>
-        {characters.length === 0 ? (
+        {characters.length === 0 && snapshots.length === 0 ? (
           <p className="muted">Noch keine mitgebrachten Charaktere in dieser Welt.</p>
         ) : (
           <div className="stack" style={{ gap: 8 }}>
             {characters.map((character) => {
-              const checked = participantIds.includes(character.id);
+              const checked = selectedIds.has(character.id);
               return (
                 <label key={character.id} className="row" style={{ gap: 10 }}>
                   <input
@@ -154,6 +181,22 @@ export function QuestForm({
                 </label>
               );
             })}
+            {snapshots.map((entry) => (
+              <div key={entry.id} className="row" style={{ gap: 10, alignItems: "center" }}>
+                <span>
+                  {entry.characterName}{" "}
+                  <span className="muted small">nicht mehr in der Welt</span>
+                </span>
+                <button
+                  type="button"
+                  className="btn"
+                  aria-label={`${entry.characterName} entfernen`}
+                  onClick={() => setRemovedSnapshotIds((ids) => [...ids, entry.id])}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>

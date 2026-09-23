@@ -215,3 +215,144 @@ describe("CR-005: bad ids and bodies on quest routes", () => {
     expect((await api(playerB, "GET", w("/quests"))).status).toBe(403);
   });
 });
+
+describe("CR-005: quest participants after leave or delete", () => {
+  type Participant = { id: string; characterId: string | null; characterName: string; href: boolean };
+
+  async function join(session: TestSession) {
+    const invite = await api<{ code: string }>(gm, "POST", w("/invites"), { validity: "seven_days" });
+    expect(invite.status).toBe(201);
+    expect((await api(session, "POST", `/api/invites/${invite.data.code}/join`)).status).toBe(200);
+  }
+
+  async function getParticipants(questId: string) {
+    const view = await api<{ quest: { participants: Participant[] } }>(gm, "GET", w(`/quests/${questId}`));
+    expect(view.status).toBe(200);
+    return view.data.quest.participants;
+  }
+
+  it("(1)+(2) leave keeps snapshot; bring-back restores link and live name", async () => {
+    const createdChar = await api<{ id: string }>(playerA, "POST", "/api/characters", {
+      name: "Abenteurer",
+    });
+    expect(createdChar.status).toBe(201);
+    const charId = createdChar.data.id;
+    expect((await api(playerA, "POST", w("/characters"), { characterId: charId })).status).toBe(200);
+
+    const quest = await createQuest(gm, {
+      title: "Mit Abenteurer",
+      visibility: "published",
+      participantIds: [charId],
+    });
+
+    expect((await api(playerA, "POST", w("/leave"))).status).toBe(200);
+
+    const titleOnly = await api(gm, "PATCH", w(`/quests/${quest.id}`), { title: "Nur Titel" });
+    expect(titleOnly.status).toBe(200);
+    expect(await getParticipants(quest.id)).toEqual([
+      expect.objectContaining({ characterId: charId, characterName: "Abenteurer", href: false }),
+    ]);
+
+    await join(playerA);
+    expect((await api(playerA, "POST", w("/characters"), { characterId: charId })).status).toBe(200);
+    expect((await api(playerA, "POST", w("/characters"), { characterId: broughtId })).status).toBe(200);
+
+    expect(await getParticipants(quest.id)).toEqual([
+      expect.objectContaining({ characterId: charId, characterName: "Abenteurer", href: true }),
+    ]);
+
+    expect((await api(playerA, "PATCH", `/api/characters/${charId}`, { name: "Rückkehrer" })).status).toBe(200);
+    expect(await getParticipants(quest.id)).toEqual([
+      expect.objectContaining({ characterId: charId, characterName: "Rückkehrer", href: true }),
+    ]);
+
+    await sql`DELETE FROM characters WHERE id = ${charId}`;
+  });
+
+  it("(3)+(4) deleted character snapshot survives unrelated PATCH and is removed only via remove", async () => {
+    const disposable = await api<{ id: string }>(playerA, "POST", "/api/characters", {
+      name: "Gelöschter Held",
+    });
+    expect(disposable.status).toBe(201);
+    const charB = disposable.data.id;
+    expect((await api(playerA, "POST", w("/characters"), { characterId: charB })).status).toBe(200);
+
+    const other = await api<{ id: string }>(playerA, "POST", "/api/characters", {
+      name: "Anderer Held",
+    });
+    expect(other.status).toBe(201);
+    const charOther = other.data.id;
+    expect((await api(playerA, "POST", w("/characters"), { characterId: charOther })).status).toBe(200);
+
+    const quest = await createQuest(gm, {
+      title: "Zwei Beteiligte",
+      visibility: "published",
+      participantIds: [charB, broughtId],
+    });
+
+    expect((await api(playerA, "DELETE", `/api/characters/${charB}`)).status).toBe(200);
+
+    const changeOthers = await api(gm, "PATCH", w(`/quests/${quest.id}`), {
+      addParticipantIds: [charOther],
+      removeParticipantIds: [broughtId],
+    });
+    expect(changeOthers.status).toBe(200);
+
+    const afterChange = await getParticipants(quest.id);
+    expect(afterChange).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ characterId: null, characterName: "Gelöschter Held", href: false }),
+        expect.objectContaining({ characterId: charOther, characterName: "Anderer Held", href: true }),
+      ]),
+    );
+    expect(afterChange).toHaveLength(2);
+    expect(afterChange.some((entry) => entry.characterId === broughtId)).toBe(false);
+
+    const snapshotId = afterChange.find((entry) => entry.characterId === null)!.id;
+    const removed = await api(gm, "PATCH", w(`/quests/${quest.id}`), {
+      removeParticipantIds: [snapshotId],
+    });
+    expect(removed.status).toBe(200);
+    expect(await getParticipants(quest.id)).toEqual([
+      expect.objectContaining({ characterId: charOther, characterName: "Anderer Held", href: true }),
+    ]);
+
+    await sql`DELETE FROM characters WHERE id = ${charOther}`;
+  });
+
+  it("(5) adding a non-brought character via addParticipantIds is rejected", async () => {
+    const quest = await createQuest(gm, { title: "Leer", visibility: "published" });
+    const bad = await api(gm, "PATCH", w(`/quests/${quest.id}`), {
+      addParticipantIds: [foreignCharId],
+    });
+    expect(bad.status).toBe(400);
+    expect(bad.data).toMatchObject({ error: expect.stringMatching(/mitgebracht/i) });
+  });
+
+  it("participantIds full list keeps unnamed snapshots", async () => {
+    const disposable = await api<{ id: string }>(playerA, "POST", "/api/characters", {
+      name: "Snapshot-Schutz",
+    });
+    expect(disposable.status).toBe(201);
+    const charId = disposable.data.id;
+    expect((await api(playerA, "POST", w("/characters"), { characterId: charId })).status).toBe(200);
+
+    const quest = await createQuest(gm, {
+      title: "Liste ohne Snapshot",
+      visibility: "published",
+      participantIds: [charId, broughtId],
+    });
+    expect((await api(playerA, "DELETE", `/api/characters/${charId}`)).status).toBe(200);
+
+    const sync = await api(gm, "PATCH", w(`/quests/${quest.id}`), {
+      participantIds: [broughtId],
+    });
+    expect(sync.status).toBe(200);
+    expect(await getParticipants(quest.id)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ characterId: null, characterName: "Snapshot-Schutz", href: false }),
+        expect.objectContaining({ characterId: broughtId, href: true }),
+      ]),
+    );
+  });
+});
