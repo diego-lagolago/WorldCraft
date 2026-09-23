@@ -47,7 +47,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 
 | Feature | Was es tut | Status |
 |---|---|---|
-| Artikel | Titel, Titelbild, Rich-Text, dreistufige Sichtbarkeit; Default `nur ich` | MVP F2 / Plan 004 / shipped |
+| Artikel | Titel, Titelbild (auch beim Anlegen wählbar), Rich-Text, dreistufige Sichtbarkeit; Default `nur ich` | MVP F2 / Plan 004 / Plan 005 T-009 / shipped |
 | Vorlagen | Typen Person / Ort / Organisation / Gegenstand / ohne; strukturierte Felder | MVP F3 / shipped |
 | TipTap-Editor | Erlaubte Formatierungen laut Plan 001; Paste ohne Bilder/Tabellen | MVP / shipped |
 | Erwähnungen (`@`) | Teilwortsuche mit Kategorie; Bestätigen per Enter, Tab oder Klick; Stub rot → blau | MVP F2 / shipped |

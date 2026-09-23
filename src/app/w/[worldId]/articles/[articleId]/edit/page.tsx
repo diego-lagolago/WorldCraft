@@ -7,8 +7,12 @@ import { asRichDoc, extractMentions } from "@/lib/editor/rich-text";
 import { parseUuid } from "@/lib/http";
 import { requireWorldPage } from "@/lib/page-context";
 
-export default async function EditArticlePage({ params }: PageProps<"/w/[worldId]/articles/[articleId]/edit">) {
+export default async function EditArticlePage({
+  params,
+  searchParams,
+}: PageProps<"/w/[worldId]/articles/[articleId]/edit">) {
   const { worldId, articleId } = await params;
+  const query = await searchParams;
   const { world, membership } = await requireWorldPage(worldId);
   if (!isStaff(membership.role)) notFound();
   const id = parseUuid(articleId);
@@ -36,6 +40,11 @@ export default async function EditArticlePage({ params }: PageProps<"/w/[worldId
       }}
       refOptions={refOptions}
       mentionStates={editorMentionStates(mentions)}
+      initialError={
+        query.titleImageError === "1"
+          ? "Artikel angelegt, Titelbild konnte nicht hochgeladen werden."
+          : undefined
+      }
     />
   );
 }

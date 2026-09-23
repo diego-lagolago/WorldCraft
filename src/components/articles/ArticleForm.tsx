@@ -9,6 +9,7 @@ import { IMAGE_ACCEPT } from "@/components/world/image-accept";
 import { ContentVisibilitySelect } from "@/components/world/VisibilitySelect";
 import type { ContentVisibility } from "@/lib/authz/types";
 import { apiRequest, uploadImage } from "@/lib/client/api";
+import { usePendingImageUpload } from "@/lib/client/usePendingImageUpload";
 import type { ArticleRefOption } from "@/lib/domain/articles";
 import type { MentionState } from "@/lib/editor/mentions";
 import type { RichDoc } from "@/lib/editor/rich-text";
@@ -64,6 +65,7 @@ export function ArticleForm({
   actorId,
   refOptions,
   mentionStates,
+  initialError,
 }: {
   worldId: string;
   article?: Article;
@@ -71,6 +73,8 @@ export function ArticleForm({
   actorId: string;
   refOptions: ArticleRefOption[];
   mentionStates?: Record<string, MentionState>;
+  /** Shown once after create+upload failure (edit page). */
+  initialError?: string;
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(article?.title ?? "");
@@ -78,14 +82,18 @@ export function ArticleForm({
     templateOf(article?.templateType ?? "none").type,
   );
   const [visibility, setVisibility] = useState<ContentVisibility>(article?.visibility ?? "owner_only");
-  const [fields, setFields] = useState(() => fieldsForForm(templateOf(article?.templateType ?? "none").type, article?.templateFields ?? {}));
+  const [fields, setFields] = useState(() =>
+    fieldsForForm(templateOf(article?.templateType ?? "none").type, article?.templateFields ?? {}),
+  );
   const [body, setBody] = useState<RichDoc | null>(null);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError ?? null);
+  const pendingImage = usePendingImageUpload();
   const allowOwner = !article || article.ownerId === actorId;
 
   const base = `/api/worlds/${worldId}/articles`;
   const viewPath = (id: string) => worldPath(worldId, `/articles/${id}`);
+  const editPath = (id: string) => worldPath(worldId, `/articles/${id}/edit`);
   const template = templateOf(templateType);
 
   async function run<T>(request: Promise<{ ok: true; data: T } | { ok: false; error: string }>) {
@@ -124,23 +132,46 @@ export function ArticleForm({
       }
     } else {
       const created = await run(apiRequest<{ article: { id: string } }>(base, "POST", payload));
-      if (created.ok) {
-        router.push(viewPath(created.data.article.id));
-        router.refresh();
+      if (!created.ok) return;
+      const newId = created.data.article.id;
+      if (pendingImage.hasFile) {
+        setPending(true);
+        const uploaded = await pendingImage.uploadAfterCreate({
+          kind: "article_title",
+          worldId,
+          targetId: newId,
+        });
+        setPending(false);
+        if (!uploaded || !uploaded.ok) {
+          pendingImage.clear();
+          router.push(`${editPath(newId)}?titleImageError=1`);
+          router.refresh();
+          return;
+        }
+        pendingImage.clear();
       }
+      router.push(viewPath(newId));
+      router.refresh();
     }
   }
 
   async function onImage(event: ChangeEvent<HTMLInputElement>) {
+    if (!article) {
+      pendingImage.choose(event);
+      return;
+    }
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!file || !article) return;
+    if (!file) return;
     const result = await run(uploadImage({ file, kind: "article_title", worldId, targetId: article.id }));
     if (result.ok) router.refresh();
   }
 
   async function onRemoveImage() {
-    if (!article) return;
+    if (!article) {
+      pendingImage.clear();
+      return;
+    }
     const result = await run(apiRequest(`${base}/${article.id}`, "PATCH", { removeTitleImage: true }));
     if (result.ok) router.refresh();
   }
@@ -184,22 +215,28 @@ export function ArticleForm({
         <ContentVisibilitySelect value={visibility} onChange={setVisibility} allowOwner={allowOwner} />
       </div>
 
-      {article ? (
-        <div className="card row">
+      <div className="card stack" style={{ gap: 8 }}>
+        <div className="row">
           <span className="grow">Titelbild</span>
           <label className="btn sm">
             Bild wählen
             <input type="file" accept={IMAGE_ACCEPT} hidden onChange={onImage} disabled={pending} />
           </label>
-          {article.titleImageId ? (
+          {article?.titleImageId || pendingImage.hasFile ? (
             <button type="button" className="btn sm" onClick={onRemoveImage} disabled={pending}>
               Entfernen
             </button>
           ) : null}
         </div>
-      ) : (
-        <p className="small muted">Das Titelbild lässt sich nach dem Anlegen hochladen.</p>
-      )}
+        {pendingImage.previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- local blob preview
+          <img
+            src={pendingImage.previewUrl}
+            alt="Vorschau Titelbild"
+            style={{ maxWidth: "100%", maxHeight: 160, objectFit: "cover", borderRadius: 10 }}
+          />
+        ) : null}
+      </div>
 
       {template.fields.length > 0 ? (
         <div className="card stack">
