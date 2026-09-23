@@ -125,7 +125,7 @@ Wie in Plan `003` und `.ai/conventions.md` (*Commit & Push*): nach jeder abgesch
 - Abnahmekriterium: (1) `git grep -n "owner_only" .ai/architecture` findet Treffer in beiden Datenmodellen. (2) `datenmodell-fachlich.md` enthält die Abschnitte 3.13a und 3.13b und nennt die Karten-Ausnahme in 2.2 ausdrücklich. (3) `datenmodell.md` Abschnitt 5 enthält `APP-VIS-OWNER`, `APP-CHAPTER-REL`, `APP-NOTE-VERSION`, `APP-NOTE-NO-REL`. (4) Keine Aussage in den Normen widerspricht mehr E1–E13 (Suche nach „Standard `nur Spielleitung`“ / „Default `gm_only`“ zeigt nur noch Universen/Karten oder ist angepasst). (5) Die Roadmap-Übersicht führt `004` vor `002`; `002` nennt „startet nach `004`“ (R4).
 - Umsetzung (2026-09-23): Normen und Roadmap wie oben; Features-Katalog N/A (nur Doku).
 ### T-002: UI-Prototyp erweitern und freigeben lassen
-- [ ] Beschreibung: `spikes/ui-prototype/index.html` erweitern (Arbeitsweise laut Roadmap: UI vor Umsetzung als Prototyp abstimmen):
+- [x] Beschreibung: `spikes/ui-prototype/index.html` erweitern (Arbeitsweise laut Roadmap: UI vor Umsetzung als Prototyp abstimmen):
   - Sichtbarkeitsauswahl mit drei Stufen („nur ich“, „nur Spielleitung“, „veröffentlicht“) in Artikel-, Quest-, Kapitel- und Pin-Formular; Badge für `nur ich` analog zum bestehenden Badge „nur Spielleitung“; Universum- und Kartenformular unverändert zweistufig.
   - Quest-Seite: Beschreibung, darunter Kapitelliste (Titel, Text, Sichtbarkeits-Badge), für die Spielleitung Kapitel anlegen, bearbeiten, löschen, verschieben und die Sichtbarkeit direkt in der Liste schalten.
   - Quest-Seite: Notizblock-Bereich (Lesen, Bearbeiten, Speichern, Konflikthinweis mit „Neu laden“).
@@ -133,7 +133,8 @@ Wie in Plan `003` und `.ai/conventions.md` (*Commit & Push*): nach jeder abgesch
   - Nummerierung der Kapitel aus Player-Sicht: fortlaufend über die für ihn sichtbaren Kapitel (verrät keine versteckten Kapitel).
 - Abhängigkeiten: T-001
 - Abnahmekriterium: (1) Der Prototyp zeigt alle oben genannten Punkte auf 390 px und Desktop. (2) Der Projektinhaber hat den Prototyp im Chat freigegeben; Datum der Freigabe steht in diesem Plan unter T-002. (3) Freigegebene Beschriftungen und Anordnung sind in den Aufgaben T-005, T-008, T-010 als Referenz übernommen (Verweis auf den Prototyp genügt).
-
+- Freigabe: 2026-09-23 (Projektinhaber im Chat). Layout: Kapitel volle Breite unter Verknüpft; Notizblock per 📝-Icon als Sheet; Löschen mit Confirm-Dialog. Scroll-Anker an Elementposition bewusst nicht umgesetzt (kosmetisch akzeptiert).
+- Umsetzung (2026-09-23): `spikes/ui-prototype/index.html` (Plan 004). Features-Katalog N/A (nur Prototyp).
 ### T-003: Schema für Owner und dreistufige Sichtbarkeit
 - [ ] Beschreibung: In `src/db/schema.ts`:
   - neues Enum `content_visibility` (`owner_only`, `gm_only`, `published`); `visibility_status` bleibt für `universes` und `maps`;

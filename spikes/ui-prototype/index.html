@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>WorldCraft – UI-Prototyp (Plan 003)</title>
+<title>WorldCraft – UI-Prototyp (Plan 004)</title>
 <style>
 :root{
   --bg:#0b0b0f; --panel:#15151c; --panel2:#1c1c25; --line:#2a2a36; --text:#ece9e4; --muted:#9d9aa6;
@@ -76,7 +76,20 @@ h1,h2,h3{margin:0}
 .jpill{min-height:36px;font-size:13px}
 .jpill.gm{color:var(--gm);border-color:#4b3c7a;background:#1d1830}
 .badge.gm{color:var(--gm);border-color:#4b3c7a;background:#1d1830}
+.badge.owner{color:#f5d08a;border-color:#6a4e1a;background:#2a2210}
 .badge.st-open{color:#cbd5e1}.badge.st-active{color:var(--accent);border-color:#5a4415}
+.note-fab{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);display:grid;place-items:center;font-size:20px;flex:none}
+.note-fab.has{border-color:var(--accent);color:var(--accent)}
+.quest-side{display:flex;flex-direction:column;gap:12px}
+.chapters-block{margin-top:14px}
+.chapter{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--panel2)}
+.chapter .ch-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.chapter .ch-num{font-weight:700;color:var(--muted);min-width:1.5em}
+.chapter .ch-actions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.note-conflict{border:1px solid #5b1f24;background:#2a1214;border-radius:10px;padding:10px 12px;color:#ffb3b3}
+.vis-select{display:flex;flex-direction:column;gap:4px}
+.vis-select select{width:100%}
+.pin.hidden-owner::after{content:"ich";position:absolute;top:-6px;right:-8px;font-size:10px;font-weight:800;background:#f5d08a;color:#1a1204;border-radius:6px;padding:1px 4px}
 .badge.st-completed{color:var(--ok);border-color:#1f5a3f}.badge.st-failed{color:var(--red);border-color:#5b1f24}
 .av{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;font-weight:700;font-size:14px;color:#111}
 .av.lg{width:84px;height:84px;font-size:28px}
@@ -247,8 +260,9 @@ h1,h2,h3{margin:0}
 <div id="overlay"></div>
 <script>
 /* =====================================================================
-   WorldCraft UI-Prototyp zu Plan 003. Reine Attrappe: keine Server,
-   keine Persistenz. Die Rolle oben rechts simuliert die Rechtematrix.
+   WorldCraft UI-Prototyp zu Plan 004. Reine Attrappe: keine Server,
+   keine Persistenz. Die Rolle oben rechts simuliert die Rechtematrix
+   inkl. Owner-Stufe („nur ich“).
    ===================================================================== */
 
 const PIN_META = {
@@ -303,19 +317,32 @@ const D = {
   },
   maps:{ m1:{u:"u1",name:"Splitterlande",vis:"published",style:"land"}, m2:{u:"u2",name:"Schattenebene",vis:"gm_only",style:"shadow"} },
   articles:{
-    a1:{title:"Gottschleim",tpl:"none",vis:"published",edited:true,body:"<p>Ein uralter Schleim, der in den Höhlen unter [[article:a2]] haust. Die Gruppe hat [[quest:q1]] angenommen.</p><p><b>Schwäche:</b> Feuer und Salz.</p>",f:{}},
-    a2:{title:"Burg Rabenstein",tpl:"place",vis:"published",edited:true,body:"<h2>Geschichte</h2><p>Stammsitz von [[article:a3]]. Hinter den Mauern trifft sich heimlich der [[article:a4]].</p><p>Weiter nördlich liegen die [[article:a6]].</p><blockquote>„Rabenstein fällt nie.“ – Inschrift am Tor</blockquote>",f:{kind:"building",ruler:["article","a3"]}},
-    a3:{title:"Graf Aldric",tpl:"person",vis:"published",edited:true,body:"<p>Ein misstrauischer Herrscher mit grauem Bart. Man munkelt, er gehöre zum [[article:a7]].</p><p>Er ist mit [[character:c2]] seit dem Turnier verfeindet.</p>",f:{occupation:"Graf von Rabenstein",status:"alive",location:["article","a2"],organization:["article","a4"]}},
-    a4:{title:"Orden der Asche",tpl:"organization",vis:"published",edited:true,body:"<p>Ein Ritterorden, der die Grenzen gegen Schleimwesen verteidigt.</p>",f:{kind:"religion",leader:["article","a3"],seat:["article","a2"]}},
-    a5:{title:"Klinge Morgenrot",tpl:"item",vis:"published",edited:true,body:"<p>Geschmiedet in der [[universe:u2]]. Leuchtet in der Nähe von Schleim.</p>",f:{kind:"artifact",owner:["character","c1"]}},
-    a6:{title:"Tore von Wertheim",tpl:"none",vis:"gm_only",edited:false,body:"",f:{}},
-    a7:{title:"Kult des Schwarzen Mondes",tpl:"organization",vis:"gm_only",edited:true,body:"<p>Der Kult plant die Rückkehr des [[article:a1]].</p>",f:{kind:"cult",leader:["article","a3"]}}
+    a1:{title:"Gottschleim",tpl:"none",vis:"published",owner:"diego",edited:true,body:"<p>Ein uralter Schleim, der in den Höhlen unter [[article:a2]] haust. Die Gruppe hat [[quest:q1]] angenommen.</p><p><b>Schwäche:</b> Feuer und Salz.</p>",f:{}},
+    a2:{title:"Burg Rabenstein",tpl:"place",vis:"published",owner:"diego",edited:true,body:"<h2>Geschichte</h2><p>Stammsitz von [[article:a3]]. Hinter den Mauern trifft sich heimlich der [[article:a4]].</p><p>Weiter nördlich liegen die [[article:a6]].</p><blockquote>„Rabenstein fällt nie.“ – Inschrift am Tor</blockquote>",f:{kind:"building",ruler:["article","a3"]}},
+    a3:{title:"Graf Aldric",tpl:"person",vis:"published",owner:"diego",edited:true,body:"<p>Ein misstrauischer Herrscher mit grauem Bart. Man munkelt, er gehöre zum [[article:a7]].</p><p>Er ist mit [[character:c2]] seit dem Turnier verfeindet.</p>",f:{occupation:"Graf von Rabenstein",status:"alive",location:["article","a2"],organization:["article","a4"]}},
+    a4:{title:"Orden der Asche",tpl:"organization",vis:"published",owner:"diego",edited:true,body:"<p>Ein Ritterorden, der die Grenzen gegen Schleimwesen verteidigt.</p>",f:{kind:"religion",leader:["article","a3"],seat:["article","a2"]}},
+    a5:{title:"Klinge Morgenrot",tpl:"item",vis:"published",owner:"diego",edited:true,body:"<p>Geschmiedet in der [[universe:u2]]. Leuchtet in der Nähe von Schleim.</p>",f:{kind:"artifact",owner:["character","c1"]}},
+    a6:{title:"Tore von Wertheim",tpl:"none",vis:"gm_only",owner:"diego",edited:false,body:"",f:{}},
+    a7:{title:"Kult des Schwarzen Mondes",tpl:"organization",vis:"gm_only",owner:"mara",edited:true,body:"<p>Der Kult plant die Rückkehr des [[article:a1]].</p>",f:{kind:"cult",leader:["article","a3"]}},
+    a8:{title:"Wolfsspuren (Entwurf)",tpl:"none",vis:"owner_only",owner:"diego",edited:true,body:"<p>Nur Diego sieht diesen Entwurf.</p>",f:{}}
   },
   quests:{
-    q1:{title:"Töte den Gottschleim",status:"active",vis:"published",parts:["c1","c2"],desc:"<p>Der Gottschleim bedroht [[article:a2]]. Auftrag von [[article:a3]]. Belohnung: 500 Gold.</p>"},
-    q2:{title:"Das Erbe von Rabenstein",status:"open",vis:"gm_only",parts:["c3"],desc:"<p>Geheim: [[article:a3]] hat keinen legitimen Erben.</p>"},
-    q3:{title:"Die verlorene Karawane",status:"completed",vis:"published",parts:["c1","c4"],desc:"<p>Die Karawane wurde am Wolfspass gefunden.</p>"},
-    q4:{title:"Flucht aus der Gruft",status:"failed",vis:"published",parts:["c3"],desc:"<p>Knapp überlebt.</p>"}
+    q1:{title:"Töte den Gottschleim",status:"active",vis:"published",owner:"diego",parts:["c1","c2"],desc:"<p>Der Gottschleim bedroht [[article:a2]]. Auftrag von [[article:a3]]. Belohnung: 500 Gold.</p>"},
+    q2:{title:"Das Erbe von Rabenstein",status:"open",vis:"gm_only",owner:"diego",parts:["c3"],desc:"<p>Geheim: [[article:a3]] hat keinen legitimen Erben.</p>"},
+    q3:{title:"Die verlorene Karawane",status:"completed",vis:"published",owner:"diego",parts:["c1","c4"],desc:"<p>Die Karawane wurde am Wolfspass gefunden.</p>"},
+    q4:{title:"Flucht aus der Gruft",status:"failed",vis:"published",owner:"diego",parts:["c3"],desc:"<p>Knapp überlebt.</p>"},
+    q5:{title:"Erlege den Wolf",status:"active",vis:"published",owner:"diego",parts:["c1","c2"],desc:"<p>Ein gefährlicher Wolf bedroht die Handelswege. Die Gruppe soll ihn finden und erlegen.</p>"}
+  },
+  chapters:{
+    ch1:{quest:"q5",title:"Finde den Wolf",body:"<p>Spuren führen zum Wolfspass ([[pin:p7]]). Frage [[article:a3]] nach Hinweisen.</p>",pos:0,vis:"gm_only",owner:"diego"},
+    ch2:{quest:"q5",title:"Töte den Wolf",body:"<p>Der Kampf findet in der Nähe der [[article:a2]] statt.</p>",pos:1,vis:"gm_only",owner:"diego"},
+    ch3:{quest:"q5",title:"Belohnung",body:"<p>500 Gold von [[article:a3]]. Geheimer Bonus: Hinweis auf den [[article:a1]].</p>",pos:2,vis:"gm_only",owner:"diego"},
+    ch4:{quest:"q1",title:"Vorbereitung",body:"<p>Salz und Fackeln besorgen bei [[pin:p3]].</p>",pos:0,vis:"published",owner:"diego"},
+    ch5:{quest:"q1",title:"Der Angriff",body:"<p>Nur Diego plant den Hinterhalt.</p>",pos:1,vis:"owner_only",owner:"diego"}
+  },
+  notes:{
+    q1:{body:"<p>Elara: Wir brauchen mehr Salz. Brom: Ich hole es vom Händler.</p>",version:2,updatedBy:"jonas",updatedAt:"heute 14:20"},
+    q5:{body:"",version:0,updatedBy:null,updatedAt:null}
   },
   characters:{
     c1:{name:"Elara Sturmwind",owner:"diego",cls:"Waldläuferin",attrs:[12,17,14,11,15,9],sk:[{name:"Heimlichkeit",attr:1,level:"trained"},{name:"Wahrnehmung",attr:4,level:"expertise"},{name:"Spurenlesen",attr:4,level:"trained"},{name:"Bogenbau",attr:1,level:"untrained"}],ab:[{text:"Zwei Pfeile gleichzeitig schießen",attr:1},{text:"Fährten im Regen lesen",attr:4}],pers:"Spricht leise, beobachtet viel.",ideals:"Freiheit über alles.",bonds:"Ihr Wolf Grau.",flaws:"Traut keinem Adligen.",bio:"<p>Aufgewachsen in den Wäldern um [[article:a2]]. Trägt die [[article:a5]].</p>",imgs:3},
@@ -325,15 +352,16 @@ const D = {
   },
   brought:["c1","c3","c2","c4"],
   pins:{
-    p1:{m:"m1",t:"city",title:"Burg Rabenstein",x:.46,y:.40,vis:"published",desc:"<p>Sitz von [[article:a3]]. Mehr unter [[article:a2]].</p>"},
-    p2:{m:"m1",t:"boss",title:"Schleimhöhle",x:.68,y:.62,vis:"published",desc:"<p>Hier lauert der [[article:a1]]. Ziel von [[quest:q1]].</p>"},
-    p3:{m:"m1",t:"shop",title:"Händler Orvin",x:.39,y:.53,vis:"published",desc:""},
-    p4:{m:"m1",t:"dungeon",title:"Vergessene Gruft",x:.23,y:.30,vis:"gm_only",desc:"<p>Eingang zum Heiligtum des [[article:a7]].</p>"},
-    p5:{m:"m1",t:"fishing",title:"Silbersee",x:.60,y:.27,vis:"published",desc:"<p>Heimat von [[character:c4]].</p>"},
-    p6:{m:"m1",t:"teleporter",title:"Runenkreis",x:.82,y:.33,vis:"published",desc:"<p>Führt in die [[universe:u2]].</p>"},
-    p7:{m:"m1",t:"danger",title:"Wolfspass",x:.30,y:.72,vis:"published",desc:"<p>Schauplatz von [[quest:q3]].</p>"},
-    p8:{m:"m1",t:"treasure",title:"Versunkener Hort",x:.76,y:.80,vis:"published",desc:""},
-    p9:{m:"m2",t:"landmark",title:"Obsidianturm",x:.5,y:.45,vis:"published",desc:"<p>Zentrum der Schattenebene.</p>"}
+    p1:{m:"m1",t:"city",title:"Burg Rabenstein",x:.46,y:.40,vis:"published",owner:"diego",desc:"<p>Sitz von [[article:a3]]. Mehr unter [[article:a2]].</p>"},
+    p2:{m:"m1",t:"boss",title:"Schleimhöhle",x:.68,y:.62,vis:"published",owner:"diego",desc:"<p>Hier lauert der [[article:a1]]. Ziel von [[quest:q1]].</p>"},
+    p3:{m:"m1",t:"shop",title:"Händler Orvin",x:.39,y:.53,vis:"published",owner:"diego",desc:""},
+    p4:{m:"m1",t:"dungeon",title:"Vergessene Gruft",x:.23,y:.30,vis:"gm_only",owner:"diego",desc:"<p>Eingang zum Heiligtum des [[article:a7]].</p>"},
+    p5:{m:"m1",t:"fishing",title:"Silbersee",x:.60,y:.27,vis:"published",owner:"diego",desc:"<p>Heimat von [[character:c4]].</p>"},
+    p6:{m:"m1",t:"teleporter",title:"Runenkreis",x:.82,y:.33,vis:"published",owner:"diego",desc:"<p>Führt in die [[universe:u2]].</p>"},
+    p7:{m:"m1",t:"danger",title:"Wolfspass",x:.30,y:.72,vis:"published",owner:"diego",desc:"<p>Schauplatz von [[quest:q3]].</p>"},
+    p8:{m:"m1",t:"treasure",title:"Versunkener Hort",x:.76,y:.80,vis:"published",owner:"diego",desc:""},
+    p9:{m:"m2",t:"landmark",title:"Obsidianturm",x:.5,y:.45,vis:"published",owner:"diego",desc:"<p>Zentrum der Schattenebene.</p>"},
+    p10:{m:"m1",t:"plants",title:"Geheimer Kräutergarten",x:.55,y:.55,vis:"owner_only",owner:"diego",desc:"<p>Nur Diego kennt diesen Ort.</p>"}
   },
   markers:{ m1:{c1:[.49,.44],c2:[.52,.38],c4:[.62,.30]} },
   manual:[
@@ -379,8 +407,9 @@ let nextId = 100;
 
 /* ---------------- Zustand ---------------- */
 const S = {
-  role:"game_master", loggedIn:true, articleFilter:"all", search:"", expanded:{ch1:true,ch2:true},
-  dice:{n:1,m:20,mod:0,post:true}, universe:"u1", placing:false, map:null, lastMap:null
+  role:"game_master", asOwner:true, loggedIn:true, articleFilter:"all", search:"", expanded:{ch1:true,ch2:true},
+  dice:{n:1,m:20,mod:0,post:true}, universe:"u1", placing:false, map:null, lastMap:null,
+  noteConflict:false, noteDraft:null, noteExpectedVer:null
 };
 const isStaff = () => S.role !== "player";
 const isGM = () => S.role === "game_master";
@@ -394,15 +423,38 @@ function members(){
   return roles.map(([u,r])=>({u,r}));
 }
 const ROLE_LABEL = {game_master:"Game Master",master:"Master",player:"Player"};
+const VIS_LABEL = {owner_only:"nur ich",gm_only:"nur Spielleitung",published:"veröffentlicht"};
+const VIS_TWO = {gm_only:"nur Spielleitung",published:"veröffentlicht"};
 
 /* ---------------- Sichtbarkeit (Rechtematrix-Attrappe) ---------------- */
 function get(k,id){ return ({article:D.articles,quest:D.quests,universe:D.universes,character:D.characters,pin:D.pins})[k]?.[id]; }
+function isContentOwner(ownerId){ return isStaff() && S.asOwner && ownerId === ME; }
+function canSeeVis(vis, ownerId){
+  if(vis==="published") return true;
+  if(vis==="gm_only") return isStaff();
+  if(vis==="owner_only") return isContentOwner(ownerId);
+  return false;
+}
 function visible(k,id){
   const o = get(k,id); if(!o) return false;
   if(k==="character") return D.brought.includes(id);
-  if(isStaff()) return true;
-  if(k==="pin"){ const m=D.maps[o.m]; return o.vis==="published" && m.vis==="published" && D.universes[m.u].vis==="published"; }
-  return o.vis==="published";
+  if(k==="universe") return isStaff() || o.vis==="published";
+  if(k==="pin"){
+    const m=D.maps[o.m], u=D.universes[m.u];
+    const parentOk = isStaff() || (u.vis==="published" && m.vis==="published");
+    if(!parentOk) return false;
+    return canSeeVis(o.vis, o.owner||ME);
+  }
+  return canSeeVis(o.vis, o.owner||ME);
+}
+function chapterVisible(ch){
+  if(!visible("quest", ch.quest)) return false;
+  return canSeeVis(ch.vis, ch.owner||ME);
+}
+function visibleChapters(questId){
+  return Object.entries(D.chapters)
+    .filter(([,ch])=>ch.quest===questId && chapterVisible(ch))
+    .sort((a,b)=>a[1].pos-b[1].pos);
 }
 function title(k,id){ const o=get(k,id); return o ? (o.title||o.name) : "?"; }
 function href(k,id){
@@ -423,7 +475,13 @@ function allRelations(){
     scan("article",id,a.body);
     for(const f of TEMPLATES[a.tpl].fields){ const v=a.f[f.k]; if(f.t==="ref" && v) out.push({from:["article",id],to:v,origin:"template_field",field:f.l}); }
   }
-  for(const [id,q] of Object.entries(D.quests)){ scan("quest",id,q.desc); q.parts.forEach(c=>out.push({from:["quest",id],to:["character",c],origin:"participation"})); }
+  for(const [id,q] of Object.entries(D.quests)){
+    scan("quest",id,q.desc);
+    q.parts.forEach(c=>out.push({from:["quest",id],to:["character",c],origin:"participation"}));
+  }
+  for(const [,ch] of Object.entries(D.chapters)){
+    if(ch.vis==="published") scan("quest",ch.quest,ch.body);
+  }
   for(const [id,p] of Object.entries(D.pins)) scan("pin",id,p.desc);
   for(const [id,u] of Object.entries(D.universes)) scan("universe",id,u.desc);
   for(const [id,c] of Object.entries(D.characters)) scan("character",id,c.bio);
@@ -473,7 +531,17 @@ function esc(s){ return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&l
 function hue(s){ let h=0; for(const c of s) h=(h*31+c.charCodeAt(0))%360; return h; }
 function initials(n){ return n.split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase(); }
 function avatar(name,cls=""){ return `<span class="av ${cls}" style="background:hsl(${hue(name)} 60% 68%)">${initials(name)}</span>`; }
-function gmBadge(vis){ return vis==="gm_only" && isStaff() ? `<span class="badge gm">nur Spielleitung</span>` : ""; }
+function visBadge(vis){
+  if(vis==="gm_only" && isStaff()) return `<span class="badge gm">nur Spielleitung</span>`;
+  if(vis==="owner_only" && isStaff() && S.asOwner) return `<span class="badge owner">nur ich</span>`;
+  return "";
+}
+function visSelect(current, {twoTier=false, allowOwner=true, id="ed-vis"}={}){
+  const opts = twoTier ? VIS_TWO : (allowOwner ? VIS_LABEL : {gm_only:VIS_LABEL.gm_only, published:VIS_LABEL.published});
+  const cur = (!allowOwner && current==="owner_only") ? "gm_only" : current;
+  return `<label class="vis-select small muted">Sichtbarkeit<select id="${id}">${Object.entries(opts).map(([k,l])=>`<option value="${k}" ${cur===k?"selected":""}>${l}</option>`).join("")}</select></label>`;
+}
+function gmBadge(vis){ return visBadge(vis); }
 const STATUS = {open:"offen",active:"aktiv",completed:"abgeschlossen",failed:"gescheitert"};
 function statusBadge(s){ return `<span class="badge st-${s}">${STATUS[s]}</span>`; }
 function rich(html){
@@ -514,7 +582,12 @@ function shell(tab, inner, opts={}){
           <label for="role" class="small">Ansicht als</label>
           <select id="role" data-act="role">
             ${Object.entries(ROLE_LABEL).map(([k,v])=>`<option value="${k}" ${S.role===k?"selected":""}>${v}</option>`).join("")}
-          </select></div>
+          </select>
+          ${isStaff()?`<label for="as-owner" class="small">Owner</label>
+          <select id="as-owner" data-act="as-owner">
+            <option value="1" ${S.asOwner?"selected":""}>ich bin Owner</option>
+            <option value="0" ${!S.asOwner?"selected":""}>fremd (nicht Owner)</option>
+          </select>`:""}</div>
       </header>
       ${opts.full ? inner : `<div class="content">${inner}</div>`}
     </div>
@@ -638,12 +711,14 @@ function viewArticle(id){
 function viewArticleEdit(id){
   if(!isStaff()) return shell("globe", `<div class="card">Nur die Spielleitung darf Artikel bearbeiten.</div>`);
   const isNew = id==="new";
-  const a = isNew ? {title:"",tpl:"none",vis:"gm_only",body:"",f:{}} : D.articles[id];
+  const a = isNew ? {title:"",tpl:"none",vis:"owner_only",owner:ME,body:"",f:{}} : D.articles[id];
+  if(!isNew && !visible("article",id)) return shell("globe", notFound());
   S.editTpl = S.editTpl && S.editId===id ? S.editTpl : a.tpl; S.editId=id;
   const tpl = TEMPLATES[S.editTpl];
+  const allowOwner = isNew || a.owner===ME;
   const refOptions = (f,cur)=>{
     const opts = [];
-    for(const [aid,x] of Object.entries(D.articles)) if(f.to.includes(x.tpl)) opts.push(["article",aid,x.title]);
+    for(const [aid,x] of Object.entries(D.articles)) if(f.to.includes(x.tpl) && visible("article",aid)) opts.push(["article",aid,x.title]);
     if(f.to.includes("character")) D.brought.forEach(c=>opts.push(["character",c,D.characters[c].name]));
     return `<select data-field="${f.k}"><option value="">–</option>${opts.map(([k,oid,t])=>`<option value="${k}:${oid}" ${cur&&cur[1]===oid?"selected":""}>${esc(t)}${k==="character"?" (Charakter)":""}</option>`).join("")}</select>`;
   };
@@ -660,8 +735,9 @@ function viewArticleEdit(id){
       <input id="ed-title" placeholder="Titel" value="${esc(a.title)}" style="font-size:20px;font-weight:700">
       <div class="grid2">
         <label class="stack small muted">Vorlage<select id="ed-tpl" data-act="tpl">${Object.entries(TEMPLATES).map(([k,t])=>`<option value="${k}" ${S.editTpl===k?"selected":""}>${t.label}</option>`).join("")}</select></label>
-        <div class="toggle card" style="padding:8px 12px"><span>Veröffentlicht<br><span class="small muted">aus = nur Spielleitung</span></span><button class="sw ${a.vis==="published"?"on":""}" data-act="sw"></button></div>
+        ${visSelect(a.vis,{allowOwner})}
       </div>
+      ${!allowOwner?`<p class="hint">Fremder Datensatz: „nur ich“ ist nur für den Owner wählbar.</p>`:""}
       <div class="card"><div class="row" style="justify-content:space-between"><span>Titelbild</span><button class="btn sm" data-act="toast" data-msg="JPG, PNG oder WebP, max. 10 MB">Bild wählen</button></div></div>
       ${tpl.fields.length?`<div class="card stack"><h2 style="margin:0">${tpl.label}</h2>${tpl.fields.map(f=>`<label class="stack small muted">${esc(f.l)}${fieldInput(f)}</label>`).join("")}</div>`:""}
       <div>
@@ -681,15 +757,72 @@ function viewArticleEdit(id){
 function viewQuest(id){
   const q = D.quests[id];
   if(!q || !visible("quest",id)) return shell("globe", notFound());
+  const chs = visibleChapters(id);
+  const note = D.notes[id] || {body:"",version:0,updatedBy:null,updatedAt:null};
+  const hasNote = !!(note.body && note.body.replace(/<[^>]+>/g,"").trim());
+  const chaptersHtml = chs.length ? chs.map(([cid,ch],i)=>{
+    const staff = isStaff();
+    return `<div class="chapter" data-ch="${cid}">
+      <div class="ch-h"><span class="ch-num">${i+1}.</span><b class="grow">${esc(ch.title)}</b>${visBadge(ch.vis)}
+        ${staff?`<div class="ch-actions">
+          <select style="width:auto;padding:6px 8px;font-size:12px" data-act="ch-vis" data-id="${cid}">
+            ${Object.entries(VIS_LABEL).filter(([k])=>ch.owner===ME||k!=="owner_only"||ch.vis==="owner_only").map(([k,l])=>`<option value="${k}" ${ch.vis===k?"selected":""}>${l}</option>`).join("")}
+          </select>
+          <button class="btn sm" data-act="ch-up" data-id="${cid}" title="Nach oben">↑</button>
+          <button class="btn sm" data-act="ch-down" data-id="${cid}" title="Nach unten">↓</button>
+          <button class="btn sm" data-act="ch-edit" data-id="${cid}">Bearbeiten</button>
+          <button class="btn sm danger" data-act="ch-del" data-id="${cid}">Löschen</button>
+        </div>`:""}
+      </div>
+      <div class="prose">${rich(ch.body)||'<p class="muted">Kein Text.</p>'}</div>
+    </div>`;
+  }).join("") : `<div class="empty">${isStaff()?"Noch keine Kapitel. Lege das erste an.":"Noch keine freigegebenen Kapitel."}</div>`;
   return shell("globe", `
     <a class="back" href="#/w/w1">‹ Kampagne</a>
     <h1 style="font-size:24px;margin-bottom:8px">${esc(q.title)}</h1>
-    <div class="row wrap" style="margin-bottom:14px"><span class="badge">Quest</span>${gmBadge(q.vis)}
+    <div class="row wrap" style="margin-bottom:14px"><span class="badge">Quest</span>${visBadge(q.vis)}
       ${isStaff() ? `<select style="width:auto" data-act="toast-change" data-msg="Status gespeichert">${Object.entries(STATUS).map(([k,v])=>`<option ${q.status===k?"selected":""}>${v}</option>`).join("")}</select>` : statusBadge(q.status)}</div>
-    <div class="grid2"><div class="stack">
-      <div class="card"><h2>Beteiligte</h2><div class="row wrap">${q.parts.map(c=>`<a class="chip" href="#/w/w1/characters/${c}">${avatar(D.characters[c].name,"sm")} ${esc(D.characters[c].name)}</a>`).join("")}</div></div>
-      <div class="card prose">${rich(q.desc)}</div>
-    </div><div>${linkedHtml("quest",id)}</div></div>`);
+    <div class="grid2">
+      <div class="stack">
+        <div class="card"><h2>Beteiligte</h2><div class="row wrap">${q.parts.map(c=>`<a class="chip" href="#/w/w1/characters/${c}">${avatar(D.characters[c].name,"sm")} ${esc(D.characters[c].name)}</a>`).join("")}</div></div>
+        <div class="card prose">${rich(q.desc)}</div>
+      </div>
+      <div class="quest-side">
+        <div class="row" style="justify-content:flex-end">
+          <button class="note-fab ${hasNote?"has":""}" data-act="note-open" data-qid="${id}" title="Notizblock" aria-label="Notizblock öffnen">📝</button>
+        </div>
+        ${linkedHtml("quest",id)}
+      </div>
+    </div>
+    <div class="card stack chapters-block">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">Kapitel</h2>
+        ${isStaff()?`<button class="btn sm" data-act="ch-new" data-qid="${id}">+ Kapitel</button>`:""}</div>
+      <p class="small muted">Nummerierung zählt nur sichtbare Kapitel. Die Spielleitung schaltet jedes Kapitel einzeln frei.</p>
+      ${chaptersHtml}
+    </div>`);
+}
+function openNoteSheet(qid){
+  const note = D.notes[qid] || {body:"",version:0,updatedBy:null,updatedAt:null};
+  const editingNote = S.noteDraft && S.noteDraft.quest===qid;
+  const noteBody = editingNote ? S.noteDraft.body : (note.body||"");
+  const ver = S.noteConflict && S.noteExpectedVer!=null ? S.noteExpectedVer : note.version;
+  sheet(`<h2>Notizblock</h2>
+    <p class="small muted" style="margin:6px 0 12px">Gemeinsam für alle, die die Quest sehen. Erwähnungen erzeugen keine Relationen.
+      ${note.version?` · v${note.version} · ${esc(USERS[note.updatedBy]||"?")} · ${esc(note.updatedAt||"")}`:" · noch leer"}</p>
+    ${S.noteConflict && editingNote?`<div class="note-conflict" style="margin-bottom:12px">Die Notiz wurde inzwischen geändert. <button class="btn sm" data-act="note-reload" data-qid="${qid}">Neu laden</button><div class="small muted" style="margin-top:6px">Dein Text bleibt im Editor, bis du neu lädst.</div></div>`:""}
+    <div class="toolbar">
+      <button data-cmd="formatBlock" data-v="H2">H2</button><button data-cmd="formatBlock" data-v="H3">H3</button><span class="sep"></span>
+      <button data-cmd="bold"><b>B</b></button><button data-cmd="italic"><i>I</i></button><button data-cmd="underline"><u>U</u></button><button data-cmd="strikeThrough"><s>S</s></button><span class="sep"></span>
+      <button data-cmd="insertUnorderedList">•</button><button data-cmd="insertOrderedList">1.</button><button data-cmd="formatBlock" data-v="BLOCKQUOTE">❝</button><button data-cmd="createLink">🔗</button>
+    </div>
+    <div id="editor" class="editor prose" contenteditable="true" data-qid="${qid}">${noteBody || "<p><br></p>"}</div>
+    <div id="suggest"></div>
+    <p class="small muted" style="margin:8px 0">Tippe <b>@</b> für Erwähnungen.</p>
+    <div class="row wrap" style="margin-top:12px">
+      <button class="btn primary grow" data-act="note-save" data-qid="${qid}" data-ver="${ver}">Speichern</button>
+      <button class="btn sm" data-act="note-simulate" data-qid="${qid}">Fremde Änderung simulieren</button>
+    </div>`);
+  mountEditor();
 }
 function viewUniverse(id){
   const u = D.universes[id];
@@ -704,7 +837,7 @@ function viewUniverse(id){
       <div class="card"><h2>Karte</h2>${m && (isStaff()||m.vis==="published") ? `<a class="item" href="#/w/w1/map?universe=${id}">🗺️ <div class="grow">${esc(m.name)}</div>${gmBadge(m.vis)}›</a>` : '<div class="empty">Keine sichtbare Karte.</div>'}</div>
     </div><div>${linkedHtml("universe",id)}</div></div>`);
 }
-function notFound(){ return `<a class="back" href="#/w/w1">‹ Kampagne</a><div class="card"><h2>Nicht gefunden</h2><p class="muted">Dieser Inhalt existiert nicht oder ist für dich nicht sichtbar. (Player sehen „nur Spielleitung“-Inhalte nicht.)</p></div>`; }
+function notFound(){ return `<a class="back" href="#/w/w1">‹ Kampagne</a><div class="card"><h2>Nicht gefunden</h2><p class="muted">Dieser Inhalt existiert nicht oder ist für dich nicht sichtbar. (Player sehen „nur Spielleitung“- und „nur ich“-Inhalte nicht; fremde „nur ich“-Inhalte sieht auch die Spielleitung nicht.)</p></div>`; }
 
 /* ---------------- Karte ---------------- */
 function mapSvg(style){
@@ -737,7 +870,7 @@ function viewMap(q){
     <div class="map-top">${unis.map(([id,x])=>`<a class="chip ${id===S.universe?"on":""}" href="#/w/w1/map?universe=${id}">🪐 ${esc(x.name)}${x.vis==="gm_only"?" · SL":""}</a>`).join("")}</div>
     ${mapVisible ? `<div class="map-vp ${S.placing?"placing":""}" id="vp"><div class="map-cv" id="cv" data-map="${mId}">
       ${mapSvg(m.style)}
-      ${pins.map(([id,p])=>`<button class="pin ${p.vis==="gm_only"?"hidden-gm":""} ${id===pinId?"hl":""}" data-drag="pin" data-id="${id}" style="left:${p.x*100}%;top:${p.y*100}%" aria-label="${esc(p.title)}"><img src="${pinIcon(p.t)}" alt=""></button>`).join("")}
+      ${pins.map(([id,p])=>`<button class="pin ${p.vis==="gm_only"?"hidden-gm":""} ${p.vis==="owner_only"?"hidden-owner":""} ${id===pinId?"hl":""}" data-drag="pin" data-id="${id}" style="left:${p.x*100}%;top:${p.y*100}%" aria-label="${esc(p.title)}"><img src="${pinIcon(p.t)}" alt=""></button>`).join("")}
       ${markers.map(([c,[x,y]])=>`<button class="marker" data-drag="marker" data-id="${c}" style="left:${x*100}%;top:${y*100}%">${avatar(D.characters[c].name)}<span class="nm">${esc(D.characters[c].name.split(" ")[0])}</span></button>`).join("")}
     </div></div>
     <div class="map-hint">${S.placing ? "Tippe auf die Karte, um den Pin zu setzen." : "Ziehen = verschieben · Pinch/Scroll = zoomen · Pin antippen = Details. Nach dem Ablegen sehen alle die neue Position."}</div>
@@ -823,12 +956,12 @@ function openMarker(c){
     ${canEditMarker(c)?`<button class="btn danger" data-act="toast" data-msg="Marker von der Karte entfernt">Entfernen</button>`:""}</div>`);
 }
 function openNewPin(x,y,mId){
-  S.newPin={x,y,m:mId,t:"city",vis:"gm_only"};
+  S.newPin={x,y,m:mId,t:"city",vis:"owner_only"};
   const types=Object.keys(PIN_META);
   sheet(`<h2>Neuer Pin</h2>
     <div class="type-grid" style="margin:14px 0" id="tg">${types.map(t=>`<button data-act="ptype" data-v="${t}" class="${t==="city"?"on":""}"><img src="${pinIcon(t)}" alt="">${PIN_META[t][0]}</button>`).join("")}</div>
     <div class="stack"><input id="np-title" placeholder="Titel (Pflicht)"><textarea placeholder="Beschreibung (optional, @ für Erwähnungen)"></textarea>
-    <div class="toggle"><span>Veröffentlicht <span class="small muted">(aus = nur Spielleitung)</span></span><button class="sw" data-act="sw"></button></div>
+    ${visSelect("owner_only",{id:"np-vis"})}
     <button class="btn primary" data-act="save-pin">Pin setzen</button></div>`);
 }
 
@@ -1053,11 +1186,14 @@ function viewJournal(cid){
 }
 
 /* ---------------- Router ---------------- */
-function route(){
+function route(opts={}){
+  const keepScroll = !!opts.keepScroll;
+  const y = keepScroll ? window.scrollY : 0;
+  const keepSheet = !!opts.keepSheet;
   const raw = location.hash.slice(1) || "/";
   const [path, query] = raw.split("?");
   const p = path.split("/").filter(Boolean);
-  closeSheet();
+  if(!keepSheet) closeSheet();
   let html;
   if(p.length===0) html = viewLogin();
   else if(p[0]==="onboarding") html = viewOnboarding();
@@ -1079,7 +1215,8 @@ function route(){
   if(p[2]==="map") mountMap();
   if(p[2]==="chat"){ const m=document.getElementById("msgs"); if(m) m.scrollTop=m.scrollHeight; }
   if(p[2]==="articles" && p[4]==="edit") mountEditor();
-  window.scrollTo(0,0);
+  if(keepScroll) requestAnimationFrame(()=>window.scrollTo(0, y));
+  else window.scrollTo(0,0);
 }
 window.addEventListener("hashchange", route);
 let lastMobile = matchMedia("(max-width:767px)").matches;
@@ -1125,7 +1262,7 @@ function mountEditor(){
     const s=getSelection(); s.removeAllRanges(); const r2=document.createRange(); r2.setStartAfter(sp); s.addRange(r2);
     box.innerHTML=""; ctx=null; ed.focus();
   };
-  S.newStub = ()=>{ const t=ctx.q.trim(); const id="a"+(nextId++); D.articles[id]={title:t,tpl:"none",vis:"gm_only",edited:false,body:"",f:{}}; S.insertMention("article",id); toast(`Artikel „${t}“ angelegt – rot, bis er Inhalt hat`); };
+  S.newStub = ()=>{ const t=ctx.q.trim(); const id="a"+(nextId++); D.articles[id]={title:t,tpl:"none",vis:"owner_only",owner:ME,edited:false,body:"",f:{}}; S.insertMention("article",id); toast(`Artikel „${t}“ angelegt – nur ich, rot bis Inhalt`); };
   document.querySelectorAll("[data-cmd]").forEach(b=>b.addEventListener("mousedown",e=>{
     e.preventDefault(); const c=b.dataset.cmd;
     if(c==="createLink"){ const u=prompt("Externer Link (https://…)"); if(u) document.execCommand("createLink",false,u); }
@@ -1159,8 +1296,9 @@ document.addEventListener("click", e=>{
     case "save-pin": {
       const t=document.getElementById("np-title").value.trim();
       if(!t){ toast("Titel ist Pflicht"); break; }
-      const id="p"+(nextId++); D.pins[id]={m:S.newPin.m,t:S.newPin.t,title:t,x:S.newPin.x,y:S.newPin.y,vis:"gm_only",desc:""};
-      closeSheet(); route(); toast("Pin gesetzt (nur Spielleitung)"); break; }
+      const vis=document.getElementById("np-vis")?.value || "owner_only";
+      const id="p"+(nextId++); D.pins[id]={m:S.newPin.m,t:S.newPin.t,title:t,x:S.newPin.x,y:S.newPin.y,vis,owner:ME,desc:""};
+      closeSheet(); route(); toast("Pin gesetzt ("+VIS_LABEL[vis]+")"); break; }
     case "new-channel": sheet(`<h2>Neuer Kanal</h2><div class="stack" style="margin-top:12px"><input id="ch-name" placeholder="Kanalname (max. 80 Zeichen)" maxlength="80"><button class="btn primary" data-act="save-channel">Anlegen</button></div>`); break;
     case "save-channel": {
       const n=document.getElementById("ch-name").value.trim();
@@ -1204,11 +1342,66 @@ document.addEventListener("click", e=>{
       const body=ed.innerHTML.replace(/^<p><br><\/p>$/,""); const plain=ed.textContent.trim();
       const f={}; document.querySelectorAll("[data-field]").forEach(el=>{ if(!el.value) return; const fd=TEMPLATES[S.editTpl].fields.find(x=>x.k===el.dataset.field); f[fd.k]= fd.t==="ref" ? el.value.split(":") : el.value; });
       const t=document.getElementById("ed-title").value.trim() || "Ohne Titel";
-      const vis=document.querySelector("[data-act=sw]").classList.contains("on")?"published":"gm_only";
+      const vis=document.getElementById("ed-vis")?.value || "owner_only";
       const nid = id==="new" ? "a"+(nextId++) : id; const prev=D.articles[nid];
       const edited = (prev&&prev.edited) || plain.length>0 || Object.keys(f).length>0;
-      D.articles[nid]={title:t,tpl:S.editTpl,vis,edited,body,f};
+      const owner = prev?.owner || ME;
+      if(vis==="owner_only" && owner!==ME){ toast("Nur der Owner darf „nur ich“ setzen"); break; }
+      D.articles[nid]={title:t,tpl:S.editTpl,vis,owner,edited,body,f};
       S.editTpl=null; location.hash=`#/w/w1/articles/${nid}`; toast(edited?"Gespeichert – Relationen neu berechnet":"Gespeichert – ohne Inhalt bleibt die Erwähnung rot"); break; }
+    case "ch-new": {
+      const qid=a.dataset.qid; const title=prompt("Kapiteltitel"); if(!title||!title.trim()) break;
+      const maxPos = Math.max(-1,...Object.values(D.chapters).filter(c=>c.quest===qid).map(c=>c.pos));
+      const id="ch"+(nextId++); D.chapters[id]={quest:qid,title:title.trim().slice(0,200),body:"",pos:maxPos+1,vis:"owner_only",owner:ME};
+      route({keepScroll:true}); toast("Kapitel angelegt (nur ich)"); break; }
+    case "ch-edit": {
+      const ch=D.chapters[a.dataset.id];
+      sheet(`<h2>Kapitel bearbeiten</h2><div class="stack" style="margin-top:12px">
+        <input id="ch-title" value="${esc(ch.title)}" maxlength="200">
+        <textarea id="ch-body" rows="6">${esc((ch.body||"").replace(/<[^>]+>/g,"")).trim()}</textarea>
+        ${visSelect(ch.vis,{allowOwner:ch.owner===ME,id:"ch-vis-sel"})}
+        <button class="btn primary" data-act="ch-save" data-id="${a.dataset.id}">Speichern</button></div>`); break; }
+    case "ch-save": {
+      const ch=D.chapters[a.dataset.id]; const t=document.getElementById("ch-title").value.trim();
+      if(!t){ toast("Titel ist Pflicht"); break; }
+      const vis=document.getElementById("ch-vis-sel").value;
+      if(vis==="owner_only" && ch.owner!==ME){ toast("Nur der Owner darf „nur ich“ setzen"); break; }
+      ch.title=t.slice(0,200); ch.body="<p>"+esc(document.getElementById("ch-body").value)+"</p>"; ch.vis=vis;
+      closeSheet(); route(); toast("Kapitel gespeichert"); break; }
+    case "ch-del": {
+      const ch=D.chapters[a.dataset.id];
+      sheet(`<h2>Kapitel löschen?</h2>
+        <p class="muted" style="margin:10px 0">„${esc(ch.title)}“ wird endgültig entfernt. Relationen der Quest werden neu berechnet.</p>
+        <div class="row" style="margin-top:14px"><button class="btn grow" data-act="close-sheet">Abbrechen</button>
+        <button class="btn danger grow" data-act="ch-del-confirm" data-id="${a.dataset.id}">Löschen</button></div>`); break; }
+    case "ch-del-confirm": {
+      delete D.chapters[a.dataset.id]; closeSheet(); route({keepScroll:true}); toast("Kapitel gelöscht"); break; }
+    case "ch-up": case "ch-down": {
+      const id=a.dataset.id; const ch=D.chapters[id];
+      const list=Object.entries(D.chapters).filter(([,c])=>c.quest===ch.quest).sort((x,y)=>x[1].pos-y[1].pos);
+      const i=list.findIndex(([cid])=>cid===id); const j=act==="ch-up"?i-1:i+1;
+      if(j<0||j>=list.length) break;
+      const tmp=list[i][1].pos; list[i][1].pos=list[j][1].pos; list[j][1].pos=tmp;
+      route({keepScroll:true}); break; }
+    case "note-open": openNoteSheet(a.dataset.qid); break;
+    case "note-save": {
+      const qid=a.dataset.qid; const ver=parseInt(a.dataset.ver,10);
+      const ed=document.getElementById("editor");
+      const body=ed.innerHTML.replace(/^<p><br><\/p>$/,"");
+      S.noteDraft={quest:qid,body};
+      const cur=D.notes[qid]||{body:"",version:0};
+      if(cur.version!==ver){ S.noteConflict=true; S.noteExpectedVer=ver; openNoteSheet(qid); toast("Konflikt – Notiz wurde inzwischen geändert"); break; }
+      D.notes[qid]={body,version:ver+1,updatedBy:ME,updatedAt:"gerade eben"};
+      S.noteConflict=false; S.noteDraft=null; S.noteExpectedVer=null; closeSheet(); route({keepScroll:true}); toast("Notiz gespeichert (v"+(ver+1)+")"); break; }
+    case "note-reload": {
+      S.noteConflict=false; S.noteDraft=null; S.noteExpectedVer=null; openNoteSheet(a.dataset.qid); toast("Notiz neu geladen"); break; }
+    case "note-simulate": {
+      const qid=a.dataset.qid; const cur=D.notes[qid]||{body:"",version:0};
+      const ed=document.getElementById("editor");
+      S.noteDraft={quest:qid,body:ed?ed.innerHTML:cur.body};
+      S.noteExpectedVer=cur.version;
+      D.notes[qid]={body:"<p>Mara hat parallel geschrieben.</p>",version:cur.version+1,updatedBy:"mara",updatedAt:"gerade eben"};
+      S.noteConflict=true; openNoteSheet(qid); toast("Fremde Speicherung simuliert – jetzt speichern für Konflikt"); break; }
     case "manual-rel": sheet(`<h2>Manuelle Relation</h2><div class="stack" style="margin-top:12px">
         <label class="stack small muted">Ziel<select>${mentionables().concat(Object.entries(D.pins).map(([id,p])=>["pin",id,p.title])).map(([k,id,t])=>`<option>${esc(t)} (${KIND_LABEL[k]})</option>`).join("")}</select></label>
         <label class="stack small muted">Bezeichnung (Pflicht)<input list="labels" placeholder="z. B. ist verfeindet mit"><datalist id="labels">${[...new Set(D.manual.map(r=>r.label))].map(l=>`<option value="${esc(l)}">`).join("")}</datalist></label>
@@ -1257,13 +1450,16 @@ document.addEventListener("click", e=>{
   }
 });
 document.addEventListener("change", e=>{
-  const a = e.target.closest("[data-act]"); if(a?.dataset.act==="role"){ S.role=a.value; S.map=null; route(); toast("Ansicht als "+ROLE_LABEL[S.role]); }
+  const a = e.target.closest("[data-act]"); if(a?.dataset.act==="role"){ S.role=a.value; if(S.role==="player") S.asOwner=false; S.map=null; route(); toast("Ansicht als "+ROLE_LABEL[S.role]); }
+  if(a?.dataset.act==="as-owner"){ S.asOwner=a.value==="1"; S.map=null; route(); toast(S.asOwner?"Owner-Simulation: ich bin Owner":"Owner-Simulation: fremd – „nur ich“ verschwindet"); }
+  if(a?.dataset.act==="ch-vis"){ const ch=D.chapters[a.dataset.id]; if(!ch) return; if(a.value==="owner_only" && ch.owner!==ME){ toast("Nur der Owner darf „nur ich“ setzen"); a.value=ch.vis; return; } ch.vis=a.value; route({keepScroll:true}); toast("Kapitel: "+VIS_LABEL[ch.vis]); }
   if(a?.dataset.act==="tpl"){ if(confirm("Vorlage wechseln? Nicht passende Vorlagenfelder werden verworfen.")){ S.editTpl=a.value; route(); } else a.value=S.editTpl; }
   if(a?.dataset.act==="toast-change") toast(a.dataset.msg);
   if(e.target.dataset.attr!=null){ const v=parseInt(e.target.value)||1; document.getElementById("mod"+e.target.dataset.attr).textContent = v<1||v>30 ? "1–30!" : mod(v); }
 });
 document.addEventListener("input", e=>{
   if(e.target.id==="search"){ S.search=e.target.value; clearTimeout(S.st); S.st=setTimeout(()=>{ document.getElementById("search-results").innerHTML=searchResults(); },300); }
+  if(e.target.id==="editor" && e.target.dataset.qid){ S.noteDraft={quest:e.target.dataset.qid,body:e.target.innerHTML}; }
 });
 document.addEventListener("keydown", e=>{
   if(e.target.id==="chat-in" && e.key==="Enter" && !e.shiftKey){ e.preventDefault(); document.querySelector("[data-act=send]").click(); }
