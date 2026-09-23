@@ -2,6 +2,7 @@
 
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileStorageRoot } from "@/lib/files/paths";
 
 const SPIKE_SUBDIR = "spike";
 
@@ -13,11 +14,7 @@ export const ALLOWED_MAP_TYPES: Record<string, string> = {
   "image/webp": ".webp",
 };
 
-export function fileStorageRoot(): string {
-  return path.resolve(
-    /* turbopackIgnore: true */ process.env.FILE_STORAGE_PATH ?? "./data/uploads",
-  );
-}
+export { fileStorageRoot };
 
 export function spikeImageAbsolutePath(filename: string): string {
   if (!/^[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(filename)) {

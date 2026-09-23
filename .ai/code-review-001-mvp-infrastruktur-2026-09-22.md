@@ -32,7 +32,7 @@
 | CR-013 | Duplizierung & Modularisierung | mittel | offen | Rechte-Repository: Marker-Autorisierung dreimal kopiert, Patches als `Record<string, unknown>`. Schicht und `ColumnPatch` in T-003; Marker-Funktion folgt in T-013 |
 | CR-014 | Fehlerbehandlung & Validierung | niedrig | offen | Frontend-`fetch` ohne `try/catch`, `persistMarkerMove` ignoriert die Antwort, `JSON.parse` ungeschützt |
 | CR-015 | Bad Practices | niedrig | offen | ESLint-Fehler (Ref-Zuweisung beim Rendern), Komponenten mit 700 bis 1000 Zeilen. ESLint-Fehler in T-001 behoben; Struktur folgt in T-012/T-013 |
-| CR-016 | Sicherheit | niedrig | offen | Endung beim Upload kommt aus dem Client-MIME, `nosniff` fehlt, Kartenbild wird pro Abruf komplett gelesen |
+| CR-016 | Sicherheit | niedrig | offen | Endung beim Upload kommt aus dem Client-MIME, `nosniff` fehlt, Kartenbild wird pro Abruf komplett gelesen. Produktroute `/api/files` prüft die Bytes und streamt; die Spike-Route folgt erst mit T-016 |
 | CR-017 | Fehlerbehandlung & Validierung | niedrig | offen | Keine Startvalidierung für `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL`, localhost-Origins auch in Produktion vertraut |
 | CR-018 | Aufgaben-Abgleich | niedrig | behoben | 8 dokumentierte `TRIG-*`-Regeln fehlen in den Migrationen: alle bauen (Plan-Review) |
 | CR-019 | Sicherheit | niedrig | offen | Persistenz-Snapshot liefert `privat`-Tagebuchtexte an die Spielleitung, Journal auf archivierter Teilnahme möglich |
@@ -209,6 +209,7 @@
 - **Beschreibung:** Die Dateiendung und damit der später ausgelieferte `Content-Type` stammen aus dem **vom Client gemeldeten** `file.type`, nicht aus dem tatsächlich erkannten Format. `image-size` erkennt auch SVG, GIF, BMP usw. Eine als `image/png` deklarierte andere Datei wird als `.png` gespeichert und ausgeliefert. `X-Content-Type-Options: nosniff` fehlt. Zur Performance: Jeder Abruf liest bis zu 20 MB komplett mit `readFile` in den Speicher, obwohl die URL versioniert ist (`?v=`), und cacht nur 60 s.
 - **Empfehlung:** `imageSize(bytes).type` gegen die Allowlist `jpg|png|webp` prüfen und die Endung daraus ableiten. `nosniff` setzen. Die Datei per Stream (`createReadStream` → `ReadableStream`) ausliefern, mit `Cache-Control: private, max-age=31536000, immutable` für versionierte URLs.
 - **Abnahmekriterium:** Ein Upload einer GIF- oder SVG-Datei mit `Content-Type: image/png` wird mit 400 abgelehnt. Die Bildantwort enthält `X-Content-Type-Options: nosniff` und einen `immutable`-Cache-Header. Die Bildroute verwendet kein `readFile`, sondern liefert die Datei per Stream (`createReadStream`) aus.
+- **Teilfortschritt T-004 (2026-09-23):** `POST /api/files` erkennt das Format an den Bytes, `GET /api/files/[id]` streamt mit `nosniff` und `immutable`. Die Spike-Bildroute bleibt bis T-016. Status bleibt `offen`.
 
 ### CR-017 – Keine Startvalidierung der Umgebung, localhost-Origins in Produktion
 - **Fundstelle:** `src/lib/env.ts`, `src/lib/auth.ts:24-40`, `src/db/client.ts:5-7`
