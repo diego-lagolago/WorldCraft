@@ -787,3 +787,15 @@ export const chatMessages = pgTable(
     ),
   ],
 );
+
+/**
+ * Columns that reference `files.id`. APP-FILE-GC must check every entry here
+ * before deleting a file (see `src/lib/files/gc.ts`).
+ */
+export const FILE_REFERENCE_COLUMNS = [
+  worlds.titleImageId,
+  articles.titleImageId,
+  maps.imageId,
+  characters.portraitId,
+  characterImages.fileId,
+] as const;

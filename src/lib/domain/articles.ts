@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, or } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { articles, characters, worldParticipations } from "@/db/schema";
@@ -7,6 +7,7 @@ import {
   authorizeOwnedContentWrite,
   canSeeVisibility,
   fail,
+  isStaff,
   ok,
   requireStaff,
   type AuthzResult,
@@ -176,16 +177,19 @@ export async function listArticles(
   viewerId: string,
   templateType?: TemplateType | "all",
 ): Promise<ArticleSummary[]> {
+  const filters = [eq(articles.worldId, worldId)];
+  if (!isStaff(role)) filters.push(eq(articles.visibility, "published"));
+  else filters.push(or(ne(articles.visibility, "owner_only"), eq(articles.ownerId, viewerId))!);
+  if (templateType && templateType !== "all") filters.push(eq(articles.templateType, templateType));
+
   const rows = await db
     .select(summaryColumns)
     .from(articles)
-    .where(eq(articles.worldId, worldId))
+    .where(and(...filters))
     .orderBy(asc(articles.title));
-  return rows.filter((row) => {
-    if (!canSeeVisibility({ role, visibility: row.visibility, viewerId, ownerId: row.ownerId })) return false;
-    if (!templateType || templateType === "all") return true;
-    return row.templateType === templateType;
-  });
+  return rows.filter((row) =>
+    canSeeVisibility({ role, visibility: row.visibility, viewerId, ownerId: row.ownerId }),
+  );
 }
 
 export async function getArticle(

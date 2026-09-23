@@ -17,6 +17,40 @@ import { collectUnreferencedFiles } from "./gc";
 import { maxBytesFor } from "./inspect";
 import { persistImage, removeStoredFile } from "./store";
 
+/**
+ * Persist bytes and set them as the map image. Caller must already have
+ * authorized the write (staff). Shared by attachImage and createMapWithImage.
+ */
+export async function setMapImage(input: {
+  worldId: string;
+  mapId: string;
+  actorId: string;
+  bytes: Buffer;
+}): Promise<AuthzResult<{ fileId: string; widthPx: number; heightPx: number }>> {
+  const saved = await persistImage({
+    bytes: input.bytes,
+    createdBy: input.actorId,
+    maxBytes: maxBytesFor("map"),
+  });
+  if ("error" in saved) return fail(400, saved.error);
+  if (!saved.image.width || !saved.image.height) {
+    await removeStoredFile(saved.id);
+    return fail(400, "Bildgröße unbekannt.");
+  }
+
+  try {
+    const linked = await linkStaffImage("map", input.worldId, input.mapId, saved.id, input.actorId);
+    if (!linked.ok) {
+      await removeStoredFile(saved.id);
+      return linked;
+    }
+  } catch (error) {
+    await removeStoredFile(saved.id);
+    throw error;
+  }
+  return { ok: true, data: { fileId: saved.id, widthPx: saved.image.width, heightPx: saved.image.height } };
+}
+
 export async function attachImage(input: {
   kind: ImageKind;
   actorId: string;
@@ -26,7 +60,44 @@ export async function attachImage(input: {
 }): Promise<AuthzResult<{ fileId: string }>> {
   const maxBytes = maxBytesFor(input.kind);
 
-  if (input.kind === "world_title" || input.kind === "map" || input.kind === "article_title") {
+  if (input.kind === "map") {
+    if (!input.worldId || !input.targetId) {
+      return fail(400, "Welt und Ziel fehlen.");
+    }
+    const [membership] = await db
+      .select()
+      .from(memberships)
+      .where(
+        and(eq(memberships.worldId, input.worldId), eq(memberships.userId, input.actorId)),
+      )
+      .limit(1);
+    const allowed = authorizeImageWrite({
+      kind: input.kind,
+      actorId: input.actorId,
+      membership: membership
+        ? {
+            id: membership.id,
+            worldId: membership.worldId,
+            userId: membership.userId,
+            role: membership.role,
+            archivedAt: membership.archivedAt,
+          }
+        : null,
+      ownerId: null,
+      existingCharacterImages: 0,
+    });
+    if (!allowed.ok) return allowed;
+    const set = await setMapImage({
+      worldId: input.worldId,
+      mapId: input.targetId,
+      actorId: input.actorId,
+      bytes: input.bytes,
+    });
+    if (!set.ok) return set;
+    return { ok: true, data: { fileId: set.data.fileId } };
+  }
+
+  if (input.kind === "world_title" || input.kind === "article_title") {
     if (!input.worldId || !input.targetId) {
       return fail(400, "Welt und Ziel fehlen.");
     }

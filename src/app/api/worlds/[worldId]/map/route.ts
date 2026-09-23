@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { optionalUuid } from "@/lib/chat/query";
-import { parseJsonBody, parseUuid } from "@/lib/http";
+import { parseJsonBody } from "@/lib/http";
 import {
-  MAP_IMAGE_MAX_BYTES,
   createMap,
-  createMapWithImage,
   deleteMap,
   loadMapState,
   mapNameSchema,
@@ -93,50 +91,23 @@ export async function POST(request: Request, ctx: Ctx) {
   if (!req.ok) return req.response;
 
   const contentType = request.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
-    const body = await parseJsonBody(request, createSchema);
-    if (!body.ok) return failResponse(body);
-    return resultResponse(
-      await createMap({
-        membership: req.context.membership,
-        actorId: req.user.id,
-        worldId: req.context.world.id,
-        universeId: body.data.universeId,
-        name: body.data.name,
-      }),
-      201,
+  if (!contentType.includes("application/json")) {
+    return NextResponse.json(
+      { error: "Nur JSON wird akzeptiert. Bilder bitte über /api/files hochladen." },
+      { status: 415 },
     );
   }
 
-  const form = await request.formData().catch(() => null);
-  if (!form) {
-    return NextResponse.json({ error: "Bitte JSON oder ein Bild als Formular senden." }, { status: 400 });
-  }
-  const file = form.get("image");
-  const universeId = parseUuid(form.get("universeId"));
-  if (!universeId) {
-    return NextResponse.json({ error: "Die Universum-ID ist ungültig." }, { status: 400 });
-  }
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Bitte ein Kartenbild wählen." }, { status: 400 });
-  }
-  if (file.size > MAP_IMAGE_MAX_BYTES) {
-    return NextResponse.json({ error: "Das Bild darf höchstens 20 MB groß sein." }, { status: 400 });
-  }
-  const rawName = form.get("name");
-  const parsedName = typeof rawName === "string" && rawName.trim() ? mapNameSchema.safeParse(rawName) : null;
-  if (parsedName && !parsedName.success) {
-    return NextResponse.json({ error: "Der Kartenname ist ungültig." }, { status: 400 });
-  }
-  const fromFile = file.name.replace(/\.[^.]+$/, "").trim().slice(0, 120);
-  const name = parsedName?.data ?? (fromFile || "Karte");
-  const created = await createMapWithImage({
-    membership: req.context.membership,
-    actorId: req.user.id,
-    worldId: req.context.world.id,
-    universeId,
-    name,
-    bytes: Buffer.from(await file.arrayBuffer()),
-  });
-  return resultResponse(created, 201);
+  const body = await parseJsonBody(request, createSchema);
+  if (!body.ok) return failResponse(body);
+  return resultResponse(
+    await createMap({
+      membership: req.context.membership,
+      actorId: req.user.id,
+      worldId: req.context.world.id,
+      universeId: body.data.universeId,
+      name: body.data.name,
+    }),
+    201,
+  );
 }

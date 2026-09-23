@@ -42,12 +42,12 @@ Maßgeblich sind `.ai/architecture/datenmodell-fachlich.md` (fachliche Regeln, V
 | CR-007 | Testabdeckung | mittel | behoben | Keine Tests für Inhalt und Filterung der SSE-Events und für die Autorisierung der Dateiauslieferung |
 | CR-008 | Runtime-Risiken | niedrig | behoben | `placeMarker` publiziert `map.marker.deleted` innerhalb der Transaktion (vor dem Commit) und löscht in einer Schleife |
 | CR-009 | Sicherheit | niedrig | behoben | `POST /api/files` liest den ganzen Body in den Speicher, bevor die Größe geprüft wird |
-| CR-010 | Duplizierung & Modularisierung | niedrig | offen | Chat-Limits: lokale Funktion `CHANNEL_NAME_MAX()` überschattet die Konstante, Literal `80` dreifach; Karten-Route dupliziert `MAP_NAME_MAX` und „20 MB“ |
-| CR-011 | Toter Code | niedrig | offen | `createMapWithImage` ist als `@deprecated … kept for API tests` markiert, wird aber von der Produkt-Route genutzt |
-| CR-012 | Performance | niedrig | offen | Sichtbarkeitsfilter in JS statt SQL (Artikel-, Quest-, Tagebuchliste, Suche ohne SQL-`LIMIT`) |
+| CR-010 | Duplizierung & Modularisierung | niedrig | behoben | Chat-Limits: lokale Funktion `CHANNEL_NAME_MAX()` überschattet die Konstante, Literal `80` dreifach; Karten-Route dupliziert `MAP_NAME_MAX` und „20 MB“ |
+| CR-011 | Toter Code | niedrig | behoben | `createMapWithImage` ist als `@deprecated … kept for API tests` markiert, wird aber von der Produkt-Route genutzt |
+| CR-012 | Performance | niedrig | behoben | Sichtbarkeitsfilter in JS statt SQL (Artikel-, Quest-, Tagebuchliste, Suche ohne SQL-`LIMIT`) |
 | CR-013 | Runtime-Risiken | niedrig | behoben | „Letzter aktiver Kanal“ wird nicht atomar geprüft: parallele Archivierungen können alle Kanäle archivieren |
 | CR-014 | Bad Practices | niedrig | behoben | `GET …/chat` schreibt (`ensureDefaultChannel` bei jedem Laden) |
-| CR-015 | Lesbarkeit & Wartbarkeit | niedrig | offen | Datei-GC kennt die referenzierenden Tabellen nur als hartkodierte SQL-Liste |
+| CR-015 | Lesbarkeit & Wartbarkeit | niedrig | behoben | Datei-GC kennt die referenzierenden Tabellen nur als hartkodierte SQL-Liste |
 | CR-016 | Aufgaben-Abgleich | niedrig | offen | Review 001 führt CR-004, CR-021, CR-023 noch als `offen`, obwohl der Plan „kein Finding `offen`“ und Nachführen im Task-Commit verlangt |
 | CR-017 | Sicherheit | mittel | behoben | Rollenwechsel wirkt nicht live: Karte und SSE-Leitung behalten die alte Rolle (z. B. SL-Karte bleibt nach Herabstufung sichtbar). Nachgetragen im Plan-Review 2026-09-23 |
 

@@ -1,12 +1,17 @@
 import { unlink } from "node:fs/promises";
-import { and, inArray, sql } from "drizzle-orm";
+import { and, inArray, sql, type AnyColumn } from "drizzle-orm";
 import { db } from "@/db/client";
-import { files } from "@/db/schema";
+import { FILE_REFERENCE_COLUMNS, files } from "@/db/schema";
 import { storedFilePath } from "./store";
+
+function notReferencedBy(column: AnyColumn) {
+  return sql`NOT EXISTS (SELECT 1 FROM ${column.table} WHERE ${column} = ${files.id})`;
+}
 
 /**
  * APP-FILE-GC: deletes candidate files that no row references any more and
  * removes them from the volume. One DELETE for all candidates, no per-file query.
+ * Reference list: `FILE_REFERENCE_COLUMNS` in the schema.
  */
 export async function collectUnreferencedFiles(candidateIds: readonly (string | null | undefined)[]) {
   const ids = [...new Set(candidateIds.filter((id): id is string => Boolean(id)))];
@@ -14,16 +19,7 @@ export async function collectUnreferencedFiles(candidateIds: readonly (string | 
 
   const removed = await db
     .delete(files)
-    .where(
-      and(
-        inArray(files.id, ids),
-        sql`NOT EXISTS (SELECT 1 FROM worlds WHERE title_image_id = ${files.id})`,
-        sql`NOT EXISTS (SELECT 1 FROM articles WHERE title_image_id = ${files.id})`,
-        sql`NOT EXISTS (SELECT 1 FROM maps WHERE image_id = ${files.id})`,
-        sql`NOT EXISTS (SELECT 1 FROM characters WHERE portrait_id = ${files.id})`,
-        sql`NOT EXISTS (SELECT 1 FROM character_images WHERE file_id = ${files.id})`,
-      ),
-    )
+    .where(and(inArray(files.id, ids), ...FILE_REFERENCE_COLUMNS.map(notReferencedBy)))
     .returning({ storageKey: files.storageKey });
 
   await Promise.all(

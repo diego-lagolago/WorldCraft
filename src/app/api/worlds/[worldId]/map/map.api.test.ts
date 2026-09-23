@@ -55,21 +55,42 @@ function mapApi(session: TestSession | null, path = "", method = "GET", body?: u
   );
 }
 
-async function uploadMap(session: TestSession, id: string) {
+async function createMapWithFile(session: TestSession, id: string, name = "Testkarte") {
+  const created = await api<{ map?: { id: string }; error?: string }>(session, "POST", `/api/worlds/${worldId}/map`, {
+    universeId: id,
+    name,
+  });
+  if (created.status !== 201 || !created.data.map?.id) return created;
   const form = new FormData();
-  form.set("universeId", id);
-  form.set("name", "Testkarte");
+  form.set("kind", "map");
+  form.set("worldId", worldId);
+  form.set("targetId", created.data.map.id);
   form.set("image", new Blob([PNG], { type: "image/png" }), "map.png");
-  const res = await fetch(`${BASE}/api/worlds/${worldId}/map`, {
+  const upload = await fetch(`${BASE}/api/files`, {
     method: "POST",
     headers: { cookie: session.cookie, origin: BASE },
     body: form,
   });
-  const data = (await res.json().catch(() => ({}))) as { map?: { id: string }; error?: string };
-  return { status: res.status, data };
+  expect(upload.status).toBe(201);
+  return created;
 }
 
 describe("Produkt-Karte", () => {
+  it("rejects multipart create with 415", async () => {
+    const form = new FormData();
+    form.set("universeId", universeId);
+    form.set("name", "Multipart");
+    form.set("image", new Blob([PNG], { type: "image/png" }), "map.png");
+    const res = await fetch(`${BASE}/api/worlds/${worldId}/map`, {
+      method: "POST",
+      headers: { cookie: gm.cookie, origin: BASE },
+      body: form,
+    });
+    expect(res.status).toBe(415);
+    const data = (await res.json()) as { error?: string };
+    expect(data.error).toMatch(/JSON/i);
+  });
+
   it("rejects a non-member and invalid ids", async () => {
     expect((await mapApi(outsider)).status).toBe(403);
     expect((await mapApi(gm, "?universe=abc")).status).toBe(400);
@@ -86,11 +107,11 @@ describe("Produkt-Karte", () => {
   });
 
   it("creates maps (multiple per universe), hides gm_only layers from the player, and publishes pins", async () => {
-    const created = await uploadMap(gm, universeId);
+    const created = await createMapWithFile(gm, universeId);
     expect(created.status).toBe(201);
     const mapId = created.data.map?.id as string;
     expect(mapId).toBeTruthy();
-    const second = await uploadMap(gm, universeId);
+    const second = await createMapWithFile(gm, universeId);
     expect(second.status).toBe(201);
     expect(second.data.map?.id).toBeTruthy();
     expect(second.data.map?.id).not.toBe(mapId);
@@ -145,7 +166,7 @@ describe("Produkt-Karte", () => {
       visibility: "gm_only",
     });
     expect(secretUni.status).toBe(201);
-    const secretMap = await uploadMap(gm, secretUni.data.id);
+    const secretMap = await createMapWithFile(gm, secretUni.data.id);
     expect(secretMap.status).toBe(201);
     await api(gm, "PATCH", `/api/worlds/${worldId}/map`, {
       mapId: secretMap.data.map?.id,

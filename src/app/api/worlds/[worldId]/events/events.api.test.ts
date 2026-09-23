@@ -59,18 +59,23 @@ beforeAll(async () => {
   masterMembershipId = members.data.members.find((m) => m.userId === master.user.id)!.membershipId;
   playerMembershipId = members.data.members.find((m) => m.userId === playerA.user.id)!.membershipId;
 
+  const created = await api<{ map?: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/map`, {
+    universeId,
+    name: "SSE-Karte",
+  });
+  expect(created.status).toBe(201);
+  mapId = created.data.map!.id;
   const form = new FormData();
-  form.set("universeId", universeId);
-  form.set("name", "SSE-Karte");
+  form.set("kind", "map");
+  form.set("worldId", worldId);
+  form.set("targetId", mapId);
   form.set("image", new Blob([PNG], { type: "image/png" }), "map.png");
-  const mapRes = await fetch(`${BASE}/api/worlds/${worldId}/map`, {
+  const mapRes = await fetch(`${BASE}/api/files`, {
     method: "POST",
     headers: { cookie: gm.cookie, origin: BASE },
     body: form,
   });
-  const mapData = (await mapRes.json()) as { map?: { id: string } };
   expect(mapRes.status).toBe(201);
-  mapId = mapData.map!.id;
 });
 
 afterAll(async () => {

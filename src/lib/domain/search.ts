@@ -90,11 +90,11 @@ export async function searchWorld(input: {
   const viewer = { role: input.role, userId: input.viewerId };
 
   const parts: Promise<RawHit[]>[] = [];
-  if (kinds.includes("article")) parts.push(searchArticles(input.worldId, viewer, query));
-  if (kinds.includes("quest")) parts.push(searchQuests(input.worldId, viewer, query));
-  if (kinds.includes("universe")) parts.push(searchUniverses(input.worldId, viewer, query));
-  if (kinds.includes("pin")) parts.push(searchPins(input.worldId, viewer, query));
-  if (kinds.includes("character")) parts.push(searchCharacters(input.worldId, query));
+  if (kinds.includes("article")) parts.push(searchArticles(input.worldId, viewer, query, limit));
+  if (kinds.includes("quest")) parts.push(searchQuests(input.worldId, viewer, query, limit));
+  if (kinds.includes("universe")) parts.push(searchUniverses(input.worldId, viewer, query, limit));
+  if (kinds.includes("pin")) parts.push(searchPins(input.worldId, viewer, query, limit));
+  if (kinds.includes("character")) parts.push(searchCharacters(input.worldId, query, limit));
 
   const rows = (await Promise.all(parts)).flat();
   rows.sort((a, b) => a.title.localeCompare(b.title, "de"));
@@ -111,7 +111,12 @@ export async function searchWorld(input: {
 
 type Viewer = { role: MembershipRole; userId: string };
 
-async function searchArticles(worldId: string, viewer: Viewer, query: string): Promise<RawHit[]> {
+async function searchArticles(
+  worldId: string,
+  viewer: Viewer,
+  query: string,
+  limit: number,
+): Promise<RawHit[]> {
   const filters: SQL[] = [
     eq(articles.worldId, worldId),
     matchTitleOrPlain(articles.title, sql`coalesce(${articles.bodyPlain}, '')`, articles.bodyTsv, query),
@@ -127,7 +132,8 @@ async function searchArticles(worldId: string, viewer: Viewer, query: string): P
       ownerId: articles.ownerId,
     })
     .from(articles)
-    .where(and(...filters));
+    .where(and(...filters))
+    .limit(limit);
   return rows
     .filter((row) =>
       canSeeVisibility({
@@ -146,7 +152,12 @@ async function searchArticles(worldId: string, viewer: Viewer, query: string): P
     }));
 }
 
-async function searchQuests(worldId: string, viewer: Viewer, query: string): Promise<RawHit[]> {
+async function searchQuests(
+  worldId: string,
+  viewer: Viewer,
+  query: string,
+  limit: number,
+): Promise<RawHit[]> {
   const filters: SQL[] = [
     eq(quests.worldId, worldId),
     matchTitleOrPlain(quests.title, sql`coalesce(${quests.descriptionPlain}, '')`, quests.descriptionTsv, query),
@@ -161,7 +172,8 @@ async function searchQuests(worldId: string, viewer: Viewer, query: string): Pro
       ownerId: quests.ownerId,
     })
     .from(quests)
-    .where(and(...filters));
+    .where(and(...filters))
+    .limit(limit);
   const fromDescription = rows
     .filter((row) =>
       canSeeVisibility({
@@ -173,20 +185,25 @@ async function searchQuests(worldId: string, viewer: Viewer, query: string): Pro
     )
     .map((row) => ({ kind: "quest" as const, id: row.id, title: row.title, plain: row.plain }));
 
-  const fromChapters = await searchQuestChapters(worldId, viewer, query);
+  const fromChapters = await searchQuestChapters(worldId, viewer, query, limit);
   const byId = new Map<string, RawHit>();
   for (const hit of fromDescription) byId.set(hit.id, hit);
   for (const hit of fromChapters) {
     if (!byId.has(hit.id)) byId.set(hit.id, hit);
   }
-  return [...byId.values()];
+  return [...byId.values()].slice(0, limit);
 }
 
 /**
  * Chapter text hits the quest (APP-VIS-OWNER + inheritance). Snippet from the
  * matching chapter. Notes are not searched.
  */
-async function searchQuestChapters(worldId: string, viewer: Viewer, query: string): Promise<RawHit[]> {
+async function searchQuestChapters(
+  worldId: string,
+  viewer: Viewer,
+  query: string,
+  limit: number,
+): Promise<RawHit[]> {
   const filters: SQL[] = [
     eq(quests.worldId, worldId),
     matchTitleOrPlain(
@@ -213,7 +230,8 @@ async function searchQuestChapters(worldId: string, viewer: Viewer, query: strin
     })
     .from(questChapters)
     .innerJoin(quests, eq(quests.id, questChapters.questId))
-    .where(and(...filters));
+    .where(and(...filters))
+    .limit(limit);
 
   const byQuest = new Map<string, RawHit>();
   for (const row of rows) {
@@ -237,7 +255,12 @@ async function searchQuestChapters(worldId: string, viewer: Viewer, query: strin
   return [...byQuest.values()];
 }
 
-async function searchUniverses(worldId: string, viewer: Viewer, query: string): Promise<RawHit[]> {
+async function searchUniverses(
+  worldId: string,
+  viewer: Viewer,
+  query: string,
+  limit: number,
+): Promise<RawHit[]> {
   const filters: SQL[] = [
     eq(universes.worldId, worldId),
     matchTitleOrPlain(universes.name, sql`coalesce(${universes.descriptionPlain}, '')`, universes.descriptionTsv, query),
@@ -251,7 +274,8 @@ async function searchUniverses(worldId: string, viewer: Viewer, query: string): 
       visibility: universes.visibility,
     })
     .from(universes)
-    .where(and(...filters));
+    .where(and(...filters))
+    .limit(limit);
   return rows
     .filter((row) =>
       canSeeVisibility({ role: viewer.role, visibility: row.visibility, viewerId: viewer.userId }),
@@ -259,11 +283,21 @@ async function searchUniverses(worldId: string, viewer: Viewer, query: string): 
     .map((row) => ({ kind: "universe" as const, id: row.id, title: row.title, plain: row.plain }));
 }
 
-async function searchPins(worldId: string, viewer: Viewer, query: string): Promise<RawHit[]> {
+async function searchPins(
+  worldId: string,
+  viewer: Viewer,
+  query: string,
+  limit: number,
+): Promise<RawHit[]> {
   const filters: SQL[] = [
     eq(universes.worldId, worldId),
     matchTitleOrPlain(pins.title, sql`coalesce(${pins.descriptionPlain}, '')`, pins.descriptionTsv, query),
   ];
+  if (!isStaff(viewer.role)) {
+    filters.push(eq(universes.visibility, "published"));
+    filters.push(eq(maps.visibility, "published"));
+    filters.push(eq(pins.visibility, "published"));
+  }
   const rows = await db
     .select({
       id: pins.id,
@@ -277,7 +311,8 @@ async function searchPins(worldId: string, viewer: Viewer, query: string): Promi
     .from(pins)
     .innerJoin(maps, eq(maps.id, pins.mapId))
     .innerJoin(universes, eq(universes.id, maps.universeId))
-    .where(and(...filters));
+    .where(and(...filters))
+    .limit(limit);
   return rows
     .filter((row) =>
       canSeePublishedLayer(viewer, [
@@ -289,7 +324,7 @@ async function searchPins(worldId: string, viewer: Viewer, query: string): Promi
     .map((row) => ({ kind: "pin" as const, id: row.id, title: row.title, plain: row.plain }));
 }
 
-async function searchCharacters(worldId: string, query: string): Promise<RawHit[]> {
+async function searchCharacters(worldId: string, query: string, limit: number): Promise<RawHit[]> {
   const pattern = `%${escapeLikePattern(query)}%`;
   const rows = await db
     .select({
@@ -309,6 +344,7 @@ async function searchCharacters(worldId: string, query: string): Promise<RawHit[
           sql`${characters.bioTsv} @@ plainto_tsquery('german', ${query})`,
         ),
       ),
-    );
+    )
+    .limit(limit);
   return rows.map((row) => ({ kind: "character" as const, id: row.id, title: row.title, plain: row.plain }));
 }

@@ -47,30 +47,31 @@ beforeAll(async () => {
   const worldGet = await api<{ universes: { id: string }[] }>(gm, "GET", w());
   const universeId = worldGet.data.universes[0]!.id;
 
-  const form = new FormData();
-  form.set("universeId", universeId);
-  form.set("name", "Öffentliche Karte");
-  form.set("image", new Blob([PNG], { type: "image/png" }), "map.png");
-  const published = await fetch(`${BASE}${w("/map")}`, {
-    method: "POST",
-    headers: { cookie: gm.cookie, origin: BASE },
-    body: form,
-  });
-  const publishedData = (await published.json()) as { map?: { id: string } };
-  publishedMapId = publishedData.map!.id;
+  async function createMapNamed(name: string) {
+    const created = await api<{ map?: { id: string } }>(gm, "POST", w("/map"), { universeId, name });
+    expect(created.status).toBe(201);
+    const mapId = created.data.map!.id;
+    const form = new FormData();
+    form.set("kind", "map");
+    form.set("worldId", worldId);
+    form.set("targetId", mapId);
+    form.set("image", new Blob([PNG], { type: "image/png" }), "map.png");
+    expect(
+      (
+        await fetch(`${BASE}/api/files`, {
+          method: "POST",
+          headers: { cookie: gm.cookie, origin: BASE },
+          body: form,
+        })
+      ).status,
+    ).toBe(201);
+    return mapId;
+  }
+
+  publishedMapId = await createMapNamed("Öffentliche Karte");
   expect((await api(gm, "PATCH", w("/map"), { mapId: publishedMapId, visibility: "published" })).status).toBe(200);
 
-  const form2 = new FormData();
-  form2.set("universeId", universeId);
-  form2.set("name", "SL-Karte");
-  form2.set("image", new Blob([PNG], { type: "image/png" }), "map2.png");
-  const hidden = await fetch(`${BASE}${w("/map")}`, {
-    method: "POST",
-    headers: { cookie: gm.cookie, origin: BASE },
-    body: form2,
-  });
-  const hiddenData = (await hidden.json()) as { map?: { id: string } };
-  gmOnlyMapId = hiddenData.map!.id;
+  gmOnlyMapId = await createMapNamed("SL-Karte");
 });
 
 afterAll(async () => {

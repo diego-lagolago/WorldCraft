@@ -7,6 +7,7 @@ import {
   authorizeJournalWrite,
   canSeeJournal,
   fail,
+  isStaff,
   ok,
   type AuthzResult,
   type JournalVisibility,
@@ -78,6 +79,19 @@ export async function listJournal(input: {
   if (!character?.participation || character.participation.archivedAt) {
     return fail(404, "Dieser Charakter ist nicht in dieser Welt.");
   }
+
+  const filters = [
+    eq(journalEntries.worldId, input.worldId),
+    eq(journalEntries.characterId, input.characterId),
+  ];
+  if (input.viewerId === character.ownerId) {
+    // Owner sees every entry of this character.
+  } else if (isStaff(input.role)) {
+    filters.push(eq(journalEntries.visibility, "shared_with_gm"));
+  } else {
+    return ok([]);
+  }
+
   const rows = await db
     .select({
       id: journalEntries.id,
@@ -89,7 +103,7 @@ export async function listJournal(input: {
       updatedAt: journalEntries.updatedAt,
     })
     .from(journalEntries)
-    .where(and(eq(journalEntries.worldId, input.worldId), eq(journalEntries.characterId, input.characterId)))
+    .where(and(...filters))
     .orderBy(desc(journalEntries.createdAt));
   return ok(
     rows.filter((row) =>

@@ -16,7 +16,9 @@ import { parseStoredDiceTerms, type StoredDiceTerm } from "@/lib/chat/dice-forma
 import type { RolledDice } from "@/lib/chat/dice";
 import { worldEvents } from "@/lib/realtime/events";
 import {
+  CHANNEL_NAME_MAX,
   CHAT_HISTORY_LIMIT,
+  THREAD_TITLE_MAX,
   type ChatChannelDto,
   type ChatMessageDto,
   type ChatOlderPage,
@@ -377,7 +379,9 @@ export async function createThreadWithOpening(input: {
   title: string;
 }): Promise<AuthzResult<{ thread: ChatThreadDto; message: ChatMessageDto }>> {
   const title = input.title.trim();
-  if (!title || title.length > 80) return fail(400, "Der Thread-Titel muss 1 bis 80 Zeichen haben.");
+  if (!title || title.length > THREAD_TITLE_MAX) {
+    return fail(400, `Der Thread-Titel muss 1 bis ${THREAD_TITLE_MAX} Zeichen haben.`);
+  }
   const channel = await channelInWorld(input.worldId, input.channelId);
   if (!channel || channel.archivedAt) return fail(404, "Kanal nicht gefunden.");
 
@@ -470,7 +474,9 @@ export async function createChannel(input: {
   const staff = requireStaff(input.membership);
   if (!staff.ok) return staff;
   const name = input.name.trim();
-  if (!name || name.length > CHANNEL_NAME_MAX()) return fail(400, "Der Kanalname muss 1 bis 80 Zeichen haben.");
+  if (!name || name.length > CHANNEL_NAME_MAX) {
+    return fail(400, `Der Kanalname muss 1 bis ${CHANNEL_NAME_MAX} Zeichen haben.`);
+  }
   if (await activeNameTaken(input.worldId, name)) return fail(409, NAME_TAKEN);
   const [maxRow] = await db
     .select({ max: sql<number>`coalesce(max(${chatChannels.sortOrder}), -1)` })
@@ -496,10 +502,6 @@ export async function createChannel(input: {
   }
 }
 
-function CHANNEL_NAME_MAX() {
-  return 80;
-}
-
 export async function updateChannel(input: {
   membership: MembershipRow;
   actorId: string;
@@ -516,7 +518,9 @@ export async function updateChannel(input: {
   if (input.action === "rename") {
     if (channel.archivedAt) return fail(404, "Dieser Kanal ist archiviert.");
     const name = (input.name ?? "").trim();
-    if (!name || name.length > 80) return fail(400, "Der Kanalname muss 1 bis 80 Zeichen haben.");
+    if (!name || name.length > CHANNEL_NAME_MAX) {
+      return fail(400, `Der Kanalname muss 1 bis ${CHANNEL_NAME_MAX} Zeichen haben.`);
+    }
     if (await activeNameTaken(input.worldId, name, channel.id)) return fail(409, NAME_TAKEN);
     try {
       const [row] = await db

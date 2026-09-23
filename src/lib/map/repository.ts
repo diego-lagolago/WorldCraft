@@ -36,9 +36,8 @@ import { asRichDoc, extractMentions } from "@/lib/editor/rich-text";
 import { mapDbError } from "@/lib/domain/db-errors";
 import { listUniverses } from "@/lib/domain/universes";
 import { richFieldFromInput } from "@/lib/domain/rich-field";
+import { setMapImage } from "@/lib/files/attach";
 import { collectUnreferencedFiles } from "@/lib/files/gc";
-import { MAP_IMAGE_MAX_BYTES } from "@/lib/files/inspect";
-import { persistImage, removeStoredFile } from "@/lib/files/store";
 import { worldEvents } from "@/lib/realtime/events";
 import { positionSql, roundPosition } from "./coords";
 import { PIN_TYPES, type PinType } from "./pin-types";
@@ -51,8 +50,6 @@ import type {
   PinDto,
   PlaceableCharacterDto,
 } from "./types";
-
-export { MAP_IMAGE_MAX_BYTES };
 
 export const MAP_NAME_MAX = 120;
 export const PIN_TITLE_MAX = 120;
@@ -463,7 +460,10 @@ export async function createMap(input: {
   }
 }
 
-/** @deprecated Prefer createMap + file attach; kept for API tests that upload on create. */
+/**
+ * Create a map with an image in one step for clients without a browser,
+ * e.g. MCP (Plan 002). Composed from createMap + shared map image attach.
+ */
 export async function createMapWithImage(input: {
   membership: MembershipRow | null;
   actorId: string;
@@ -472,47 +472,32 @@ export async function createMapWithImage(input: {
   name: string;
   bytes: Buffer;
 }): Promise<AuthzResult<{ map: MapDto }>> {
-  const staff = requireStaff(input.membership);
-  if (!staff.ok) return staff;
-  const [universe] = await db
-    .select()
-    .from(universes)
-    .where(and(eq(universes.id, input.universeId), eq(universes.worldId, input.worldId)))
-    .limit(1);
-  if (!universe) return fail(404, "Dieses Universum gibt es nicht.");
+  const created = await createMap({
+    membership: input.membership,
+    actorId: input.actorId,
+    worldId: input.worldId,
+    universeId: input.universeId,
+    name: input.name,
+  });
+  if (!created.ok) return created;
 
-  const saved = await persistImage({ bytes: input.bytes, createdBy: input.actorId, maxBytes: MAP_IMAGE_MAX_BYTES });
-  if ("error" in saved) return fail(400, saved.error);
-  if (!saved.image.width || !saved.image.height) {
-    await removeStoredFile(saved.id);
-    return fail(400, "Bildgröße unbekannt.");
-  }
+  const attached = await setMapImage({
+    worldId: input.worldId,
+    mapId: created.data.map.id,
+    actorId: input.actorId,
+    bytes: input.bytes,
+  });
+  if (!attached.ok) return attached;
 
-  try {
-    const [row] = await db
-      .insert(maps)
-      .values({
-        universeId: input.universeId,
-        name: input.name,
-        imageId: saved.id,
-        createdBy: input.actorId,
-        updatedBy: input.actorId,
-      })
-      .returning();
-    const dto = serializeMap(row, { widthPx: saved.image.width, heightPx: saved.image.height });
-    worldEvents.publish({
-      type: "map.updated",
-      worldId: input.worldId,
-      universeId: input.universeId,
-      layers: mapEventLayers(universe.visibility, row.visibility),
-    });
-    return ok({ map: dto });
-  } catch (error) {
-    await removeStoredFile(saved.id);
-    const mapped = mapDbError(error);
-    if (mapped) return mapped;
-    throw error;
-  }
+  return ok({
+    map: {
+      ...created.data.map,
+      imageId: attached.data.fileId,
+      imageUrl: fileUrl(attached.data.fileId),
+      imageWidth: attached.data.widthPx,
+      imageHeight: attached.data.heightPx,
+    },
+  });
 }
 
 export async function deleteMap(input: {

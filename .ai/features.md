@@ -101,7 +101,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 
 | Feature | Was es tut | Status |
 |---|---|---|
-| Gruppenchat | Kanäle, Threads (eingerückt + Chevron), SSE-Realtime | MVP F10 / shipped |
+| Gruppenchat | Kanäle, Threads (eingerückt + Chevron), SSE-Realtime; ohne aktiven Kanal Hinweis statt Auto-Anlage | MVP F10 / shipped |
 | Kanalverwaltung | Anlegen, umbenennen, Reihenfolge, archivieren/wiederherstellen (Spielleitung) | shipped |
 | Composer | Leerzeichen ohne Cursor-Sprung; Absätze (Shift+Enter) in Nachrichten sichtbar | shipped |
 | Würfel | Serverseitige Auswertung; UI am Prototyp (Grid, fette Summe, Toast) | MVP F10 / shipped |

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, or } from "drizzle-orm";
 import { z } from "zod";
 import { db, type DbTx } from "@/db/client";
 import { characters, questParticipants, quests, worldParticipations } from "@/db/schema";
@@ -7,6 +7,7 @@ import {
   authorizeOwnedContentWrite,
   canSeeVisibility,
   fail,
+  isStaff,
   ok,
   requireStaff,
   type AuthzResult,
@@ -323,6 +324,10 @@ export async function listQuests(
   role: MembershipRole,
   viewerId: string,
 ): Promise<QuestSummary[]> {
+  const filters = [eq(quests.worldId, worldId)];
+  if (!isStaff(role)) filters.push(eq(quests.visibility, "published"));
+  else filters.push(or(ne(quests.visibility, "owner_only"), eq(quests.ownerId, viewerId))!);
+
   const rows = await db
     .select({
       id: quests.id,
@@ -332,7 +337,7 @@ export async function listQuests(
       ownerId: quests.ownerId,
     })
     .from(quests)
-    .where(eq(quests.worldId, worldId))
+    .where(and(...filters))
     .orderBy(asc(quests.title));
   const visible = rows.filter((row) =>
     canSeeVisibility({ role, visibility: row.visibility, viewerId, ownerId: row.ownerId }),

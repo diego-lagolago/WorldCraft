@@ -52,17 +52,23 @@ async function refreshMembers() {
 }
 
 async function uploadMap(session: TestSession, universeId: string, name: string) {
+  const created = await api<{ map?: { id: string }; error?: string }>(session, "POST", w("/map"), {
+    universeId,
+    name,
+  });
+  if (created.status !== 201 || !created.data.map?.id) return created;
   const form = new FormData();
-  form.set("universeId", universeId);
-  form.set("name", name);
+  form.set("kind", "map");
+  form.set("worldId", worldId);
+  form.set("targetId", created.data.map.id);
   form.set("image", new Blob([PNG], { type: "image/png" }), "map.png");
-  const res = await fetch(`${BASE}${w("/map")}`, {
+  const upload = await fetch(`${BASE}/api/files`, {
     method: "POST",
     headers: { cookie: session.cookie, origin: BASE },
     body: form,
   });
-  const data = (await res.json().catch(() => ({}))) as { map?: { id: string }; error?: string };
-  return { status: res.status, data };
+  expect(upload.status).toBe(201);
+  return created;
 }
 
 beforeAll(async () => {
