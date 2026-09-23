@@ -15,7 +15,6 @@ import {
 } from "@/lib/authz";
 import { parseUuid } from "@/lib/http";
 import {
-  QUEST_STATUS_LABEL,
   QUEST_STATUSES,
   type QuestParticipant,
   type QuestStatus,

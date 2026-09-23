@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { signIn } from "@/lib/auth-client";
 import { DISCORD_NOT_ALLOWED_MESSAGE } from "@/lib/env";
 import { TEST_USERS, type TestUserId } from "@/lib/test-users";
@@ -31,25 +31,23 @@ export function LoginScreen({
 }: Props) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(() => messageForAuthError(authError, authErrorDescription));
-
-  useEffect(() => {
-    setError(messageForAuthError(authError, authErrorDescription));
-  }, [authError, authErrorDescription]);
+  // undefined = show URL/auth error; null/string = local override after user action
+  const [actionError, setActionError] = useState<string | null | undefined>(undefined);
+  const error = actionError === undefined ? messageForAuthError(authError, authErrorDescription) : actionError;
 
   async function onDiscord() {
-    setError(null);
+    setActionError(null);
     setPending("discord");
     try {
       await signIn.social({ provider: "discord", callbackURL: next ?? "/" });
     } catch {
-      setError("Die Discord-Anmeldung konnte nicht gestartet werden.");
+      setActionError("Die Discord-Anmeldung konnte nicht gestartet werden.");
       setPending(null);
     }
   }
 
   async function onTestLogin(discordId: TestUserId) {
-    setError(null);
+    setActionError(null);
     setPending(discordId);
     try {
       const response = await fetch("/api/test-login", {
@@ -59,7 +57,7 @@ export function LoginScreen({
         body: JSON.stringify({ discordId }),
       });
       if (!response.ok) {
-        setError("Test-Login fehlgeschlagen.");
+        setActionError("Test-Login fehlgeschlagen.");
         return;
       }
       if (next) router.push(next);
