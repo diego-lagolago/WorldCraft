@@ -1,11 +1,11 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
-/** Integration script: needs a running dev server. Not part of `npm test`. */
+/** Integration scripts and product API tests: need a running dev server. Not part of `npm test`. */
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/spike/rechte/run-rechte-tests.ts"],
+    include: ["src/spike/rechte/run-rechte-tests.ts", "src/**/*.api.test.ts"],
     fileParallelism: false,
   },
   resolve: {

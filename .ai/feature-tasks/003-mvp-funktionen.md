@@ -301,10 +301,11 @@ Regeln:
 - Abnahmekriterium: (1) Ein erlaubtes Bild landet als Zeile in `files` plus Datei auf dem Volume; die App kann es authentifiziert ausliefern. (2) Falsches MIME oder Überschreiten des Limits wird mit verständlicher deutscher Fehlermeldung abgelehnt, keine Datei bleibt liegen. (3) 11. Bildanhang am Charakter wird abgelehnt. (4) Player können keine Welt-/Karten-/Artikelbilder schreiben.
 
 ### T-005: TipTap-Editor in die App
-- [ ] Beschreibung: Den Editor aus `spikes/editor/` in die Next-App übernehmen (`src/components/editor/` oder gleichwertig, nicht unter `src/spike/`). Funktionsumfang unverändert laut Plan `001` *Artikel-Editor* und ADR-004: nur OSS-Erweiterungen. Erwähnungssuche über eine Produkt-API der Welt (vollständige Suchlogik mit allen Inhaltsarten liefert T-009; bis dahin behandelt die API leere oder teilweise Bestände korrekt). Stub-Anlage laut `.ai/standards/erwaehnungen.md`. Modus ohne Erwähnungen für die Weltbeschreibung. Einfügen: Bilder/Tabellen verwerfen. Speichern: TipTap-JSON + Klartext. Relationen aus Mentions berechnet T-010; der Editor liefert die Verweisliste (Art + ID).
+- [x] Beschreibung: Den Editor aus `spikes/editor/` in die Next-App übernehmen (`src/components/editor/` oder gleichwertig, nicht unter `src/spike/`). Funktionsumfang unverändert laut Plan `001` *Artikel-Editor* und ADR-004: nur OSS-Erweiterungen. Erwähnungssuche über eine Produkt-API der Welt (vollständige Suchlogik mit allen Inhaltsarten liefert T-009; bis dahin behandelt die API leere oder teilweise Bestände korrekt). Stub-Anlage laut `.ai/standards/erwaehnungen.md`. Modus ohne Erwähnungen für die Weltbeschreibung. Einfügen: Bilder/Tabellen verwerfen. Speichern: TipTap-JSON + Klartext. Relationen aus Mentions berechnet T-010; der Editor liefert die Verweisliste (Art + ID).
 - Code-Review: CR-022. Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
 - Abhängigkeiten: T-002, T-003
 - Abnahmekriterium: (1) Dieselben Abnahmekriterien wie Plan `001` T-005 (2)–(6), aber in der Next-App gegen eine Testwelt, nicht gegen `spikes/editor` allein. (2) `@Tore von Wer` mit Caret mitten im Satz sucht nur bis zur Marke. (3) Ohne Treffer erscheint „Neuen Artikel anlegen“; nach Bestätigen existiert ein Artikel, die Erwähnung ist rot bis zur ersten Bearbeitung. (4) `spikes/editor` darf bis T-016 liegen bleiben, wird aber nicht mehr die produktive Oberfläche.
+- Umsetzung (2026-09-23): Editor unter `src/components/editor/`, reine Logik unter `src/lib/editor/` (Sanitizing, Klartext, Verweisliste, Links, Ranking). APIs `GET /api/worlds/[worldId]/mentions?q=` (vorerst Artikel) und `POST /api/worlds/[worldId]/articles` (Stub, nur Spielleitung). Nachweise: Unit- und headless-TipTap-Tests (`npm test`), API-Tests gegen eine Testwelt (`src/**/*.api.test.ts`, `npm run test:rechte`). Die Browser-Prüfung von Kriterium (1) sowie (2) und (3) in der Oberfläche ist nach **T-019** verschoben (Entscheidung Projektinhaber 2026-09-23), weil erst T-007/T-009 den Editor in Produktseiten einbauen.
 
 ### T-006: App-Shell, Login-Flow, Navigation
 - [ ] Beschreibung: Shell gemäß *Informationsarchitektur* bauen. Mobile-First ~390 px, große Touch-Ziele. Chat-Route verdeckt die Bottom-Bar durch den Composer. Abgemeldet nur Login (Discord, lokal zusätzlich Test-Login). Angemeldet: Onboarding oder Welt-Redirect. Versionsbadge bleibt global. Spike-Links auf der Startseite entfernen, sobald die Shell die Einstiege ersetzt (spätestens T-016). Shell und alle Oberflächen aus T-006 bis T-014 folgen der *Design-Referenz* `spikes/ui-prototype/index.html`; Umbruch Handy/Desktop bei 768 px wie im Prototyp.
@@ -392,6 +393,12 @@ Regeln:
 - Abhängigkeiten: T-016
 - Abnahmekriterium: Der Abschnitt existiert und listet jede Abweichung mit Fundstelle in Plan `002` oder vermerkt „keine neuen Abweichungen gegenüber dem Abgleich aus Plan 001 T-013“. Offene Fragen aus Plan 001 (Staging-Texte, deutsche vs. englische MCP-Parameter) werden wiederholt, falls noch unbeantwortet.
 
+### T-019: Verschobene Browser-Abnahmen
+- [ ] Beschreibung: Abnahmekriterien, die der Projektinhaber auf die Zeit nach der Umsetzung aller Aufgaben verschoben hat, lokal im Browser (Test-Login, Testwelt, ~390 px und Desktop) prüfen und das Ergebnis je Kriterium (bestanden / nicht bestanden) in dieser Aufgabe festhalten. Nicht bestandene Punkte werden behoben oder als neue Aufgabe gemeldet. Verschoben (Entscheidung Projektinhaber 2026-09-23):
+  - T-005 (1): Plan `001` T-005 (2)–(6) im Editor der Next-App gegen eine Testwelt — Werkzeugleiste mit genau den erlaubten Formatierungen; eingefügte Bilder/Tabellen verschwinden, Text bleibt; `@` mit Kategorien laut Fachmodell 2.4 (`@schleim` findet Artikel und Quest, sobald T-009/T-011 umgesetzt sind); gespeichertes JSON lädt identisch; Weltbeschreibung ohne Vorschlagsliste. Dazu T-005 (2) und (3) in der Oberfläche: `@Tore von Wer` mitten im Satz, „Neuen Artikel anlegen“ und rote Erwähnung bis zur ersten Bearbeitung.
+- Abhängigkeiten: T-016
+- Abnahmekriterium: Jedes oben gelistete Kriterium ist mit Ergebnis und Datum vermerkt; kein Punkt bleibt ohne Ergebnis.
+
 ## Reihenfolge (Abhängigkeitsgraph)
 
 ```text
@@ -410,7 +417,8 @@ T-001 Freigabe
                                               T-007…T-013 → T-015 Rechte-Skript
                                                               └─ T-016 Cutover
                                                                     ├─ T-017 Smoketest
-                                                                    └─ T-018 Abgleich 002
+                                                                    ├─ T-018 Abgleich 002
+                                                                    └─ T-019 Browser-Abnahmen
 ```
 
 T-012 (Chat) kann parallel zu T-008/T-009 laufen, sobald T-007 steht. T-013 (Karte) wartet auf T-012, weil es dessen gemeinsames Realtime-Modul nutzt (CR-012).

@@ -38,7 +38,7 @@
 | CR-019 | Sicherheit | niedrig | offen | Persistenz-Snapshot liefert `privat`-Tagebuchtexte an die Spielleitung, Journal auf archivierter Teilnahme möglich |
 | CR-020 | Aufgaben-Abgleich | niedrig | offen | Pin-Sperre (`locked`) nicht dokumentiert: übernehmen, nur Spielleitung (Plan-Review). Spalte in T-002; Rechte und UI folgen in T-013 |
 | CR-021 | Lesbarkeit & Wartbarkeit | niedrig | offen | Würfelausgabe: negative Würfelterme ohne Vorzeichen, versteckter `/roll`-Pfad ignoriert `dicePostToChat`. Schema `dice_terms` in T-002; Formatierer folgt in T-012 |
-| CR-022 | Bad Practices | niedrig | offen | Editor-Spike: Link/Underline doppelt registriert (StarterKit v3), deutsche Identifier entgegen Konvention |
+| CR-022 | Bad Practices | niedrig | behoben | Editor-Spike: Link/Underline doppelt registriert (StarterKit v3), deutsche Identifier entgegen Konvention |
 | CR-023 | Bad Practices | niedrig | offen | Magic Numbers (`Date.now() % 1_000_000`, `15000`, `toFixed(7)` verstreut) |
 
 ---
@@ -268,6 +268,7 @@
 - **Beschreibung:** In TipTap v3 bringt `StarterKit` bereits `Link` und `Underline` mit (siehe `@tiptap/starter-kit/package.json`). Beide werden zusätzlich separat registriert, ohne sie im StarterKit abzuschalten. TipTap warnt dann vor doppelten Extension-Namen, und welche `Link`-Konfiguration (`protocols`, `openOnClick`, `rel`) tatsächlich gilt, ist nicht eindeutig. Die ADR-004-Anforderung „nur http/https“ ist damit nicht sicher erfüllt. Außerdem nutzt der Spike deutsche Identifier und Enum-Werte (`artikel`, `charakter`, `InhaltArt`, `TEST_INHALTE`), während `conventions.md` englischen Code und `CONTENT_KINDS = article|quest|character|pin|universe` festlegt. Beim Übernehmen ins MVP müssten gespeicherte Mention-Attribute (`data-art`) migriert werden.
 - **Empfehlung:** `StarterKit.configure({ link: false, underline: false, … })` oder die Konfiguration direkt über `StarterKit.configure({ link: { … } })` setzen. Identifier und `art`-Werte auf die englischen `CONTENT_KINDS` umstellen, bevor der Editor ins MVP übernommen wird.
 - **Abnahmekriterium:** Beim Initialisieren des Editors erscheint keine „Duplicate extension names“-Warnung in der Konsole. Ein Test prüft, dass `javascript:`-Links nicht übernommen werden. Die Mention-`art`-Werte entsprechen `CONTENT_KINDS`.
+- **Umsetzung (Plan 003 T-005, 2026-09-23):** Produkt-Editor in `src/components/editor/extensions.ts` konfiguriert Link und Underline nur über `StarterKit.configure({ link: {…} })`; Links nur http/https über `normalizeLinkHref` (`src/lib/editor/links.ts`), serverseitig zusätzlich in `sanitizeRichDoc`. Mention-Attribut heißt `kind` mit Werten aus `CONTENT_KINDS` (ADR-004 angepasst). Tests: `src/components/editor/extensions.test.ts` (keine doppelten Namen, keine Duplicate-Warnung, `javascript:` abgelehnt, `kind="article"`), `src/lib/editor/links.test.ts`, `src/lib/editor/rich-text.test.ts`. Der Spike unter `spikes/editor/` bleibt bis T-016 unverändert.
 
 ### CR-023 – Magic Numbers
 - **Fundstelle:** `src/spike/rechte/repository.ts:856` (`sortOrder: Date.now() % 1_000_000`), `src/app/api/spike/*/events/route.ts:27` (`15000`), `toFixed(7)` verstreut (siehe CR-012), `src/app/api/spike/karte/upload/route.ts:79` (`8000`/`6000`)

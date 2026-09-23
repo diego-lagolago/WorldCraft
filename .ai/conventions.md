@@ -63,8 +63,8 @@ Es gibt **kein** separates Staging. Formulierungen „Staging“ in älteren Doc
 
 ## Teststrategie
 
-1. **Unit-Tests:** `npm test` = Vitest (`vitest run`, `environment: "node"`, Alias `@` → `src`). Führt alle `src/**/*.test.ts` aus. DOM-Tests setzen `// @vitest-environment happy-dom` in der Datei. Importe ohne `.ts`-Endung.
-2. **Rechte-Matrix:** `npm run test:rechte` — Vitest mit eigener Config (`vitest.rechte.config.ts`), getrennt von `npm test`, weil ein laufender Dev-Server und Test-Login nötig sind (nur lokal).
+1. **Unit-Tests:** `npm test` = Vitest (`vitest run`, `environment: "node"`, Alias `@` → `src`). Führt alle `src/**/*.test.ts` aus (außer `*.integration.test.ts` und `*.api.test.ts`). DOM-Tests setzen `// @vitest-environment happy-dom` in der Datei. Importe ohne `.ts`-Endung.
+2. **Rechte-Matrix und Produkt-API-Tests:** `npm run test:rechte` — Vitest mit eigener Config (`vitest.rechte.config.ts`), getrennt von `npm test`, weil ein laufender Dev-Server und Test-Login nötig sind (nur lokal). Produkt-API-Tests heißen `*.api.test.ts`, liegen neben der Route und nutzen `src/test/api-harness.ts` (Test-Login, Requests, SQL nur für Testdaten und Aufräumen).
 3. **Trigger:** `npm run test:triggers` — Vitest gegen die lokale PostgreSQL (`vitest.triggers.config.ts`), ebenfalls getrennt von `npm test`.
 4. **Editor-Spike:** `cd spikes/editor && npm test` (eigenes Vitest).
 5. **Manuell / Smoketest:** Prod per Discord; Protokoll [infrastructure/smoketest.md](infrastructure/smoketest.md).

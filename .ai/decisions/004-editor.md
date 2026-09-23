@@ -55,8 +55,8 @@ Zwischenablage: HTML wird vor dem Einfügen bereinigt (Bilder/Tabellen/Medien en
 | `@tiptap/pm` | ProseMirror |
 | `@tiptap/react` | React-Anbindung (ADR-002 / Spike Vite) |
 | `@tiptap/starter-kit` | Paragraph, Bold, Italic, Strike, Listen, Quote, Trennlinie, Heading — konfiguriert: `heading.levels: [2, 3]`, `code: false`, `codeBlock: false` |
-| `@tiptap/extension-underline` | Unterstrichen |
-| `@tiptap/extension-link` | Externer Link, `openOnClick: false` |
+| Underline (in StarterKit v3 enthalten) | Unterstrichen — kein separates Paket, sonst doppelt registriert (CR-022) |
+| Link (in StarterKit v3 enthalten) | Externer Link, über `StarterKit.configure({ link: { openOnClick: false, protocols: ["http","https"], isAllowedUri } })`; nur http/https (CR-022) |
 | `@tiptap/extension-mention` | Erwähnung |
 | `@tiptap/suggestion` | Peer von Mention, Vorschlagsliste |
 | `@tiptap/extension-placeholder` | optional, Platzhaltertext |
@@ -68,9 +68,10 @@ Anbindung Next.js (Produkt, T-007+): Client Component wie Vitura `src/components
 ## Speicherformat
 
 - **Kanonisch:** TipTap-JSON (`editor.getJSON()`), Dokumentknoten `doc` mit `content`.
-- **Erwähnung im JSON:** Node `mention` mit `attrs.id` (Inhalts-ID), `attrs.art` (`artikel` \| `quest` \| `charakter` \| `universum`), `attrs.label` (Titel zum Zeitpunkt des Einfügens; Anzeige später gemäß Modell 2.4 der aktuelle Titel).
-- **Klartext:** `editor.getText()` bzw. ein Walker ohne Mention-Trigger-Zeichen-Duplikate, für Volltextsuche (T-006).
-- **Extraktion:** Funktion `extractMentions(json)` → `{ art, id }[]` in Dokumentreihenfolge, Grundlage für automatische Relationen.
+- **Erwähnung im JSON:** Node `mention` mit `attrs.id` (Inhalts-ID), `attrs.kind` (`article` \| `quest` \| `character` \| `universe`, Teilmenge von `CONTENT_KINDS`; Pins sind nicht erwähnbar), `attrs.label` (Titel zum Zeitpunkt des Einfügens; Anzeige später gemäß Modell 2.4 der aktuelle Titel). Geändert 2026-09-23 von `art` mit deutschen Werten auf `kind` (CR-022, Plan 003 T-005); der Spike nutzt noch `art`.
+- **Klartext:** serverseitiger Walker `plainTextOf` in `src/lib/editor/rich-text.ts` (Erwähnungen mit Titel, ohne `@`), für Volltextsuche.
+- **Extraktion:** Funktion `extractMentions(json)` → `{ kind, id }[]` in Dokumentreihenfolge, Grundlage für automatische Relationen.
+- **Serverseitig:** Jedes Speichern läuft durch `sanitizeRichDoc` (nur erlaubte Nodes/Marks, Links nur http/https, Modus ohne Erwähnungen lehnt Erwähnungen ab).
 
 ## Lizenzhinweise
 
