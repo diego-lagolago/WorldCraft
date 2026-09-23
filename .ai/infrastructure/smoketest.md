@@ -100,17 +100,19 @@ Produktion liefert `POST /api/test-login` → **404** (geprüft 2026-09-22). `te
 **Umgebung:** Prod `https://worldcraft.lagolago.at` (Discord); Test-Login / Rechte-Skript nur lokal.  
 **Ergebnis je Zeile:** bestanden / nicht bestanden / N/A — ggf. Prod vs. lokal vermerken.
 
+**Owner-Protokoll:** 2026-09-23 (Prod Discord; F.5/F.6 ohne lokale Umgebung nicht getestet).
+
 ### Kernpfad F1–F10 (Stichprobe)
 
 | # | Kriterium | Wo | Ergebnis | Beobachtung |
 |---|---|---|---|---|
-| F.1 | Discord-Login → Welt öffnen / anlegen | Prod | | |
-| F.2 | Artikel mit Erwähnung speichern | Prod | | |
-| F.3 | Karte: Bild + Pin setzen | Prod | | |
-| F.4 | Chat: Nachricht senden | Prod | | |
-| F.5 | Rechte-Skript (`npm run test:rechte`) | Lokal | | |
-| F.6 | `ENABLE_TEST_LOGIN` in Coolify unset; Test-Login auf Prod 404 | Prod | | |
-| F.7 | Phone-first ~390 px: Shell, Karte, Chat, Editor stichprobenartig | Prod/Lokal | | |
+| F.1 | Discord-Login → Welt öffnen / anlegen | Prod | **bestanden** | Owner 2026-09-23. |
+| F.2 | Artikel mit Erwähnung speichern | Prod | **bestanden** | Owner 2026-09-23. |
+| F.3 | Karte: Bild + Pin setzen | Prod | **bestanden** | Owner 2026-09-23. |
+| F.4 | Chat: Nachricht senden | Prod | **bestanden** | Owner 2026-09-23. |
+| F.5 | Rechte-Skript (`npm run test:rechte`) | Lokal | **N/A** | Nicht getestet — keine lokale Umgebung beim Owner-Lauf 2026-09-23. |
+| F.6 | `ENABLE_TEST_LOGIN` in Coolify unset; Test-Login auf Prod 404 | Prod | **N/A** | Nicht getestet (Owner 2026-09-23). |
+| F.7 | Phone-first ~390 px: Shell, Karte, Chat, Editor stichprobenartig | Prod/Lokal | **bestanden** | Owner 2026-09-23. |
 
 ### Offene Multi-Personen-Tests
 
@@ -118,43 +120,44 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 
 | # | Kriterium | Wo | Ergebnis | Beobachtung |
 |---|---|---|---|---|
-| M.1 | **Chat-Realtime:** A schreibt → B sieht ohne Reload | Prod | | |
-| M.2 | **Pin-Realtime:** A setzt/verschiebt Pin (nach Drop) → B sieht Sync | Prod | | |
-| M.3 | **Optional Marker:** A verschiebt eigenen Marker → B sieht Update; B kann Markers von A nicht verschieben | Prod | | N/A wenn kein zweites Konto |
+| M.1 | **Chat-Realtime:** A schreibt → B sieht ohne Reload | Prod | **bestanden** | Owner 2026-09-23. |
+| M.2 | **Pin-Realtime:** A setzt/verschiebt Pin (nach Drop) → B sieht Sync | Prod | **bestanden** | Owner 2026-09-23. |
+| M.3 | **Optional Marker:** A verschiebt eigenen Marker → B sieht Update; B kann Markers von A nicht verschieben | Prod | **bestanden** | Owner 2026-09-23. |
 
 ### Nachzüge Smoketest-Fixes (shipped UX)
 
 | # | Kriterium | Wo | Ergebnis | Beobachtung |
 |---|---|---|---|---|
-| N.1 | **Discord-Allowlist:** nicht erlaubte Discord-ID → klare Fehlermeldung auf Login (kein stiller Fail) | Prod | | |
-| N.2 | **@-Erwähnung:** Bestätigen mit **Tab** (neben Enter/Klick) | Prod/Lokal | | |
-| N.3 | **Karten-Leerzustand:** Prompt mittig bei fehlendem Bild; Dropdown überlappt Text nicht | Prod/Lokal | | |
-| N.4 | **Chat:** Leerzeichen ohne Cursor-Sprung; Absätze (Shift+Enter) in Nachrichten sichtbar | Prod/Lokal | | |
-| N.5 | **Würfel:** Spielleitung kann Würfel-Nachricht löschen; Player nicht | Prod/Lokal | | |
-| N.6 | **Würfel-UI** am ui-prototype (Grid, fette Summe, Toast) — stichprobenartig | Prod/Lokal | | |
-| N.7 | **Karten-Zoom/Scroll** fühlt sich näher am Prototyp an (kein extremes Nachziehen) | Prod/Lokal | | |
-| N.8 | **Karten-Hinweistext** entfernt | Prod/Lokal | | |
-| N.9 | **Karten-Sichtbarkeit:** Auge-Icon in Toolbar (offen = sichtbar, durchgestrichen = SL-only) | Prod/Lokal | | |
-| N.10 | **Pins:** Mentions als blaue Links im Beschreibungstext; kein „Verknüpft“-Panel im Pin-Sheet | Prod/Lokal | | |
-| N.11 | **Versionsbadge** unten links, hellgrau lesbar; Version **0.1.1+** sichtbar | Prod/Lokal | | |
-| N.12–N.14 | **Multi-Karten** (Dropdown, Anlegen/Löschen, Bild ersetzen, Pins/Marker pro Karte) — Checkliste unten | Prod | | siehe MK.* |
+| N.1 | **Discord-Allowlist:** nicht erlaubte Discord-ID → klare Fehlermeldung auf Login (kein stiller Fail) | Prod | **bestanden** | Owner 2026-09-23. |
+| N.2 | **@-Erwähnung:** Bestätigen mit **Tab** (neben Enter/Klick) | Prod/Lokal | **bestanden** | Owner 2026-09-23. |
+| N.3 | **Karten-Leerzustand:** Prompt mittig bei fehlendem Bild; Dropdown überlappt Text nicht | Prod/Lokal | **bestanden** | Owner 2026-09-23. |
+| N.4 | **Chat:** Leerzeichen ohne Cursor-Sprung; Absätze (Shift+Enter) in Nachrichten sichtbar | Prod/Lokal | **bestanden** | Owner 2026-09-23. |
+| N.5 | **Würfel:** Spielleitung kann Würfel-Nachricht löschen; Player nicht | Prod/Lokal | **bestanden** | Owner 2026-09-23. |
+| N.6 | **Würfel-UI** am ui-prototype (Grid, fette Summe, Toast) — stichprobenartig | Prod/Lokal | **bestanden** | Owner 2026-09-23. |
+| N.7 | **Karten-Zoom/Scroll** fühlt sich näher am Prototyp an (kein extremes Nachziehen) | Prod/Lokal | **bestanden** | Owner 2026-09-23. |
+| N.8 | **Karten-Hinweistext** entfernt | Prod/Lokal | **bestanden** | Owner 2026-09-23. |
+| N.9 | **Karten-Sichtbarkeit:** Auge-Icon in Toolbar (offen = sichtbar, durchgestrichen = SL-only) | Prod/Lokal | **bestanden** | Owner 2026-09-23. |
+| N.10 | **Pins:** Mentions als blaue Links im Beschreibungstext; kein „Verknüpft“-Panel im Pin-Sheet | Prod/Lokal | **bestanden** | Owner 2026-09-23. |
+| N.11 | **Versionsbadge** unten links, hellgrau lesbar; Version **0.1.1+** sichtbar | Prod/Lokal | **bestanden** | Owner 2026-09-23. |
+| N.12–N.14 | **Multi-Karten** (Dropdown, Anlegen/Löschen, Bild ersetzen, Pins/Marker pro Karte) — Checkliste unten | Prod | **bestanden** | siehe MK.*; Owner 2026-09-23. |
 
 ### Multi-Karten (shipped ~1068ad6 / Migration 0012)
 
 **Zweck:** Owner-Protokoll für mehrere Karten pro Universum nach Produktfreigabe 2026-09-23.  
 **Umgebung:** Prod `https://worldcraft.lagolago.at` mit Discord; Staff (GM/Master) plus optional zweites Discord-Konto.  
 **Voraussetzung:** Migration `0012_multi_map_and_marker_unique.sql` deployed (`maps.image_id` nullable; `UNIQUE(character_id)` auf Markern).  
-**Ergebnis je Zeile:** bestanden / nicht bestanden / N/A
+**Ergebnis je Zeile:** bestanden / nicht bestanden / N/A  
+**Owner-Protokoll:** 2026-09-23 — alle MK.* bestanden; MK.4 Dialog-UX (Checkbox-Abstand) nachträglich behoben.
 
 | # | Kriterium | Wo | Ergebnis | Beobachtung |
 |---|---|---|---|---|
-| MK.1 | **Dropdown-Label:** aktuelle Auswahl als `Universum: Karte`; übrige Einträge gleiches Format (bei SL-only ggf. `· SL`) | Prod | | |
-| MK.2 | **Zweite Karte anlegen (Staff):** zweite Karte im Universum anlegen (Default-Name ok); erscheint im Dropdown | Prod | | |
-| MK.3 | **Leere neue Karte:** startet ohne Bild → mittiger Upload-Prompt; erstes Upload **ohne** Ersetzen-Warnung | Prod | | |
-| MK.4 | **Bild ersetzen:** Toolbar-Upload-Icon → Checkbox-Dialog („Karte wird ersetzt, Pins bleiben“); Abbrechen bricht ab; Bestätigen + Upload behält Pins | Prod | | |
-| MK.5 | **Karte löschen (Staff):** Bestätigung; Pins/Marker dieser Karte weg; andere Karten unverändert | Prod | | |
-| MK.6 | **Pins pro Karte:** Pin auf Karte A nicht auf Karte B sichtbar; kein Verschieben von Pins zwischen Karten | Prod | | |
-| MK.7 | **Charakter-Marker:** auf Karte B platzieren, während Karte A aktiv ist → Marker von A entfernt, nur noch auf B | Prod | | |
-| MK.8 | **Auge-Sichtbarkeit:** Toggle wirkt weiterhin nur auf die **aktuell gewählte** Karte | Prod | | |
-| MK.9 | **Non-Staff:** keine Anlegen-/Löschen-/Upload-Controls (oder klare Ablehnung) | Prod | | |
-| MK.10 | **Optional Realtime:** zweiter User sieht Kartenwechsel / neuen Pin auf derselben Karte nach Drop | Prod | | N/A ohne zweites Discord-Konto |
+| MK.1 | **Dropdown-Label:** aktuelle Auswahl als `Universum: Karte`; übrige Einträge gleiches Format (bei SL-only ggf. `· SL`) | Prod | **bestanden** | Owner 2026-09-23. |
+| MK.2 | **Zweite Karte anlegen (Staff):** zweite Karte im Universum anlegen (Default-Name ok); erscheint im Dropdown | Prod | **bestanden** | Owner 2026-09-23. |
+| MK.3 | **Leere neue Karte:** startet ohne Bild → mittiger Upload-Prompt; erstes Upload **ohne** Ersetzen-Warnung | Prod | **bestanden** | Owner 2026-09-23. |
+| MK.4 | **Bild ersetzen:** Toolbar-Upload-Icon → Checkbox-Dialog („Karte wird ersetzt, Pins bleiben“); Abbrechen bricht ab; Bestätigen + Upload behält Pins | Prod | **bestanden** | Ablauf OK; Checkbox-Layout (großer Abstand) beim Smoketest auffällig → UX-Fix nachgezogen (`confirm-check` + `input[type=checkbox]` Reset). |
+| MK.5 | **Karte löschen (Staff):** Bestätigung; Pins/Marker dieser Karte weg; andere Karten unverändert | Prod | **bestanden** | Owner 2026-09-23. |
+| MK.6 | **Pins pro Karte:** Pin auf Karte A nicht auf Karte B sichtbar; kein Verschieben von Pins zwischen Karten | Prod | **bestanden** | Owner 2026-09-23. |
+| MK.7 | **Charakter-Marker:** auf Karte B platzieren, während Karte A aktiv ist → Marker von A entfernt, nur noch auf B | Prod | **bestanden** | Owner 2026-09-23. |
+| MK.8 | **Auge-Sichtbarkeit:** Toggle wirkt weiterhin nur auf die **aktuell gewählte** Karte | Prod | **bestanden** | Owner 2026-09-23. |
+| MK.9 | **Non-Staff:** keine Anlegen-/Löschen-/Upload-Controls (oder klare Ablehnung) | Prod | **bestanden** | Owner 2026-09-23. |
+| MK.10 | **Optional Realtime:** zweiter User sieht Kartenwechsel / neuen Pin auf derselben Karte nach Drop | Prod | **bestanden** | Owner 2026-09-23. |
