@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { api, login, testSql, type TestSession } from "@/test/api-harness";
+import { api, BASE, login, testSql, type TestSession } from "@/test/api-harness";
 
 const sql = testSql();
 let gm: TestSession;
@@ -8,10 +8,24 @@ let playerA: TestSession;
 let worldId = "";
 const created: string[] = [];
 
+const PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
+
 const w = (path = "") => `/api/worlds/${worldId}${path}`;
 const doc = (text: string) => ({
   type: "doc",
   content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+});
+const mentionDoc = (id: string, kind: string, label: string) => ({
+  type: "doc",
+  content: [
+    {
+      type: "paragraph",
+      content: [{ type: "mention", attrs: { id, kind, label, mentionSuggestionChar: "@" } }],
+    },
+  ],
 });
 
 async function create(session: TestSession, body: Record<string, unknown>) {
@@ -24,6 +38,28 @@ async function create(session: TestSession, body: Record<string, unknown>) {
   expect(res.status).toBe(201);
   created.push(res.data.monster.id);
   return res.data.monster;
+}
+
+async function uploadPortrait(session: TestSession, monsterId: string) {
+  const form = new FormData();
+  form.set("kind", "monster_portrait");
+  form.set("worldId", worldId);
+  form.set("targetId", monsterId);
+  form.set("image", new Blob([PNG], { type: "image/png" }), "portrait.png");
+  const res = await fetch(`${BASE}/api/files`, {
+    method: "POST",
+    headers: { cookie: session.cookie, origin: BASE },
+    body: form,
+  });
+  const data = (await res.json().catch(() => ({}))) as { fileId?: string; error?: string };
+  return { status: res.status, data };
+}
+
+async function getFile(session: TestSession, fileId: string) {
+  const res = await fetch(`${BASE}/api/files/${fileId}`, {
+    headers: { cookie: session.cookie, origin: BASE },
+  });
+  return res.status;
 }
 
 beforeAll(async () => {
@@ -158,5 +194,164 @@ describe("T-005 monsters API", () => {
     expect((await api(gm, "GET", w("/monsters/not-a-uuid"))).status).toBe(404);
     expect((await api(gm, "PATCH", w("/monsters/not-a-uuid"), { name: "x" })).status).toBe(404);
     expect((await api(gm, "DELETE", w("/monsters/not-a-uuid"))).status).toBe(404);
+  });
+});
+
+describe("T-006 monster portrait", () => {
+  it("rejects portrait upload by player with 403", async () => {
+    const monster = await create(gm, { name: "Player-Sperre", visibility: "published" });
+    expect((await uploadPortrait(playerA, monster.id)).status).toBe(403);
+  });
+
+  it("replaces the portrait on second upload and GCs the old file", async () => {
+    const monster = await create(gm, { name: "Wechselbild", visibility: "published" });
+    const first = await uploadPortrait(gm, monster.id);
+    expect(first.status).toBe(201);
+    expect(first.data.fileId).toBeTruthy();
+
+    const second = await uploadPortrait(gm, monster.id);
+    expect(second.status).toBe(201);
+    expect(second.data.fileId).toBeTruthy();
+    expect(second.data.fileId).not.toBe(first.data.fileId);
+
+    const detail = await api<{ monster: { portraitId: string | null } }>(
+      gm,
+      "GET",
+      w(`/monsters/${monster.id}`),
+    );
+    expect(detail.data.monster.portraitId).toBe(second.data.fileId);
+
+    const [oldFile] = await sql`SELECT id FROM files WHERE id = ${first.data.fileId!}`;
+    expect(oldFile).toBeUndefined();
+
+    const [currentFile] = await sql`SELECT id FROM files WHERE id = ${second.data.fileId!}`;
+    expect(currentFile).toBeTruthy();
+  });
+
+  it("hides owner_only monster portraits from other users (404)", async () => {
+    const monster = await create(master, { name: "Geheimbild", visibility: "owner_only" });
+    const uploaded = await uploadPortrait(master, monster.id);
+    expect(uploaded.status).toBe(201);
+    const fileId = uploaded.data.fileId!;
+
+    expect(await getFile(master, fileId)).toBe(200);
+    expect(await getFile(gm, fileId)).toBe(404);
+    expect(await getFile(playerA, fileId)).toBe(404);
+  });
+});
+
+describe("T-007 monster relations, mentions, habitat", () => {
+  it("creates a habitat relation and removes it when cleared", async () => {
+    const place = await api<{ article: { id: string } }>(gm, "POST", w("/articles"), {
+      title: "Nebelmoor",
+      templateType: "place",
+      visibility: "published",
+    });
+    expect(place.status).toBe(201);
+    const placeId = place.data.article.id;
+    const monster = await create(gm, {
+      name: "Moorleiche",
+      visibility: "published",
+      habitatArticleId: placeId,
+    });
+
+    const onMonster = await api<{ items: { id: string; originLabels: string[] }[] }>(
+      gm,
+      "GET",
+      w(`/relations?kind=monster&id=${monster.id}`),
+    );
+    expect(onMonster.data.items).toEqual([
+      expect.objectContaining({ id: placeId, originLabels: ["Vorlagenfeld"] }),
+    ]);
+    const habitatRows = await sql`
+      SELECT id FROM relations
+      WHERE world_id = ${worldId}
+        AND source_monster_id = ${monster.id}
+        AND origin = 'template_field'
+        AND template_field_key = 'habitat'
+    `;
+    expect(habitatRows).toHaveLength(1);
+
+    expect((await api(gm, "PATCH", w(`/monsters/${monster.id}`), { habitatArticleId: null })).status).toBe(200);
+    const cleared = await api<{ items: { id: string }[] }>(
+      gm,
+      "GET",
+      w(`/relations?kind=monster&id=${monster.id}`),
+    );
+    expect(cleared.data.items).toEqual([]);
+    const afterClear = await sql`
+      SELECT id FROM relations
+      WHERE world_id = ${worldId}
+        AND source_monster_id = ${monster.id}
+        AND origin = 'template_field'
+    `;
+    expect(afterClear).toHaveLength(0);
+  });
+
+  it("shows article mentions from monster bio in Verknüpft on both sides", async () => {
+    const article = await api<{ article: { id: string } }>(gm, "POST", w("/articles"), {
+      title: "Mondstein",
+      visibility: "published",
+    });
+    expect(article.status).toBe(201);
+    const articleId = article.data.article.id;
+    const monster = await create(gm, {
+      name: "Mondbestie",
+      visibility: "published",
+      bio: mentionDoc(articleId, "article", "Mondstein"),
+    });
+
+    const fromMonster = await api<{ items: { id: string; kind: string; originLabels: string[] }[] }>(
+      gm,
+      "GET",
+      w(`/relations?kind=monster&id=${monster.id}`),
+    );
+    expect(fromMonster.data.items).toEqual([
+      expect.objectContaining({ id: articleId, kind: "article", originLabels: ["Erwähnung"] }),
+    ]);
+
+    const fromArticle = await api<{ items: { id: string; kind: string; originLabels: string[] }[] }>(
+      gm,
+      "GET",
+      w(`/relations?kind=article&id=${articleId}`),
+    );
+    expect(fromArticle.data.items).toEqual([
+      expect.objectContaining({ id: monster.id, kind: "monster", originLabels: ["Erwähnung"] }),
+    ]);
+  });
+
+  it("deletes all relations when the monster is deleted", async () => {
+    const place = await api<{ article: { id: string } }>(gm, "POST", w("/articles"), {
+      title: "Ruinen",
+      templateType: "place",
+      visibility: "published",
+    });
+    expect(place.status).toBe(201);
+    const article = await api<{ article: { id: string } }>(gm, "POST", w("/articles"), {
+      title: "Opfer",
+      visibility: "published",
+    });
+    expect(article.status).toBe(201);
+    const monster = await create(gm, {
+      name: "Ruinengänger",
+      visibility: "published",
+      habitatArticleId: place.data.article.id,
+      bio: mentionDoc(article.data.article.id, "article", "Opfer"),
+    });
+
+    const before = await sql`
+      SELECT id FROM relations
+      WHERE world_id = ${worldId}
+        AND (source_monster_id = ${monster.id} OR target_monster_id = ${monster.id})
+    `;
+    expect(before.length).toBeGreaterThanOrEqual(2);
+
+    expect((await api(gm, "DELETE", w(`/monsters/${monster.id}`))).status).toBe(200);
+    const after = await sql`
+      SELECT id FROM relations
+      WHERE world_id = ${worldId}
+        AND (source_monster_id = ${monster.id} OR target_monster_id = ${monster.id})
+    `;
+    expect(after).toHaveLength(0);
   });
 });

@@ -6,10 +6,11 @@ import {
   characters,
   maps,
   memberships,
+  monsters,
   universes,
   worlds,
 } from "@/db/schema";
-import { fail, type AuthzResult } from "@/lib/authz";
+import { fail, type AuthzResult, type MembershipRow } from "@/lib/authz";
 import { mapDbError } from "@/lib/domain/db-errors";
 import { worldEvents } from "@/lib/realtime/events";
 import { authorizeImageWrite, type ImageKind } from "./authorize";
@@ -51,6 +52,22 @@ export async function setMapImage(input: {
   return { ok: true, data: { fileId: saved.id, widthPx: saved.image.width, heightPx: saved.image.height } };
 }
 
+async function membershipFor(worldId: string, userId: string): Promise<MembershipRow | null> {
+  const [membership] = await db
+    .select()
+    .from(memberships)
+    .where(and(eq(memberships.worldId, worldId), eq(memberships.userId, userId)))
+    .limit(1);
+  if (!membership) return null;
+  return {
+    id: membership.id,
+    worldId: membership.worldId,
+    userId: membership.userId,
+    role: membership.role,
+    archivedAt: membership.archivedAt,
+  };
+}
+
 export async function attachImage(input: {
   kind: ImageKind;
   actorId: string;
@@ -64,25 +81,11 @@ export async function attachImage(input: {
     if (!input.worldId || !input.targetId) {
       return fail(400, "Welt und Ziel fehlen.");
     }
-    const [membership] = await db
-      .select()
-      .from(memberships)
-      .where(
-        and(eq(memberships.worldId, input.worldId), eq(memberships.userId, input.actorId)),
-      )
-      .limit(1);
+    const membership = await membershipFor(input.worldId, input.actorId);
     const allowed = authorizeImageWrite({
       kind: input.kind,
       actorId: input.actorId,
-      membership: membership
-        ? {
-            id: membership.id,
-            worldId: membership.worldId,
-            userId: membership.userId,
-            role: membership.role,
-            archivedAt: membership.archivedAt,
-          }
-        : null,
+      membership,
       ownerId: null,
       existingCharacterImages: 0,
     });
@@ -101,25 +104,11 @@ export async function attachImage(input: {
     if (!input.worldId || !input.targetId) {
       return fail(400, "Welt und Ziel fehlen.");
     }
-    const [membership] = await db
-      .select()
-      .from(memberships)
-      .where(
-        and(eq(memberships.worldId, input.worldId), eq(memberships.userId, input.actorId)),
-      )
-      .limit(1);
+    const membership = await membershipFor(input.worldId, input.actorId);
     const allowed = authorizeImageWrite({
       kind: input.kind,
       actorId: input.actorId,
-      membership: membership
-        ? {
-            id: membership.id,
-            worldId: membership.worldId,
-            userId: membership.userId,
-            role: membership.role,
-            archivedAt: membership.archivedAt,
-          }
-        : null,
+      membership,
       ownerId: null,
       existingCharacterImages: 0,
     });
@@ -148,6 +137,56 @@ export async function attachImage(input: {
       await removeStoredFile(saved.id);
       throw error;
     }
+    return { ok: true, data: { fileId: saved.id } };
+  }
+
+  if (input.kind === "monster_portrait") {
+    if (!input.worldId || !input.targetId) {
+      return fail(400, "Welt und Ziel fehlen.");
+    }
+    const membership = await membershipFor(input.worldId, input.actorId);
+    const [monster] = await db
+      .select({
+        id: monsters.id,
+        portraitId: monsters.portraitId,
+        ownerId: monsters.ownerId,
+        visibility: monsters.visibility,
+      })
+      .from(monsters)
+      .where(and(eq(monsters.id, input.targetId), eq(monsters.worldId, input.worldId)))
+      .limit(1);
+    const allowed = authorizeImageWrite({
+      kind: input.kind,
+      actorId: input.actorId,
+      membership,
+      ownerId: null,
+      existingCharacterImages: 0,
+      content: monster
+        ? { ownerId: monster.ownerId, visibility: monster.visibility }
+        : null,
+    });
+    if (!allowed.ok) return allowed;
+    if (!monster) return fail(404, "Monster nicht gefunden.");
+
+    const saved = await persistImage({
+      bytes: input.bytes,
+      createdBy: input.actorId,
+      maxBytes,
+    });
+    if ("error" in saved) return fail(400, saved.error);
+
+    try {
+      await db
+        .update(monsters)
+        .set({ portraitId: saved.id, updatedAt: new Date(), updatedBy: input.actorId })
+        .where(eq(monsters.id, monster.id));
+    } catch (error) {
+      await removeStoredFile(saved.id);
+      const mapped = mapDbError(error, { unique: "Bitte das Bild erneut hochladen." });
+      if (mapped) return mapped;
+      throw error;
+    }
+    await collectUnreferencedFiles([monster.portraitId]);
     return { ok: true, data: { fileId: saved.id } };
   }
 

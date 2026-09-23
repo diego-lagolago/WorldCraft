@@ -16,6 +16,7 @@ import {
   canEditMarker,
   canReceiveWorldEvent,
   canReadArticleTitleFile,
+  canReadMonsterPortraitFile,
   canReadCharacterFile,
   canReadMapFile,
   canReadUnreferencedFile,
@@ -654,6 +655,20 @@ describe("CR-003 file read decisions", () => {
     expect(canReadArticleTitleFile(master, { visibility: "owner_only", ownerId: OWNER })).toBe(false);
     expect(
       canReadArticleTitleFile({ role: "master", userId: OWNER }, { visibility: "owner_only", ownerId: OWNER }),
+    ).toBe(true);
+  });
+
+  it("monster portrait: uses content visibility (T-006)", () => {
+    const player = { role: "player" as const, userId: OTHER };
+    const master = { role: "master" as const, userId: OTHER };
+    expect(
+      canReadMonsterPortraitFile(player, { visibility: "published", ownerId: OWNER }),
+    ).toBe(true);
+    expect(canReadMonsterPortraitFile(player, { visibility: "gm_only", ownerId: OWNER })).toBe(false);
+    expect(canReadMonsterPortraitFile(master, { visibility: "gm_only", ownerId: OWNER })).toBe(true);
+    expect(canReadMonsterPortraitFile(master, { visibility: "owner_only", ownerId: OWNER })).toBe(false);
+    expect(
+      canReadMonsterPortraitFile({ role: "master", userId: OWNER }, { visibility: "owner_only", ownerId: OWNER }),
     ).toBe(true);
   });
 

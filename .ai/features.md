@@ -41,7 +41,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 | Feature | Was es tut | Status |
 |---|---|---|
 | Kampagnen-Hub | Welt wechseln, Universen, Artikel-/Quest-Listen, Live-Suche | MVP / shipped |
-| Weltsuche | Suche in der Welt (Artikel, Quests, Charaktere, Pins, Universen); kein Tagebuch | MVP / shipped |
+| Weltsuche | Suche in der Welt (Artikel, Quests, Charaktere, Pins, Universen, Monster); kein Tagebuch | MVP / shipped |
 
 ## Artikel & Editor
 
@@ -50,7 +50,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 | Artikel | Titel, Titelbild (auch beim Anlegen wählbar), Rich-Text, dreistufige Sichtbarkeit; Default `nur ich` | MVP F2 / Plan 004 / Plan 005 T-009 / shipped |
 | Vorlagen | Typen Person / Ort / Organisation / Gegenstand / ohne; strukturierte Felder | MVP F3 / shipped |
 | TipTap-Editor | Erlaubte Formatierungen laut Plan 001; Paste ohne Bilder/Tabellen | MVP / shipped |
-| Erwähnungen (`@`) | Teilwortsuche mit Kategorie; Bestätigen per Enter, Tab oder Klick; Stub rot → blau | MVP F2 / shipped |
+| Erwähnungen (`@`) | Teilwortsuche mit Kategorie (Artikel, Quests, Charaktere, Universen, Monster); Bestätigen per Enter, Tab oder Klick; Stub rot → blau; Stub-Anlegen nur Artikel | MVP F2 / Plan 005 T-007 / shipped |
 | Stub-Artikel | Über `@` angelegt; `first_edited_at` erst bei echtem Inhalt | MVP / shipped |
 
 ## Monster (Bestiarium)
@@ -58,14 +58,16 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 | Feature | Was es tut | Status |
 |---|---|---|
 | Monster-API | Anlegen/Ändern/Löschen nur Spielleitung; Liste (Filter Art), Detail; dreistufige Sichtbarkeit (Default `nur ich`); Charakterblatt + Art/Seltenheit/Legendär/Gefahr/Größe/Lebensraum; Bio mit `@`; Lebensraum → Ort-Artikel | Plan 005 T-005 / API |
+| Monster-Profilbild | Genau ein Bild (`monster_portrait`, max. 10 MB, JPG/PNG/WebP); Upload nur für Bearbeiter; Auslieferung nur für Sichtberechtigte; Ersetzen inkl. GC des alten Bildes | Plan 005 T-006 / API |
+| Monster Relationen & Suche | Bio-Erwähnungen und Lebensraum erzeugen Relationen; `@`- und Volltextsuche finden sichtbare Monster; „Verknüpft“ und Mentions kennen `monster`; keine Stub-Monster per `@` | Plan 005 T-007 / shipped |
 
 ## Relationen
 
 | Feature | Was es tut | Status |
 |---|---|---|
-| Automatische Relationen | Aus Erwähnungen / Vorlagenfeldern / Quest-Beteiligung neu berechnet | MVP F2 / shipped |
+| Automatische Relationen | Aus Erwähnungen / Vorlagenfeldern / Quest-Beteiligung / Monster-Lebensraum neu berechnet | MVP F2 / Plan 005 T-007 / shipped |
 | Manuelle Relationen | Spielleitung: Bezeichnung (+ optionale Gegenbezeichnung) zwischen Inhaltsarten | MVP F2 / shipped |
-| „Verknüpft“ | Ein-/ausgehende Relationen auf Artikel, Quest, Charakter, Universum (nicht als Pin-Panel) | MVP F2 / shipped |
+| „Verknüpft“ | Ein-/ausgehende Relationen auf Artikel, Quest, Charakter, Universum, Monster (nicht als Pin-Panel) | MVP F2 / Plan 005 T-007 / shipped |
 
 ## Quests
 

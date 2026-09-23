@@ -19,6 +19,7 @@ describe("maxBytesFor", () => {
   it("uses 20 MB for map images and 10 MB for every other kind", () => {
     expect(maxBytesFor("map")).toBe(MAP_IMAGE_MAX_BYTES);
     expect(maxBytesFor("article_title")).toBe(OTHER_IMAGE_MAX_BYTES);
+    expect(maxBytesFor("monster_portrait")).toBe(OTHER_IMAGE_MAX_BYTES);
     expect(maxBytesFor("world_title")).toBe(OTHER_IMAGE_MAX_BYTES);
     expect(maxBytesFor("character_portrait")).toBe(OTHER_IMAGE_MAX_BYTES);
   });
@@ -45,14 +46,18 @@ describe("inspectImage", () => {
 });
 
 describe("authorizeImageWrite", () => {
-  it("refuses world, map and article images for a player", () => {
-    for (const kind of ["world_title", "map", "article_title"] as const) {
+  it("refuses world, map, article and monster images for a player", () => {
+    for (const kind of ["world_title", "map", "article_title", "monster_portrait"] as const) {
       const result = authorizeImageWrite({
         kind,
         actorId: "player",
         membership,
         ownerId: null,
         existingCharacterImages: 0,
+        content:
+          kind === "monster_portrait"
+            ? { ownerId: "owner", visibility: "published" }
+            : undefined,
       });
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.status).toBe(403);
@@ -70,6 +75,38 @@ describe("authorizeImageWrite", () => {
     expect(authorizeImageWrite({ ...input, kind: "world_title", membership: gm }).ok).toBe(true);
     expect(authorizeImageWrite({ ...input, kind: "map", membership: master }).ok).toBe(true);
     expect(authorizeImageWrite({ ...input, kind: "article_title", membership: master }).ok).toBe(true);
+  });
+
+  it("lets staff upload a monster portrait only when they can see the monster", () => {
+    const master = { ...membership, userId: "master", role: "master" as const };
+    const ownerMaster = { ...membership, userId: "owner", role: "master" as const };
+    const base = {
+      kind: "monster_portrait" as const,
+      actorId: "x",
+      ownerId: null,
+      existingCharacterImages: 0,
+    };
+    expect(
+      authorizeImageWrite({
+        ...base,
+        membership: master,
+        content: { ownerId: "owner", visibility: "owner_only" },
+      }),
+    ).toMatchObject({ ok: false, status: 404 });
+    expect(
+      authorizeImageWrite({
+        ...base,
+        membership: ownerMaster,
+        content: { ownerId: "owner", visibility: "owner_only" },
+      }).ok,
+    ).toBe(true);
+    expect(
+      authorizeImageWrite({
+        ...base,
+        membership: master,
+        content: { ownerId: "owner", visibility: "published" },
+      }).ok,
+    ).toBe(true);
   });
 
   it("refuses the 11th character attachment", () => {

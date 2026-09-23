@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getTableName, is } from "drizzle-orm";
 import { getTableConfig, type AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import * as schema from "@/db/schema";
-import { FILE_REFERENCE_COLUMNS, files } from "@/db/schema";
+import { FILE_REFERENCE_COLUMNS, files, monsters } from "@/db/schema";
 
 function columnKey(column: AnyPgColumn): string {
   return `${getTableName(column.table as typeof files)}.${column.name}`;
@@ -28,5 +28,9 @@ describe("FILE_REFERENCE_COLUMNS (APP-FILE-GC)", () => {
     const fromSchema = schemaFileFkColumns().map(columnKey).sort();
     const fromGc = [...FILE_REFERENCE_COLUMNS].map(columnKey).sort();
     expect(fromGc).toEqual(fromSchema);
+  });
+
+  it("keeps monsters.portraitId so the current portrait survives GC (PR5 / T-006)", () => {
+    expect(FILE_REFERENCE_COLUMNS.map(columnKey)).toContain(columnKey(monsters.portraitId));
   });
 });

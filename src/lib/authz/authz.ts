@@ -344,6 +344,15 @@ export function canReadArticleTitleFile(
   return canSeeContent(viewer, { visibility: article.visibility, ownerId: article.ownerId });
 }
 
+/** Plan 005 T-006: monster portrait — active member who can see the monster. */
+export function canReadMonsterPortraitFile(
+  viewer: { role: MembershipRole; userId: string } | null,
+  monster: { visibility: ContentVisibility; ownerId: string },
+): boolean {
+  if (!viewer) return false;
+  return canSeeContent(viewer, { visibility: monster.visibility, ownerId: monster.ownerId });
+}
+
 /** CR-003 / T-008: character portrait or attachment — owner always; else shared active world. */
 export function canReadCharacterFile(input: {
   viewerId: string;

@@ -12,6 +12,7 @@ import {
   files,
   maps,
   memberships,
+  monsters,
   universes,
   worldParticipations,
   worlds,
@@ -20,6 +21,7 @@ import {
   canReadArticleTitleFile,
   canReadCharacterFile,
   canReadMapFile,
+  canReadMonsterPortraitFile,
   canReadUnreferencedFile,
   canReadWorldTitleFile,
   type MembershipRole,
@@ -154,6 +156,32 @@ export async function authorizeFileRead(userId: string, fileId: string): Promise
         hasActiveSharedWorld: await hasActiveSharedWorld(userId, ref.id),
       })
     ) {
+      return true;
+    }
+  }
+
+  const monsterPortraitRefs = await db
+    .select({
+      worldId: monsters.worldId,
+      visibility: monsters.visibility,
+      ownerId: monsters.ownerId,
+      role: memberships.role,
+      membershipUserId: memberships.userId,
+      membershipArchivedAt: memberships.archivedAt,
+    })
+    .from(monsters)
+    .leftJoin(
+      memberships,
+      and(eq(memberships.worldId, monsters.worldId), eq(memberships.userId, userId)),
+    )
+    .where(eq(monsters.portraitId, fileId));
+  for (const ref of monsterPortraitRefs) {
+    referenced = true;
+    const viewer =
+      ref.membershipUserId && !ref.membershipArchivedAt
+        ? { role: ref.role as MembershipRole, userId: ref.membershipUserId }
+        : null;
+    if (canReadMonsterPortraitFile(viewer, { visibility: ref.visibility, ownerId: ref.ownerId })) {
       return true;
     }
   }

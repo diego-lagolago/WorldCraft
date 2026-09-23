@@ -1,9 +1,11 @@
 import {
+  authorizeOwnedContentWrite,
   fail,
   ok,
   requireGm,
   requireStaff,
   type AuthzResult,
+  type ContentVisibility,
   type MembershipRow,
 } from "@/lib/authz";
 import { MAX_CHARACTER_IMAGES } from "./inspect";
@@ -12,6 +14,7 @@ export const IMAGE_KINDS = [
   "world_title",
   "map",
   "article_title",
+  "monster_portrait",
   "character_portrait",
   "character_image",
 ] as const;
@@ -24,6 +27,8 @@ export function authorizeImageWrite(input: {
   membership: MembershipRow | null;
   ownerId: string | null;
   existingCharacterImages: number;
+  /** Required for `monster_portrait`: visibility + owner of the target monster. */
+  content?: { ownerId: string; visibility: ContentVisibility } | null;
 }): AuthzResult<true> {
   if (input.kind === "world_title") {
     const gm = requireGm(input.membership);
@@ -34,6 +39,13 @@ export function authorizeImageWrite(input: {
     const staff = requireStaff(input.membership);
     if (!staff.ok) return staff;
     return ok(true);
+  }
+  if (input.kind === "monster_portrait") {
+    return authorizeOwnedContentWrite({
+      membership: input.membership,
+      content: input.content ?? null,
+      notFoundError: "Monster nicht gefunden.",
+    });
   }
 
   if (!input.ownerId || input.ownerId !== input.actorId) {

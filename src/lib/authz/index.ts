@@ -13,6 +13,7 @@ export {
   canReadArticleTitleFile,
   canReadCharacterFile,
   canReadMapFile,
+  canReadMonsterPortraitFile,
   canReadUnreferencedFile,
   canReadWorldTitleFile,
   canSeeCharacterInWorld,

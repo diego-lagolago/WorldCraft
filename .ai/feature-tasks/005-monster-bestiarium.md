@@ -108,7 +108,7 @@ Die Begriffe aus Plan `003`, Plan `004` und `.ai/architecture/datenmodell-fachli
 - Abnahmekriterium: API-Tests (`monsters.api.test.ts`) decken ab: Anlegen als Player → 403; Owner-only-Monster für anderen Master → 404; Player sieht nur `published`; Lebensraum auf Nicht-Ort → 422; Blatt-Validierung (31 Fertigkeiten → 422). `src/app/api/rechte-matrix.api.test.ts` um Zeilen für `monster` erweitert und grün; `npm run test:rechte` grün.
 
 ### T-006: Profilbild
-- [ ] Beschreibung: Bildart `monster_portrait` in `src/lib/files` (`attach.ts`, `authorize.ts`, `gc.ts`, Pfade) analog `article_title`: max. 10 MB, JPG/PNG/WebP, ersetzt ein vorhandenes Bild, altes Bild wird von der Garbage Collection erfasst — dafür `monsters.portraitId` in `FILE_REFERENCE_COLUMNS` (`src/db/schema.ts`) aufnehmen (PR5); Upload nur für Benutzer, die das Monster bearbeiten dürfen. Auslieferung nur an Benutzer, die das Monster sehen.
+- [x] Beschreibung: Bildart `monster_portrait` in `src/lib/files` (`attach.ts`, `authorize.ts`, `gc.ts`, Pfade) analog `article_title`: max. 10 MB, JPG/PNG/WebP, ersetzt ein vorhandenes Bild, altes Bild wird von der Garbage Collection erfasst — dafür `monsters.portraitId` in `FILE_REFERENCE_COLUMNS` (`src/db/schema.ts`) aufnehmen (PR5); Upload nur für Benutzer, die das Monster bearbeiten dürfen. Auslieferung nur an Benutzer, die das Monster sehen.
 - Abhängigkeiten: T-005
 - Abnahmekriterium: Tests in `src/lib/files/files.test.ts` bzw. API-Test: Upload durch Player → 403; zweiter Upload ersetzt das erste Bild (genau ein `portrait_id`, altes File nach GC entfernt); das aktuelle Profilbild bleibt nach einem GC-Lauf erhalten (`src/lib/files/gc.test.ts`); Bild eines `owner_only`-Monsters liefert anderen Benutzern 404.
 
