@@ -117,7 +117,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 
 | Feature | Was es tut | Status |
 |---|---|---|
-| Datei-Uploads | JPG/PNG/WebP; Limits Karte 20 MB, sonst 10 MB; Volume + Tabelle `files` | MVP / shipped |
+| Datei-Uploads | JPG/PNG/WebP; Limits Karte 20 MB, sonst 10 MB; Volume + Tabelle `files`; Auslieferung nur bei Weltmitgliedschaft bzw. Sichtbarkeit (CR-003) | MVP / shipped |
 | SSE-Realtime | Chat und Karte über gemeinsamen Bus; Map-Events serverseitig nach Sichtbarkeit gefiltert (`layers` / APP-VIS-INHERIT); Rollenwechsel und Austritt/Entfernen schließen die Live-Leitung (`membership.changed`); Sync nach Speichern/Drop, nicht während Drag | MVP / shipped |
 
 ## Geplant (nicht shipped)

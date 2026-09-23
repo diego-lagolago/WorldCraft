@@ -35,11 +35,11 @@ Maßgeblich sind `.ai/architecture/datenmodell-fachlich.md` (fachliche Regeln, V
 |----|-----------|-------------|--------|-------------------|
 | CR-001 | Sicherheit | kritisch | behoben | SSE-Events der Karte gehen ungefiltert an alle Mitglieder: Player erhalten `gm_only`-Pins (Titel, Beschreibung), Marker und Karten-Events verborgener Karten |
 | CR-002 | Sicherheit | mittel | behoben | Offene SSE-Verbindung bleibt nach Austritt/Entfernen aktiv und liefert weiter Chat- und Karten-Events |
-| CR-003 | Sicherheit | mittel | offen | `GET /api/files/[id]` prüft nur die Anmeldung, nicht Welt-Mitgliedschaft oder Sichtbarkeit |
+| CR-003 | Sicherheit | mittel | behoben | `GET /api/files/[id]` prüft nur die Anmeldung, nicht Welt-Mitgliedschaft oder Sichtbarkeit |
 | CR-004 | Fehlerbehandlung & Validierung | mittel | offen | Vorlagen-Verweis mit Nicht-UUID-`id` führt zu HTTP 500 (Verstoß gegen CR-005 aus Review 001) |
 | CR-005 | Aufgaben-Abgleich | mittel | offen | Quest mit Beteiligtem, dessen Teilnahme archiviert oder dessen Charakter gelöscht ist, lässt sich nicht mehr speichern bzw. verliert den Namens-Snapshot |
 | CR-006 | Runtime-Risiken | mittel | offen | Mehrstufige Schreibvorgänge (Artikel, Quest, Pin, Universum + Relationen/Beteiligte) ohne Transaktion |
-| CR-007 | Testabdeckung | mittel | offen | Keine Tests für Inhalt und Filterung der SSE-Events und für die Autorisierung der Dateiauslieferung |
+| CR-007 | Testabdeckung | mittel | behoben | Keine Tests für Inhalt und Filterung der SSE-Events und für die Autorisierung der Dateiauslieferung |
 | CR-008 | Runtime-Risiken | niedrig | offen | `placeMarker` publiziert `map.marker.deleted` innerhalb der Transaktion (vor dem Commit) und löscht in einer Schleife |
 | CR-009 | Sicherheit | niedrig | offen | `POST /api/files` liest den ganzen Body in den Speicher, bevor die Größe geprüft wird |
 | CR-010 | Duplizierung & Modularisierung | niedrig | offen | Chat-Limits: lokale Funktion `CHANNEL_NAME_MAX()` überschattet die Konstante, Literal `80` dreifach; Karten-Route dupliziert `MAP_NAME_MAX` und „20 MB“ |

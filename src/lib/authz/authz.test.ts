@@ -13,6 +13,11 @@ import {
   type MembershipRow,
   canEditMarker,
   canReceiveWorldEvent,
+  canReadArticleTitleFile,
+  canReadCharacterFile,
+  canReadMapFile,
+  canReadUnreferencedFile,
+  canReadWorldTitleFile,
   canSeeCharacterInWorld,
   canSeeJournal,
   canSeePublishedLayer,
@@ -565,5 +570,47 @@ describe("CR-001 canReceiveWorldEvent / eventForViewer", () => {
     };
     expect(canReceiveWorldEvent(player, event)).toBe(false);
     expect(eventForViewer(player, event)).toBeNull();
+  });
+});
+
+describe("CR-003 file read decisions", () => {
+  it("world title: only active members", () => {
+    expect(canReadWorldTitleFile(row("player"))).toBe(true);
+    expect(canReadWorldTitleFile(row("player", { archivedAt: new Date() }))).toBe(false);
+    expect(canReadWorldTitleFile(null)).toBe(false);
+  });
+
+  it("map image: inherits universe and map visibility", () => {
+    const player = { role: "player" as const, userId: OTHER };
+    const master = { role: "master" as const, userId: OTHER };
+    expect(canReadMapFile(player, [{ visibility: "published" }, { visibility: "published" }])).toBe(true);
+    expect(canReadMapFile(player, [{ visibility: "published" }, { visibility: "gm_only" }])).toBe(false);
+    expect(canReadMapFile(master, [{ visibility: "published" }, { visibility: "gm_only" }])).toBe(true);
+    expect(canReadMapFile(null, [{ visibility: "published" }, { visibility: "published" }])).toBe(false);
+  });
+
+  it("article title: uses content visibility", () => {
+    const player = { role: "player" as const, userId: OTHER };
+    const master = { role: "master" as const, userId: OTHER };
+    expect(
+      canReadArticleTitleFile(player, { visibility: "published", ownerId: OWNER }),
+    ).toBe(true);
+    expect(canReadArticleTitleFile(player, { visibility: "gm_only", ownerId: OWNER })).toBe(false);
+    expect(canReadArticleTitleFile(master, { visibility: "gm_only", ownerId: OWNER })).toBe(true);
+    expect(canReadArticleTitleFile(master, { visibility: "owner_only", ownerId: OWNER })).toBe(false);
+    expect(
+      canReadArticleTitleFile({ role: "master", userId: OWNER }, { visibility: "owner_only", ownerId: OWNER }),
+    ).toBe(true);
+  });
+
+  it("character file: owner or shared active world", () => {
+    expect(canReadCharacterFile({ viewerId: OWNER, ownerId: OWNER, hasActiveSharedWorld: false })).toBe(true);
+    expect(canReadCharacterFile({ viewerId: OTHER, ownerId: OWNER, hasActiveSharedWorld: true })).toBe(true);
+    expect(canReadCharacterFile({ viewerId: OTHER, ownerId: OWNER, hasActiveSharedWorld: false })).toBe(false);
+  });
+
+  it("unreferenced file: only uploader", () => {
+    expect(canReadUnreferencedFile({ viewerId: OWNER, createdBy: OWNER })).toBe(true);
+    expect(canReadUnreferencedFile({ viewerId: OTHER, createdBy: OWNER })).toBe(false);
   });
 });

@@ -299,3 +299,50 @@ export function authorizeDeleteChatMessage(
   if (message.authorId === actor.userId || isStaff(actor.role)) return ok(true);
   return fail(403, "Nur der Autor oder die Spielleitung darf diese Nachricht löschen.");
 }
+
+/** CR-003: world title image — any active member of that world. */
+export function canReadWorldTitleFile(membership: MembershipRow | null): boolean {
+  return denyIfNoMembership(membership) === null;
+}
+
+/** CR-003: map image — active member who can see universe + map layers. */
+export function canReadMapFile(
+  viewer: { role: MembershipRole; userId: string } | null,
+  layers: VisibilityLayer[],
+): boolean {
+  if (!viewer) return false;
+  return canSeePublishedLayer(viewer, layers);
+}
+
+/** CR-003: article title image — active member who can see the article. */
+export function canReadArticleTitleFile(
+  viewer: { role: MembershipRole; userId: string } | null,
+  article: { visibility: ContentVisibility; ownerId: string },
+): boolean {
+  if (!viewer) return false;
+  return canSeeVisibility({
+    role: viewer.role,
+    visibility: article.visibility,
+    viewerId: viewer.userId,
+    ownerId: article.ownerId,
+  });
+}
+
+/** CR-003 / T-008: character portrait or attachment — owner always; else shared active world. */
+export function canReadCharacterFile(input: {
+  viewerId: string;
+  ownerId: string;
+  hasActiveSharedWorld: boolean;
+}): boolean {
+  if (input.viewerId === input.ownerId) return true;
+  return input.hasActiveSharedWorld;
+}
+
+/** CR-003: file with no remaining references — only the uploader. */
+export function canReadUnreferencedFile(input: {
+  viewerId: string;
+  createdBy: string;
+}): boolean {
+  return input.viewerId === input.createdBy;
+}
+
