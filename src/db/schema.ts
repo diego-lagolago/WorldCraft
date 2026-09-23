@@ -107,6 +107,12 @@ export const verifications = pgTable("verifications", {
  */
 
 export const visibilityStatus = pgEnum("visibility_status", ["published", "gm_only"]);
+/** Dreistufige Sichtbarkeit für Artikel, Quests, Pins, Kapitel (Plan 004). */
+export const contentVisibility = pgEnum("content_visibility", [
+  "owner_only",
+  "gm_only",
+  "published",
+]);
 export const membershipRole = pgEnum("membership_role", [
   "game_master",
   "master",
@@ -316,7 +322,10 @@ export const pins = pgTable(
     descriptionPlain: text("description_plain"),
     posX: numeric("pos_x", { precision: 8, scale: 7 }).notNull(),
     posY: numeric("pos_y", { precision: 8, scale: 7 }).notNull(),
-    visibility: visibilityStatus("visibility").default("gm_only").notNull(),
+    visibility: contentVisibility("visibility").default("owner_only").notNull(),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => users.id),
     locked: boolean("locked").default(false).notNull(),
     descriptionTsv: tsvector("description_tsv").generatedAlwaysAs(plainTsv("description_plain")),
     ...protocol,
@@ -436,12 +445,16 @@ export const articles = pgTable(
     bodyJson: jsonb("body_json"),
     bodyPlain: text("body_plain"),
     bodyTsv: tsvector("body_tsv").generatedAlwaysAs(plainTsv("body_plain")),
-    visibility: visibilityStatus("visibility").default("gm_only").notNull(),
+    visibility: contentVisibility("visibility").default("owner_only").notNull(),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => users.id),
     firstEditedAt: timestamp("first_edited_at", { withTimezone: true }),
     ...protocol,
   },
   (t) => [
     index("articles_world").on(t.worldId),
+    index("articles_world_owner").on(t.worldId, t.ownerId),
     index("articles_title_trgm").using("gin", sql`${t.title} gin_trgm_ops`),
     index("articles_body_tsv").using("gin", t.bodyTsv),
     check("articles_title_length", sql`char_length(${t.title}) BETWEEN 1 AND 200`),
@@ -462,11 +475,15 @@ export const quests = pgTable(
       plainTsv("description_plain"),
     ),
     status: questStatus("status").default("open").notNull(),
-    visibility: visibilityStatus("visibility").default("gm_only").notNull(),
+    visibility: contentVisibility("visibility").default("owner_only").notNull(),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => users.id),
     ...protocol,
   },
   (t) => [
     index("quests_world").on(t.worldId),
+    index("quests_world_owner").on(t.worldId, t.ownerId),
     index("quests_title_trgm").using("gin", sql`${t.title} gin_trgm_ops`),
     index("quests_description_tsv").using("gin", t.descriptionTsv),
     check("quests_title_length", sql`char_length(${t.title}) BETWEEN 1 AND 200`),

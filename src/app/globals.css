@@ -394,6 +394,12 @@ textarea {
   border-color: #4b3c7a;
 }
 
+.badge.owner {
+  color: #f5d08a;
+  background: #2a2210;
+  border-color: #6a4e1a;
+}
+
 .badge.st-open {
   color: #cbd5e1;
 }

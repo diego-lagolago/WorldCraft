@@ -6,7 +6,7 @@ import { RichTextView } from "@/components/editor/RichTextView";
 import { PIN_TYPE_META, pinTypeIconUrl, type PinType } from "@/lib/map/pin-types";
 import type { MarkerDto, PinDetails, PlaceableCharacterDto } from "@/lib/map/types";
 import type { RichDoc } from "@/lib/editor/rich-text";
-import type { VisibilityStatus } from "@/lib/authz";
+import type { ContentVisibility } from "@/lib/authz";
 
 export function Sheet({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   return (
@@ -101,13 +101,13 @@ export function PinFormSheet({
     pinType: PinType;
     title: string;
     description: RichDoc | null;
-    visibility: VisibilityStatus;
+    visibility: ContentVisibility;
   };
   onSave: (value: {
     pinType: PinType;
     title: string;
     description: RichDoc | null;
-    visibility: VisibilityStatus;
+    visibility: ContentVisibility;
   }) => void;
   onClose: () => void;
 }) {

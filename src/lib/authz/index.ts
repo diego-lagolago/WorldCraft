@@ -18,6 +18,7 @@ export {
 } from "./authz";
 export {
   CONTENT_KINDS,
+  CONTENT_VISIBILITIES,
   JOURNAL_VISIBILITIES,
   MEMBERSHIP_ROLES,
   RELATION_ORIGINS,
@@ -33,6 +34,7 @@ export {
   type AuthzResult,
   type ColumnPatch,
   type ContentKind,
+  type ContentVisibility,
   type JournalVisibility,
   type MembershipRole,
   type MembershipRow,

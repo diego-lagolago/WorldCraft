@@ -12,6 +12,7 @@ import {
   worldParticipations,
 } from "@/db/schema";
 import {
+  CONTENT_VISIBILITIES,
   VISIBILITY_STATUSES,
   authorizeMarkerAction,
   authorizePinWrite,
@@ -23,6 +24,7 @@ import {
   requireStaff,
   type AuthzResult,
   type ColumnPatch,
+  type ContentVisibility,
   type MembershipRole,
   type MembershipRow,
   type VisibilityStatus,
@@ -56,6 +58,7 @@ export const PIN_TITLE_MAX = 120;
 export const mapNameSchema = z.string().trim().min(1).max(MAP_NAME_MAX);
 export const pinTitleSchema = z.string().trim().min(1).max(PIN_TITLE_MAX);
 export const visibilitySchema = z.enum(VISIBILITY_STATUSES);
+export const contentVisibilitySchema = z.enum(CONTENT_VISIBILITIES);
 export const pinTypeSchema = z.enum(PIN_TYPES);
 export const positionSchema = z.number().min(0).max(1);
 
@@ -103,6 +106,7 @@ function serializePin(row: typeof pins.$inferSelect): PinDto {
     posX: toNumber(row.posX),
     posY: toNumber(row.posY),
     visibility: row.visibility,
+    ownerId: row.ownerId,
     locked: row.locked,
   };
 }
@@ -531,7 +535,7 @@ export async function createPin(input: {
   description?: unknown;
   posX: number;
   posY: number;
-  visibility?: VisibilityStatus;
+  visibility?: ContentVisibility;
 }): Promise<AuthzResult<{ pin: PinDto }>> {
   const allowed = authorizePinWrite(input.membership, null, "create");
   if (!allowed.ok) return allowed;
@@ -551,7 +555,8 @@ export async function createPin(input: {
         descriptionPlain: description.data.plain,
         posX: positionSql(input.posX),
         posY: positionSql(input.posY),
-        visibility: input.visibility ?? "gm_only",
+        visibility: input.visibility ?? "owner_only",
+        ownerId: input.actorId,
         createdBy: input.actorId,
         updatedBy: input.actorId,
       })
@@ -583,7 +588,7 @@ export async function updatePin(input: {
   description?: unknown;
   posX?: number;
   posY?: number;
-  visibility?: VisibilityStatus;
+  visibility?: ContentVisibility;
   locked?: boolean;
 }): Promise<AuthzResult<{ pin: PinDto }>> {
   const [row] = await db

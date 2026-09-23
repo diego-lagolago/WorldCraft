@@ -8,6 +8,7 @@ import {
   ok,
   type AuthzFail,
   type AuthzResult,
+  type ContentVisibility,
   type MembershipRole,
   type MembershipRow,
   type VisibilityStatus,
@@ -73,7 +74,7 @@ export function authorizeLeave(membership: MembershipRow | null): AuthzResult<Me
 
 export function canSeePublishedLayer(
   role: MembershipRole,
-  layers: VisibilityStatus[],
+  layers: Array<VisibilityStatus | ContentVisibility>,
 ): boolean {
   return layers.every((layer) => canSeeVisibility(role, layer));
 }

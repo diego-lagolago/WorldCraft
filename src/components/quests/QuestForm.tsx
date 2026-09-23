@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { worldPath } from "@/components/shell/nav";
-import type { VisibilityStatus } from "@/lib/authz/types";
+import type { ContentVisibility } from "@/lib/authz/types";
 import { apiRequest } from "@/lib/client/api";
 import type { MentionState } from "@/lib/editor/mentions";
 import type { RichDoc } from "@/lib/editor/rich-text";
@@ -22,7 +22,7 @@ type Quest = {
   id: string;
   title: string;
   status: QuestStatus;
-  visibility: VisibilityStatus;
+  visibility: ContentVisibility;
   description: RichDoc | null;
   participants: QuestParticipant[];
 };

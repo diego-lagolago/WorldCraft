@@ -6,6 +6,10 @@ export type MembershipRole = (typeof MEMBERSHIP_ROLES)[number];
 export const VISIBILITY_STATUSES = ["published", "gm_only"] as const;
 export type VisibilityStatus = (typeof VISIBILITY_STATUSES)[number];
 
+/** Dreistufige Sichtbarkeit (Artikel, Quest, Pin, Kapitel). Plan 004. */
+export const CONTENT_VISIBILITIES = ["owner_only", "gm_only", "published"] as const;
+export type ContentVisibility = (typeof CONTENT_VISIBILITIES)[number];
+
 export const JOURNAL_VISIBILITIES = ["private", "shared_with_gm"] as const;
 export type JournalVisibility = (typeof JOURNAL_VISIBILITIES)[number];
 
@@ -74,7 +78,8 @@ export function isGm(role: MembershipRole): boolean {
 
 export function canSeeVisibility(
   role: MembershipRole,
-  visibility: VisibilityStatus,
+  visibility: VisibilityStatus | ContentVisibility,
 ): boolean {
+  // owner_only: vorläufig wie gm_only (T-004 ersetzt durch APP-VIS-OWNER).
   return visibility === "published" || isStaff(role);
 }

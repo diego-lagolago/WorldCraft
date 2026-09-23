@@ -1,4 +1,4 @@
-import type { MembershipRole, VisibilityStatus } from "@/lib/authz";
+import type { ContentVisibility, MembershipRole, VisibilityStatus } from "@/lib/authz";
 import type { ResolvedMention } from "@/lib/domain/mention-resolve";
 import type { RichDoc } from "@/lib/editor/rich-text";
 import type { LinkedItem } from "./linked";
@@ -43,7 +43,8 @@ export type PinDto = {
   descriptionPlain: string | null;
   posX: number;
   posY: number;
-  visibility: VisibilityStatus;
+  visibility: ContentVisibility;
+  ownerId?: string;
   locked: boolean;
 };
 

@@ -136,7 +136,7 @@ Wie in Plan `003` und `.ai/conventions.md` (*Commit & Push*): nach jeder abgesch
 - Freigabe: 2026-09-23 (Projektinhaber im Chat). Layout: Kapitel volle Breite unter Verknüpft; Notizblock per 📝-Icon als Sheet; Löschen mit Confirm-Dialog. Scroll-Anker an Elementposition bewusst nicht umgesetzt (kosmetisch akzeptiert).
 - Umsetzung (2026-09-23): `spikes/ui-prototype/index.html` (Plan 004). Features-Katalog N/A (nur Prototyp).
 ### T-003: Schema für Owner und dreistufige Sichtbarkeit
-- [ ] Beschreibung: In `src/db/schema.ts`:
+- [x] Beschreibung: In `src/db/schema.ts`:
   - neues Enum `content_visibility` (`owner_only`, `gm_only`, `published`); `visibility_status` bleibt für `universes` und `maps`;
   - `articles.visibility`, `quests.visibility`, `pins.visibility` auf `content_visibility` umstellen, Default `owner_only`;
   - Spalte `owner_id` (Pflicht, FK auf `users.id` mit demselben Löschverhalten wie `created_by`) an `articles`, `quests`, `pins`, Index `(world_id, owner_id)` an `articles` und `quests` (Pins haben keine `world_id`; sie werden immer über `map_id` gelesen, dort reicht der bestehende Index `pins_map`);
@@ -144,6 +144,7 @@ Wie in Plan `003` und `.ai/conventions.md` (*Commit & Push*): nach jeder abgesch
   - TypeScript-Typen in `src/lib/authz/types.ts` ergänzen (`ContentVisibility`).
 - Abhängigkeiten: T-001
 - Abnahmekriterium: (1) `npm run db:migrate` läuft lokal auf einer Datenbank mit Bestandsdaten aus Plan `003` durch. (2) Danach haben alle vorhandenen Artikel, Quests und Pins ihren alten Sichtbarkeitswert und `owner_id = created_by` (prüfbar per SQL-Abfrage, Ergebnis im Umsetzungsvermerk). (3) Ein Insert ohne Sichtbarkeit ergibt `owner_only`. (4) `universes.visibility` und `maps.visibility` akzeptieren `owner_only` nicht. (5) `npm run typecheck` grün.
+- Umsetzung (2026-09-23): Migration `0013_content_visibility_owner.sql`. SQL-Check: articles 3×gm_only + 1×published, quests 1×published, pins 1×published; überall `owner_id = created_by`. Insert ohne visibility → `owner_only`. Enum `visibility_status` = {published,gm_only}. Create-Pfade setzen `ownerId`. Features-Katalog N/A (Schema).
 
 ### T-004: Rechteschicht dreistufig
 - [ ] Beschreibung: `src/lib/authz` um die Owner-Stufe erweitern: Sichtbarkeitsprüfung bekommt Betrachter-ID, Rolle, Sichtbarkeit und `owner_id` (`APP-VIS-OWNER`); Bearbeitungsprüfung laut *Fachliche Regeln*; Vererbung für Pins (Universum/Karte zweistufig, Pin dreistufig). Alle Aufrufer umstellen, u. a. `src/lib/domain/articles.ts`, `quests.ts`, `search.ts`, `mention-search.ts`, `mention-resolve.ts`, `linked.ts`, `relations.ts`, `src/lib/map/repository.ts`, und die Anzeige-Badges (`src/components/world/display.tsx`). Karten-Ereignisse auf Signal umstellen (R5): `map.pin` und `map.marker` in `src/lib/realtime/events.ts` und `src/lib/map/repository.ts` tragen nur noch `pinId` bzw. `markerId` (plus `mapId`); `src/components/map/use-map-realtime.ts` holt den Datensatz über `GET …/map/pins/[pinId]` bzw. einen neuen `GET …/map/markers/[markerId]` (gleiche Rechteprüfung wie der Kartenzustand) und entfernt ihn bei 404. Anlegen setzt `owner_id` auf den Benutzer. Anlegen von Stub-Artikeln über `@` setzt `owner_only`.

@@ -3,15 +3,15 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { characters, questParticipants, quests, worldParticipations } from "@/db/schema";
 import {
-  VISIBILITY_STATUSES,
+  CONTENT_VISIBILITIES,
   canSeeVisibility,
   fail,
   ok,
   requireStaff,
   type AuthzResult,
+  type ContentVisibility,
   type MembershipRole,
   type MembershipRow,
-  type VisibilityStatus,
 } from "@/lib/authz";
 import { parseUuid } from "@/lib/http";
 import {
@@ -34,7 +34,7 @@ export const QUEST_TITLE_MAX = 200;
 
 export const questTitleSchema = z.string().trim().min(1).max(QUEST_TITLE_MAX);
 export const questStatusSchema = z.enum(QUEST_STATUSES);
-export const visibilitySchema = z.enum(VISIBILITY_STATUSES);
+export const visibilitySchema = z.enum(CONTENT_VISIBILITIES);
 
 const NOT_FOUND = "Diese Quest gibt es nicht.";
 
@@ -69,7 +69,7 @@ export type QuestSummary = {
   id: string;
   title: string;
   status: QuestStatus;
-  visibility: VisibilityStatus;
+  visibility: ContentVisibility;
   participants: QuestParticipant[];
 };
 
@@ -226,7 +226,7 @@ async function toPatch(input: {
   title?: string;
   description?: unknown;
   status?: QuestStatus;
-  visibility?: VisibilityStatus;
+  visibility?: ContentVisibility;
 }): Promise<AuthzResult<QuestPatch>> {
   const patch: QuestPatch = {};
   if (input.title !== undefined) patch.title = input.title;
@@ -248,7 +248,7 @@ export async function createQuest(input: {
   title: string;
   description?: unknown;
   status?: QuestStatus;
-  visibility?: VisibilityStatus;
+  visibility?: ContentVisibility;
   participantIds?: string[];
 }): Promise<AuthzResult<QuestSummary>> {
   const staff = requireStaff(input.membership);
@@ -268,6 +268,7 @@ export async function createQuest(input: {
         ...patch.data,
         worldId: input.worldId,
         title: input.title,
+        ownerId: input.actorId,
         createdBy: input.actorId,
         updatedBy: input.actorId,
       })
@@ -302,7 +303,7 @@ export async function updateQuest(input: {
   title?: string;
   description?: unknown;
   status?: QuestStatus;
-  visibility?: VisibilityStatus;
+  visibility?: ContentVisibility;
   participantIds?: string[];
 }): Promise<AuthzResult<{ id: string }>> {
   const staff = requireStaff(input.membership);

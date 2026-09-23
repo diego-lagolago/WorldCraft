@@ -6,7 +6,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { worldPath } from "@/components/shell/nav";
 import { IMAGE_ACCEPT } from "@/components/world/image-accept";
-import type { VisibilityStatus } from "@/lib/authz/types";
+import type { ContentVisibility } from "@/lib/authz/types";
 import { apiRequest, uploadImage } from "@/lib/client/api";
 import type { ArticleRefOption } from "@/lib/domain/articles";
 import type { MentionState } from "@/lib/editor/mentions";
@@ -18,7 +18,7 @@ type Article = {
   id: string;
   title: string;
   templateType: string;
-  visibility: VisibilityStatus;
+  visibility: ContentVisibility;
   titleImageId: string | null;
   body: RichDoc | null;
   templateFields: StoredTemplateFields;

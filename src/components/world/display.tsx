@@ -1,7 +1,8 @@
-import type { VisibilityStatus } from "@/lib/authz/types";
+import type { ContentVisibility, VisibilityStatus } from "@/lib/authz/types";
 
-/** Only staff ever receive `gm_only` content, so the badge needs no role check. */
-export function GmBadge({ visibility }: { visibility: VisibilityStatus }) {
+/** Staff see badges for non-published content they can view. */
+export function GmBadge({ visibility }: { visibility: VisibilityStatus | ContentVisibility }) {
+  if (visibility === "owner_only") return <span className="badge owner">nur ich</span>;
   return visibility === "gm_only" ? <span className="badge gm">nur Spielleitung</span> : null;
 }
 

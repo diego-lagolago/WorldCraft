@@ -5,7 +5,7 @@ import { apiFetch } from "@/lib/client/api-fetch";
 import type { MapState, MarkerDto, PinDetails, PinDto } from "@/lib/map/types";
 import type { PinType } from "@/lib/map/pin-types";
 import type { RichDoc } from "@/lib/editor/rich-text";
-import type { VisibilityStatus } from "@/lib/authz";
+import type { ContentVisibility, VisibilityStatus } from "@/lib/authz";
 import { applyMapEvent } from "./use-map-realtime";
 import type { WorldRealtimeEvent } from "@/lib/realtime/events";
 
@@ -145,7 +145,7 @@ export function useMapState(worldId: string, initial: MapState) {
     description: RichDoc | null;
     posX: number;
     posY: number;
-    visibility: VisibilityStatus;
+    visibility: ContentVisibility;
   }) {
     const result = await apiFetch<{ pin: PinDto }>(`/api/worlds/${worldId}/map/pins`, {
       method: "POST",

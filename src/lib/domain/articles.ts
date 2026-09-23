@@ -3,15 +3,15 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { articles, characters, worldParticipations } from "@/db/schema";
 import {
-  VISIBILITY_STATUSES,
+  CONTENT_VISIBILITIES,
   canSeeVisibility,
   fail,
   ok,
   requireStaff,
   type AuthzResult,
+  type ContentVisibility,
   type MembershipRole,
   type MembershipRow,
-  type VisibilityStatus,
 } from "@/lib/authz";
 import { parseUuid } from "@/lib/http";
 import { collectUnreferencedFiles } from "@/lib/files/gc";
@@ -34,7 +34,7 @@ import { richFieldFromInput } from "./rich-field";
 export const ARTICLE_TITLE_MAX = 200;
 export const articleTitleSchema = z.string().trim().min(1).max(ARTICLE_TITLE_MAX);
 export const articleTemplateSchema = z.enum(TEMPLATE_TYPES);
-export const visibilitySchema = z.enum(VISIBILITY_STATUSES);
+export const visibilitySchema = z.enum(CONTENT_VISIBILITIES);
 
 const NOT_FOUND = "Diesen Artikel gibt es nicht.";
 
@@ -70,7 +70,8 @@ export type ArticleSummary = {
   id: string;
   title: string;
   templateType: string;
-  visibility: VisibilityStatus;
+  visibility: ContentVisibility;
+  ownerId?: string;
   firstEditedAt: Date | null;
   titleImageId: string | null;
 };
@@ -209,7 +210,7 @@ async function toPatch(
     templateType?: TemplateType;
     templateFields?: unknown;
     body?: unknown;
-    visibility?: VisibilityStatus;
+    visibility?: ContentVisibility;
     removeTitleImage?: true;
   },
   current?: { templateType: string; templateFields: unknown; bodyPlain: string | null; firstEditedAt: Date | null },
@@ -255,7 +256,7 @@ export async function createArticle(input: {
   templateType?: TemplateType;
   templateFields?: unknown;
   body?: unknown;
-  visibility?: VisibilityStatus;
+  visibility?: ContentVisibility;
 }): Promise<AuthzResult<ArticleSummary>> {
   const staff = requireStaff(input.membership);
   if (!staff.ok) return staff;
@@ -268,6 +269,7 @@ export async function createArticle(input: {
         ...patch.data,
         worldId: input.worldId,
         title: input.title,
+        ownerId: input.actorId,
         createdBy: input.actorId,
         updatedBy: input.actorId,
       })
@@ -302,7 +304,7 @@ export async function updateArticle(input: {
   templateType?: TemplateType;
   templateFields?: unknown;
   body?: unknown;
-  visibility?: VisibilityStatus;
+  visibility?: ContentVisibility;
   removeTitleImage?: true;
 }): Promise<AuthzResult<{ id: string }>> {
   const staff = requireStaff(input.membership);
