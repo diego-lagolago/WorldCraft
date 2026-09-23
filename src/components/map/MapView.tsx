@@ -300,7 +300,8 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
           title="Neuer Pin"
           worldId={worldId}
           staff={state.staff}
-          initial={{ pinType: "city", title: "", description: null, visibility: "gm_only" }}
+          actorId={state.actorId}
+          initial={{ pinType: "city", title: "", description: null, visibility: "owner_only" }}
           onClose={() => setSheet({ kind: "none" })}
           onSave={(value) => {
             void stream
@@ -320,6 +321,8 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
           title="Pin bearbeiten"
           worldId={worldId}
           staff={state.staff}
+          actorId={state.actorId}
+          ownerId={sheet.pin.ownerId}
           initial={{
             pinType: sheet.pin.pinType,
             title: sheet.pin.title,

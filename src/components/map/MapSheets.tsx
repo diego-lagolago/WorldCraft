@@ -3,6 +3,8 @@
 import { useState, type ReactNode } from "react";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { RichTextView } from "@/components/editor/RichTextView";
+import { GmBadge } from "@/components/world/display";
+import { ContentVisibilitySelect } from "@/components/world/VisibilitySelect";
 import { PIN_TYPE_META, pinTypeIconUrl, type PinType } from "@/lib/map/pin-types";
 import type { MarkerDto, PinDetails, PlaceableCharacterDto } from "@/lib/map/types";
 import type { RichDoc } from "@/lib/editor/rich-text";
@@ -46,7 +48,7 @@ export function PinViewSheet({
         <img src={pinTypeIconUrl(pin.pinType)} width={36} height={44} alt="" />
         <div className="grow">
           <div className="kind">{PIN_TYPE_META.find((row) => row.id === pin.pinType)?.label}</div>
-          {pin.visibility === "gm_only" ? <span className="badge">nur Spielleitung</span> : null}
+          <GmBadge visibility={pin.visibility} />
           {pin.locked ? <span className="badge">gesperrt</span> : null}
         </div>
       </div>
@@ -90,6 +92,8 @@ export function PinFormSheet({
   title,
   worldId,
   staff,
+  actorId,
+  ownerId,
   initial,
   onSave,
   onClose,
@@ -97,6 +101,9 @@ export function PinFormSheet({
   title: string;
   worldId: string;
   staff: boolean;
+  actorId: string;
+  /** Owner of the pin being edited; omit when creating (caller is owner). */
+  ownerId?: string;
   initial: {
     pinType: PinType;
     title: string;
@@ -116,6 +123,7 @@ export function PinFormSheet({
   const [description, setDescription] = useState<RichDoc | null>(initial.description);
   const [visibility, setVisibility] = useState(initial.visibility);
   const [error, setError] = useState<string | null>(null);
+  const allowOwner = ownerId == null || ownerId === actorId;
 
   return (
     <Sheet title={title} onClose={onClose}>
@@ -141,18 +149,7 @@ export function PinFormSheet({
           ariaLabel="Pinbeschreibung"
           onChange={(change) => setDescription(change.doc)}
         />
-        <div className="toggle">
-          <span>
-            Veröffentlicht <span className="small muted">(aus = nur Spielleitung)</span>
-          </span>
-          <button
-            type="button"
-            className="sw"
-            role="switch"
-            aria-checked={visibility === "published"}
-            onClick={() => setVisibility((current) => (current === "published" ? "gm_only" : "published"))}
-          />
-        </div>
+        <ContentVisibilitySelect value={visibility} onChange={setVisibility} allowOwner={allowOwner} id="pin-visibility" />
         {error ? <p className="chat-error">{error}</p> : null}
         <button
           type="button"

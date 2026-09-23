@@ -23,11 +23,13 @@ export default async function EditArticlePage({ params }: PageProps<"/w/[worldId
   return (
     <ArticleForm
       worldId={world.id}
+      actorId={membership.userId}
       article={{
         id: article.id,
         title: article.title,
         templateType: article.templateType,
         visibility: article.visibility,
+        ownerId: article.ownerId,
         titleImageId: article.titleImageId,
         body,
         templateFields: article.templateFields,

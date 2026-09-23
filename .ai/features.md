@@ -2,7 +2,7 @@
 
 **Status:** Lebender Katalog — **verbindlich nachzuziehen**, wenn sich die Produktoberfläche ändert (siehe [conventions.md](conventions.md) § Features-Katalog).  
 **Quellen:** Plan `001` F1–F10, Plan `003` MVP, Fachmodell, nachgezogene UX.  
-**Nicht enthalten:** geplante, noch nicht gebaute Features (z. B. Quest-Kapitel / Owner-Sichtbarkeit aus Plan `004`).
+**Nicht enthalten:** geplante, noch nicht gebaute Features (z. B. Quest-Kapitel / Notizblock aus Plan `004`).
 
 Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (meist ebenfalls shipped).
 
@@ -47,7 +47,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 
 | Feature | Was es tut | Status |
 |---|---|---|
-| Artikel | Titel, Titelbild, Rich-Text, Sichtbarkeit; Default `nur Spielleitung` | MVP F2 / shipped |
+| Artikel | Titel, Titelbild, Rich-Text, dreistufige Sichtbarkeit; Default `nur ich` | MVP F2 / Plan 004 / shipped |
 | Vorlagen | Typen Person / Ort / Organisation / Gegenstand / ohne; strukturierte Felder | MVP F3 / shipped |
 | TipTap-Editor | Erlaubte Formatierungen laut Plan 001; Paste ohne Bilder/Tabellen | MVP / shipped |
 | Erwähnungen (`@`) | Teilwortsuche mit Kategorie; Bestätigen per Enter, Tab oder Klick; Stub rot → blau | MVP F2 / shipped |
@@ -65,7 +65,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 
 | Feature | Was es tut | Status |
 |---|---|---|
-| Quests | Titel, Beschreibung mit `@`, Status offen/aktiv/abgeschlossen/gescheitert, Sichtbarkeit | MVP F7 / shipped |
+| Quests | Titel, Beschreibung mit `@`, Status offen/aktiv/abgeschlossen/gescheitert, dreistufige Sichtbarkeit; Default `nur ich` | MVP F7 / Plan 004 / shipped |
 | Quest-Beteiligte | Mitgebrachte Charaktere zuordnen; erzeugt `participation`-Relationen | MVP F7 / shipped |
 
 ## Charaktere & Tagebuch
@@ -84,7 +84,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 | Karten-Auswahl | Dropdown oben links: Label `Universum: Karte` (bei SL-only zusätzlich `· SL`); Spielleitung: ＋ anlegen / Papierkorb löschen | shipped |
 | Kartenbild | Upload als Whiteboard-Hintergrund (Leaflet `CRS.Simple`); Zoom/Pan; Upload-Icon in der Toolbar (Spielleitung) | MVP F4 / shipped |
 | Bild ersetzen | Vor Upload bei bestehendem Bild: Checkbox-Dialog (Bild wird ersetzt, Pins bleiben); erstes Upload ohne Warnung | shipped |
-| Pins | 12 Typen; Titel + Rich-Text-Beschreibung; Drag, Sync nach Drop; **pro Karte** (kein Verschieben zwischen Karten) | MVP F5 / shipped |
+| Pins | 12 Typen; Titel + Rich-Text-Beschreibung; dreistufige Sichtbarkeit (Default `nur ich`); Drag, Sync nach Drop; **pro Karte** (kein Verschieben zwischen Karten) | MVP F5 / Plan 004 / shipped |
 | Pin-Mentions | Erwähnungen in der Pin-Beschreibung als blaue Links; kein „Verknüpft“-Panel im Pin-Sheet | shipped |
 | Charakter-Marker | Profilbild/Name auf der Karte; Besitzer oder Spielleitung platziert; **höchstens eine Karte weltweit pro Charakter** (Platzieren auf Karte B entfernt Marker von A) | MVP F5 / shipped |
 | Pin-Sperre | Sperren/Entsperren nur Spielleitung | shipped |
@@ -110,7 +110,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 | Feature | Was es tut | Status |
 |---|---|---|
 | Rechteschicht | Eine TypeScript-Schicht für HTTP, Loader (später MCP); keine Rechte nur in der UI | MVP / shipped |
-| Sichtbarkeit | `veröffentlicht` / `nur Spielleitung`; Vererbung Universum → Karte → Pin/Marker | MVP / shipped |
+| Sichtbarkeit | Artikel/Quest/Pin: `nur ich` / `nur Spielleitung` / `veröffentlicht` (Default neu: `nur ich`); Universum/Karte bleiben zweistufig; Vererbung Universum → Karte → Pin | MVP / Plan 004 T-005 / shipped |
 | Archivierung | Austritt/Entfernen archiviert Mitgliedschaft, Teilnahmen, Marker, Relationen | MVP / shipped |
 
 ## Uploads & Realtime
@@ -122,4 +122,4 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 
 ## Geplant (nicht shipped)
 
-Siehe Pläne unter `.ai/feature-tasks/` und [backlog.md](backlog.md) — u. a. MCP (Plan `002`), Quest-Kapitel / Owner-Sichtbarkeit (Plan `004`). Hier nicht als Produktfeatures führen, bis sie gebaut sind.
+Siehe Pläne unter `.ai/feature-tasks/` und [backlog.md](backlog.md) — u. a. MCP (Plan `002`), Quest-Kapitel / Notizblock (Rest Plan `004`). Hier nicht als Produktfeatures führen, bis sie gebaut sind.

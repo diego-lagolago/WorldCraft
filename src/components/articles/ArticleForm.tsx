@@ -6,6 +6,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { worldPath } from "@/components/shell/nav";
 import { IMAGE_ACCEPT } from "@/components/world/image-accept";
+import { ContentVisibilitySelect } from "@/components/world/VisibilitySelect";
 import type { ContentVisibility } from "@/lib/authz/types";
 import { apiRequest, uploadImage } from "@/lib/client/api";
 import type { ArticleRefOption } from "@/lib/domain/articles";
@@ -19,6 +20,7 @@ type Article = {
   title: string;
   templateType: string;
   visibility: ContentVisibility;
+  ownerId: string;
   titleImageId: string | null;
   body: RichDoc | null;
   templateFields: StoredTemplateFields;
@@ -59,11 +61,14 @@ function payloadFields(type: TemplateType, fields: Record<string, string>) {
 export function ArticleForm({
   worldId,
   article,
+  actorId,
   refOptions,
   mentionStates,
 }: {
   worldId: string;
   article?: Article;
+  /** Current user — needed so R2 can hide „nur ich“ on foreign records. */
+  actorId: string;
   refOptions: ArticleRefOption[];
   mentionStates?: Record<string, MentionState>;
 }) {
@@ -72,11 +77,12 @@ export function ArticleForm({
   const [templateType, setTemplateType] = useState<TemplateType>(
     templateOf(article?.templateType ?? "none").type,
   );
-  const [published, setPublished] = useState(article?.visibility === "published");
+  const [visibility, setVisibility] = useState<ContentVisibility>(article?.visibility ?? "owner_only");
   const [fields, setFields] = useState(() => fieldsForForm(templateOf(article?.templateType ?? "none").type, article?.templateFields ?? {}));
   const [body, setBody] = useState<RichDoc | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const allowOwner = !article || article.ownerId === actorId;
 
   const base = `/api/worlds/${worldId}/articles`;
   const viewPath = (id: string) => worldPath(worldId, `/articles/${id}`);
@@ -107,7 +113,7 @@ export function ArticleForm({
       title,
       templateType,
       templateFields: payloadFields(templateType, fields),
-      visibility: published ? "published" : "gm_only",
+      visibility,
       ...(body ? { body } : {}),
     };
     if (article) {
@@ -175,21 +181,7 @@ export function ArticleForm({
             ))}
           </select>
         </label>
-        <div className="toggle card" style={{ padding: "8px 12px" }}>
-          <span>
-            Veröffentlicht
-            <br />
-            <span className="small muted">aus = nur Spielleitung</span>
-          </span>
-          <button
-            type="button"
-            className="sw"
-            role="switch"
-            aria-checked={published}
-            aria-label="Veröffentlicht"
-            onClick={() => setPublished((value) => !value)}
-          />
-        </div>
+        <ContentVisibilitySelect value={visibility} onChange={setVisibility} allowOwner={allowOwner} />
       </div>
 
       {article ? (

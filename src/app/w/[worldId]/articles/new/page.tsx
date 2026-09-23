@@ -9,5 +9,5 @@ export default async function NewArticlePage({ params }: PageProps<"/w/[worldId]
   const { world, membership } = await requireWorldPage(worldId);
   if (!isStaff(membership.role)) notFound();
   const refOptions = await listArticleRefOptions(world.id);
-  return <ArticleForm worldId={world.id} refOptions={refOptions} />;
+  return <ArticleForm worldId={world.id} actorId={membership.userId} refOptions={refOptions} />;
 }

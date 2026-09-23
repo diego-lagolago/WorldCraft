@@ -12,6 +12,7 @@ export default async function NewQuestPage({ params }: PageProps<"/w/[worldId]/q
   return (
     <QuestForm
       worldId={world.id}
+      actorId={membership.userId}
       characters={characters.map((entry) => ({ id: entry.id, name: entry.name }))}
     />
   );

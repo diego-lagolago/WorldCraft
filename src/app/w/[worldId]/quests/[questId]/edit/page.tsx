@@ -25,6 +25,7 @@ export default async function EditQuestPage({ params }: PageProps<"/w/[worldId]/
   return (
     <QuestForm
       worldId={world.id}
+      actorId={membership.userId}
       characters={characters.map((entry) => ({ id: entry.id, name: entry.name }))}
       mentionStates={editorMentionStates(mentions)}
       quest={{
@@ -32,6 +33,7 @@ export default async function EditQuestPage({ params }: PageProps<"/w/[worldId]/
         title: quest.title,
         status: quest.status,
         visibility: quest.visibility,
+        ownerId: quest.ownerId,
         description: doc,
         participants: quest.participants,
       }}

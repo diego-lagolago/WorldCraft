@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { worldPath } from "@/components/shell/nav";
+import { ContentVisibilitySelect } from "@/components/world/VisibilitySelect";
 import type { ContentVisibility } from "@/lib/authz/types";
 import { apiRequest } from "@/lib/client/api";
 import type { MentionState } from "@/lib/editor/mentions";
@@ -23,6 +24,7 @@ type Quest = {
   title: string;
   status: QuestStatus;
   visibility: ContentVisibility;
+  ownerId: string;
   description: RichDoc | null;
   participants: QuestParticipant[];
 };
@@ -30,24 +32,27 @@ type Quest = {
 export function QuestForm({
   worldId,
   quest,
+  actorId,
   characters,
   mentionStates,
 }: {
   worldId: string;
   quest?: Quest;
+  actorId: string;
   characters: CharacterOption[];
   mentionStates?: Record<string, MentionState>;
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(quest?.title ?? "");
   const [status, setStatus] = useState<QuestStatus>(quest?.status ?? "open");
-  const [published, setPublished] = useState(quest?.visibility === "published");
+  const [visibility, setVisibility] = useState<ContentVisibility>(quest?.visibility ?? "owner_only");
   const [participantIds, setParticipantIds] = useState<string[]>(
     () => quest?.participants.map((entry) => entry.characterId).filter((id): id is string => Boolean(id)) ?? [],
   );
   const [description, setDescription] = useState<RichDoc | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const allowOwner = !quest || quest.ownerId === actorId;
 
   const base = `/api/worlds/${worldId}/quests`;
   const viewPath = (id: string) => worldPath(worldId, `/quests/${id}`);
@@ -72,7 +77,7 @@ export function QuestForm({
     const payload = {
       title,
       status,
-      visibility: published ? "published" : "gm_only",
+      visibility,
       participantIds,
       ...(description ? { description } : {}),
     };
@@ -127,21 +132,7 @@ export function QuestForm({
             ))}
           </select>
         </label>
-        <div className="toggle card" style={{ padding: "8px 12px" }}>
-          <span>
-            Veröffentlicht
-            <br />
-            <span className="small muted">aus = nur Spielleitung</span>
-          </span>
-          <button
-            type="button"
-            className="sw"
-            role="switch"
-            aria-checked={published}
-            aria-label="Veröffentlicht"
-            onClick={() => setPublished((value) => !value)}
-          />
-        </div>
+        <ContentVisibilitySelect value={visibility} onChange={setVisibility} allowOwner={allowOwner} />
       </div>
 
       <div className="card stack">

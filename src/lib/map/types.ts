@@ -44,7 +44,7 @@ export type PinDto = {
   posX: number;
   posY: number;
   visibility: ContentVisibility;
-  ownerId?: string;
+  ownerId: string;
   locked: boolean;
 };
 
