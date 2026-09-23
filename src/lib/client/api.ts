@@ -13,7 +13,7 @@ async function readResult<T>(response: Response): Promise<ApiResult<T>> {
 /** JSON request against the product API; network errors become a readable message. */
 export async function apiRequest<T = unknown>(
   url: string,
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   body?: unknown,
 ): Promise<ApiResult<T>> {
   try {

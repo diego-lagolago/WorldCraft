@@ -626,6 +626,72 @@ textarea {
   color: var(--muted);
 }
 
+/* ---------- Quest chapters & notes (Plan 004) ---------- */
+.quest-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chapters-block {
+  margin-top: 14px;
+}
+
+.chapter {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--panel2);
+}
+
+.chapter .ch-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.chapter .ch-num {
+  font-weight: 700;
+  color: var(--muted);
+  min-width: 1.5em;
+}
+
+.chapter .ch-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.note-fab {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  flex: none;
+  cursor: pointer;
+  color: inherit;
+}
+
+.note-fab.has {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.note-conflict {
+  border: 1px solid #5b1f24;
+  background: #2a1214;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #ffb3b3;
+}
+
 /* ---------- Sheet and toast ---------- */
 .sheet-bg {
   position: fixed;
