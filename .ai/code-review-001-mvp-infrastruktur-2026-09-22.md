@@ -17,7 +17,7 @@
 
 | ID | Kategorie | Schweregrad | Status | Kurzbeschreibung |
 |----|-----------|-------------|--------|-------------------|
-| CR-001 | Sicherheit | kritisch | behoben | Spike-APIs in Produktion für jedes Discord-Konto offen (Upload, Chat, Rechte-API auf echten Tabellen). Teil 1+2 erledigt; Teil 3 Prod-APPLY wartet auf Freigabe (siehe Review-Check 2026-09-23) |
+| CR-001 | Sicherheit | kritisch | behoben | Spike-APIs in Produktion für jedes Discord-Konto offen (Upload, Chat, Rechte-API auf echten Tabellen). Teil 1–3 erledigt; Prod-Dry-Run 2026-09-23 (Projektinhaber, Datenbank `worldcraft`): keine Welten `Rechte-Spike%`, keine Dateien `spike/%`, keine Tabellen `spike_*` – kein APPLY nötig |
 | CR-002 | Testabdeckung | kritisch | behoben | `npm test` ist rot: `dice.test.ts` und `authz.test.ts` scheitern an `ERR_MODULE_NOT_FOUND` |
 | CR-003 | Sicherheit | mittel | behoben | `discordId` ist als `input: true` über `/api/auth/update-user` vom Benutzer änderbar |
 | CR-004 | Sicherheit | mittel | behoben | Manuelle Relationen prüfen nicht, ob Quelle und Ziel zur Welt gehören (weltübergreifend, 500 bei fremder ID) |
@@ -350,3 +350,5 @@ Die verbindliche Umsetzungsreihenfolge ergibt sich aus Plan `003`: Abschnitt *Co
 **Offen mit erfülltem Abnahmekriterium im Code:** keines.
 **Nicht abgedeckt / Hinweis:** Parallele Plan-004/008-WIP (Kapitel, Würfel-Sheet) liegt außerhalb der Review-001-Fundstellen.
 **Empfehlung:** Kein erneuter `/code-review` für Plan 001 nötig; Prod-Cleanup bei Push-Freigabe (T-017) mitnehmen.
+
+**Nachtrag 2026-09-23:** CR-001 Teil 3 abgeschlossen. Prod-Dry-Run 2026-09-23 (Projektinhaber, Datenbank `worldcraft`): keine Welten `Rechte-Spike%`, keine Dateien `spike/%`, keine Tabellen `spike_*` – kein APPLY nötig.
