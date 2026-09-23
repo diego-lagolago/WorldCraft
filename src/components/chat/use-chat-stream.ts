@@ -104,32 +104,41 @@ export function useChatStream(worldId: string, initial: ChatState) {
     return true;
   }
 
-  async function roll(input: { n: number; m: number; modifier: number }): Promise<void> {
-    if (!state?.channel) return;
-    setNotice(null);
+  async function roll(input: {
+    terms: { n: number; m: number }[];
+    modifier: number;
+  }): Promise<
+    | { ok: true; posted: true }
+    | { ok: true; posted: false; text: string }
+    | { ok: false; error: string }
+  > {
+    if (!state?.channel) {
+      return { ok: false, error: "Kein Kanal geladen." };
+    }
+    const body: Record<string, unknown> = {
+      kind: "roll",
+      terms: input.terms,
+      channelId: state.channel.id,
+      threadId: state.thread?.id ?? null,
+    };
+    if (input.modifier !== 0) body.modifier = input.modifier;
     const res = await apiFetch<PostResponse>(`/api/worlds/${worldId}/chat`, {
       method: "POST",
-      body: JSON.stringify({
-        kind: "roll",
-        terms: [{ n: input.n, m: input.m }],
-        modifier: input.modifier,
-        channelId: state.channel.id,
-        threadId: state.thread?.id ?? null,
-      }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       await failAndReload(res.error);
-      return;
+      return { ok: false, error: res.error };
     }
     setError(null);
     if ("posted" in res.data && res.data.posted === false) {
-      setNotice(res.data.dice.text);
-      return;
+      return { ok: true, posted: false, text: res.data.dice.text };
     }
     if ("message" in res.data) {
       const message = res.data.message;
       setState((prev) => (prev ? withMessage(prev, message) : prev));
     }
+    return { ok: true, posted: true };
   }
 
   async function setPostToChat(next: boolean): Promise<void> {

@@ -66,7 +66,7 @@ export function DiceSheet({
 }: {
   postToChat: boolean;
   onPostToChat: (next: boolean) => void;
-  onRoll: (input: { n: number; m: number; modifier: number }) => void;
+  onRoll: (input: { terms: { n: number; m: number }[]; modifier: number }) => void;
   onClose: () => void;
 }) {
   const [count, setCount] = useState(1);
@@ -122,7 +122,7 @@ export function DiceSheet({
         type="button"
         className="btn primary"
         onClick={() => {
-          onRoll({ n: count, m: sides, modifier });
+          onRoll({ terms: [{ n: count, m: sides }], modifier });
           onClose();
         }}
       >

@@ -71,7 +71,7 @@ Beim Ausbau des Chats in Plan `003` wurde das Würfel-Sheet vereinfacht nachgeba
 - Abnahmekriterium: `roadmap.md` listet `008`; Plan `003` verweist auf `008`.
 
 ### T-002: Client-Roll mit mehreren Termen
-- [ ] Beschreibung: `roll` in `src/components/chat/use-chat-stream.ts` nimmt `{ terms: { n; m }[]; modifier: number }` statt eines einzelnen Terms und sendet `modifier` nur, wenn ≠ 0. Rückgabe unterscheidet (W6): `{ ok: true; posted: true }` bzw. `{ ok: true; posted: false; text: string }` bzw. `{ ok: false; error: string }` (auch wenn kein Kanal geladen ist; bei API-Fehler bleibt `failAndReload` bestehen), statt das Ergebnis als Toast (`setNotice`) anzuzeigen. Andere Aufrufer von `setNotice` bleiben unverändert.
+- [x] Beschreibung: `roll` in `src/components/chat/use-chat-stream.ts` nimmt `{ terms: { n; m }[]; modifier: number }` statt eines einzelnen Terms und sendet `modifier` nur, wenn ≠ 0. Rückgabe unterscheidet (W6): `{ ok: true; posted: true }` bzw. `{ ok: true; posted: false; text: string }` bzw. `{ ok: false; error: string }` (auch wenn kein Kanal geladen ist; bei API-Fehler bleibt `failAndReload` bestehen), statt das Ergebnis als Toast (`setNotice`) anzuzeigen. Andere Aufrufer von `setNotice` bleiben unverändert.
 - Abhängigkeiten: keine
 - Abnahmekriterium: Wurf `1d20+1d4+2` mit „Im Chat posten“ an erscheint im Chat mit zwei Würfel-Termen und Bonus; ohne Posten liefert `roll` den Text zurück und es erscheint **kein** Toast; `npm run lint` grün.
 
