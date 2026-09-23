@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>WorldCraft – UI-Prototyp (Plan 004)</title>
+<title>WorldCraft – UI-Prototyp (Plan 005)</title>
 <style>
 :root{
   --bg:#0b0b0f; --panel:#15151c; --panel2:#1c1c25; --line:#2a2a36; --text:#ece9e4; --muted:#9d9aa6;
@@ -91,6 +91,12 @@ h1,h2,h3{margin:0}
 .vis-select select{width:100%}
 .pin.hidden-owner::after{content:"ich";position:absolute;top:-6px;right:-8px;font-size:10px;font-weight:800;background:#f5d08a;color:#1a1204;border-radius:6px;padding:1px 4px}
 .badge.st-completed{color:var(--ok);border-color:#1f5a3f}.badge.st-failed{color:var(--red);border-color:#5b1f24}
+.badge.rarity-common{color:#c4c4c8;border-color:#4a4a54;background:#1e1e26}
+.badge.rarity-uncommon{color:#6ee7a8;border-color:#1f5a3f;background:#12241c}
+.badge.rarity-rare{color:#6aa8ff;border-color:#2a4a7a;background:#121c30}
+.badge.rarity-epic{color:#c4a0ff;border-color:#5a3c8a;background:#1c1530}
+.badge.rarity-legendary{color:#f5a05a;border-color:#7a4a1a;background:#2a1c10}
+.badge.legendary-flag{color:#f5b83d;border-color:#6a4e1a;background:#2a2210}
 .av{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;font-weight:700;font-size:14px;color:#111}
 .av.lg{width:84px;height:84px;font-size:28px}
 .av.sm{width:30px;height:30px;font-size:12px}
@@ -279,8 +285,8 @@ h1,h2,h3{margin:0}
 <div id="overlay"></div>
 <script>
 /* =====================================================================
-   WorldCraft UI-Prototyp zu Plan 004. Reine Attrappe: keine Server,
-   keine Persistenz. Die Rolle oben rechts simuliert die Rechtematrix
+   WorldCraft UI-Prototyp zu Plan 005 (Bestiarium). Reine Attrappe: keine
+   Server, keine Persistenz. Die Rolle oben rechts simuliert die Rechtematrix
    inkl. Owner-Stufe („nur ich“).
    ===================================================================== */
 
@@ -328,6 +334,18 @@ const TEMPLATES = {
     {k:"kind",l:"Art",t:"select",o:{weapon:"Waffe",armor:"Rüstung",artifact:"Artefakt",relic:"Relikt",mundane:"alltäglich",other:"sonstiges"}},
     {k:"owner",l:"Besitzer",t:"ref",to:["person","character"]}]}
 };
+const MONSTER_KIND = {
+  beast:"Bestie", undead:"Untoter", demon:"Dämon", dragon:"Drache", humanoid:"Humanoid",
+  construct:"Konstrukt", aberration:"Aberration", plant:"Pflanze", magical:"Magisch", other:"sonstiges"
+};
+const MONSTER_RARITY = {common:"Common", uncommon:"Uncommon", rare:"Rare", epic:"Epic", legendary:"Legendary"};
+const MONSTER_DANGER = {
+  harmless:"Harmlos", dangerous:"Gefährlich", deadly:"Tödlich",
+  devastating:"Verheerend", divine:"Göttlich", apocalyptic:"Apokalyptisch"
+};
+const MONSTER_SIZE = {
+  tiny:"Winzig", small:"Klein", medium:"Durchschnitt", large:"Groß", gigantic:"Gigantisch"
+};
 const D = {
   worlds:[{id:"w1",name:"Die Splitterlande",desc:"Eine zerbrochene Welt aus schwebenden Inseln. Wir spielen seit 2025."},{id:"w2",name:"Nebelküste",desc:"One-Shot-Runde"}],
   universes:{
@@ -368,6 +386,23 @@ const D = {
     c3:{name:"Finn Leichtfuß",owner:"diego",cls:"Schurke",attrs:[9,18,12,13,10,14],sk:[{name:"Schlösser knacken",attr:1,level:"expertise"},{name:"Taschendiebstahl",attr:1,level:"expertise"},{name:"Täuschen",attr:5,level:"trained"},{name:"Schwimmen",attr:0,level:"untalented"}],ab:[{text:"Im Schatten verschwinden",attr:1}],pers:"Grinst immer.",ideals:"Gold.",bonds:"Seine Schwester.",flaws:"Kann nichts liegen lassen.",bio:"<p>Kleiner Dieb aus der Unterstadt.</p>",imgs:1},
     c2:{name:"Brom Eisenfaust",owner:"jonas",cls:"Kämpfer",prof:3,attrs:[18,11,16,8,12,10],sk:[{name:"Athletik",attr:0,level:"expertise"},{name:"Einschüchtern",attr:5,level:"trained"},{name:"Bier trinken",attr:2,level:"expertise"}],ab:[{text:"Kampfrausch",attr:0},{text:"Zähigkeit der Zwerge",attr:2}],pers:"Laut und herzlich.",ideals:"Ehre.",bonds:"Seine Axt.",flaws:"Jähzornig.",bio:"<p>Zwergischer Söldner. Hat [[article:a3]] beim Turnier gedemütigt.</p>",imgs:0},
     c4:{name:"Sylva",owner:"lea",cls:"Druidin",attrs:[10,13,14,12,17,11],sk:[{name:"Kräuterkunde",attr:3,level:"expertise"},{name:"Heilkunde",attr:4,level:"trained"},{name:"Mit Tieren sprechen",attr:4,level:"trained"}],ab:[],pers:"Ruhig.",ideals:"Gleichgewicht.",bonds:"Der Silbersee.",flaws:"Weltfremd.",bio:"<p>Hüterin des Silbersees.</p>",imgs:2}
+  },
+  monsters:{
+    m1:{name:"Schattenwolf",owner:"diego",cls:"Raubtier",kind:"beast",rarity:"uncommon",legendary:false,danger:"dangerous",size:"medium",habitat:"a2",vis:"published",
+      attrs:[15,16,13,4,12,6],prof:2,sk:[{name:"Heimlichkeit",attr:1,level:"expertise"},{name:"Wahrnehmung",attr:4,level:"trained"}],ab:[{text:"Im Schatten springen",attr:1}],
+      pers:"Jagt in Rudeln.",ideals:"",bonds:"Das Rudel.",flaws:"Scheut offenes Feuer.",bio:"<p>Streift um [[article:a2]]. Ziel von [[quest:q5]].</p>",portrait:true},
+    m2:{name:"Gottschleim-Brut",owner:"diego",cls:"Schleimwesen",kind:"aberration",rarity:"rare",legendary:false,danger:"deadly",size:"large",habitat:"a2",vis:"gm_only",
+      attrs:[14,8,18,2,6,1],prof:2,sk:[{name:"Athletik",attr:0,level:"trained"}],ab:[{text:"Säure verspritzen",attr:2}],
+      pers:"Hungrig.",ideals:"",bonds:"",flaws:"",bio:"<p>Junge des [[article:a1]]. Nur Spielleitung.</p>",portrait:false},
+    m3:{name:"Ashara, die Glut",owner:"diego",cls:"Antiker Drache",kind:"dragon",rarity:"legendary",legendary:true,danger:"apocalyptic",size:"gigantic",habitat:null,vis:"published",
+      attrs:[28,12,26,18,16,22],prof:6,sk:[{name:"Einschüchtern",attr:5,level:"expertise"},{name:"Arcana",attr:3,level:"expertise"}],ab:[{text:"Feueratem",attr:2},{text:"Legendäre Resistenz",attr:4}],
+      pers:"Hochmütig.",ideals:"Macht.",bonds:"Ihr Hort.",flaws:"Gier.",bio:"<p>Schläft unter den [[article:a6]]. Erwähnt den [[monster:m1]].</p>",portrait:true},
+    m4:{name:"Torwächter",owner:"mara",cls:"Konstrukt",kind:"construct",rarity:"epic",legendary:false,danger:"devastating",size:"large",habitat:null,vis:"owner_only",
+      attrs:[20,8,20,6,10,4],prof:3,sk:[{name:"Athletik",attr:0,level:"expertise"}],ab:[{text:"Unbeweglich",attr:2}],
+      pers:"Befehlstreu.",ideals:"",bonds:"",flaws:"",bio:"<p>Wacht am Eingang zum [[article:a7]].</p>",portrait:false},
+    m5:{name:"Nebelgeist",owner:"diego",cls:"Untoter",kind:"undead",rarity:"common",legendary:false,danger:"harmless",size:"tiny",habitat:null,vis:"published",
+      attrs:[4,14,10,8,12,6],prof:2,sk:[],ab:[{text:"Durch Wände gleiten",attr:1}],
+      pers:"Neugierig.",ideals:"",bonds:"",flaws:"",bio:"<p>Harmloser Spuk bei [[pin:p5]].</p>",portrait:false}
   },
   brought:["c1","c3","c2","c4"],
   pins:{
@@ -426,7 +461,7 @@ let nextId = 100;
 
 /* ---------------- Zustand ---------------- */
 const S = {
-  role:"game_master", asOwner:true, loggedIn:true, articleFilter:"all", search:"", expanded:{},
+  role:"game_master", asOwner:true, loggedIn:true, articleFilter:"all", monsterFilter:"all", search:"", expanded:{},
   dice:{n:1,m:20,mod:0,post:true}, universe:"u1", placing:false, map:null, lastMap:null,
   noteConflict:false, noteDraft:null, noteExpectedVer:null,
   selectedMsg:null, editingId:null
@@ -447,7 +482,7 @@ const VIS_LABEL = {owner_only:"nur ich",gm_only:"nur Spielleitung",published:"ve
 const VIS_TWO = {gm_only:"nur Spielleitung",published:"veröffentlicht"};
 
 /* ---------------- Sichtbarkeit (Rechtematrix-Attrappe) ---------------- */
-function get(k,id){ return ({article:D.articles,quest:D.quests,universe:D.universes,character:D.characters,pin:D.pins})[k]?.[id]; }
+function get(k,id){ return ({article:D.articles,quest:D.quests,universe:D.universes,character:D.characters,pin:D.pins,monster:D.monsters})[k]?.[id]; }
 function isContentOwner(ownerId){ return isStaff() && S.asOwner && ownerId === ME; }
 function canSeeVis(vis, ownerId){
   if(vis==="published") return true;
@@ -478,9 +513,9 @@ function visibleChapters(questId){
 }
 function title(k,id){ const o=get(k,id); return o ? (o.title||o.name) : "?"; }
 function href(k,id){
-  return {article:`#/w/w1/articles/${id}`,quest:`#/w/w1/quests/${id}`,universe:`#/w/w1/universes/${id}`,character:`#/w/w1/characters/${id}`,pin:`#/w/w1/map?pin=${id}`}[k];
+  return {article:`#/w/w1/articles/${id}`,quest:`#/w/w1/quests/${id}`,universe:`#/w/w1/universes/${id}`,character:`#/w/w1/characters/${id}`,pin:`#/w/w1/map?pin=${id}`,monster:`#/w/w1/monsters/${id}`}[k];
 }
-const KIND_LABEL = {article:"Artikel",quest:"Quest",character:"Charakter",universe:"Universum",pin:"Pin"};
+const KIND_LABEL = {article:"Artikel",quest:"Quest",character:"Charakter",universe:"Universum",pin:"Pin",monster:"Monster"};
 function kindLabel(k,id){
   if(k==="article"){ const a=D.articles[id]; return a.tpl==="none" ? "Artikel" : TEMPLATES[a.tpl].label; }
   return KIND_LABEL[k];
@@ -505,6 +540,10 @@ function allRelations(){
   for(const [id,p] of Object.entries(D.pins)) scan("pin",id,p.desc);
   for(const [id,u] of Object.entries(D.universes)) scan("universe",id,u.desc);
   for(const [id,c] of Object.entries(D.characters)) scan("character",id,c.bio);
+  for(const [id,m] of Object.entries(D.monsters)){
+    scan("monster",id,m.bio);
+    if(m.habitat) out.push({from:["monster",id],to:["article",m.habitat],origin:"template_field",field:"Lebensraum"});
+  }
   D.manual.forEach(r=>out.push({...r,origin:"manual"}));
   return out;
 }
@@ -512,7 +551,7 @@ const ORIGIN = {mention:"Erwähnung",template_field:"Vorlagenfeld",participation
 function linkedHtml(k,id){
   const rels = allRelations().filter(r=>(r.from[0]===k&&r.from[1]===id)||(r.to[0]===k&&r.to[1]===id))
     .filter(r=>visible(...r.from)&&visible(...r.to));
-  const groups = {pin:[],article:[],quest:[],character:[],universe:[]}; const seen=new Map();
+  const groups = {pin:[],article:[],quest:[],character:[],universe:[],monster:[]}; const seen=new Map();
   for(const r of rels){
     const outgoing = r.from[0]===k && r.from[1]===id;
     const [ok,oid] = outgoing ? r.to : r.from;
@@ -522,9 +561,9 @@ function linkedHtml(k,id){
     if(seen.has(key)){ const it=seen.get(key); if(!it.why.includes(why)) it.why.push(why); continue; }
     const it = {ok,oid,label,why:[why]}; seen.set(key,it); groups[ok]?.push(it);
   }
-  const names = {pin:"Pins",article:"Artikel",quest:"Quests",character:"Charaktere",universe:"Universen"};
+  const names = {pin:"Pins",article:"Artikel",quest:"Quests",character:"Charaktere",universe:"Universen",monster:"Monster"};
   let html = "";
-  for(const g of ["pin","article","quest","character","universe"]){
+  for(const g of ["pin","article","quest","character","universe","monster"]){
     const items = groups[g]; if(!items.length) continue;
     html += `<h3>${names[g]}</h3>`;
     const render = it => {
@@ -532,9 +571,11 @@ function linkedHtml(k,id){
       let lead = "";
       if(g==="pin"){ const p=D.pins[it.oid]; lead=`<img src="${pinIcon(p.t)}" width="26" height="31" alt="">`; }
       if(g==="character"){ lead=avatar(D.characters[it.oid].name,"sm"); }
+      if(g==="monster"){ lead=avatar(D.monsters[it.oid].name,"sm"); }
       let meta = "";
       if(g==="pin") meta = `<span class="kind">${esc(D.maps[D.pins[it.oid].m].name)}</span>`;
       if(g==="quest") meta = statusBadge(D.quests[it.oid].status);
+      if(g==="monster") meta = rarityBadge(D.monsters[it.oid].rarity);
       return `<a class="item" href="${href(g,it.oid)}">${lead}<div class="grow"><div>${esc(title(g,it.oid))}</div>${extra}</div>${meta}</a>`;
     };
     if(g==="article"){
@@ -562,6 +603,8 @@ function visSelect(current, {twoTier=false, allowOwner=true, id="ed-vis"}={}){
   return `<label class="vis-select small muted">Sichtbarkeit<select id="${id}">${Object.entries(opts).map(([k,l])=>`<option value="${k}" ${cur===k?"selected":""}>${l}</option>`).join("")}</select></label>`;
 }
 function gmBadge(vis){ return visBadge(vis); }
+function rarityBadge(r){ return `<span class="badge rarity-${r}">${MONSTER_RARITY[r]}</span>`; }
+function legendaryBadge(flag){ return flag ? `<span class="badge legendary-flag">Legendär</span>` : ""; }
 const STATUS = {open:"offen",active:"aktiv",completed:"abgeschlossen",failed:"gescheitert"};
 function statusBadge(s){ return `<span class="badge st-${s}">${STATUS[s]}</span>`; }
 function rich(html){
@@ -698,8 +741,10 @@ function viewHub(){
   const w = D.worlds[0];
   const unis = Object.entries(D.universes).filter(([id])=>visible("universe",id)).sort((a,b)=>a[1].sort-b[1].sort);
   const arts = Object.entries(D.articles).filter(([id,a])=>visible("article",id) && (S.articleFilter==="all"||a.tpl===S.articleFilter));
+  const monsters = Object.entries(D.monsters).filter(([id,m])=>visible("monster",id) && (S.monsterFilter==="all"||m.kind===S.monsterFilter));
   const quests = Object.entries(D.quests).filter(([id])=>visible("quest",id));
   const filterChip = (k,l)=>`<button class="chip ${S.articleFilter===k?"on":""}" data-act="afilter" data-v="${k}">${l}</button>`;
+  const mChip = (k,l)=>`<button class="chip ${S.monsterFilter===k?"on":""}" data-act="mfilter" data-v="${k}">${l}</button>`;
   return shell("globe", `
     <div class="hero"><h1>${esc(w.name)}</h1></div>
     <p class="muted" style="margin-top:0">${esc(w.desc)}</p>
@@ -720,6 +765,15 @@ function viewHub(){
     <div class="section-h"><h2>Universen</h2>${isStaff()?'<button class="btn sm" data-act="toast" data-msg="Universum anlegen (Name, Beschreibung, Sichtbarkeit)">+ Universum</button>':""}</div>
     <div class="card list" style="padding:0 4px">
       ${unis.map(([id,u])=>`<a class="item" href="#/w/w1/universes/${id}"><span style="font-size:22px">🪐</span><div class="grow">${esc(u.name)}</div>${gmBadge(u.vis)}<span class="muted">›</span></a>`).join("")}
+    </div>
+
+    <div class="section-h"><h2>Bestiarium</h2>${isStaff()?'<a class="btn sm" href="#/w/w1/monsters/new/edit">+ Monster</a>':""}</div>
+    <div class="chips">${mChip("all","Alle")}${Object.entries(MONSTER_KIND).map(([k,l])=>mChip(k,l)).join("")}</div>
+    <div class="card list" style="padding:0 4px;margin-top:8px">
+      ${monsters.length ? monsters.map(([id,m])=>`<a class="item" href="#/w/w1/monsters/${id}">
+        ${avatar(m.name)}
+        <div class="grow"><div>${esc(m.name)}</div><div class="kind">${esc(MONSTER_KIND[m.kind])}</div></div>
+        ${rarityBadge(m.rarity)}${legendaryBadge(m.legendary)}${gmBadge(m.vis)}<span class="muted">›</span></a>`).join("") : '<div class="empty">Keine Monster in dieser Kategorie.</div>'}
     </div>
 
     <div class="section-h"><h2>Artikel</h2>${isStaff()?'<a class="btn sm" href="#/w/w1/articles/new/edit">+ Artikel</a>':""}</div>
@@ -748,6 +802,7 @@ function searchResults(){
   for(const [id,x] of Object.entries(D.universes)) push("universe",id,x.name,x.desc);
   for(const [id,x] of Object.entries(D.pins)) push("pin",id,x.title,x.desc);
   for(const [id,x] of Object.entries(D.characters)) push("character",id,x.name,x.bio);
+  for(const [id,x] of Object.entries(D.monsters)) push("monster",id,x.name,x.bio);
   if(!hits.length) return `<div class="card empty">Keine Treffer für „${esc(S.search)}“.</div>`;
   return `<div class="card list" style="padding:0 4px">${hits.slice(0,20).map(h=>`<a class="item" href="${href(h.k,h.id)}"><div class="grow"><div>${esc(h.t)} <span class="kind">· ${kindLabel(h.k,h.id)}</span></div><div class="small muted">${esc(h.snip.slice(0,300))}</div></div></a>`).join("")}
     <div class="small muted" style="padding:8px 12px">Tagebücher werden nicht durchsucht.</div></div>`;
@@ -822,6 +877,95 @@ function viewArticleEdit(id){
       ${!isNew?`<button class="btn danger" data-act="toast" data-msg="Artikel und seine Relationen würden gelöscht">Löschen</button>`:""}</div>
     </div>`);
 }
+
+function viewMonster(id){
+  const m = D.monsters[id];
+  if(!m || !visible("monster",id)) return shell("globe", notFound());
+  const habitat = m.habitat && D.articles[m.habitat];
+  const habitatHtml = habitat
+    ? (visible("article",m.habitat) ? `<a class="mention" href="${href("article",m.habitat)}">${esc(habitat.title)}</a>` : esc(habitat.title))
+    : '<span class="muted">–</span>';
+  return shell("globe", `
+    <a class="back" href="#/w/w1">‹ Kampagne</a>
+    <div class="row" style="margin-bottom:14px">${avatar(m.name,"lg")}<div class="grow">
+      <h1 style="font-size:24px">${esc(m.name)}</h1>
+      <div class="muted">${esc(m.cls||"–")} · ${esc(MONSTER_KIND[m.kind])}</div>
+      <div class="row wrap" style="margin-top:6px;gap:6px">${rarityBadge(m.rarity)}${legendaryBadge(m.legendary)}${gmBadge(m.vis)}</div>
+    </div>
+      ${isStaff()?`<a class="btn sm" href="#/w/w1/monsters/${id}/edit">Bearbeiten</a>`:""}</div>
+    <div class="card" style="margin-bottom:14px"><dl class="fields">
+      <dt>Art</dt><dd>${esc(MONSTER_KIND[m.kind])}</dd>
+      <dt>Größe</dt><dd>${esc(MONSTER_SIZE[m.size])}${m.size==="medium"?' <span class="kind">(ca. 1,50 m Schulterhöhe)</span>':""}</dd>
+      <dt>Gefahrenstufe</dt><dd>${esc(MONSTER_DANGER[m.danger])}</dd>
+      <dt>Lebensraum</dt><dd>${habitatHtml}</dd>
+    </dl></div>
+    <div class="grid2"><div class="stack">
+      <div class="attrs">${m.attrs.map((v,i)=>`<div class="attr"><div class="k">${ATTR[i]}</div><div class="v">${v}</div><div class="m">${mod(v)}</div></div>`).join("")}</div>
+      <div class="card"><h2>Fertigkeiten</h2>
+        ${m.sk.length ? m.sk.map(s=>`<div class="skill"><span class="grow">${esc(s.name)} <span class="kind">${ATTR[s.attr]} ${mod(m.attrs[s.attr])} · <span class="lvl ${s.level}">${LVL[s.level]}</span></span></span><b class="sk-total">${signed(skillBonus(m,s))}</b></div>`).join("") : '<div class="empty">Noch keine Fertigkeiten.</div>'}</div>
+      <div class="card"><h2>Fähigkeiten</h2>
+        ${m.ab.length ? m.ab.map(f=>`<div class="skill"><span class="grow">${esc(f.text)} <span class="kind">${ATTR[f.attr]}</span></span><b class="sk-total">${mod(m.attrs[f.attr])}</b></div>`).join("") : '<div class="empty">Noch keine Fähigkeiten.</div>'}</div>
+      <div class="card"><dl class="fields"><dt>Persönlichkeit</dt><dd>${esc(m.pers)||"—"}</dd><dt>Ideale</dt><dd>${esc(m.ideals)||"—"}</dd><dt>Bindungen</dt><dd>${esc(m.bonds)||"—"}</dd><dt>Makel</dt><dd>${esc(m.flaws)||"—"}</dd></dl></div>
+      <div class="card prose"><h2>Bio</h2>${rich(m.bio)||'<p class="muted">Keine Bio.</p>'}</div>
+    </div><div class="stack">
+      <div class="card"><h2>Profilbild</h2>${m.portrait?`<div class="thumb" style="width:100%;height:140px"></div>`:'<span class="muted small">Kein Bild – Initialen als Platzhalter.</span>'}</div>
+      ${linkedHtml("monster",id)}
+    </div></div>`);
+}
+
+function viewMonsterEdit(id){
+  if(!isStaff()) return shell("globe", `<div class="card">Nur die Spielleitung darf Monster anlegen und bearbeiten.</div>`);
+  const isNew = id==="new";
+  const m = isNew
+    ? {name:"",cls:"",kind:"other",rarity:"common",legendary:false,danger:"harmless",size:"medium",habitat:null,vis:"owner_only",owner:ME,attrs:[10,10,10,10,10,10],prof:2,sk:[],ab:[],pers:"",ideals:"",bonds:"",flaws:"",bio:"",portrait:false}
+    : D.monsters[id];
+  if(!isNew && (!m || !visible("monster",id))) return shell("globe", notFound());
+  const allowOwner = isNew || m.owner===ME;
+  const places = Object.entries(D.articles).filter(([aid,a])=>a.tpl==="place" && visible("article",aid));
+  const bodyEditable = (m.bio||"").replace(/\[\[(\w+):(\w+)\]\]/g,(_,k,tid)=>`<span class="mention" contenteditable="false" data-k="${k}" data-id="${tid}">${esc(title(k,tid))}</span>`);
+  if(S.skillDraftFor!=="monster:"+id){ S.skillDraft = (m.sk||[]).map(s=>({...s})); S.abilityDraft = (m.ab||[]).map(f=>({...f})); S.skillDraftFor = "monster:"+id; }
+  return shell("globe", `
+    <a class="back" href="${isNew?"#/w/w1":`#/w/w1/monsters/${id}`}">‹ Zurück</a>
+    <h1 style="font-size:22px;margin-bottom:12px">${isNew?"Monster anlegen":"Monster bearbeiten"}</h1>
+    <div class="stack">
+      <label class="stack small muted">Name<input id="ed-title" value="${esc(m.name)}" maxlength="120"></label>
+      <div class="grid2">
+        <label class="stack small muted">Klasse (Freitext)<input id="ed-cls" value="${esc(m.cls||"")}" maxlength="60"></label>
+        ${visSelect(m.vis,{allowOwner})}
+      </div>
+      ${!allowOwner?`<p class="hint">Fremder Datensatz: „nur ich“ ist nur für den Owner wählbar.</p>`:""}
+      <div class="card"><div class="row" style="justify-content:space-between"><span>Profilbild${isNew?" (beim Anlegen)":""}</span>
+        <div class="row" style="gap:6px"><button class="btn sm" data-act="toast" data-msg="JPG, PNG oder WebP, max. 10 MB – wird nach dem Speichern hochgeladen">Bild wählen</button>
+        ${m.portrait||!isNew?`<button class="btn sm" data-act="toast" data-msg="Profilbild entfernt">Entfernen</button>`:""}</div></div>
+        <p class="small muted" style="margin:8px 0 0">Genau ein Bild. Ohne Bild: Initialen-Platzhalter.</p></div>
+      <div class="grid2">
+        <label class="stack small muted">Art<select id="ed-kind">${Object.entries(MONSTER_KIND).map(([k,l])=>`<option value="${k}" ${m.kind===k?"selected":""}>${l}</option>`).join("")}</select></label>
+        <label class="stack small muted">Seltenheit<select id="ed-rarity">${Object.entries(MONSTER_RARITY).map(([k,l])=>`<option value="${k}" ${m.rarity===k?"selected":""}>${l}</option>`).join("")}</select></label>
+        <label class="stack small muted">Gefahrenstufe<select id="ed-danger">${Object.entries(MONSTER_DANGER).map(([k,l])=>`<option value="${k}" ${m.danger===k?"selected":""}>${l}</option>`).join("")}</select></label>
+        <label class="stack small muted">Größe<select id="ed-size">${Object.entries(MONSTER_SIZE).map(([k,l])=>`<option value="${k}" ${m.size===k?"selected":""}>${l}${k==="medium"?" (ca. 1,50 m)":""}</option>`).join("")}</select></label>
+      </div>
+      <label class="row" style="gap:8px;align-items:center"><input type="checkbox" id="ed-legendary" ${m.legendary?"checked":""} style="width:auto"> <span>Legendär (Besonderheiten)</span></label>
+      <label class="stack small muted">Lebensraum (Ort)<select id="ed-habitat"><option value="">— keiner —</option>${places.map(([aid,a])=>`<option value="${aid}" ${m.habitat===aid?"selected":""}>${esc(a.title)}</option>`).join("")}</select></label>
+      <label class="stack small muted">Übungsbonus (0–10)<input type="number" id="prof" min="0" max="10" value="${m.prof ?? 2}"></label>
+      <div class="attrs">${m.attrs.map((v,i)=>`<label class="attr"><div class="k">${ATTR[i]}</div><input type="number" min="1" max="30" value="${v}" data-attr="${i}" style="text-align:center;padding:6px"><div class="m" id="mod${i}">${mod(v)}</div></label>`).join("")}</div>
+      <div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">Fertigkeiten</h2><button class="btn icon sm primary" data-act="sk-add" aria-label="Fertigkeit hinzufügen">＋</button></div>
+        <div id="sk-list" class="stack" style="gap:10px">${S.skillDraft.map(skillRowEdit).join("") || '<div class="empty">Noch keine Fertigkeiten. Mit ＋ hinzufügen.</div>'}</div></div>
+      <div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">Fähigkeiten</h2><button class="btn icon sm primary" data-act="ab-add" aria-label="Fähigkeit hinzufügen">＋</button></div>
+        <div id="ab-list" class="stack" style="gap:10px">${S.abilityDraft.map(abilityRowEdit).join("") || '<div class="empty">Noch keine Fähigkeiten. Mit ＋ hinzufügen.</div>'}</div></div>
+      ${["Persönlichkeitsmerkmale","Ideale","Bindungen","Makel"].map((l,i)=>`<label class="stack small muted">${l}<textarea>${esc([m.pers,m.ideals,m.bonds,m.flaws][i])}</textarea></label>`).join("")}
+      <div>
+        <div class="toolbar">
+          <button data-cmd="bold"><b>B</b></button><button data-cmd="italic"><i>I</i></button>
+        </div>
+        <div id="editor" class="editor prose" contenteditable="true">${bodyEditable || "<p><br></p>"}</div>
+        <div id="suggest"></div>
+        <p class="small muted">Tippe <b>@</b> für Erwähnungen. Monster sind nicht als Stub anlegbar.</p>
+      </div>
+      <div class="row"><button class="btn primary grow" data-act="save-monster" data-id="${id}">Speichern</button>
+      ${!isNew?`<button class="btn danger" data-act="toast" data-msg="Monster und seine Relationen würden gelöscht">Löschen</button>`:""}</div>
+    </div>`);
+}
+
 function viewQuest(id){
   const q = D.quests[id];
   if(!q || !visible("quest",id)) return shell("globe", notFound());
@@ -1283,6 +1427,7 @@ function route(opts={}){
     const sec = p[2];
     if(!sec) html = viewHub();
     else if(sec==="articles") html = p[4]==="edit" ? viewArticleEdit(p[3]) : viewArticle(p[3]);
+    else if(sec==="monsters") html = p[4]==="edit" ? viewMonsterEdit(p[3]) : viewMonster(p[3]);
     else if(sec==="quests") html = viewQuest(p[3]);
     else if(sec==="universes") html = viewUniverse(p[3]);
     else if(sec==="map") html = viewMap(query);
@@ -1296,6 +1441,7 @@ function route(opts={}){
   if(p[2]==="chat"&&!opts.keepScroll){ const m=document.getElementById("msgs"); if(m) m.scrollTop=m.scrollHeight; }
   if(p[2]==="chat"&&S.editingId){ requestAnimationFrame(()=>{ const ta=document.getElementById("edit-"+S.editingId); ta?.focus(); ta?.setSelectionRange(ta.value.length,ta.value.length); }); }
   if(p[2]==="articles" && p[4]==="edit") mountEditor();
+  if(p[2]==="monsters" && p[4]==="edit") mountEditor();
   if(keepScroll) requestAnimationFrame(()=>window.scrollTo(0, y));
   else window.scrollTo(0,0);
 }
@@ -1313,6 +1459,7 @@ function mentionables(){
   for(const [id,q] of Object.entries(D.quests)) if(visible("quest",id)) out.push(["quest",id,q.title]);
   D.brought.forEach(c=>out.push(["character",c,D.characters[c].name]));
   for(const [id,u] of Object.entries(D.universes)) if(visible("universe",id)) out.push(["universe",id,u.name]);
+  for(const [id,m] of Object.entries(D.monsters)) if(visible("monster",id)) out.push(["monster",id,m.name]);
   return out;
 }
 function mountEditor(){
@@ -1376,6 +1523,34 @@ document.addEventListener("click", e=>{
   e.preventDefault();
   switch(act){
     case "afilter": S.articleFilter=a.dataset.v; route(); break;
+    case "mfilter": S.monsterFilter=a.dataset.v; route(); break;
+    case "save-monster": {
+      const isNew = a.dataset.id==="new";
+      const name = document.getElementById("ed-title")?.value.trim();
+      if(!name){ toast("Name ist Pflicht"); break; }
+      const id = isNew ? "m"+(nextId++) : a.dataset.id;
+      const attrs = [...document.querySelectorAll("[data-attr]")].map(inp=>parseInt(inp.value)||10);
+      readSkillDraft(); readAbilityDraft();
+      D.monsters[id] = {
+        ...(D.monsters[id]||{}),
+        name, cls: document.getElementById("ed-cls")?.value||"",
+        kind: document.getElementById("ed-kind")?.value||"other",
+        rarity: document.getElementById("ed-rarity")?.value||"common",
+        legendary: !!document.getElementById("ed-legendary")?.checked,
+        danger: document.getElementById("ed-danger")?.value||"harmless",
+        size: document.getElementById("ed-size")?.value||"medium",
+        habitat: document.getElementById("ed-habitat")?.value || null,
+        vis: document.getElementById("ed-vis")?.value||"owner_only",
+        owner: D.monsters[id]?.owner||ME,
+        attrs: attrs.length===6?attrs:[10,10,10,10,10,10],
+        prof: parseInt(document.getElementById("prof")?.value)||2,
+        sk: S.skillDraft.map(s=>({...s})), ab: S.abilityDraft.map(f=>({...f})),
+        pers:"", ideals:"", bonds:"", flaws:"", bio:"", portrait:false
+      };
+      location.hash = `#/w/w1/monsters/${id}`;
+      toast(isNew?"Monster angelegt":"Monster gespeichert");
+      break;
+    }
     case "chev": S.expanded[a.dataset.id]=!S.expanded[a.dataset.id]; writeExpanded(S.expanded); route(); break;
     case "zoom": S.mapZoom && S.mapZoom(parseFloat(a.dataset.v)); break;
     case "fit": S.mapFit && S.mapFit(); break;
