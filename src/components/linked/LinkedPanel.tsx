@@ -33,7 +33,7 @@ function LinkedRow({ item }: { item: LinkedItem }) {
     <Link className="item" href={item.href}>
       {item.kind === "pin" ? (
         <span aria-hidden="true">📍</span>
-      ) : item.kind === "character" ? (
+      ) : item.kind === "character" || item.kind === "monster" ? (
         item.portraitId ? (
           <img className="av" src={`/api/files/${item.portraitId}`} alt="" />
         ) : (

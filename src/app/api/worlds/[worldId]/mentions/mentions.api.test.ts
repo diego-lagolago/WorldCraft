@@ -55,6 +55,15 @@ beforeAll(async () => {
     INSERT INTO world_participations (character_id, world_id, created_by, updated_by)
     VALUES (${characterId}, ${worldId}, ${playerA.user.id}, ${playerA.user.id})
   `;
+  await sql`
+    INSERT INTO monsters (
+      world_id, name, skills, abilities, visibility, owner_id, kind, created_by, updated_by
+    )
+    VALUES (
+      ${worldId}, 'Schattenwolf', '[]'::jsonb, '[]'::jsonb, 'gm_only', ${gm.user.id}, 'beast',
+      ${gm.user.id}, ${gm.user.id}
+    )
+  `;
 });
 
 afterAll(async () => {
@@ -131,6 +140,18 @@ describe("GET /api/worlds/[worldId]/mentions", () => {
       "article",
       "quest",
     ]);
+  });
+
+  it("finds gm_only monsters for staff but not players (Plan 005 T-007)", async () => {
+    const staff = await search(gm, "wolf");
+    expect(staff.status).toBe(200);
+    expect(staff.data.hits?.some((hit) => hit.kind === "monster" && hit.title === "Schattenwolf")).toBe(
+      true,
+    );
+
+    const player = await search(playerA, "wolf");
+    expect(player.status).toBe(200);
+    expect(player.data.hits?.some((hit) => hit.title === "Schattenwolf")).toBe(false);
   });
 });
 

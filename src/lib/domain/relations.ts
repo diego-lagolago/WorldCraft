@@ -132,7 +132,8 @@ async function existingMentionTargets(
   const questIds = byKind("quest");
   const characterIds = byKind("character");
   const universeIds = byKind("universe");
-  const [articleRows, questRows, characterRows, universeRows] = await Promise.all([
+  const monsterIds = byKind("monster");
+  const [articleRows, questRows, characterRows, universeRows, monsterRows] = await Promise.all([
     articleIds.length
       ? tx.select({ id: articles.id }).from(articles).where(and(eq(articles.worldId, worldId), inArray(articles.id, articleIds)))
       : [],
@@ -156,12 +157,16 @@ async function existingMentionTargets(
     universeIds.length
       ? tx.select({ id: universes.id }).from(universes).where(and(eq(universes.worldId, worldId), inArray(universes.id, universeIds)))
       : [],
+    monsterIds.length
+      ? tx.select({ id: monsters.id }).from(monsters).where(and(eq(monsters.worldId, worldId), inArray(monsters.id, monsterIds)))
+      : [],
   ]);
   const present = new Set([
     ...articleRows.map((row) => `article:${row.id}`),
     ...questRows.map((row) => `quest:${row.id}`),
     ...characterRows.map((row) => `character:${row.id}`),
     ...universeRows.map((row) => `universe:${row.id}`),
+    ...monsterRows.map((row) => `monster:${row.id}`),
   ]);
   return mentions.filter((mention) => present.has(mentionKey(mention)));
 }
@@ -807,7 +812,7 @@ export async function listRelationTargets(
   viewerId: string,
 ): Promise<RelationTargetOption[]> {
   const viewer = { role, userId: viewerId };
-  const [articleRows, universeRows, characterRows, questRows, pinRows] = await Promise.all([
+  const [articleRows, universeRows, characterRows, questRows, pinRows, monsterRows] = await Promise.all([
     db
       .select({
         id: articles.id,
@@ -854,6 +859,15 @@ export async function listRelationTargets(
       .innerJoin(maps, eq(maps.id, pins.mapId))
       .innerJoin(universes, eq(universes.id, maps.universeId))
       .where(eq(universes.worldId, worldId)),
+    db
+      .select({
+        id: monsters.id,
+        title: monsters.name,
+        visibility: monsters.visibility,
+        ownerId: monsters.ownerId,
+      })
+      .from(monsters)
+      .where(eq(monsters.worldId, worldId)),
   ]);
   const out: RelationTargetOption[] = [];
   for (const row of articleRows) {
@@ -891,6 +905,16 @@ export async function listRelationTargets(
       ])
     ) {
       out.push({ kind: "pin", id: row.id, title: row.title });
+    }
+  }
+  for (const row of monsterRows) {
+    if (
+      canSeeContent(
+        { role, userId: viewerId },
+        { visibility: row.visibility, ownerId: row.ownerId },
+      )
+    ) {
+      out.push({ kind: "monster", id: row.id, title: row.title });
     }
   }
   return out.sort((a, b) => a.title.localeCompare(b.title, "de"));

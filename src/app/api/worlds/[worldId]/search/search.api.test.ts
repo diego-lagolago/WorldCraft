@@ -62,6 +62,13 @@ beforeAll(async () => {
       })
     ).status,
   ).toBe(201);
+
+  const monster = await api<{ monster: { id: string } }>(gm, "POST", w("/monsters"), {
+    name: "Nachtjäger",
+    visibility: "published",
+    bio: doc("Sein Gift heißt Mondschattenextrakt und wirkt nur nachts."),
+  });
+  expect(monster.status).toBe(201);
 });
 
 afterAll(async () => {
@@ -121,5 +128,15 @@ describe("T-014 (4)/(5): short query and limit", () => {
 describe("CR-005: bad world id on search", () => {
   it("answers 404 for invalid world ids, never 500", async () => {
     expect((await api(gm, "GET", "/api/worlds/not-a-uuid/search?q=ab")).status).toBe(404);
+  });
+});
+
+describe("Plan 005 T-007: monster full-text search", () => {
+  it("finds a word that only appears in a monster bio", async () => {
+    const res = await search(playerA, "Mondschattenextrakt");
+    expect(res.status).toBe(200);
+    const hit = res.data.hits?.find((row) => row.kind === "monster" && row.title === "Nachtjäger");
+    expect(hit).toBeTruthy();
+    expect(hit?.snippet).toContain("Mondschattenextrakt");
   });
 });

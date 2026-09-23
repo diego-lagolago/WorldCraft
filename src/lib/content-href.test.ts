@@ -6,5 +6,6 @@ describe("contentHref", () => {
     expect(contentHref("w1", "pin", "p1")).toBe("/w/w1/map?pin=p1");
     expect(contentHref("w1", "article", "a1")).toBe("/w/w1/articles/a1");
     expect(contentHref("w1", "character", "c1")).toBe("/w/w1/characters/c1");
+    expect(contentHref("w1", "monster", "m1")).toBe("/w/w1/monsters/m1");
   });
 });

@@ -14,11 +14,13 @@ function article(title: string, templateType = "none"): MentionHit {
 }
 
 describe("mention kinds", () => {
-  it("are CONTENT_KINDS without pins (CR-022)", () => {
+  it("are CONTENT_KINDS without pins (CR-022); include monster (Plan 005 T-007)", () => {
     for (const kind of MENTIONABLE_KINDS) expect(CONTENT_KINDS).toContain(kind);
+    expect(MENTIONABLE_KINDS).toContain("monster");
     expect(isMentionableKind("pin")).toBe(false);
     expect(isMentionableKind("artikel")).toBe(false);
     expect(isMentionableKind("article")).toBe(true);
+    expect(isMentionableKind("monster")).toBe(true);
   });
 });
 
@@ -28,6 +30,7 @@ describe("mentionCategoryLabel", () => {
     expect(mentionCategoryLabel(article("Notiz"))).toBe("Artikel");
     expect(mentionCategoryLabel({ kind: "universe" })).toBe("Universum");
     expect(mentionCategoryLabel({ kind: "character" })).toBe("Charakter");
+    expect(mentionCategoryLabel({ kind: "monster" })).toBe("Monster");
   });
 });
 

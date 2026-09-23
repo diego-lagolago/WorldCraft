@@ -6,7 +6,14 @@ export const SEARCH_DEFAULT_LIMIT = 20;
 export const SEARCH_MAX_LIMIT = 50;
 export const SEARCH_SNIPPET_MAX = 300;
 
-export const SEARCH_KINDS = ["article", "quest", "character", "pin", "universe"] as const satisfies readonly ContentKind[];
+export const SEARCH_KINDS = [
+  "article",
+  "quest",
+  "character",
+  "pin",
+  "universe",
+  "monster",
+] as const satisfies readonly ContentKind[];
 export type SearchKind = (typeof SEARCH_KINDS)[number];
 
 export type SearchHit = {

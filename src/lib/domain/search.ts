@@ -4,6 +4,7 @@ import {
   articles,
   characters,
   maps,
+  monsters,
   pins,
   questChapters,
   quests,
@@ -45,6 +46,7 @@ const KIND_LABEL: Record<SearchKind, string> = {
   character: "Charakter",
   pin: "Pin",
   universe: "Universum",
+  monster: "Monster",
 };
 
 function kindLabel(kind: SearchKind, templateType?: string): string {
@@ -96,6 +98,7 @@ export async function searchWorld(input: {
   if (kinds.includes("universe")) parts.push(searchUniverses(input.worldId, viewer, query, limit));
   if (kinds.includes("pin")) parts.push(searchPins(input.worldId, viewer, query, limit));
   if (kinds.includes("character")) parts.push(searchCharacters(input.worldId, query, limit));
+  if (kinds.includes("monster")) parts.push(searchMonsters(input.worldId, viewer, query, limit));
 
   const rows = (await Promise.all(parts)).flat();
   rows.sort((a, b) => a.title.localeCompare(b.title, "de"));
@@ -338,4 +341,38 @@ async function searchCharacters(worldId: string, query: string, limit: number): 
     )
     .limit(limit);
   return rows.map((row) => ({ kind: "character" as const, id: row.id, title: row.title, plain: row.plain }));
+}
+
+async function searchMonsters(
+  worldId: string,
+  viewer: Viewer,
+  query: string,
+  limit: number,
+): Promise<RawHit[]> {
+  const filters: SQL[] = [
+    eq(monsters.worldId, worldId),
+    matchTitleOrPlain(monsters.name, sql`coalesce(${monsters.bioPlain}, '')`, monsters.bioTsv, query),
+    visibleContentWhere({ visibility: monsters.visibility, ownerId: monsters.ownerId }, viewer),
+  ];
+  const rows = await db
+    .select({
+      id: monsters.id,
+      title: monsters.name,
+      plain: monsters.bioPlain,
+      visibility: monsters.visibility,
+      ownerId: monsters.ownerId,
+    })
+    .from(monsters)
+    .where(and(...filters))
+    .limit(limit);
+  return rows
+    .filter((row) =>
+      canSeeContent(viewer, { visibility: row.visibility, ownerId: row.ownerId }),
+    )
+    .map((row) => ({
+      kind: "monster" as const,
+      id: row.id,
+      title: row.title,
+      plain: row.plain,
+    }));
 }

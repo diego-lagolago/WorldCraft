@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampSearchLimit, searchSnippet, SEARCH_SNIPPET_MAX } from "@/lib/search";
+import { clampSearchLimit, isSearchKind, searchSnippet, SEARCH_KINDS, SEARCH_SNIPPET_MAX } from "@/lib/search";
 
 describe("clampSearchLimit", () => {
   it("defaults to 20 and caps at 50", () => {
@@ -23,5 +23,13 @@ describe("searchSnippet", () => {
   it("returns an empty string for empty plain text", () => {
     expect(searchSnippet(null, "x")).toBe("");
     expect(searchSnippet("   ", "x")).toBe("");
+  });
+});
+
+describe("SEARCH_KINDS (Plan 005 T-007)", () => {
+  it("includes monster and rejects unknown kinds", () => {
+    expect(SEARCH_KINDS).toContain("monster");
+    expect(isSearchKind("monster")).toBe(true);
+    expect(isSearchKind("journal")).toBe(false);
   });
 });

@@ -1,8 +1,14 @@
 import type { ContentKind } from "@/lib/authz/types";
 import { templateOf } from "@/lib/templates/registry";
 
-/** Pins are never mentionable (datenmodell R-2.1-2). */
-export const MENTIONABLE_KINDS = ["article", "quest", "character", "universe"] as const satisfies readonly ContentKind[];
+/** Pins are never mentionable (datenmodell R-2.1-2). Monster stubs are not creatable via `@`. */
+export const MENTIONABLE_KINDS = [
+  "article",
+  "quest",
+  "character",
+  "universe",
+  "monster",
+] as const satisfies readonly ContentKind[];
 export type MentionableKind = (typeof MENTIONABLE_KINDS)[number];
 
 export const MENTION_RESULT_LIMIT = 10;
@@ -35,6 +41,7 @@ const KIND_LABEL: Record<MentionableKind, string> = {
   quest: "Quest",
   character: "Charakter",
   universe: "Universum",
+  monster: "Monster",
 };
 
 /** Fachmodell 2.4: category, for articles plus template, e.g. „Artikel · Ort“. */

@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
-import { articles, characters, quests, universes, worldParticipations } from "@/db/schema";
+import { articles, characters, monsters, quests, universes, worldParticipations } from "@/db/schema";
 import { contentHref } from "@/lib/content-href";
 import { canSeeContent, type MembershipRole } from "@/lib/authz";
 import { mentionKey, type MentionRef, type MentionState, type MentionableKind } from "@/lib/editor/mentions";
@@ -30,8 +30,9 @@ export async function resolveMentions(
   const questIds = idsOf(refs, "quest");
   const universeIds = idsOf(refs, "universe");
   const characterIds = idsOf(refs, "character");
+  const monsterIds = idsOf(refs, "monster");
 
-  const [articleRows, questRows, universeRows, characterRows] = await Promise.all([
+  const [articleRows, questRows, universeRows, characterRows, monsterRows] = await Promise.all([
     articleIds.length
       ? db
           .select({
@@ -75,6 +76,17 @@ export async function resolveMentions(
           )
           .where(inArray(characters.id, characterIds))
       : [],
+    monsterIds.length
+      ? db
+          .select({
+            id: monsters.id,
+            title: monsters.name,
+            visibility: monsters.visibility,
+            ownerId: monsters.ownerId,
+          })
+          .from(monsters)
+          .where(and(eq(monsters.worldId, worldId), inArray(monsters.id, monsterIds)))
+      : [],
   ]);
 
   const out: Record<string, ResolvedMention> = {};
@@ -109,6 +121,16 @@ export async function resolveMentions(
     }
   }
   for (const row of characterRows) put("character", row.id, row.title, "linked");
+  for (const row of monsterRows) {
+    if (
+      canSeeContent(
+        { role, userId: viewerId },
+        { visibility: row.visibility, ownerId: row.ownerId },
+      )
+    ) {
+      put("monster", row.id, row.title, "linked");
+    }
+  }
   return out;
 }
 
