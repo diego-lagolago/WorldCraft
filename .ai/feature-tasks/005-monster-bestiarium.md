@@ -128,7 +128,7 @@ Die Begriffe aus Plan `003`, Plan `004` und `.ai/architecture/datenmodell-fachli
 - Abnahmekriterium: Manuell: Neuer Artikel mit Bild → Detailansicht zeigt das Bild sofort; Upload einer 11-MB-Datei beim Anlegen → Artikel existiert, Bearbeiten-Seite zeigt die Fehlermeldung; Anlegen ohne Bild funktioniert unverändert; `npm run lint` grün.
 
 ### T-010: Smoketest und Abschlussprüfung
-- [ ] Beschreibung: `.ai/infrastructure/smoketest.md` um Abschnitt „Bestiarium“ (Monster anlegen mit Bild, filtern, erwähnen, Sichtbarkeit wechseln, löschen) und einen Punkt zum Artikel-Titelbild beim Anlegen ergänzen; vollständige Testsuite laufen lassen.
+- [x] Beschreibung: `.ai/infrastructure/smoketest.md` um Abschnitt „Bestiarium“ (Monster anlegen mit Bild, filtern, erwähnen, Sichtbarkeit wechseln, löschen) und einen Punkt zum Artikel-Titelbild beim Anlegen ergänzen; vollständige Testsuite laufen lassen.
 - Abhängigkeiten: T-008, T-009
 - Abnahmekriterium: Neue Smoketest-Punkte lokal einmal durchlaufen und abgehakt; `npm test`, `npm run test:rechte`, `npm run lint`, `npm run build` grün.
 

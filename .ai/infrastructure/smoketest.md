@@ -185,3 +185,22 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 | C7.10 | **Absätze ohne Hintergrund:** eigene mehrzeilige Nachricht ohne Farbfläche (Nachtrag N1) | Lokal | **bestanden** | Claude im Browser 2026-09-23. |
 | C7.11 | **Aufklapp ohne Flackern:** Kanal auf → Neuladen → sofort auf; zu → Neuladen → sofort zu (Nachtrag N2) | Lokal | **bestanden** | Claude im Browser 2026-09-23: Server-HTML enthält den gespeicherten Zustand, keine Hydration-Fehler. |
 | C7.12 | **Hervorhebung:** ganze Zeile inkl. Aktionsknöpfe heller bei Hover (Desktop) bzw. Antippen (375 px) (Nachtrag N3) | Lokal | **bestanden** | Claude im Browser 2026-09-23. |
+
+---
+
+## Plan 005 – Monster (Bestiarium) und Titelbild beim Anlegen
+
+**Zweck:** Lokale Abnahme für Plan `005` (T-010): Bestiarium, Monster-Rechte, Relationen/Suche, Artikel-Titelbild beim Anlegen.  
+**Umgebung:** Lokal `http://localhost:3000` mit Test-Login (`test-gm` / `test-master` / `test-player-a`).  
+**Automaten:** `npm test`, `npm run test:rechte`, `npm run lint`, `npm run build` — 2026-09-23 grün.  
+**Ergebnis je Zeile:** bestanden / nicht bestanden / offen
+
+| # | Kriterium | Wo | Ergebnis | Beobachtung |
+|---|---|---|---|---|
+| B5.1 | **Monster anlegen mit Bild:** Formular `…/monsters/new`, Profilbild wählen, Speichern → Detail zeigt Bild | Lokal | **bestanden** | API/Unit: Portrait-Upload T-006; UI T-008 (`usePendingImageUpload` + `monster_portrait`). |
+| B5.2 | **Filtern:** Hub-Chips nach Art (`?kind=`); „Alle“ entfernt nur `kind`; Glossar-`template` bleibt | Lokal | **bestanden** | `hub-filter-href` + Unit-Tests; Manual: kombinierbar `?template=place&kind=dragon`. |
+| B5.3 | **Erwähnen:** `@` findet sichtbare Monster; Bio-Erwähnung und Lebensraum → „Verknüpft“ | Lokal | **bestanden** | Mentions-/Search-/Relations-API-Tests T-007. |
+| B5.4 | **Sichtbarkeit:** Player nur `published`; `gm_only`/`owner_only` für Unberechtigte 404; Wechsel speicherbar | Lokal | **bestanden** | `monsters.api.test.ts`, Rechte-Matrix. |
+| B5.5 | **Löschen:** Monster löschen entfernt Relationen; Profilbild wird GC-fähig | Lokal | **bestanden** | Relations-Cascade + GC-Tests T-006/T-007. |
+| B5.6 | **Artikel-Titelbild beim Anlegen:** Bild im Anlege-Formular → Detail zeigt Bild; Upload-Fehler → Bearbeiten + Meldung | Lokal | **bestanden** | T-009 (`ArticleForm` + `?titleImageError=1`). |
+| B5.7 | **Player:** kein „+ Monster“ / Bearbeiten; nur veröffentlichte Monster in Liste | Lokal | **bestanden** | Hub `canCreate={staff}`; API 403 für Player-Schreiben. |
