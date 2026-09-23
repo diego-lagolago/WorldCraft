@@ -34,8 +34,11 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      # PageProps/LayoutProps come from Next typed routes under .next/types (gitignored).
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: |
+          npx next typegen
+          npx tsc --noEmit
 
       - name: Lint
         run: npm run lint
