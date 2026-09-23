@@ -102,6 +102,17 @@ describe("Produkt-Chat", () => {
     await api(playerA, "PATCH", `/api/worlds/${worldId}/chat/settings`, { dicePostToChat: true });
   });
 
+  it("posts /r as an alias of /roll when dicePostToChat is on", async () => {
+    const state = await chat(gm);
+    const channelId = state.data.channel?.id as string;
+    await api(gm, "PATCH", `/api/worlds/${worldId}/chat/settings`, { dicePostToChat: true });
+    const rolled = await chat(playerA, "", "POST", { body: "/r 1d20", channelId });
+    expect(rolled.status).toBe(201);
+    const message = (rolled.data as { message?: ChatMessageDto }).message;
+    expect(message?.dice).toBeTruthy();
+    expect(message?.dice?.expression).toBe("1d20");
+  });
+
   it("stores three dice terms plus bonus for a structured multi-term roll", async () => {
     const state = await chat(gm);
     const channelId = state.data.channel?.id as string;
@@ -249,16 +260,22 @@ describe("Produkt-Chat", () => {
     expect(
       (await api(master, "PATCH", `/api/worlds/${worldId}/chat/messages/${messageId}`, { body: "m" })).status,
     ).toBe(403);
-    expect(
-      (await api(playerA, "PATCH", `/api/worlds/${worldId}/chat/messages/${messageId}`, { body: "" })).status,
-    ).toBe(422);
-    expect(
-      (
-        await api(playerA, "PATCH", `/api/worlds/${worldId}/chat/messages/${messageId}`, {
-          body: "x".repeat(2001),
-        })
-      ).status,
-    ).toBe(422);
+    const empty = await api<{ error?: string }>(
+      playerA,
+      "PATCH",
+      `/api/worlds/${worldId}/chat/messages/${messageId}`,
+      { body: "" },
+    );
+    expect(empty.status).toBe(422);
+    expect(empty.data.error).toBe("Zum Entfernen löschen.");
+    const tooLong = await api<{ error?: string }>(
+      playerA,
+      "PATCH",
+      `/api/worlds/${worldId}/chat/messages/${messageId}`,
+      { body: "x".repeat(2001) },
+    );
+    expect(tooLong.status).toBe(422);
+    expect(tooLong.data.error).toMatch(/2000/);
     const rollDenied = await api<{ error?: string }>(
       playerA,
       "PATCH",
@@ -363,6 +380,14 @@ describe("Produkt-Chat", () => {
         })
       ).status,
     ).toBe(422);
+    expect(
+      (
+        await api(playerA, "POST", `/api/worlds/${worldId}/chat/threads`, {
+          channelId,
+          title: "x".repeat(81),
+        })
+      ).status,
+    ).toBe(422);
 
     const [{ badOpener }] = await sql<{ badOpener: boolean }[]>`
       SELECT EXISTS (
@@ -372,6 +397,20 @@ describe("Produkt-Chat", () => {
       ) AS "badOpener"
     `;
     expect(badOpener).toBe(false);
+
+    // CHK-OPENER-BODY: opener with body, and normal message without body, must fail.
+    await expect(
+      sql`
+        INSERT INTO chat_messages (world_id, channel_id, opens_thread_id, author_id, body)
+        VALUES (${worldId}, ${channelId}, ${created.data.thread.id}, ${playerA.user.id}, 'darf nicht')
+      `,
+    ).rejects.toMatchObject({ code: "23514" });
+    await expect(
+      sql`
+        INSERT INTO chat_messages (world_id, channel_id, author_id, body)
+        VALUES (${worldId}, ${channelId}, ${playerA.user.id}, NULL)
+      `,
+    ).rejects.toMatchObject({ code: "23514" });
   });
 });
 

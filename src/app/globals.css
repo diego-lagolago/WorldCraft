@@ -1090,6 +1090,11 @@ textarea {
     width: 44px;
     height: 44px;
   }
+
+  .more {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 .composer {

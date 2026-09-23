@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDiceRoll } from "./dice-format";
-import { parseDiceExpression, rollTerms } from "./dice";
+import { extractRollExpression, formatDiceRoll, isRollCommand, parseDiceExpression, rollTerms } from "./dice";
 
 function rollFixed(expression: string, faces: number[]) {
   const parsed = parseDiceExpression(expression);
@@ -29,5 +28,17 @@ describe("parseDiceExpression", () => {
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.error).toMatch(/7/);
+  });
+});
+
+describe("isRollCommand / extractRollExpression", () => {
+  it("treats /r as an alias of /roll", () => {
+    expect(isRollCommand("/r 1d20")).toBe(true);
+    expect(isRollCommand("/R 1d20")).toBe(true);
+    expect(isRollCommand("/r")).toBe(true);
+    expect(isRollCommand("/rx")).toBe(false);
+    expect(isRollCommand("/random")).toBe(false);
+    expect(isRollCommand("r 1d20")).toBe(false);
+    expect(extractRollExpression("/r 2d6+1")).toBe("2d6+1");
   });
 });

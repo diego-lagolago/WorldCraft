@@ -5,6 +5,7 @@ import { createRealtimeBus } from "./bus";
 /** Events on the single world bus. Chat and map publish here (CR-012). Map pin/marker are signals only (R5); `layers` is for SSE visibility filtering (CR-001). `membership.changed` is internal (CR-002/CR-017): never forwarded to clients. */
 export type WorldRealtimeEvent =
   | { type: "chat.message"; worldId: string; message: ChatMessageDto }
+  | { type: "chat.message.edited"; worldId: string; message: ChatMessageDto }
   | {
       type: "chat.message.deleted";
       worldId: string;
@@ -35,6 +36,7 @@ export function isHelloEvent(value: unknown): boolean {
 
 const WORLD_EVENT_TYPES = new Set([
   "chat.message",
+  "chat.message.edited",
   "chat.message.deleted",
   "chat.thread",
   "chat.channels",

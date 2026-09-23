@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/client/api-fetch";
+import { withEditedMessage, withMessage, withThread } from "@/lib/chat/stream-state";
 import type { ChatMessageDto, ChatState, ChatThreadDto } from "@/lib/chat/types";
 import type { WorldRealtimeEvent } from "@/lib/realtime/events";
 
@@ -9,41 +10,6 @@ type PostResponse =
   | { message: ChatMessageDto }
   | { posted: true; message: ChatMessageDto }
   | { posted: false; dice: { text: string } };
-
-function sameStream(state: ChatState, message: ChatMessageDto): boolean {
-  return message.channelId === state.channel?.id && (message.threadId ?? null) === (state.thread?.id ?? null);
-}
-
-function withMessage(state: ChatState, message: ChatMessageDto): ChatState {
-  const known = state.messages.some((row) => row.id === message.id);
-  const threads =
-    !known && message.threadId
-      ? state.threads.map((thread) =>
-          thread.id === message.threadId ? { ...thread, replyCount: thread.replyCount + 1 } : thread,
-        )
-      : state.threads;
-  if (!sameStream(state, message)) return { ...state, threads };
-  if (known) {
-    return {
-      ...state,
-      threads,
-      messages: state.messages.map((row) => (row.id === message.id ? message : row)),
-    };
-  }
-  return { ...state, threads, messages: [...state.messages, message] };
-}
-
-function withThread(state: ChatState, thread: ChatThreadDto): ChatState {
-  const known = state.threads.some((row) => row.id === thread.id);
-  if (known) {
-    return {
-      ...state,
-      threads: state.threads.map((row) => (row.id === thread.id ? thread : row)),
-      thread: state.thread?.id === thread.id ? thread : state.thread,
-    };
-  }
-  return { ...state, threads: [thread, ...state.threads] };
-}
 
 export function useChatStream(worldId: string, initial: ChatState) {
   const [state, setState] = useState<ChatState>(initial);
@@ -80,6 +46,7 @@ export function useChatStream(worldId: string, initial: ChatState) {
     setState((prev) => {
       if (!prev) return prev;
       if (event.type === "chat.message") return withMessage(prev, event.message);
+      if (event.type === "chat.message.edited") return withEditedMessage(prev, event.message);
       if (event.type === "chat.thread") return withThread(prev, event.thread);
       if (event.type === "chat.message.deleted") {
         return { ...prev, messages: prev.messages.filter((row) => row.id !== event.messageId) };
@@ -191,7 +158,7 @@ export function useChatStream(worldId: string, initial: ChatState) {
       return false;
     }
     setError(null);
-    setState((prev) => (prev ? withMessage(prev, res.data.message) : prev));
+    setState((prev) => (prev ? withEditedMessage(prev, res.data.message) : prev));
     return true;
   }
 

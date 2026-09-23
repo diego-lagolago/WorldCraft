@@ -60,6 +60,14 @@ function toThread(
   };
 }
 
+async function threadReplyCount(threadId: string): Promise<number> {
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(chatMessages)
+    .where(eq(chatMessages.threadId, threadId));
+  return Number(count);
+}
+
 type MessageJoin = {
   id: string;
   channelId: string;
@@ -389,13 +397,16 @@ export async function createThreadWithOpening(input: {
 }): Promise<AuthzResult<{ thread: ChatThreadDto; message: ChatMessageDto }>> {
   const title = input.title.trim();
   if (!title || title.length > THREAD_TITLE_MAX) {
-    return fail(400, `Der Thread-Titel muss 1 bis ${THREAD_TITLE_MAX} Zeichen haben.`);
+    return fail(422, `Der Thread-Titel muss 1 bis ${THREAD_TITLE_MAX} Zeichen haben.`);
   }
   const channel = await channelInWorld(input.worldId, input.channelId);
   if (!channel || channel.archivedAt) return fail(404, "Kanal nicht gefunden.");
 
   try {
     const created = await db.transaction(async (tx) => {
+      // Temporary body=title: CHK-OPENER-BODY requires text while opens_thread_id is still null;
+      // thread id exists only after the thread insert. The update below sets opens_thread_id and
+      // body=NULL in the same transaction (Plan-Review 2026-09-23, CR-019).
       const [message] = await tx
         .insert(chatMessages)
         .values({
@@ -512,7 +523,7 @@ export async function editChatMessage(input: {
     .where(eq(chatMessages.id, row.id));
   const message = await fetchMessage(row.id);
   if (!message) return fail(404, "Diese Nachricht gibt es nicht.");
-  worldEvents.publish({ type: "chat.message", worldId: input.worldId, message });
+  worldEvents.publish({ type: "chat.message.edited", worldId: input.worldId, message });
   return ok({ message });
 }
 
@@ -520,7 +531,6 @@ export async function renameChatThread(input: {
   worldId: string;
   threadId: string;
   membership: MembershipRow;
-  actorId: string;
   title: string;
 }): Promise<AuthzResult<{ thread: ChatThreadDto }>> {
   const title = input.title.trim();
@@ -546,14 +556,10 @@ export async function renameChatThread(input: {
 
   const [updated] = await db
     .update(chatThreads)
-    .set({ title, updatedAt: new Date(), updatedBy: input.actorId })
+    .set({ title, updatedAt: new Date(), updatedBy: input.membership.userId })
     .where(eq(chatThreads.id, row.thread.id))
     .returning();
-  const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(chatMessages)
-    .where(eq(chatMessages.threadId, updated.id));
-  const thread = toThread(updated, Number(count));
+  const thread = toThread(updated, await threadReplyCount(updated.id));
   worldEvents.publish({ type: "chat.thread", worldId: input.worldId, thread });
   return ok({ thread });
 }

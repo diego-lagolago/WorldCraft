@@ -7,25 +7,25 @@
 | ID | Kategorie | Schweregrad | Status | Kurzbeschreibung |
 |----|-----------|-------------|--------|-------------------|
 | CR-001 | Runtime-Risiken | kritisch | behoben | Migration 0018 setzt `body = NULL`, bevor `NOT NULL` entfernt ist – schlägt auf jeder DB mit bestehenden Threads fehl |
-| CR-002 | Runtime-Risiken | mittel | offen | Bearbeitete Nachricht per SSE wird bei Clients ohne diese Nachricht angehängt und erhöht `replyCount` |
-| CR-003 | Runtime-Risiken | mittel | offen | `ChannelList` liest `localStorage` im `useState`-Initialisierer → Hydration-Mismatch |
-| CR-004 | Sicherheit | mittel | offen | Lösch-Dialog: Enter löscht, sobald der Fokus nicht auf „Abbrechen“ liegt; kein Fokus-Trap |
-| CR-005 | Fehlerbehandlung & Validierung | mittel | offen | PATCH Nachricht: jeder Validierungsfehler (auch 2001 Zeichen) meldet „Zum Entfernen löschen.“; Validierung doppelt |
-| CR-006 | Aufgaben-Abgleich | mittel | offen | Alias `/r` für Würfelbefehle ändert das Sendeverhalten (Scope Creep), ohne Tests und Doku |
-| CR-007 | Testabdeckung | mittel | offen | Keine Tests für `withMessage`/`withThread`, `messageCopyText`, `CHK-OPENER-BODY`-Inserts |
-| CR-008 | Aufgaben-Abgleich | mittel | offen | T-007 als erledigt markiert, Smoketest-Punkte C7.1–C7.8 stehen auf „offen“ |
-| CR-009 | Fehlerbehandlung & Validierung | niedrig | offen | Bearbeiten/Umbenennen im archivierten Kanal: erlaubt, Norm fehlt |
-| CR-010 | Bad Practices | niedrig | offen | `authorizeEditChatMessage` meldet 422 vor 403 – Nicht-Autor bekommt bei Würfelwurf 422 |
-| CR-011 | Duplizierung & Modularisierung | niedrig | offen | `renameChatThread`: redundantes `actorId`, eigene Reply-Count-Abfrage, abweichender Statuscode zu `createThreadWithOpening` |
-| CR-012 | Duplizierung & Modularisierung | niedrig | offen | `messageCopyText`/`messagePreviewText` doppelt und als reine Funktionen in einer Komponentendatei |
+| CR-002 | Runtime-Risiken | mittel | behoben | Bearbeitete Nachricht per SSE wird bei Clients ohne diese Nachricht angehängt und erhöht `replyCount` |
+| CR-003 | Runtime-Risiken | mittel | behoben | `ChannelList` liest `localStorage` im `useState`-Initialisierer → Hydration-Mismatch |
+| CR-004 | Sicherheit | mittel | behoben | Lösch-Dialog: Enter löscht, sobald der Fokus nicht auf „Abbrechen“ liegt; kein Fokus-Trap |
+| CR-005 | Fehlerbehandlung & Validierung | mittel | behoben | PATCH Nachricht: jeder Validierungsfehler (auch 2001 Zeichen) meldet „Zum Entfernen löschen.“; Validierung doppelt |
+| CR-006 | Aufgaben-Abgleich | mittel | behoben | Alias `/r` für Würfelbefehle ändert das Sendeverhalten (Scope Creep), ohne Tests und Doku |
+| CR-007 | Testabdeckung | mittel | behoben | Keine Tests für `withMessage`/`withThread`, `messageCopyText`, `CHK-OPENER-BODY`-Inserts |
+| CR-008 | Aufgaben-Abgleich | mittel | offen (Teil 1 erledigt) | T-007 als erledigt markiert, Smoketest-Punkte C7.1–C7.8 stehen auf „offen“ — T-007 zurückgesetzt; Smoketest C7.* Owner ausstehend |
+| CR-009 | Fehlerbehandlung & Validierung | niedrig | behoben | Bearbeiten/Umbenennen im archivierten Kanal: erlaubt, Norm fehlt |
+| CR-010 | Bad Practices | niedrig | behoben | `authorizeEditChatMessage` meldet 422 vor 403 – Nicht-Autor bekommt bei Würfelwurf 422 |
+| CR-011 | Duplizierung & Modularisierung | niedrig | behoben | `renameChatThread`: redundantes `actorId`, eigene Reply-Count-Abfrage, abweichender Statuscode zu `createThreadWithOpening` |
+| CR-012 | Duplizierung & Modularisierung | niedrig | behoben | `messageCopyText`/`messagePreviewText` doppelt und als reine Funktionen in einer Komponentendatei |
 | CR-013 | Toter Code | niedrig | verworfen | Unversionierte, ungenutzte `DiceSheet.tsx` / `dice-draft.ts` duplizieren `DiceSheet` aus `ComposerBar.tsx` |
-| CR-014 | Bad Practices | niedrig | offen | `ConfirmDialog` ist „wiederverwendbar“, enthält aber fest den Lösch-/Shift-Hinweis |
-| CR-015 | Bad Practices | niedrig | offen | `RenameThreadSheet` in `ComposerBar.tsx`, `maxLength={80}` statt `THREAD_TITLE_MAX` |
-| CR-016 | Bad Practices | niedrig | offen | Seiteneffekt (`writeExpanded`) im `setState`-Updater; Aufklapp-Speicher wächst unbegrenzt |
-| CR-017 | Sicherheit | niedrig | offen | Backfill 0016 prüft Host per `LIKE '%cdn.discordapp.com%'`, nicht wie `staticDiscordAvatar` exakt |
-| CR-018 | Aufgaben-Abgleich | niedrig | offen | `datenmodell-fachlich.md` nennt `edited_at`, `APP-CHAT-EDIT`, `APP-THREAD-RENAME`, `CHK-OPENER-BODY` nicht (Abnahme T-001) |
-| CR-019 | Bad Practices | niedrig | offen | `createThreadWithOpening` schreibt den Titel weiterhin in `body` und leert ihn danach |
-| CR-020 | Lesbarkeit & Wartbarkeit | niedrig | offen | Thread-⋯-Knopf 40 × 40 px, unter 44-px-Touch-Ziel |
+| CR-014 | Bad Practices | niedrig | behoben | `ConfirmDialog` ist „wiederverwendbar“, enthält aber fest den Lösch-/Shift-Hinweis |
+| CR-015 | Bad Practices | niedrig | behoben | `RenameThreadSheet` in `ComposerBar.tsx`, `maxLength={80}` statt `THREAD_TITLE_MAX` |
+| CR-016 | Bad Practices | niedrig | behoben | Seiteneffekt (`writeExpanded`) im `setState`-Updater; Aufklapp-Speicher wächst unbegrenzt |
+| CR-017 | Sicherheit | niedrig | behoben | Backfill 0016 prüft Host per `LIKE '%cdn.discordapp.com%'`, nicht wie `staticDiscordAvatar` exakt |
+| CR-018 | Aufgaben-Abgleich | niedrig | behoben | `datenmodell-fachlich.md` nennt `edited_at`, `APP-CHAT-EDIT`, `APP-THREAD-RENAME`, `CHK-OPENER-BODY` nicht (Abnahme T-001) |
+| CR-019 | Bad Practices | niedrig | behoben | `createThreadWithOpening` schreibt den Titel weiterhin in `body` und leert ihn danach |
+| CR-020 | Lesbarkeit & Wartbarkeit | niedrig | behoben | Thread-⋯-Knopf 40 × 40 px, unter 44-px-Touch-Ziel |
 
 ---
 
@@ -53,6 +53,7 @@
 - **Entscheidung (Projektinhaber, Plan-Review 2026-09-23):** **Eigenes SSE-Ereignis `chat.message.edited`.**
 - **Empfehlung:** (1) `src/lib/realtime/events.ts`: Variante `{ type: "chat.message.edited"; worldId: string; message: ChatMessageDto }` in den Typ `WorldRealtimeEvent` und in die Liste der weitergeleiteten Ereignistypen aufnehmen. (2) `editChatMessage` in `src/lib/chat/repository.ts` publiziert `chat.message.edited` statt `chat.message`. (3) Neue reine Funktion `withEditedMessage(state, message)` (zusammen mit `withMessage`/`withThread`, siehe CR-007): ersetzt die Nachricht nur, wenn ihre ID in `state.messages` steht; sonst wird `state` unverändert zurückgegeben (kein Anhängen, keine `replyCount`-Änderung). (4) `applyEvent` und `editMessage` in `use-chat-stream.ts` nutzen `withEditedMessage`. (5) Den `known`-Zweig in `withMessage` wieder auf „bekannt → nichts tun“ zurückbauen.
 - **Abnahmekriterium:** `editChatMessage` publiziert ausschließlich `chat.message.edited`; Unit-Tests: `withEditedMessage` mit unbekannter ID liefert denselben State (Nachrichten und alle `replyCount` unverändert), mit bekannter ID wird die Nachricht an derselben Position ersetzt; manuell: Thread-Antwort bearbeiten, während ein zweiter Browser den Hauptstrom offen hat → Antwortzahl auf der Thread-Karte bleibt gleich.
+- **Umsetzung (2026-09-23):** Eigenes Ereignis `chat.message.edited`; `withEditedMessage` / `withMessage` / `withThread` in `src/lib/chat/stream-state.ts`; `withMessage` ignoriert bekannte IDs wieder.
 
 ### CR-003 – Hydration-Mismatch durch `localStorage` im `useState`-Initialisierer
 - **Fundstelle:** `src/components/chat/ChannelList.tsx`, Zeile 38 (`useState(() => readExpanded())`)

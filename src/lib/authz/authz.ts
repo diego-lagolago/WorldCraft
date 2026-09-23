@@ -308,14 +308,14 @@ export function authorizeEditChatMessage(
   const denied = denyIfNoMembership(actor);
   if (denied || !actor) return denied ?? fail(403, "Kein aktives Mitglied dieser Welt.");
   if (!message) return fail(404, "Diese Nachricht gibt es nicht.");
+  if (message.authorId !== actor.userId) {
+    return fail(403, "Nur der Autor darf diese Nachricht bearbeiten.");
+  }
   if (message.hasDice) {
     return fail(422, "Würfelwürfe können nicht bearbeitet werden.");
   }
   if (message.opensThread) {
     return fail(422, "Eröffnungsnachrichten können nicht bearbeitet werden.");
-  }
-  if (message.authorId !== actor.userId) {
-    return fail(403, "Nur der Autor darf diese Nachricht bearbeiten.");
   }
   return ok(true);
 }

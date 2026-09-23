@@ -1091,8 +1091,9 @@ Default neuer Inhalte: Artikel/Quest/Kapitel/Pin → `owner_only`; Universum/Kar
 | `APP-WORLD-CREATE` | INSERT world → membership (`game_master`, kein Invite) → universe (`Hauptuniversum`, `published`, `sort_order = 0`) → Kanal „Allgemein“ (`sort_order = 0`) |
 | `APP-CHANNEL-LAST` | Archivieren ablehnen, wenn der Kanal der letzte aktive der Welt ist |
 | `APP-THREAD-OPEN` | Thread, Eröffnungsnachricht (`opens_thread_id`, `body` leer) und `created_from_message_id` in einer Transaktion; Titel nur in `chat_threads.title` |
-| `APP-THREAD-RENAME` | Thread-Titel ändern (1–80 Zeichen); nur Ersteller (`created_by`) oder Spielleitung; setzt `updated_at/by` (Plan `007`, 2026-09-23) |
-| `APP-CHAT-EDIT` | Nachrichtentext ändern; nur Autor; nur ohne Würfelwurf und ohne `opens_thread_id`; Text 1–2000 Zeichen, kein Würfelbefehl (`isRollCommand`); setzt `edited_at` (Plan `007`, 2026-09-23) |
+| `APP-THREAD-RENAME` | Thread-Titel ändern (1–80 Zeichen); nur Ersteller (`created_by`) oder Spielleitung; setzt `updated_at/by`; gilt auch in archivierten Kanälen (Plan `007` / Plan-Review 2026-09-23, CR-009) |
+| `APP-CHAT-EDIT` | Nachrichtentext ändern; nur Autor; nur ohne Würfelwurf und ohne `opens_thread_id`; Text 1–2000 Zeichen; Würfelbefehl = `/roll` oder `/r` (Groß-/Kleinschreibung egal, gefolgt von Leerzeichen oder Ende) → 422; setzt `edited_at`; gilt auch in archivierten Kanälen (Plan `007` / Plan-Review 2026-09-23, CR-006/CR-009) |
+| `APP-DICE-SERVER` | Würfel nur serverseitig; Client-Ergebnisse ignorieren; Würfelbefehl = `/roll` oder `/r` (Groß-/Kleinschreibung egal, gefolgt von Leerzeichen oder Ende) (Plan-Review 2026-09-23, CR-006) |
 | `APP-AVATAR-STATIC` | Discord-Avatar-URLs auf `cdn.discordapp.com` mit Endung `.gif` auf `.png` umschreiben (Login-Sync und Migration; Plan `007`, 2026-09-23) |
 | `APP-INVITE-JOIN` | gültigen Link prüfen → bestehende aktive Mitgliedschaft: no-op → archivierte: `archived_at` leeren, Rolle `player` → sonst INSERT player; `use_count++` |
 | `APP-MEMBER-ARCHIVE` | Mitgliedschaft archivieren; alle eigenen `world_participations` der Welt archivieren; Marker/Relationen/Tagebuch unverändert |

@@ -180,3 +180,4 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 | C7.6 | **Thread umbenennen:** ⋯ nur Ersteller/SL; Titel in Kanalliste, Karte und Kopf live | Lokal | offen | |
 | C7.7 | **Aufklapp merken:** Kanal auf/zu, Reload behält Zustand | Lokal | offen | |
 | C7.8 | **Desktop:** Schnellaktionen bei Hover/Fokus; **Touch:** nach Antippen | Lokal | offen | |
+| C7.9 | **`/r 1d20`** würfelt wie `/roll 1d20` (Alias) | Lokal | offen | |

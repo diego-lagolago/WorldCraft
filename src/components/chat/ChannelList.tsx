@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ChatChannelDto, ChatThreadDto } from "@/lib/chat/types";
 import { readExpanded, writeExpanded } from "@/lib/client/chat-expanded";
 
@@ -35,15 +35,26 @@ export function ChannelList({
   onCreate,
   onRestore,
 }: Props) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => readExpanded());
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const hydrated = useRef(false);
   const threadChannelId = threads.find((row) => row.id === currentThreadId)?.channelId ?? null;
 
+  useEffect(() => {
+    // localStorage exists only after mount (CR-003).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setExpanded(readExpanded());
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated.current) {
+      hydrated.current = true;
+      return;
+    }
+    writeExpanded(expanded);
+  }, [expanded]);
+
   function toggleExpanded(channelId: string, currentlyOpen: boolean) {
-    setExpanded((prev) => {
-      const next = { ...prev, [channelId]: !currentlyOpen };
-      writeExpanded(next);
-      return next;
-    });
+    setExpanded((prev) => ({ ...prev, [channelId]: !currentlyOpen }));
   }
 
   return (

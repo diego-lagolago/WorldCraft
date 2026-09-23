@@ -1,4 +1,6 @@
-/** Channel expand/collapse per device (Plan 007 C9). */
+/** Channel expand/collapse per device (Plan 007 C9).
+ * No size cap: a few bytes per channel, intentional (Plan-Review 2026-09-23, CR-016).
+ */
 
 const EXPANDED_KEY = "worldcraft:chat-expanded";
 

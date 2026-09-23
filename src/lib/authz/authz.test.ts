@@ -385,6 +385,9 @@ describe("APP-CHAT-EDIT", () => {
       ok: false,
       status: 422,
     });
+    expect(
+      authorizeEditChatMessage(row("game_master"), { authorId: "someone", hasDice: true, opensThread: false }),
+    ).toMatchObject({ ok: false, status: 403 });
     expect(authorizeEditChatMessage(null, text)).toMatchObject({ ok: false, status: 403 });
     expect(authorizeEditChatMessage(row("player"), null)).toMatchObject({ ok: false, status: 404 });
   });

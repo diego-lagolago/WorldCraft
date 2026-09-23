@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { confirmDialogKey } from "./confirm-dialog";
+import { confirmDialogKey, nextFocusIndex } from "./confirm-dialog";
 
 type Props = {
   title: string;
   preview: string;
   confirmLabel?: string;
+  hint?: string;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -14,11 +15,13 @@ type Props = {
 export function ConfirmDialog({
   title,
   preview,
-  confirmLabel = "Löschen",
+  confirmLabel = "Bestätigen",
+  hint,
   onConfirm,
   onCancel,
 }: Props) {
   const cancelRef = useRef<HTMLButtonElement | null>(null);
+  const confirmRef = useRef<HTMLButtonElement | null>(null);
   const onConfirmRef = useRef(onConfirm);
   const onCancelRef = useRef(onCancel);
 
@@ -32,16 +35,30 @@ export function ConfirmDialog({
   }, []);
 
   useEffect(() => {
+    function focusables(): HTMLButtonElement[] {
+      return [cancelRef.current, confirmRef.current].filter(
+        (node): node is HTMLButtonElement => node != null,
+      );
+    }
+
     function onKeyDown(event: KeyboardEvent) {
-      const focusedCancel = document.activeElement === cancelRef.current;
-      const action = confirmDialogKey(event.key, focusedCancel);
+      if (event.key === "Tab") {
+        const nodes = focusables();
+        if (nodes.length === 0) return;
+        const current = nodes.findIndex((node) => node === document.activeElement);
+        const next = nextFocusIndex(current < 0 ? 0 : current, nodes.length, event.shiftKey);
+        event.preventDefault();
+        nodes[next]?.focus();
+        return;
+      }
+
+      const focusedConfirm = document.activeElement === confirmRef.current;
+      const action = confirmDialogKey(event.key, focusedConfirm);
       if (action === "cancel") {
         event.preventDefault();
         onCancelRef.current();
-      } else if (action === "confirm") {
-        event.preventDefault();
-        onConfirmRef.current();
       }
+      // Enter on confirm → "none": native button activation fires onConfirm.
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -59,7 +76,7 @@ export function ConfirmDialog({
         <div className="grab" />
         <h2>{title}</h2>
         {preview ? <p className="confirm-preview muted">{preview}</p> : null}
-        <p className="small muted">Tipp: Mit gedrückter Umschalttaste ohne Nachfrage löschen.</p>
+        {hint ? <p className="small muted">{hint}</p> : null}
         <div className="row confirm-actions">
           <button
             ref={cancelRef}
@@ -69,7 +86,12 @@ export function ConfirmDialog({
           >
             Abbrechen
           </button>
-          <button type="button" className="btn danger grow" onClick={() => onConfirmRef.current()}>
+          <button
+            ref={confirmRef}
+            type="button"
+            className="btn danger grow"
+            onClick={() => onConfirmRef.current()}
+          >
             {confirmLabel}
           </button>
         </div>

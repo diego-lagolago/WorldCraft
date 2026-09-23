@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { formatDiceRoll } from "@/lib/chat/dice-format";
+import { messageCopyText } from "@/lib/chat/message-text";
 import { MESSAGE_MAX, type ChatMessageDto, type ChatThreadDto } from "@/lib/chat/types";
 import { ChatMarkdown } from "./ChatMarkdown";
 
@@ -35,31 +36,6 @@ function editedTitle(iso: string): string {
 function Avatar({ name, image }: { name: string; image: string | null }) {
   if (image) return <img className="av" src={image} alt="" />;
   return <span className="av">{name.slice(0, 1).toUpperCase()}</span>;
-}
-
-export function messageCopyText(message: ChatMessageDto, threads: ChatThreadDto[]): string {
-  if (message.opensThreadId) {
-    return threads.find((row) => row.id === message.opensThreadId)?.title ?? "";
-  }
-  if (message.dice) {
-    return formatDiceRoll(message.dice.expression, message.dice.terms);
-  }
-  return message.body ?? "";
-}
-
-export function messagePreviewText(message: ChatMessageDto, threads: ChatThreadDto[]): string {
-  if (message.opensThreadId) {
-    const title = threads.find((row) => row.id === message.opensThreadId)?.title;
-    return title ? `🧵 ${title}` : "";
-  }
-  if (message.dice) {
-    return formatDiceRoll(message.dice.expression, message.dice.terms);
-  }
-  return message.body ?? "";
-}
-
-export function truncatePreview(text: string, max = 120): string {
-  return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
 type Props = {

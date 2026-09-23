@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { confirmDialogKey, deleteAction } from "./confirm-dialog";
+import { confirmDialogKey, confirmMode, nextFocusIndex } from "./confirm-dialog";
 
-describe("deleteAction", () => {
+describe("confirmMode", () => {
   it("deletes immediately when Shift is held", () => {
-    expect(deleteAction({ shiftKey: true })).toBe("immediate");
+    expect(confirmMode({ shiftKey: true })).toBe("immediate");
   });
 
   it("opens confirm dialog without Shift", () => {
-    expect(deleteAction({ shiftKey: false })).toBe("confirm");
+    expect(confirmMode({ shiftKey: false })).toBe("confirm");
   });
 });
 
@@ -17,16 +17,25 @@ describe("confirmDialogKey", () => {
     expect(confirmDialogKey("Escape", false)).toBe("cancel");
   });
 
-  it("does not delete when Enter is pressed with cancel focused", () => {
+  it("returns none when Enter is pressed with confirm focused (native click)", () => {
     expect(confirmDialogKey("Enter", true)).toBe("none");
   });
 
-  it("confirms when Enter is pressed without cancel focused", () => {
-    expect(confirmDialogKey("Enter", false)).toBe("confirm");
+  it("cancels when Enter is pressed without confirm focused", () => {
+    expect(confirmDialogKey("Enter", false)).toBe("cancel");
   });
 
   it("ignores other keys", () => {
     expect(confirmDialogKey("Tab", false)).toBe("none");
     expect(confirmDialogKey("a", true)).toBe("none");
+  });
+});
+
+describe("nextFocusIndex", () => {
+  it("cycles forward and backward", () => {
+    expect(nextFocusIndex(0, 2, false)).toBe(1);
+    expect(nextFocusIndex(1, 2, false)).toBe(0);
+    expect(nextFocusIndex(0, 2, true)).toBe(1);
+    expect(nextFocusIndex(1, 2, true)).toBe(0);
   });
 });

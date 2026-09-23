@@ -2,19 +2,20 @@
 
 import { useEffect, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
+import { messagePreviewText, truncatePreview } from "@/lib/chat/message-text";
 import type { ChatState } from "@/lib/chat/types";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { deleteAction } from "@/components/ui/confirm-dialog";
+import { confirmMode } from "@/components/ui/confirm-dialog";
 import { ChannelList } from "./ChannelList";
 import {
   ChannelSheet,
-  ComposerBar,
   NewChannelSheet,
   RenameThreadSheet,
   ThreadSheet,
-} from "./ComposerBar";
+} from "./ChatSheets";
+import { ComposerBar } from "./ComposerBar";
 import { DiceSheet } from "./DiceSheet";
-import { MessageList, messagePreviewText, truncatePreview } from "./MessageList";
+import { MessageList } from "./MessageList";
 import { Toast } from "./Toast";
 import { useChatRealtime } from "./use-chat-realtime";
 import { useChatStream } from "./use-chat-stream";
@@ -57,7 +58,7 @@ export function ChatView({
   }
 
   function handleDelete(messageId: string, event: MouseEvent) {
-    if (deleteAction(event) === "immediate") {
+    if (confirmMode(event) === "immediate") {
       void stream.deleteMessage(messageId);
       return;
     }
@@ -157,6 +158,8 @@ export function ChatView({
         <ConfirmDialog
           title="Nachricht löschen?"
           preview={truncatePreview(messagePreviewText(pendingDelete, state.threads))}
+          confirmLabel="Löschen"
+          hint="Tipp: Mit gedrückter Umschalttaste ohne Nachfrage löschen."
           onCancel={() => setPendingDeleteId(null)}
           onConfirm={() => {
             const id = pendingDelete.id;
