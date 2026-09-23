@@ -137,6 +137,24 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 | N.9 | **Karten-Sichtbarkeit:** Auge-Icon in Toolbar (offen = sichtbar, durchgestrichen = SL-only) | Prod/Lokal | | |
 | N.10 | **Pins:** Mentions als blaue Links im Beschreibungstext; kein „Verknüpft“-Panel im Pin-Sheet | Prod/Lokal | | |
 | N.11 | **Versionsbadge** unten links, hellgrau lesbar; Version **0.1.1+** sichtbar | Prod/Lokal | | |
-| N.12 | **Karten-Dropdown:** Label `Universum: Karte`; mehrere Karten pro Universum anlegen/löschen (SL) | Prod/Lokal | | |
-| N.13 | **Kartenbild ersetzen:** Upload-Icon in Toolbar; bei bestehendem Bild Checkbox-Bestätigung (Pins bleiben) | Prod/Lokal | | |
-| N.14 | **Charakter-Marker:** Charakter höchstens auf einer Karte; Platzieren auf anderer Karte entfernt den alten Marker | Prod/Lokal | | |
+| N.12–N.14 | **Multi-Karten** (Dropdown, Anlegen/Löschen, Bild ersetzen, Pins/Marker pro Karte) — Checkliste unten | Prod | | siehe MK.* |
+
+### Multi-Karten (shipped ~1068ad6 / Migration 0012)
+
+**Zweck:** Owner-Protokoll für mehrere Karten pro Universum nach Produktfreigabe 2026-09-23.  
+**Umgebung:** Prod `https://worldcraft.lagolago.at` mit Discord; Staff (GM/Master) plus optional zweites Discord-Konto.  
+**Voraussetzung:** Migration `0012_multi_map_and_marker_unique.sql` deployed (`maps.image_id` nullable; `UNIQUE(character_id)` auf Markern).  
+**Ergebnis je Zeile:** bestanden / nicht bestanden / N/A
+
+| # | Kriterium | Wo | Ergebnis | Beobachtung |
+|---|---|---|---|---|
+| MK.1 | **Dropdown-Label:** aktuelle Auswahl als `Universum: Karte`; übrige Einträge gleiches Format (bei SL-only ggf. `· SL`) | Prod | | |
+| MK.2 | **Zweite Karte anlegen (Staff):** zweite Karte im Universum anlegen (Default-Name ok); erscheint im Dropdown | Prod | | |
+| MK.3 | **Leere neue Karte:** startet ohne Bild → mittiger Upload-Prompt; erstes Upload **ohne** Ersetzen-Warnung | Prod | | |
+| MK.4 | **Bild ersetzen:** Toolbar-Upload-Icon → Checkbox-Dialog („Karte wird ersetzt, Pins bleiben“); Abbrechen bricht ab; Bestätigen + Upload behält Pins | Prod | | |
+| MK.5 | **Karte löschen (Staff):** Bestätigung; Pins/Marker dieser Karte weg; andere Karten unverändert | Prod | | |
+| MK.6 | **Pins pro Karte:** Pin auf Karte A nicht auf Karte B sichtbar; kein Verschieben von Pins zwischen Karten | Prod | | |
+| MK.7 | **Charakter-Marker:** auf Karte B platzieren, während Karte A aktiv ist → Marker von A entfernt, nur noch auf B | Prod | | |
+| MK.8 | **Auge-Sichtbarkeit:** Toggle wirkt weiterhin nur auf die **aktuell gewählte** Karte | Prod | | |
+| MK.9 | **Non-Staff:** keine Anlegen-/Löschen-/Upload-Controls (oder klare Ablehnung) | Prod | | |
+| MK.10 | **Optional Realtime:** zweiter User sieht Kartenwechsel / neuen Pin auf derselben Karte nach Drop | Prod | | N/A ohne zweites Discord-Konto |

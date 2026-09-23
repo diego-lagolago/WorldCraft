@@ -93,7 +93,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 | Leerzustand | Ohne Bild: mittiger Prompt + Upload (Spielleitung); Upload-Icon in Toolbar konsistent | shipped |
 | Zoom/Scroll | Weiches Zoomen näher am UI-Prototyp (kein extremes Nachziehen) | shipped |
 
-**Entscheidung 2026-09-23 (Owner):** Mehrere Karten pro Universum (APP-MAP-MVP-ONE aufgehoben). Pins bleiben kartenspezifisch (`map_id`). Charakter-Marker: `UNIQUE (character_id)` — max. eine aktive Karte pro Charakter.
+**Entscheidung 2026-09-23 (Owner):** Mehrere Karten pro Universum (APP-MAP-MVP-ONE aufgehoben). Pins bleiben kartenspezifisch (`map_id`). Charakter-Marker: `UNIQUE (character_id)` — max. eine aktive Karte pro Charakter. Smoketest: [infrastructure/smoketest.md](infrastructure/smoketest.md) → Multi-Karten (MK.*).
 
 ## Chat & Würfel
 
