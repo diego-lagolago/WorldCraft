@@ -17,10 +17,10 @@
 
 | ID | Kategorie | Schweregrad | Status | Kurzbeschreibung |
 |----|-----------|-------------|--------|-------------------|
-| CR-001 | Sicherheit | kritisch | behoben | Spike-APIs in Produktion für jedes Discord-Konto offen (Upload, Chat, Rechte-API auf echten Tabellen). Teil 1 (Allowlist) in T-001; Teile 2 und 3 in T-016 (Code weg; Prod-Daten-Cleanup nach Freigabe) |
+| CR-001 | Sicherheit | kritisch | behoben | Spike-APIs in Produktion für jedes Discord-Konto offen (Upload, Chat, Rechte-API auf echten Tabellen). Teil 1+2 erledigt; Teil 3 Prod-APPLY wartet auf Freigabe (siehe Review-Check 2026-09-23) |
 | CR-002 | Testabdeckung | kritisch | behoben | `npm test` ist rot: `dice.test.ts` und `authz.test.ts` scheitern an `ERR_MODULE_NOT_FOUND` |
 | CR-003 | Sicherheit | mittel | behoben | `discordId` ist als `input: true` über `/api/auth/update-user` vom Benutzer änderbar |
-| CR-004 | Sicherheit | mittel | offen | Manuelle Relationen prüfen nicht, ob Quelle und Ziel zur Welt gehören (weltübergreifend, 500 bei fremder ID) |
+| CR-004 | Sicherheit | mittel | behoben | Manuelle Relationen prüfen nicht, ob Quelle und Ziel zur Welt gehören (weltübergreifend, 500 bei fremder ID) |
 | CR-005 | Runtime-Risiken | mittel | behoben | Ungültige UUID bzw. ungültiges JSON führen in Karten- und Chat-Routen zu HTTP 500. Helfer in T-003; Anwendung in T-007–T-014; Spike-Routen in T-016 entfernt |
 | CR-006 | Runtime-Risiken | mittel | behoben | SSE-Reconnect lädt den Stand nicht neu; Produkt-Chat/Karte mit `nextHello`; Spike-SSE in T-016 entfernt |
 | CR-007 | Runtime-Risiken | mittel | behoben | Realtime-Bus ohne Fehlerisolation pro Listener: Fehler landet nach dem DB-Write im POST-Handler |
@@ -37,9 +37,9 @@
 | CR-018 | Aufgaben-Abgleich | niedrig | behoben | 8 dokumentierte `TRIG-*`-Regeln fehlen in den Migrationen: alle bauen (Plan-Review) |
 | CR-019 | Sicherheit | niedrig | behoben | Persistenz-Snapshot liefert `privat`-Tagebuchtexte an die Spielleitung, Journal auf archivierter Teilnahme möglich |
 | CR-020 | Aufgaben-Abgleich | niedrig | behoben | Pin-Sperre (`locked`) nicht dokumentiert: übernehmen, nur Spielleitung (Plan-Review). Spalte in T-002; Rechte und UI folgen in T-013 |
-| CR-021 | Lesbarkeit & Wartbarkeit | niedrig | offen | Würfelausgabe: negative Würfelterme ohne Vorzeichen, versteckter `/roll`-Pfad ignoriert `dicePostToChat`. Schema `dice_terms` in T-002; Formatierer folgt in T-012 |
+| CR-021 | Lesbarkeit & Wartbarkeit | niedrig | behoben | Würfelausgabe: negative Würfelterme ohne Vorzeichen, versteckter `/roll`-Pfad ignoriert `dicePostToChat`. Schema `dice_terms` in T-002; Formatierer folgt in T-012 |
 | CR-022 | Bad Practices | niedrig | behoben | Editor-Spike: Link/Underline doppelt registriert (StarterKit v3), deutsche Identifier entgegen Konvention |
-| CR-023 | Bad Practices | niedrig | offen | Magic Numbers (`Date.now() % 1_000_000`, `15000`, `toFixed(7)` verstreut) |
+| CR-023 | Bad Practices | niedrig | behoben | Magic Numbers (`Date.now() % 1_000_000`, `15000`, `toFixed(7)` verstreut) |
 
 ---
 
@@ -335,3 +335,18 @@ Alle Findings werden in Plan 003 umgesetzt (siehe *Umsetzungsrahmen*). Plan 003 
 ## Prioritätenliste
 
 Die verbindliche Umsetzungsreihenfolge ergibt sich aus Plan `003`: Abschnitt *Code-Review zu Plan 001* (Zuordnung Finding → Aufgabe) und *Reihenfolge (Abhängigkeitsgraph)*. Eine eigene Prioritätenliste führt dieses Dokument nicht mehr, damit keine zweite, abweichende Reihenfolge entsteht. Inhaltlich gilt: Zuerst kommen die kritischen Findings CR-001 (Teil 1) und CR-002 sowie das CI-Gate CR-010 in Plan 003 T-001. Das Entfernen der Spikes und das Bereinigen der Daten (CR-001 Teile 2 und 3) kommen zuletzt in T-016.
+
+## Review-Check 2026-09-23
+
+**Geprüft gegen:** HEAD nach Plan-Run Review 003 (u. a. Commits zu CR-010 dieses Reviews). Ausgelöst durch CR-016 in `.ai/code-review-003-mvp-funktionen-2026-09-23.md`.
+
+| ID | Vorher | Nachher | Kurz |
+|----|--------|---------|------|
+| CR-004 | offen | behoben | `createManualRelation` prüft beide Enden über `loadEnd` (Weltzugehörigkeit) |
+| CR-021 | offen | behoben | `dice-format.ts` mit Vorzeichen; `/roll` respektiert `dicePostToChat` |
+| CR-023 | offen | behoben | Chat-/Karten-Limits und Positionsformat zentral (Rest aus Review 003 CR-010) |
+| CR-001 | behoben | behoben | Vermerk: Code-Entfernung (Teil 2) mit T-016 erledigt; **Prod-APPLY** von `scripts/cleanup-spike-data.sql` (Teil 3) wartet weiter auf Freigabe laut T-016-Umsetzungsnotiz |
+
+**Offen mit erfülltem Abnahmekriterium im Code:** keines.
+**Nicht abgedeckt / Hinweis:** Parallele Plan-004/008-WIP (Kapitel, Würfel-Sheet) liegt außerhalb der Review-001-Fundstellen.
+**Empfehlung:** Kein erneuter `/code-review` für Plan 001 nötig; Prod-Cleanup bei Push-Freigabe (T-017) mitnehmen.

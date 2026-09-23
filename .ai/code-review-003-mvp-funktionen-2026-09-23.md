@@ -48,7 +48,7 @@ Maßgeblich sind `.ai/architecture/datenmodell-fachlich.md` (fachliche Regeln, V
 | CR-013 | Runtime-Risiken | niedrig | behoben | „Letzter aktiver Kanal“ wird nicht atomar geprüft: parallele Archivierungen können alle Kanäle archivieren |
 | CR-014 | Bad Practices | niedrig | behoben | `GET …/chat` schreibt (`ensureDefaultChannel` bei jedem Laden) |
 | CR-015 | Lesbarkeit & Wartbarkeit | niedrig | behoben | Datei-GC kennt die referenzierenden Tabellen nur als hartkodierte SQL-Liste |
-| CR-016 | Aufgaben-Abgleich | niedrig | offen | Review 001 führt CR-004, CR-021, CR-023 noch als `offen`, obwohl der Plan „kein Finding `offen`“ und Nachführen im Task-Commit verlangt |
+| CR-016 | Aufgaben-Abgleich | niedrig | behoben | Review 001 führt CR-004, CR-021, CR-023 noch als `offen`, obwohl der Plan „kein Finding `offen`“ und Nachführen im Task-Commit verlangt |
 | CR-017 | Sicherheit | mittel | behoben | Rollenwechsel wirkt nicht live: Karte und SSE-Leitung behalten die alte Rolle (z. B. SL-Karte bleibt nach Herabstufung sichtbar). Nachgetragen im Plan-Review 2026-09-23 |
 
 ---
