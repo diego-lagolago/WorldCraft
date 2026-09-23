@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   authorizeDeleteChatMessage,
+  authorizeEditChatMessage,
+  authorizeRenameChatThread,
   authorizeJournalWrite,
   authorizeLeave,
   authorizeMarkerAction,
@@ -362,6 +364,45 @@ describe("APP-CHAT-DELETE", () => {
     });
     expect(authorizeDeleteChatMessage(null, text)).toMatchObject({ ok: false, status: 403 });
     expect(authorizeDeleteChatMessage(row("player"), null)).toMatchObject({ ok: false, status: 404 });
+  });
+});
+
+describe("APP-CHAT-EDIT", () => {
+  const text = { authorId: "player", hasDice: false, opensThread: false };
+
+  it("lets only the author edit text; rejects dice and openers with 422; staff cannot edit foreign", () => {
+    expect(authorizeEditChatMessage(row("player"), text).ok).toBe(true);
+    expect(authorizeEditChatMessage(row("game_master"), text)).toMatchObject({ ok: false, status: 403 });
+    expect(authorizeEditChatMessage(row("master"), { ...text, authorId: "someone" })).toMatchObject({
+      ok: false,
+      status: 403,
+    });
+    expect(authorizeEditChatMessage(row("player"), { ...text, hasDice: true })).toMatchObject({
+      ok: false,
+      status: 422,
+    });
+    expect(authorizeEditChatMessage(row("player"), { ...text, opensThread: true })).toMatchObject({
+      ok: false,
+      status: 422,
+    });
+    expect(authorizeEditChatMessage(null, text)).toMatchObject({ ok: false, status: 403 });
+    expect(authorizeEditChatMessage(row("player"), null)).toMatchObject({ ok: false, status: 404 });
+  });
+});
+
+describe("APP-THREAD-RENAME", () => {
+  const thread = { createdBy: "player" };
+
+  it("lets the creator and staff rename; rejects other members", () => {
+    expect(authorizeRenameChatThread(row("player"), thread).ok).toBe(true);
+    expect(authorizeRenameChatThread(row("master"), thread).ok).toBe(true);
+    expect(authorizeRenameChatThread(row("game_master"), thread).ok).toBe(true);
+    expect(authorizeRenameChatThread(row("player", { userId: "other" }), thread)).toMatchObject({
+      ok: false,
+      status: 403,
+    });
+    expect(authorizeRenameChatThread(null, thread)).toMatchObject({ ok: false, status: 403 });
+    expect(authorizeRenameChatThread(row("player"), null)).toMatchObject({ ok: false, status: 404 });
   });
 });
 

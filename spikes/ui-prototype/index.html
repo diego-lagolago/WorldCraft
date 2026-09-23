@@ -190,7 +190,6 @@ h1,h2,h3{margin:0}
 .more{width:40px;height:40px;display:grid;place-items:center;color:var(--muted);font-size:18px;border-radius:10px}
 .stream-h{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);min-height:54px}
 .msgs{flex:1;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:14px}
-.msg{display:flex;gap:10px}
 .msg .body{min-width:0;flex:1}
 .msg .who{font-weight:700;font-size:14px}
 .msg .when{font-size:11px;color:var(--muted);margin-left:6px;font-weight:400}
@@ -198,7 +197,27 @@ h1,h2,h3{margin:0}
 .dice{display:inline-flex;align-items:center;gap:8px;margin-top:2px;padding:6px 10px;border-radius:10px;background:#1f1a0e;border:1px solid #4a3a14;font-family:ui-monospace,Menlo,monospace;font-size:14px}
 .dice b{color:var(--accent);font-size:16px}
 .thread-card{margin-top:4px;display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);font-size:14px}
-.del{margin-left:auto;color:var(--muted);width:32px;height:32px;border-radius:8px;flex:none}
+.msg{position:relative;display:flex;gap:10px;align-items:flex-start}
+.msg.mine{flex-direction:row-reverse}
+.msg.mine .body{display:flex;flex-direction:column;align-items:flex-end}
+.msg.mine .who{display:flex;flex-direction:row-reverse;align-items:baseline;gap:6px}
+.msg.mine .when{margin-left:0}
+.msg.mine .txt,.msg.mine .dice,.msg.mine .thread-card{background:rgba(245,184,61,.07)}
+.msg .edited{font-size:11px;color:var(--muted);margin-left:4px;font-weight:400}
+.msg.mine .edited{margin-left:0;margin-right:4px}
+.msg-actions{display:flex;gap:2px;position:absolute;top:0;right:0;opacity:0;pointer-events:none;transition:opacity .12s;z-index:2}
+.msg.mine .msg-actions{right:auto;left:0}
+.msg-act{width:32px;height:32px;border-radius:8px;color:var(--muted);font-size:15px;display:grid;place-items:center}
+.msg-act:active{background:var(--panel2)}
+.msg-edit{width:100%;max-width:420px;text-align:left}
+.msg-edit .in{min-height:72px;max-height:200px}
+@media (hover:hover){
+  .msg:hover .msg-actions,.msg:focus-within .msg-actions{opacity:1;pointer-events:auto}
+}
+@media (hover:none){
+  .msg.selected .msg-actions{opacity:1;pointer-events:auto}
+  .msg-act{width:44px;height:44px}
+}
 .composer{display:flex;align-items:flex-end;gap:6px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:#111117}
 .composer .cb{width:44px;height:44px;flex:none;border-radius:12px;display:grid;place-items:center;font-size:20px;background:var(--panel2);border:1px solid var(--line)}
 .composer .cb.send{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
@@ -372,21 +391,21 @@ const D = {
     {id:"ch1",name:"Allgemein",archived:false},{id:"ch2",name:"Ingame",archived:false},
     {id:"ch3",name:"Off-Topic",archived:false},{id:"ch4",name:"Alte Runde",archived:true}
   ],
-  threads:[{id:"t1",ch:"ch1",title:"Planung Session 12"},{id:"t2",ch:"ch2",title:"Marktgespräch mit Orvin"},{id:"t3",ch:"ch2",title:"Nachtwache"}],
+  threads:[{id:"t1",ch:"ch1",title:"Planung Session 12",by:"mara"},{id:"t2",ch:"ch2",title:"Marktgespräch mit Orvin",by:"diego"},{id:"t3",ch:"ch2",title:"Nachtwache",by:"diego"}],
   msgs:[
     {id:1,ch:"ch1",th:null,u:"mara",t:"18:58",text:"Nächste Session Freitag 19 Uhr?"},
     {id:2,ch:"ch1",th:null,u:"jonas",t:"19:01",text:"Passt! Ich bring *Snacks* mit."},
-    {id:3,ch:"ch1",th:null,u:"mara",t:"19:03",text:"Thread für die Planung:",opens:"t1"},
+    {id:3,ch:"ch1",th:null,u:"mara",t:"19:03",text:null,opens:"t1"},
     {id:4,ch:"ch1",th:"t1",u:"mara",t:"19:04",text:"Wer fehlt am Freitag?"},
     {id:5,ch:"ch1",th:"t1",u:"lea",t:"19:10",text:"Ich komme später, ca. 20 Uhr."},
     {id:6,ch:"ch2",th:null,u:"jonas",t:"20:15",text:"Brom tritt die Tür ein. **BAM!**"},
     {id:7,ch:"ch2",th:null,u:"jonas",t:"20:15",text:"",dice:{expr:"1d20+5",vals:[14],mod:5,sum:19}},
     {id:8,ch:"ch2",th:null,u:"mara",t:"20:16",text:"Die Tür splittert. Dahinter: Dunkelheit."},
     {id:9,ch:"ch2",th:null,u:"diego",t:"20:17",text:"Elara zündet eine Fackel an.",},
-    {id:10,ch:"ch2",th:null,u:"diego",t:"20:17",text:"",opens:"t2"},
+    {id:10,ch:"ch2",th:null,u:"diego",t:"20:17",text:null,opens:"t2"},
     {id:11,ch:"ch2",th:"t2",u:"diego",t:"20:18",text:"Was kostet das Seil, Orvin?"},
     {id:12,ch:"ch2",th:"t2",u:"mara",t:"20:19",text:"„Für euch? 3 Silber.“"},
-    {id:13,ch:"ch2",th:null,u:"diego",t:"20:21",text:"",opens:"t3"},
+    {id:13,ch:"ch2",th:null,u:"diego",t:"20:21",text:null,opens:"t3"},
     {id:14,ch:"ch2",th:"t3",u:"lea",t:"20:30",text:"Sylva übernimmt die erste Wache.",},
     {id:15,ch:"ch2",th:"t3",u:"lea",t:"20:31",text:"",dice:{expr:"1d20+3",vals:[7],mod:3,sum:10}},
     {id:16,ch:"ch3",th:null,u:"lea",t:"12:00",text:"Hat jemand den neuen Film gesehen?"},
@@ -407,9 +426,10 @@ let nextId = 100;
 
 /* ---------------- Zustand ---------------- */
 const S = {
-  role:"game_master", asOwner:true, loggedIn:true, articleFilter:"all", search:"", expanded:{ch1:true,ch2:true},
+  role:"game_master", asOwner:true, loggedIn:true, articleFilter:"all", search:"", expanded:{},
   dice:{n:1,m:20,mod:0,post:true}, universe:"u1", placing:false, map:null, lastMap:null,
-  noteConflict:false, noteDraft:null, noteExpectedVer:null
+  noteConflict:false, noteDraft:null, noteExpectedVer:null,
+  selectedMsg:null, editingId:null
 };
 const isStaff = () => S.role !== "player";
 const isGM = () => S.role === "game_master";
@@ -554,6 +574,54 @@ function rich(html){
   });
 }
 function chatText(s){ return esc(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/\*(.+?)\*/g,"<i>$1</i>"); }
+
+const EXPANDED_KEY = "worldcraft:chat-expanded";
+function chatStorage(){ try{ return window.localStorage; }catch{ return null; } }
+function readExpanded(){
+  try{ const raw=chatStorage()?.getItem(EXPANDED_KEY); return raw?JSON.parse(raw):{}; }catch{ return {}; }
+}
+function writeExpanded(map){ try{ chatStorage()?.setItem(EXPANDED_KEY,JSON.stringify(map)); }catch{} }
+function syncExpanded(ch,th){
+  const stored=readExpanded(); S.expanded={...stored};
+  activeChannels().forEach(c=>{
+    if(!(c.id in S.expanded)) S.expanded[c.id]=!!(th&&D.threads.some(t=>t.id===th&&t.ch===c.id));
+  });
+}
+function isRollCommand(s){ return /^\s*\/(?:r|roll)(?:\s|$)/i.test(s); }
+function formatDiceLine(d){
+  const mod=d.mod?(d.mod>0?" + "+Math.abs(d.mod):" − "+Math.abs(d.mod)):"";
+  return `🎲 ${d.expr} → ${d.vals.join(", ")}${mod} = ${d.sum}`;
+}
+function msgCopyText(m){
+  if(m.opens){ const t=D.threads.find(x=>x.id===m.opens); return t?.title||""; }
+  if(m.dice) return formatDiceLine(m.dice);
+  return m.text||"";
+}
+function msgPreview(m){
+  if(m.opens){ const t=D.threads.find(x=>x.id===m.opens); return t?`🧵 ${t.title}`:""; }
+  if(m.dice) return formatDiceLine(m.dice);
+  return m.text||"";
+}
+function canEditMsg(m){ return m.u===ME&&!m.dice&&!m.opens&&m.text!=null; }
+function canDeleteMsg(m){
+  if(m.opens) return false;
+  if(m.dice) return isStaff();
+  return m.u===ME||isStaff();
+}
+function deleteMsg(id){
+  const i=D.msgs.findIndex(m=>m.id==id);
+  if(i>=0){ D.msgs.splice(i,1); closeSheet(); route(); toast("Nachricht gelöscht"); }
+}
+function openDeleteConfirm(m){
+  const p=msgPreview(m); const preview=p.length>120?p.slice(0,120)+"…":p;
+  sheet(`<h2>Nachricht löschen?</h2>
+    <p class="muted" style="margin:12px 0;word-break:break-word">${esc(preview)}</p>
+    <p class="small muted">Tipp: Mit gedrückter Umschalttaste ohne Nachfrage löschen.</p>
+    <div class="row" style="margin-top:14px;gap:10px">
+      <button class="btn grow" data-act="cancel-del" autofocus>Abbrechen</button>
+      <button class="btn danger grow" data-act="confirm-del" data-id="${m.id}">Löschen</button>
+    </div>`);
+}
 function toast(msg){
   const el=document.createElement("div"); el.className="toast"; el.textContent=msg; document.body.appendChild(el);
   setTimeout(()=>el.remove(),2600);
@@ -970,6 +1038,7 @@ function activeChannels(){ return D.channels.filter(c=>!c.archived); }
 function viewChat(ch,th){
   const open = !!ch; const mobile = matchMedia("(max-width:767px)").matches;
   if(!ch && !mobile) ch = activeChannels()[0].id;
+  syncExpanded(ch,th);
   const channel = D.channels.find(c=>c.id===ch);
   const thread = th ? D.threads.find(t=>t.id===th) : null;
   const list = `<div class="chan-list">
@@ -981,7 +1050,7 @@ function viewChat(ch,th){
           <a href="#/w/w1/chat/${c.id}"><span class="hash">#</span>${esc(c.name)}${ths.length&&!ex?` <span class="badge">${ths.length}</span>`:""}</a>
           ${isStaff()?`<button class="more" data-act="chan-menu" data-id="${c.id}" aria-label="Kanal verwalten">⋯</button>`:""}
         </div>
-        ${ex?ths.map(t=>`<div class="thr ${t.id===th?"on":""}"><a href="#/w/w1/chat/${c.id}/${t.id}">🧵 ${esc(t.title)}</a></div>`).join(""):""}`;
+        ${ex?ths.map(t=>`<div class="thr ${t.id===th?"on":""}"><a href="#/w/w1/chat/${c.id}/${t.id}">🧵 ${esc(t.title)}</a>${t.by===ME||isStaff()?`<button class="more" data-act="thread-menu" data-id="${t.id}" aria-label="Thread verwalten">⋯</button>`:""}</div>`).join(""):""}`;
     }).join("")}
     ${isStaff()?`<details style="padding:14px"><summary class="small muted">Archivierte Kanäle (${D.channels.filter(c=>c.archived).length})</summary>
       ${D.channels.filter(c=>c.archived).map(c=>`<div class="row" style="justify-content:space-between;min-height:44px"><span class="muted"># ${esc(c.name)}</span><button class="btn sm" data-act="restore" data-id="${c.id}">Wiederherstellen</button></div>`).join("")}</details>`:""}
@@ -1007,13 +1076,24 @@ function viewChat(ch,th){
   return shell("chat", `<div class="chat ${open?"open":""}">${list}${stream}</div>`, {full:true, chatFocus: open && mobile});
 }
 function msgHtml(m){
-  const name = USERS[m.u]; const canDel = !m.dice && !m.opens && (m.u===ME || isStaff());
-  let body = m.text ? `<div class="txt">${chatText(m.text)}</div>` : "";
-  if(m.dice) body += `<div class="dice">🎲 ${m.dice.expr} → ${m.dice.vals.join(", ")}${m.dice.mod?(m.dice.mod>0?" + ":" − ")+Math.abs(m.dice.mod):""} = <b>${m.dice.sum}</b></div>`;
-  if(m.opens){ const t=D.threads.find(x=>x.id===m.opens); const n=D.msgs.filter(x=>x.th===t.id).length;
-    body += `<a class="thread-card" href="#/w/w1/chat/${m.ch}/${t.id}">🧵 <b>${esc(t.title)}</b> <span class="muted">· ${n} Antworten ›</span></a>`; }
-  return `<div class="msg">${avatar(name)}<div class="body"><div class="who">${name}<span class="when">${m.t}</span></div>${body}</div>
-    ${canDel?`<button class="del" data-act="del-msg" data-id="${m.id}" aria-label="Löschen">🗑</button>`:""}</div>`;
+  const mine = m.u===ME; const name = USERS[m.u];
+  const edited = m.edited?`<span class="edited" title="Bearbeitet">(bearbeitet)</span>`:"";
+  let body = "";
+  if(S.editingId===m.id){
+    body = `<div class="msg-edit stack"><textarea class="in msg-edit-in" id="edit-${m.id}" rows="3">${esc(m.text||"")}</textarea>
+      <div class="row"><button class="btn sm primary" data-act="save-edit" data-id="${m.id}">Speichern</button><button class="btn sm" data-act="cancel-edit">Abbrechen</button></div></div>`;
+  }else{
+    if(m.text) body += `<div class="txt">${chatText(m.text)}</div>`;
+    if(m.dice) body += `<div class="dice">🎲 ${m.dice.expr} → ${m.dice.vals.join(", ")}${m.dice.mod?(m.dice.mod>0?" + ":" − ")+Math.abs(m.dice.mod):""} = <b>${m.dice.sum}</b></div>`;
+    if(m.opens){ const t=D.threads.find(x=>x.id===m.opens); const n=D.msgs.filter(x=>x.th===t.id).length;
+      body += `<a class="thread-card" href="#/w/w1/chat/${m.ch}/${t.id}">🧵 <b>${esc(t.title)}</b> <span class="muted">· ${n} Antworten ›</span></a>`; }
+  }
+  const acts=[];
+  if(canEditMsg(m)) acts.push(`<button class="msg-act" data-act="edit-msg" data-id="${m.id}" aria-label="Bearbeiten">✏️</button>`);
+  acts.push(`<button class="msg-act" data-act="copy-msg" data-id="${m.id}" aria-label="Kopieren">📋</button>`);
+  if(canDeleteMsg(m)) acts.push(`<button class="msg-act" data-act="del-msg" data-id="${m.id}" aria-label="Löschen">🗑</button>`);
+  const sel = S.selectedMsg==m.id?" selected":"";
+  return `<div class="msg${mine?" mine":""}${sel}" data-id="${m.id}" tabindex="0">${avatar(name)}<div class="body"><div class="who">${name}<span class="when">${m.t}${edited}</span></div>${body}</div>${acts.length?`<div class="msg-actions">${acts.join("")}</div>`:""}</div>`;
 }
 function nowT(){ const d=new Date(); return d.toTimeString().slice(0,5); }
 function openDice(){
@@ -1213,7 +1293,8 @@ function route(opts={}){
   }
   document.getElementById("app").innerHTML = html || viewLogin();
   if(p[2]==="map") mountMap();
-  if(p[2]==="chat"){ const m=document.getElementById("msgs"); if(m) m.scrollTop=m.scrollHeight; }
+  if(p[2]==="chat"&&!opts.keepScroll){ const m=document.getElementById("msgs"); if(m) m.scrollTop=m.scrollHeight; }
+  if(p[2]==="chat"&&S.editingId){ requestAnimationFrame(()=>{ const ta=document.getElementById("edit-"+S.editingId); ta?.focus(); ta?.setSelectionRange(ta.value.length,ta.value.length); }); }
   if(p[2]==="articles" && p[4]==="edit") mountEditor();
   if(keepScroll) requestAnimationFrame(()=>window.scrollTo(0, y));
   else window.scrollTo(0,0);
@@ -1272,6 +1353,20 @@ function mountEditor(){
 
 /* ---------------- Aktionen ---------------- */
 document.addEventListener("click", e=>{
+  if(matchMedia("(hover:none)").matches){
+    if(e.target.closest("[data-act]")||e.target.closest("a")||e.target.closest(".msg-edit")||S.editingId) return;
+    const msgEl=e.target.closest(".msg");
+    if(msgEl){
+      const id=+msgEl.dataset.id;
+      S.selectedMsg=S.selectedMsg===id?null:id;
+      route({keepScroll:true});
+      return;
+    }
+    if(S.selectedMsg){ S.selectedMsg=null; route({keepScroll:true}); }
+    return;
+  }
+});
+document.addEventListener("click", e=>{
   const a = e.target.closest("[data-act]"); if(!a) return;
   if(["SELECT","INPUT","TEXTAREA","OPTION"].includes(e.target.tagName)) return;
   const act = a.dataset.act;
@@ -1281,7 +1376,7 @@ document.addEventListener("click", e=>{
   e.preventDefault();
   switch(act){
     case "afilter": S.articleFilter=a.dataset.v; route(); break;
-    case "chev": S.expanded[a.dataset.id]=!S.expanded[a.dataset.id]; route(); break;
+    case "chev": S.expanded[a.dataset.id]=!S.expanded[a.dataset.id]; writeExpanded(S.expanded); route(); break;
     case "zoom": S.mapZoom && S.mapZoom(parseFloat(a.dataset.v)); break;
     case "fit": S.mapFit && S.mapFit(); break;
     case "place": S.placing=!S.placing; route(); break;
@@ -1319,7 +1414,18 @@ document.addEventListener("click", e=>{
     case "plus": { const pop=document.getElementById("plus-pop"); pop.innerHTML = pop.innerHTML ? "" : `<div class="pop">${S.chatCtx.th?'<div class="empty">In einem Thread gibt es keine Unter-Threads.</div>':'<button data-act="new-thread">🧵 Thread starten</button>'}</div>`; break; }
     case "new-thread": sheet(`<h2>Thread starten</h2><div class="stack" style="margin-top:12px"><input id="th-name" placeholder="Titel des Threads" maxlength="80"><button class="btn primary" data-act="save-thread">Starten</button></div>`); break;
     case "save-thread": { const n=document.getElementById("th-name").value.trim(); if(!n) break; const id="t"+(nextId++); const ch=S.chatCtx.ch;
-      D.threads.push({id,ch,title:n}); D.msgs.push({id:nextId++,ch,th:null,u:ME,t:nowT(),text:"",opens:id}); S.expanded[ch]=true; closeSheet(); location.hash=`#/w/w1/chat/${ch}/${id}`; break; }
+      D.threads.push({id,ch,title:n,by:ME}); D.msgs.push({id:nextId++,ch,th:null,u:ME,t:nowT(),text:null,opens:id}); S.expanded[ch]=true; writeExpanded(S.expanded); closeSheet(); location.hash=`#/w/w1/chat/${ch}/${id}`; break; }
+    case "thread-menu": { const t=D.threads.find(x=>x.id===a.dataset.id);
+      sheet(`<h2>🧵 ${esc(t.title)}</h2><div class="list" style="margin-top:10px">
+        <button class="item" style="width:100%" data-act="th-rename" data-id="${t.id}">✏️ Umbenennen</button></div>`); break; }
+    case "th-rename": { const t=D.threads.find(x=>x.id===a.dataset.id);
+      sheet(`<h2>Thread umbenennen</h2><div class="stack" style="margin-top:12px">
+        <input id="th-rename-in" value="${esc(t.title)}" maxlength="80" placeholder="Titel (1–80 Zeichen)">
+        <button class="btn primary" data-act="save-th-rename" data-id="${t.id}">Speichern</button></div>`);
+      requestAnimationFrame(()=>document.getElementById("th-rename-in")?.focus()); break; }
+    case "save-th-rename": { const n=document.getElementById("th-rename-in").value.trim();
+      if(!n){ toast("Titel ist Pflicht"); break; }
+      D.threads.find(x=>x.id===a.dataset.id).title=n.slice(0,80); closeSheet(); route(); toast("Thread umbenannt"); break; }
     case "send": { const inp=document.getElementById("chat-in"); const t=inp.value.trim(); if(!t) break; D.msgs.push({id:nextId++,ch:S.chatCtx.ch,th:S.chatCtx.th||null,u:ME,t:nowT(),text:t.slice(0,2000)}); route(); document.getElementById("chat-in")?.focus(); break; }
     case "dice": openDice(); break;
     case "die": S.dice.m=parseInt(a.dataset.v); openDice(); break;
@@ -1330,7 +1436,20 @@ document.addEventListener("click", e=>{
       const expr=`${d.n}d${d.m}${d.mod?(d.mod>0?"+":"")+d.mod:""}`; closeSheet();
       if(d.post){ D.msgs.push({id:nextId++,ch:S.chatCtx.ch,th:S.chatCtx.th||null,u:ME,t:nowT(),text:"",dice:{expr,vals,mod:d.mod,sum}}); route(); }
       else toast(`🎲 ${expr} → ${vals.join(", ")} = ${sum} (nur für dich)`); break; }
-    case "del-msg": { const i=D.msgs.findIndex(m=>m.id==a.dataset.id); if(i>=0) D.msgs.splice(i,1); route(); toast("Nachricht gelöscht"); break; }
+    case "edit-msg": S.editingId=+a.dataset.id; S.selectedMsg=null; route({keepScroll:true}); break;
+    case "cancel-edit": S.editingId=null; route({keepScroll:true}); break;
+    case "save-edit": { const m=D.msgs.find(x=>x.id==a.dataset.id); const v=document.getElementById("edit-"+m.id)?.value??"";
+      const t=v.trim();
+      if(!t){ toast("Zum Entfernen löschen"); break; }
+      if(isRollCommand(t)){ toast("Würfelbefehle können nicht nachträglich eingefügt werden. Sende sie als neue Nachricht."); break; }
+      m.text=t.slice(0,2000); m.edited=true; S.editingId=null; route(); break; }
+    case "copy-msg": { const m=D.msgs.find(x=>x.id==a.dataset.id);
+      navigator.clipboard.writeText(msgCopyText(m)).then(()=>toast("Kopiert")).catch(()=>toast("Kopieren nicht möglich")); break; }
+    case "del-msg": { const m=D.msgs.find(x=>x.id==a.dataset.id);
+      if(e.shiftKey){ deleteMsg(m.id); break; }
+      openDeleteConfirm(m); break; }
+    case "confirm-del": deleteMsg(a.dataset.id); break;
+    case "cancel-del": closeSheet(); break;
     case "copy": toast("Link kopiert"); break;
     case "revoke": D.invites[a.dataset.i].revoked=true; route(); toast("Link widerrufen"); break;
     case "new-invite": D.invites.unshift({code:Math.random().toString(36).slice(2,6)+"…"+Math.random().toString(36).slice(2,6),validity:document.getElementById("inv-v").value,uses:0,revoked:false}); route(); toast("Einladungslink erstellt"); break;
@@ -1463,6 +1582,11 @@ document.addEventListener("input", e=>{
 });
 document.addEventListener("keydown", e=>{
   if(e.target.id==="chat-in" && e.key==="Enter" && !e.shiftKey){ e.preventDefault(); document.querySelector("[data-act=send]").click(); }
+  if(e.target.classList.contains("msg-edit-in")){
+    if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); document.querySelector(`[data-act=save-edit][data-id="${S.editingId}"]`)?.click(); }
+    if(e.key==="Escape"){ S.editingId=null; route({keepScroll:true}); }
+  }
+  if(e.key==="Escape" && document.querySelector(".sheet-bg")) closeSheet();
 });
 route();
 </script>

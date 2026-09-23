@@ -758,11 +758,12 @@ export const chatMessages = pgTable(
     authorId: text("author_id")
       .notNull()
       .references(() => users.id),
-    body: text("body").notNull(),
+    body: text("body"),
     diceExpression: text("dice_expression"),
     diceTerms: jsonb("dice_terms"),
     diceSum: integer("dice_sum"),
     sentAt: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
   },
   (t) => [
     unique("uq_msg_opens_thread").on(t.opensThreadId),
@@ -772,7 +773,17 @@ export const chatMessages = pgTable(
     index("chat_messages_thread_stream")
       .on(t.threadId, desc(t.sentAt))
       .where(sql`${t.threadId} IS NOT NULL`),
-    check("chat_messages_body_length", sql`char_length(${t.body}) BETWEEN 1 AND 2000`),
+    check(
+      "chk_opener_body",
+      sql`(
+        ${t.opensThreadId} IS NOT NULL
+        AND ${t.body} IS NULL
+      ) OR (
+        ${t.opensThreadId} IS NULL
+        AND ${t.body} IS NOT NULL
+        AND char_length(${t.body}) BETWEEN 1 AND 2000
+      )`,
+    ),
     check(
       "chk_dice_shape",
       sql`(

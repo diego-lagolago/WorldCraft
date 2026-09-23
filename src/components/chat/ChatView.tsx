@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { ChatState } from "@/lib/chat/types";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { deleteAction } from "@/components/ui/confirm-dialog";
 import { ChannelList } from "./ChannelList";
-import { ChannelSheet, ComposerBar, DiceSheet, NewChannelSheet, ThreadSheet } from "./ComposerBar";
-import { MessageList } from "./MessageList";
+import {
+  ChannelSheet,
+  ComposerBar,
+  DiceSheet,
+  NewChannelSheet,
+  RenameThreadSheet,
+  ThreadSheet,
+} from "./ComposerBar";
+import { MessageList, messagePreviewText, truncatePreview } from "./MessageList";
 import { Toast } from "./Toast";
 import { useChatRealtime } from "./use-chat-realtime";
 import { useChatStream } from "./use-chat-stream";
@@ -24,6 +33,9 @@ export function ChatView({
   const [threadOpen, setThreadOpen] = useState(false);
   const [newChannelOpen, setNewChannelOpen] = useState(false);
   const [manageId, setManageId] = useState<string | null>(null);
+  const [renameThreadId, setRenameThreadId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const stream = useChatStream(worldId, initial);
   useChatRealtime(worldId, stream.applyEvent, () => {
@@ -44,9 +56,20 @@ export function ChatView({
     router.push(`/w/${worldId}/chat?${query}`);
   }
 
+  function handleDelete(messageId: string, event: MouseEvent) {
+    if (deleteAction(event) === "immediate") {
+      void stream.deleteMessage(messageId);
+      return;
+    }
+    setPendingDeleteId(messageId);
+  }
+
   const state = stream.state;
   const managed = state?.channels.find((channel) => channel.id === manageId) ?? null;
   const managedIndex = managed ? state!.channels.findIndex((channel) => channel.id === managed.id) : -1;
+  const renameThread = state?.threads.find((thread) => thread.id === renameThreadId) ?? null;
+  const pendingDelete = state?.messages.find((message) => message.id === pendingDeleteId) ?? null;
+  const toastMessage = toast ?? stream.notice;
   const heading = state?.thread
     ? `🧵 ${state.thread.title}`
     : state?.channel
@@ -61,10 +84,12 @@ export function ChatView({
         archived={state?.archivedChannels ?? []}
         currentChannelId={state?.channel?.id ?? null}
         currentThreadId={state?.thread?.id ?? null}
+        actorId={state?.actorId ?? ""}
         staff={state?.staff ?? false}
         onOpenChannel={(id) => openChannel(id)}
         onOpenThread={(channel, thread) => openChannel(channel, thread)}
         onManage={setManageId}
+        onManageThread={setRenameThreadId}
         onCreate={() => setNewChannelOpen(true)}
         onRestore={(id) => void stream.restoreChannel(id)}
       />
@@ -96,7 +121,9 @@ export function ChatView({
                 actorId={state.actorId}
                 staff={state.staff}
                 hasMore={state.hasMore}
-                onDelete={(id) => void stream.deleteMessage(id)}
+                onEdit={stream.editMessage}
+                onDelete={handleDelete}
+                onToast={setToast}
                 onOpenThread={(id) => openChannel(state.channel!.id, id)}
                 onOlder={() => void stream.loadOlder()}
               />
@@ -117,7 +144,27 @@ export function ChatView({
             </p>
           ) : null}
       </section>
-      {stream.notice ? <Toast message={stream.notice} onDone={stream.clearNotice} /> : null}
+      {toastMessage ? (
+        <Toast
+          message={toastMessage}
+          onDone={() => {
+            if (toast) setToast(null);
+            else stream.clearNotice();
+          }}
+        />
+      ) : null}
+      {pendingDelete && state ? (
+        <ConfirmDialog
+          title="Nachricht löschen?"
+          preview={truncatePreview(messagePreviewText(pendingDelete, state.threads))}
+          onCancel={() => setPendingDeleteId(null)}
+          onConfirm={() => {
+            const id = pendingDelete.id;
+            setPendingDeleteId(null);
+            void stream.deleteMessage(id);
+          }}
+        />
+      ) : null}
       {diceOpen && state ? (
         <DiceSheet
           postToChat={state.dicePostToChat}
@@ -143,6 +190,17 @@ export function ChatView({
           onSubmit={(name) => {
             void stream.createChannel(name).then((ok) => {
               if (ok) setNewChannelOpen(false);
+            });
+          }}
+        />
+      ) : null}
+      {renameThread ? (
+        <RenameThreadSheet
+          title={renameThread.title}
+          onClose={() => setRenameThreadId(null)}
+          onSubmit={(title) => {
+            void stream.renameThread(renameThread.id, title).then((ok) => {
+              if (ok) setRenameThreadId(null);
             });
           }}
         />

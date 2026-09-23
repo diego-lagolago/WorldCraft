@@ -45,7 +45,7 @@ export type MembershipRow = {
 
 export type AuthzFail = {
   ok: false;
-  status: 400 | 401 | 403 | 404 | 409;
+  status: 400 | 401 | 403 | 404 | 409 | 422;
   error: string;
 };
 

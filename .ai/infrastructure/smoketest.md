@@ -161,3 +161,22 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 | MK.8 | **Auge-Sichtbarkeit:** Toggle wirkt weiterhin nur auf die **aktuell gewählte** Karte | Prod | **bestanden** | Owner 2026-09-23. |
 | MK.9 | **Non-Staff:** keine Anlegen-/Löschen-/Upload-Controls (oder klare Ablehnung) | Prod | **bestanden** | Owner 2026-09-23. |
 | MK.10 | **Optional Realtime:** zweiter User sieht Kartenwechsel / neuen Pin auf derselben Karte nach Drop | Prod | **bestanden** | Owner 2026-09-23. |
+
+---
+
+## Plan 007 – Chat-Verbesserungen (lokal)
+
+**Zweck:** Owner-Checkliste für Ausrichtung, Avatare, Bearbeiten, Kopieren, Lösch-Bestätigung, Thread-Umbenennen, Aufklapp-Zustand.  
+**Umgebung:** Lokal `http://localhost:3000` mit Test-Login (zwei Browser / zwei Seeds).  
+**Ergebnis je Zeile:** bestanden / nicht bestanden / offen
+
+| # | Kriterium | Wo | Ergebnis | Beobachtung |
+|---|---|---|---|---|
+| C7.1 | **Eigene Nachrichten rechts**, fremde links (auch in Threads) | Lokal | offen | |
+| C7.2 | **Statische Avatare:** animierte Discord-GIFs stehen still | Lokal | offen | |
+| C7.3 | **Bearbeiten:** nur eigene Textnachrichten; „(bearbeitet)“; Würfel/Eröffnung ohne ✏️; Realtime beim anderen | Lokal | offen | |
+| C7.4 | **Kopieren:** Text = Markdown-Rohtext; Würfel formatiert; Eröffnung = Thread-Titel; Toast „Kopiert“ | Lokal | offen | |
+| C7.5 | **Löschen:** Dialog mit Vorschau; Abbrechen/Esc behält; Shift+🗑 sofort | Lokal | offen | |
+| C7.6 | **Thread umbenennen:** ⋯ nur Ersteller/SL; Titel in Kanalliste, Karte und Kopf live | Lokal | offen | |
+| C7.7 | **Aufklapp merken:** Kanal auf/zu, Reload behält Zustand | Lokal | offen | |
+| C7.8 | **Desktop:** Schnellaktionen bei Hover/Fokus; **Touch:** nach Antippen | Lokal | offen | |

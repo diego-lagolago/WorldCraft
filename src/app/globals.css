@@ -832,7 +832,7 @@ textarea {
 }
 
 .chan-name,
-.thr button {
+.thr-name {
   flex: 1;
   display: flex;
   align-items: center;
@@ -846,7 +846,7 @@ textarea {
   cursor: pointer;
 }
 
-.thr button {
+.thr-name {
   font-weight: 500;
   font-size: 14px;
   color: #d6d2cb;
@@ -879,7 +879,7 @@ textarea {
 
 .more,
 .cb,
-.del {
+.msg-act {
   display: grid;
   place-items: center;
   background: none;
@@ -923,8 +923,14 @@ textarea {
 }
 
 .chat .msg {
+  position: relative;
   display: flex;
   gap: 10px;
+  align-items: flex-start;
+}
+
+.chat .msg.mine {
+  flex-direction: row-reverse;
 }
 
 .chat .msg .body {
@@ -932,9 +938,22 @@ textarea {
   flex: 1;
 }
 
+.chat .msg.mine .body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
 .chat .msg .who {
   font-weight: 700;
   font-size: 14px;
+}
+
+.chat .msg.mine .who {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: baseline;
+  gap: 6px;
 }
 
 .chat .msg .when {
@@ -944,11 +963,34 @@ textarea {
   color: var(--muted);
 }
 
+.chat .msg.mine .when {
+  margin-left: 0;
+}
+
+.chat .msg .edited {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 4px;
+  font-weight: 400;
+}
+
+.chat .msg.mine .edited {
+  margin-left: 0;
+  margin-right: 4px;
+}
+
 .chat .msg .txt {
   font-size: 15px;
   line-height: 1.45;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+  border-radius: 10px;
+}
+
+.chat .msg.mine .txt,
+.chat .msg.mine .dice,
+.chat .msg.mine .thread-card {
+  background: rgb(245 184 61 / 7%);
 }
 
 .chat .dice {
@@ -978,12 +1020,76 @@ textarea {
   cursor: pointer;
 }
 
-.del {
+.msg-actions {
+  display: flex;
+  gap: 2px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+  z-index: 2;
+}
+
+.chat .msg.mine .msg-actions {
+  right: auto;
+  left: 0;
+}
+
+.msg-act {
   width: 32px;
   height: 32px;
-  margin-left: auto;
   border-radius: 8px;
+  font-size: 15px;
   flex: none;
+}
+
+.msg-act:active {
+  background: var(--panel2);
+}
+
+.msg-edit {
+  width: 100%;
+  max-width: 420px;
+  text-align: left;
+}
+
+.msg-edit-in {
+  min-height: 72px;
+  max-height: 200px;
+  width: 100%;
+  resize: vertical;
+}
+
+.confirm-preview {
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+
+.confirm-actions {
+  margin-top: 14px;
+  gap: 10px;
+}
+
+@media (hover: hover) {
+  .chat .msg:hover .msg-actions,
+  .chat .msg:focus-within .msg-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (hover: none) {
+  .chat .msg.selected .msg-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .msg-act {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 .composer {

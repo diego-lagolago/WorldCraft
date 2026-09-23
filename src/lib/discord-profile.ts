@@ -17,6 +17,25 @@ export type MappedDiscordUser = {
 };
 
 /**
+ * Rewrites animated Discord CDN avatars (…/a_….gif) to a static PNG.
+ * Leaves other hosts and non-gif paths unchanged. Query strings are kept.
+ */
+export function staticDiscordAvatar(
+  url: string | undefined | null,
+): string | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== "cdn.discordapp.com") return url;
+    if (!/\.gif$/i.test(parsed.pathname)) return url;
+    parsed.pathname = parsed.pathname.replace(/\.gif$/i, ".png");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+/**
  * Maps a Discord profile onto WorldCraft user fields.
  * Rejects missing email — no placeholder for real Discord accounts.
  */
@@ -34,7 +53,7 @@ export function mapDiscordProfileToUser(
   return {
     name,
     email,
-    image: profile.image_url,
+    image: staticDiscordAvatar(profile.image_url),
     discordId: profile.id,
   };
 }

@@ -189,6 +189,154 @@ describe("Produkt-Chat", () => {
     });
     expect(reply.status).toBe(201);
   });
+
+  it("lets the author edit a text message and rejects forbidden edits", async () => {
+    const state = await chat(gm);
+    const channelId = state.data.channel?.id as string;
+    const mine = await chat(playerA, "", "POST", { body: "bearbeit mich", channelId });
+    expect(mine.status).toBe(201);
+    const messageId = mine.data.message?.id as string;
+
+    const edited = await api<{ message: ChatMessageDto }>(
+      playerA,
+      "PATCH",
+      `/api/worlds/${worldId}/chat/messages/${messageId}`,
+      { body: "bearbeitet" },
+    );
+    expect(edited.status).toBe(200);
+    expect(edited.data.message.body).toBe("bearbeitet");
+    expect(edited.data.message.editedAt).toBeTruthy();
+
+    expect(
+      (await api(gm, "PATCH", `/api/worlds/${worldId}/chat/messages/${messageId}`, { body: "gm" })).status,
+    ).toBe(403);
+    expect(
+      (await api(master, "PATCH", `/api/worlds/${worldId}/chat/messages/${messageId}`, { body: "m" })).status,
+    ).toBe(403);
+    expect(
+      (await api(playerA, "PATCH", `/api/worlds/${worldId}/chat/messages/${messageId}`, { body: "" })).status,
+    ).toBe(422);
+    expect(
+      (
+        await api(playerA, "PATCH", `/api/worlds/${worldId}/chat/messages/${messageId}`, {
+          body: "x".repeat(2001),
+        })
+      ).status,
+    ).toBe(422);
+    const rollDenied = await api<{ error?: string }>(
+      playerA,
+      "PATCH",
+      `/api/worlds/${worldId}/chat/messages/${messageId}`,
+      { body: "/r 1d20" },
+    );
+    expect(rollDenied.status).toBe(422);
+    expect(rollDenied.data.error).toMatch(/Würfelbefehle/);
+
+    const after = await chat(playerA);
+    const still = after.data.messages?.find((row) => row.id === messageId);
+    expect(still?.body).toBe("bearbeitet");
+
+    await api(gm, "PATCH", `/api/worlds/${worldId}/chat/settings`, { dicePostToChat: true });
+    const dice = await chat(playerA, "", "POST", {
+      kind: "roll",
+      terms: [{ n: 1, m: 20 }],
+      channelId,
+    });
+    const diceId = (dice.data as { message?: ChatMessageDto }).message?.id as string;
+    expect(
+      (await api(playerA, "PATCH", `/api/worlds/${worldId}/chat/messages/${diceId}`, { body: "x" })).status,
+    ).toBe(422);
+
+    const opened = await api<{ thread: { id: string }; message: ChatMessageDto }>(
+      playerA,
+      "POST",
+      `/api/worlds/${worldId}/chat/threads`,
+      { channelId, title: "Edit-Thread" },
+    );
+    expect(
+      (
+        await api(playerA, "PATCH", `/api/worlds/${worldId}/chat/messages/${opened.data.message.id}`, {
+          body: "x",
+        })
+      ).status,
+    ).toBe(422);
+  });
+
+  it("renames threads for creator and staff; rejects others and bad titles", async () => {
+    const state = await chat(gm);
+    const channelId = state.data.channel?.id as string;
+    const created = await api<{ thread: { id: string; title: string }; message: ChatMessageDto }>(
+      playerA,
+      "POST",
+      `/api/worlds/${worldId}/chat/threads`,
+      { channelId, title: "Umbenenn-Mich" },
+    );
+    expect(created.status).toBe(201);
+    expect(created.data.message.body).toBeNull();
+
+    const byCreator = await api<{ thread: { title: string } }>(
+      playerA,
+      "PATCH",
+      `/api/worlds/${worldId}/chat/threads/${created.data.thread.id}`,
+      { title: "Von Player" },
+    );
+    expect(byCreator.status).toBe(200);
+    expect(byCreator.data.thread.title).toBe("Von Player");
+
+    const byStaff = await api<{ thread: { title: string } }>(
+      gm,
+      "PATCH",
+      `/api/worlds/${worldId}/chat/threads/${created.data.thread.id}`,
+      { title: "Von GM" },
+    );
+    expect(byStaff.status).toBe(200);
+    expect(byStaff.data.thread.title).toBe("Von GM");
+
+    expect(
+      (
+        await api(master, "PATCH", `/api/worlds/${worldId}/chat/threads/${created.data.thread.id}`, {
+          title: "von Master ok",
+        })
+      ).status,
+    ).toBe(200);
+
+    const foreign = await api<{ thread: { id: string } }>(
+      master,
+      "POST",
+      `/api/worlds/${worldId}/chat/threads`,
+      { channelId, title: "Master-Thread" },
+    );
+    expect(
+      (
+        await api(playerA, "PATCH", `/api/worlds/${worldId}/chat/threads/${foreign.data.thread.id}`, {
+          title: "hack",
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await api(playerA, "PATCH", `/api/worlds/${worldId}/chat/threads/${created.data.thread.id}`, {
+          title: "",
+        })
+      ).status,
+    ).toBe(422);
+    expect(
+      (
+        await api(playerA, "PATCH", `/api/worlds/${worldId}/chat/threads/${created.data.thread.id}`, {
+          title: "x".repeat(81),
+        })
+      ).status,
+    ).toBe(422);
+
+    const [{ badOpener }] = await sql<{ badOpener: boolean }[]>`
+      SELECT EXISTS (
+        SELECT 1 FROM chat_messages
+        WHERE opens_thread_id IS NOT NULL AND body IS NOT NULL
+          AND world_id = ${worldId}
+      ) AS "badOpener"
+    `;
+    expect(badOpener).toBe(false);
+  });
 });
 
 

@@ -85,6 +85,27 @@
       "when": 1790160000000,
       "tag": "0015_quest_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790161000000,
+      "tag": "0016_static_avatars",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790162000000,
+      "tag": "0017_chat_edited_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790163000000,
+      "tag": "0018_chat_opener_body",
+      "breakpoints": true
     }
   ]
 }

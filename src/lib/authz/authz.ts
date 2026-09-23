@@ -300,6 +300,38 @@ export function authorizeDeleteChatMessage(
   return fail(403, "Nur der Autor oder die Spielleitung darf diese Nachricht löschen.");
 }
 
+/** APP-CHAT-EDIT: only the author may edit; dice and thread openers are rejected with 422. */
+export function authorizeEditChatMessage(
+  actor: MembershipRow | null,
+  message: { authorId: string; hasDice: boolean; opensThread: boolean } | null,
+): AuthzResult<true> {
+  const denied = denyIfNoMembership(actor);
+  if (denied || !actor) return denied ?? fail(403, "Kein aktives Mitglied dieser Welt.");
+  if (!message) return fail(404, "Diese Nachricht gibt es nicht.");
+  if (message.hasDice) {
+    return fail(422, "Würfelwürfe können nicht bearbeitet werden.");
+  }
+  if (message.opensThread) {
+    return fail(422, "Eröffnungsnachrichten können nicht bearbeitet werden.");
+  }
+  if (message.authorId !== actor.userId) {
+    return fail(403, "Nur der Autor darf diese Nachricht bearbeiten.");
+  }
+  return ok(true);
+}
+
+/** APP-THREAD-RENAME: creator or staff may rename a thread title. */
+export function authorizeRenameChatThread(
+  actor: MembershipRow | null,
+  thread: { createdBy: string } | null,
+): AuthzResult<true> {
+  const denied = denyIfNoMembership(actor);
+  if (denied || !actor) return denied ?? fail(403, "Kein aktives Mitglied dieser Welt.");
+  if (!thread) return fail(404, "Diesen Thread gibt es nicht.");
+  if (thread.createdBy === actor.userId || isStaff(actor.role)) return ok(true);
+  return fail(403, "Nur der Ersteller oder die Spielleitung darf diesen Thread umbenennen.");
+}
+
 /** CR-003: world title image — any active member of that world. */
 export function canReadWorldTitleFile(membership: MembershipRow | null): boolean {
   return denyIfNoMembership(membership) === null;

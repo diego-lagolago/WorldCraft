@@ -409,14 +409,16 @@ Regel: Nur der Besitzer des Charakters schreibt, bearbeitet und löscht Einträg
 |---|---|:-:|---|
 | Welt | Welt | ✅ | |
 | Autor | Benutzer | ✅ | |
-| Text | Klartext, max. 2000 | ✅ | |
+| Text | Klartext, max. 2000 | – | Pflicht bei normalen Nachrichten; leer bei Eröffnungsnachricht eines Threads (Titel nur am Thread, Plan `007`) |
 | Würfelwurf | Ausdruck, Einzelwerte je Würfel, Summe | – | nur vom Server gesetzt |
 | Gesendet am | Zeitpunkt | ✅ | |
+| Bearbeitet am | Zeitpunkt | – | gesetzt, sobald der Autor den Text geändert hat (Plan `007`) |
 
-Regeln (OF-03):
-- Nachrichten erscheinen immer unter dem **Benutzer** (Anzeigename und Avatar), nicht unter einem Charakter.
-- Nachrichten können nicht bearbeitet werden.
-- Der Autor kann eigene Nachrichten löschen, die Spielleitung alle. **Ausnahme:** Nachrichten mit Würfelwurf darf nur die Spielleitung löschen.
+Regeln (OF-03, erweitert Plan `007`, 2026-09-23):
+- Nachrichten erscheinen immer unter dem **Benutzer** (Anzeigename und Avatar), nicht unter einem Charakter. Profilbilder sind immer statisch (keine animierten Discord-GIFs).
+- Der **Autor** kann eigene Textnachrichten bearbeiten (kein Würfelwurf, keine Eröffnungsnachricht, kein nachträglicher Würfelbefehl). Bearbeitete Nachrichten tragen „(bearbeitet)“.
+- Der Autor kann eigene Nachrichten löschen, die Spielleitung alle. **Ausnahme:** Nachrichten mit Würfelwurf darf nur die Spielleitung löschen. Eröffnungsnachrichten sind nicht löschbar.
+- Thread-Titel umbenennen: Ersteller des Threads oder Spielleitung.
 - Gelöschte Nachrichten werden endgültig entfernt (kein Platzhalter).
 
 ---
@@ -456,7 +458,7 @@ Umsetzung der Rechtematrix aus Plan 001. „Spielleitung“ = Game Master + Mast
 | Quest-Notizblock | wer die Quest sehen darf | Lesen und Schreiben: alle, die die Quest sehen |
 | Relation | wer Quelle **und** Ziel sehen darf | automatische: nie direkt; manuelle: Spielleitung |
 | Tagebucheintrag | `privat`: Besitzer; `geteilt`: Besitzer + Spielleitung der Welt | nur Besitzer |
-| Chat-Nachricht | Mitglieder | Schreiben: Mitglieder; Bearbeiten: niemand; Löschen: Autor (eigene) und Spielleitung (alle); Würfelwürfe nur Spielleitung |
+| Chat-Nachricht | Mitglieder | Schreiben: Mitglieder; Bearbeiten: nur Autor (Textnachrichten ohne Würfelwurf/Eröffnungsnachricht, Plan `007`); Löschen: Autor (eigene) und Spielleitung (alle); Würfelwürfe nur Spielleitung; Thread umbenennen: Ersteller oder Spielleitung |
 
 ---
 
@@ -476,7 +478,7 @@ Umsetzung der Rechtematrix aus Plan 001. „Spielleitung“ = Game Master + Mast
 |---|---|---|---|
 | OF-01 | Laufen Einladungslinks ab, und/oder sind sie in der Anzahl der Nutzungen begrenzt? | 3.4 | ✅ Ablauf wählbar (1 Tag / 7 Tage / unbegrenzt), Nutzungen unbegrenzt |
 | OF-02 | Gibt es den Status `nur Spielleitung` auch für Quests, Pins, Universen/Karten (z. B. versteckter Dungeon)? Welcher Standardwert gilt für neue Artikel? | 2.2, 3.7, 3.11, 3.13 | ✅ Ursprünglich zweistufig für alle; **ersetzt durch Plan `004` (2026-09-23):** Artikel/Quests/Pins/Kapitel dreistufig, Default `nur ich`; Universen/Karten bleiben zweistufig, Default `nur Spielleitung` |
-| OF-03 | Chat: Dürfen Nachrichten bearbeitet/gelöscht werden (von wem)? Schreibt man als Benutzer oder als aktiver Charakter? | 3.16 | ✅ als Benutzer; kein Bearbeiten; Löschen eigener bzw. durch Spielleitung, Würfe nie |
+| OF-03 | Chat: Dürfen Nachrichten bearbeitet/gelöscht werden (von wem)? Schreibt man als Benutzer oder als aktiver Charakter? | 3.16 | ✅ als Benutzer; Bearbeiten: nur Autor (Textnachrichten), siehe Plan `007` (2026-09-23); Löschen eigener bzw. durch Spielleitung, Würfe nur Spielleitung |
 | OF-04 | Charakter-Marker: Entsteht er automatisch beim Aktivsetzen (wo?) oder setzt ihn jemand bewusst auf die Karte? Was passiert beim Deaktivieren? | 3.10 | ✅ Platzieren durch Besitzer oder Spielleitung; bei Deaktivierung ausgeblendet, nicht gelöscht (Deaktivierung überholt, siehe Änderung 2026-09-22 oben) |
 | OF-05 | Was passiert mit Welt-Teilnahmen, Markern, Tagebucheinträgen und Quest-Beteiligungen, wenn ein Charakter gelöscht wird oder sein Besitzer die Welt verlässt? | 4 | ✅ Austritt archiviert; Löschen des Charakters löscht Tagebuch, Name bleibt in Quests |
 | OF-06 | Reichen automatisch abgeleitete Relationen, oder braucht es manuelle Relationen mit eigener Bezeichnung (z. B. „ist verfeindet mit“)? Zählt ein Pin-Verweis als Relation? | 3.14 | ✅ automatisch + manuell mit Bezeichnung; Pins über ihre Beschreibung verknüpft |

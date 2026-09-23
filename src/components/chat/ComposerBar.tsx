@@ -226,3 +226,35 @@ export function NewChannelSheet({ onSubmit, onClose }: { onSubmit: (name: string
     </Sheet>
   );
 }
+
+export function RenameThreadSheet({
+  title,
+  onSubmit,
+  onClose,
+}: {
+  title: string;
+  onSubmit: (title: string) => void;
+  onClose: () => void;
+}) {
+  const [nextTitle, setNextTitle] = useState(title);
+  return (
+    <Sheet title="Thread umbenennen" onClose={onClose}>
+      <div className="stack">
+        <input
+          value={nextTitle}
+          maxLength={80}
+          aria-label="Thread-Titel"
+          onChange={(event) => setNextTitle(event.target.value)}
+        />
+        <button
+          type="button"
+          className="btn primary"
+          disabled={!nextTitle.trim()}
+          onClick={() => onSubmit(nextTitle.trim())}
+        >
+          Speichern
+        </button>
+      </div>
+    </Sheet>
+  );
+}

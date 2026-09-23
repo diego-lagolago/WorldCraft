@@ -3,6 +3,8 @@ import { db } from "@/db/client";
 import { chatChannels, chatMessages, chatThreads, users } from "@/db/schema";
 import {
   authorizeDeleteChatMessage,
+  authorizeEditChatMessage,
+  authorizeRenameChatThread,
   fail,
   isStaff,
   ok,
@@ -13,11 +15,12 @@ import {
 } from "@/lib/authz";
 import { mapDbError } from "@/lib/domain/db-errors";
 import { parseStoredDiceTerms, type StoredDiceTerm } from "@/lib/chat/dice-format";
-import type { RolledDice } from "@/lib/chat/dice";
+import { isRollCommand, type RolledDice } from "@/lib/chat/dice";
 import { worldEvents } from "@/lib/realtime/events";
 import {
   CHANNEL_NAME_MAX,
   CHAT_HISTORY_LIMIT,
+  MESSAGE_MAX,
   THREAD_TITLE_MAX,
   type ChatChannelDto,
   type ChatMessageDto,
@@ -28,6 +31,8 @@ import {
 
 const NAME_TAKEN = "Ein aktiver Kanal mit diesem Namen existiert schon.";
 const LAST_CHANNEL = "Der letzte aktive Kanal kann nicht archiviert werden.";
+const ROLL_EDIT_DENIED =
+  "Würfelbefehle können nicht nachträglich eingefügt werden. Sende sie als neue Nachricht.";
 
 type ChannelRow = typeof chatChannels.$inferSelect;
 
@@ -49,6 +54,7 @@ function toThread(
     channelId: row.channelId,
     title: row.title,
     createdFromMessageId: row.createdFromMessageId,
+    createdBy: row.createdBy,
     replyCount,
     createdAt: row.createdAt.toISOString(),
   };
@@ -62,11 +68,12 @@ type MessageJoin = {
   authorId: string;
   authorName: string;
   authorImage: string | null;
-  body: string;
+  body: string | null;
   diceExpression: string | null;
   diceTerms: unknown;
   diceSum: number | null;
   sentAt: Date;
+  editedAt: Date | null;
 };
 
 function toMessage(row: MessageJoin): ChatMessageDto {
@@ -87,6 +94,7 @@ function toMessage(row: MessageJoin): ChatMessageDto {
       ? { expression: row.diceExpression!, terms, sum: row.diceSum! }
       : null,
     sentAt: row.sentAt.toISOString(),
+    editedAt: row.editedAt?.toISOString() ?? null,
   };
 }
 
@@ -104,6 +112,7 @@ function messageSelect() {
     diceTerms: chatMessages.diceTerms,
     diceSum: chatMessages.diceSum,
     sentAt: chatMessages.sentAt,
+    editedAt: chatMessages.editedAt,
   };
 }
 
@@ -409,7 +418,7 @@ export async function createThreadWithOpening(input: {
         .returning({ id: chatThreads.id });
       await tx
         .update(chatMessages)
-        .set({ opensThreadId: thread.id })
+        .set({ opensThreadId: thread.id, body: null })
         .where(eq(chatMessages.id, message.id));
       return { messageId: message.id, threadId: thread.id };
     });
@@ -463,6 +472,90 @@ export async function deleteChatMessage(input: {
     threadId: row.threadId,
   });
   return ok({ messageId: row.id });
+}
+
+export async function editChatMessage(input: {
+  worldId: string;
+  messageId: string;
+  membership: MembershipRow;
+  body: string;
+}): Promise<AuthzResult<{ message: ChatMessageDto }>> {
+  const [row] = await db
+    .select({
+      id: chatMessages.id,
+      authorId: chatMessages.authorId,
+      opensThreadId: chatMessages.opensThreadId,
+      diceExpression: chatMessages.diceExpression,
+      worldId: chatMessages.worldId,
+    })
+    .from(chatMessages)
+    .where(eq(chatMessages.id, input.messageId))
+    .limit(1);
+  if (!row || row.worldId !== input.worldId) return fail(404, "Diese Nachricht gibt es nicht.");
+  const allowed = authorizeEditChatMessage(input.membership, {
+    authorId: row.authorId,
+    hasDice: row.diceExpression != null,
+    opensThread: row.opensThreadId != null,
+  });
+  if (!allowed.ok) return allowed;
+
+  const body = input.body.trim();
+  if (!body) return fail(422, "Zum Entfernen löschen.");
+  if (body.length > MESSAGE_MAX) {
+    return fail(422, `Die Nachricht darf höchstens ${MESSAGE_MAX} Zeichen haben.`);
+  }
+  if (isRollCommand(body)) return fail(422, ROLL_EDIT_DENIED);
+
+  await db
+    .update(chatMessages)
+    .set({ body, editedAt: new Date() })
+    .where(eq(chatMessages.id, row.id));
+  const message = await fetchMessage(row.id);
+  if (!message) return fail(404, "Diese Nachricht gibt es nicht.");
+  worldEvents.publish({ type: "chat.message", worldId: input.worldId, message });
+  return ok({ message });
+}
+
+export async function renameChatThread(input: {
+  worldId: string;
+  threadId: string;
+  membership: MembershipRow;
+  actorId: string;
+  title: string;
+}): Promise<AuthzResult<{ thread: ChatThreadDto }>> {
+  const title = input.title.trim();
+  if (!title || title.length > THREAD_TITLE_MAX) {
+    return fail(422, `Der Thread-Titel muss 1 bis ${THREAD_TITLE_MAX} Zeichen haben.`);
+  }
+  const [row] = await db
+    .select({
+      thread: chatThreads,
+      channelWorldId: chatChannels.worldId,
+    })
+    .from(chatThreads)
+    .innerJoin(chatChannels, eq(chatChannels.id, chatThreads.channelId))
+    .where(eq(chatThreads.id, input.threadId))
+    .limit(1);
+  if (!row || row.channelWorldId !== input.worldId) {
+    return fail(404, "Diesen Thread gibt es nicht.");
+  }
+  const allowed = authorizeRenameChatThread(input.membership, {
+    createdBy: row.thread.createdBy,
+  });
+  if (!allowed.ok) return allowed;
+
+  const [updated] = await db
+    .update(chatThreads)
+    .set({ title, updatedAt: new Date(), updatedBy: input.actorId })
+    .where(eq(chatThreads.id, row.thread.id))
+    .returning();
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(chatMessages)
+    .where(eq(chatMessages.threadId, updated.id));
+  const thread = toThread(updated, Number(count));
+  worldEvents.publish({ type: "chat.thread", worldId: input.worldId, thread });
+  return ok({ thread });
 }
 
 export async function createChannel(input: {

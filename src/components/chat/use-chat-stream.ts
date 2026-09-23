@@ -22,12 +22,26 @@ function withMessage(state: ChatState, message: ChatMessageDto): ChatState {
           thread.id === message.threadId ? { ...thread, replyCount: thread.replyCount + 1 } : thread,
         )
       : state.threads;
-  if (!sameStream(state, message) || known) return { ...state, threads };
+  if (!sameStream(state, message)) return { ...state, threads };
+  if (known) {
+    return {
+      ...state,
+      threads,
+      messages: state.messages.map((row) => (row.id === message.id ? message : row)),
+    };
+  }
   return { ...state, threads, messages: [...state.messages, message] };
 }
 
 function withThread(state: ChatState, thread: ChatThreadDto): ChatState {
-  if (state.threads.some((row) => row.id === thread.id)) return state;
+  const known = state.threads.some((row) => row.id === thread.id);
+  if (known) {
+    return {
+      ...state,
+      threads: state.threads.map((row) => (row.id === thread.id ? thread : row)),
+      thread: state.thread?.id === thread.id ? thread : state.thread,
+    };
+  }
   return { ...state, threads: [thread, ...state.threads] };
 }
 
@@ -167,6 +181,20 @@ export function useChatStream(worldId: string, initial: ChatState) {
     );
   }
 
+  async function editMessage(messageId: string, body: string): Promise<boolean> {
+    const res = await apiFetch<{ message: ChatMessageDto }>(
+      `/api/worlds/${worldId}/chat/messages/${messageId}`,
+      { method: "PATCH", body: JSON.stringify({ body }) },
+    );
+    if (!res.ok) {
+      setError(res.error);
+      return false;
+    }
+    setError(null);
+    setState((prev) => (prev ? withMessage(prev, res.data.message) : prev));
+    return true;
+  }
+
   async function createChannel(name: string): Promise<boolean> {
     const res = await apiFetch(`/api/worlds/${worldId}/chat/channels`, {
       method: "POST",
@@ -192,6 +220,23 @@ export function useChatStream(worldId: string, initial: ChatState) {
     }
     setError(null);
     await reload();
+    return true;
+  }
+
+  async function renameThread(threadId: string, title: string): Promise<boolean> {
+    const res = await apiFetch<{ thread: ChatThreadDto }>(
+      `/api/worlds/${worldId}/chat/threads/${threadId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ title }),
+      },
+    );
+    if (!res.ok) {
+      setError(res.error);
+      return false;
+    }
+    setError(null);
+    setState((prev) => (prev ? withThread(prev, res.data.thread) : prev));
     return true;
   }
 
@@ -300,8 +345,10 @@ export function useChatStream(worldId: string, initial: ChatState) {
     roll,
     setPostToChat,
     deleteMessage,
+    editMessage,
     createChannel,
     renameChannel,
+    renameThread,
     archiveChannel,
     restoreChannel,
     moveChannel,

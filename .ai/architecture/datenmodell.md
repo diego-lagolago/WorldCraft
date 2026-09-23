@@ -66,7 +66,7 @@ Relationen verbinden Artikel, Quests, Charaktere, Pins und Universen polymorph (
 |---|---|
 | Primärschlüssel | `users.id` = `text` (Better Auth). Alle übrigen Tabellen: `uuid` mit `gen_random_uuid()`. |
 | Zeit | `timestamptz`, Default `now()` |
-| Protokollfelder (fachl. 2.6) | `created_at`, `created_by` → `users.id`, `updated_at`, `updated_by` → `users.id`. Pflicht auf allen vom Benutzer bearbeitbaren Inhalten außer Chat-Nachrichten (nur `sent_at` + `author_id`, nicht editierbar). Kanäle und Threads haben Protokollfelder. |
+| Protokollfelder (fachl. 2.6) | `created_at`, `created_by` → `users.id`, `updated_at`, `updated_by` → `users.id`. Pflicht auf allen vom Benutzer bearbeitbaren Inhalten. Chat-Nachrichten haben `sent_at` + `author_id` und bei Bearbeitung `edited_at` (Plan `007`, 2026-09-23) — kein vollständiges `updated_*`-Paar. Kanäle und Threads haben Protokollfelder. |
 | Rich-Text (fachl. 2.3, ADR-004) | `*_json jsonb` (TipTap-Dokument) plus `*_plain text` (abgeleiteter Klartext für Suche). Beide zusammen oder beide leer. |
 | Relative Position (fachl. 2.7) | `pos_x`, `pos_y` als `numeric(8,7)` mit `CHECK (… >= 0 AND … <= 1)`. Sieben Nachkommastellen, fachlich mindestens sechs. |
 | Dateien | Zeile in `files` plus Objekt auf Volume. MIME und Größe in der Anwendung, nicht nur in der DB. |
@@ -119,7 +119,7 @@ Größenlimits in der Anwendung, nicht als eine globale CHECK-Klausel (Karten 20
 | `name` | text | ✅ | Anzeigename, max. 100 (`CHECK (char_length(name) BETWEEN 1 AND 100)`), bei jedem Login aus Discord aktualisiert (`APP-USER-SYNC`) |
 | `email` | text | ✅ | `NOT NULL UNIQUE`. Discord: bei jedem Login aus dem Profil übernommen (`APP-USER-SYNC`). Liefert Discord keine Adresse, wird das Login abgelehnt (`APP-LOGIN-REQUIRE-EMAIL`) — kein Platzhalter für echte Discord-Benutzer. Test-Login: feste synthetische Adressen (Abschnitt 3.1.1). Siehe Abschnitt 13 A. |
 | `email_verified` | boolean | ✅ | Better Auth, Default false |
-| `image` | text | – | Avatar-URL von Discord, bei jedem Login aktualisiert (`APP-USER-SYNC`) |
+| `image` | text | – | Avatar-URL von Discord, bei jedem Login aktualisiert (`APP-USER-SYNC`). Animierte Discord-Avatare (`cdn.discordapp.com`, Endung `.gif`) werden beim Sync und per Migration auf `.png` umgeschrieben (`APP-AVATAR-STATIC`, Plan `007`, 2026-09-23) — die UI zeigt nie animierte Profilbilder. |
 | `discord_id` | text | ✅ | eindeutig. Echte Discord-Snowflake oder `test-…` (T-008) |
 | `last_login_at` | timestamptz | ✅ | |
 | `created_at` | timestamptz | ✅ | = Registriert am |
@@ -481,11 +481,11 @@ Abweichung vom fachlichen Modell: eine Welt hat einen oder mehrere Kanäle, nich
 |---|---|:-:|---|
 | `id` | uuid PK | ✅ | |
 | `channel_id` | uuid FK `chat_channels` ON DELETE CASCADE | ✅ | genau ein Kanal |
-| `title` | text | ✅ | max. 80 |
-| `created_from_message_id` | uuid FK `chat_messages` | ✅ | Eröffnungsnachricht im Hauptstrom; dieselbe Transaktion (`APP-THREAD-OPEN`) |
+| `title` | text | ✅ | max. 80 (`THREAD_TITLE_MAX`); einzige Quelle für den Thread-Titel (Plan `007`, 2026-09-23) |
+| `created_from_message_id` | uuid FK `chat_messages` | ✅ | Eröffnungsnachricht im Hauptstrom; dieselbe Transaktion (`APP-THREAD-OPEN`); Eröffnungsnachricht hat `body` leer, Titel nur hier |
 | Protokollfelder | | ✅ | |
 
-Threads werden im MVP nicht einzeln archiviert oder gelöscht. Archiviert der Kanal, verschwinden seine Threads mit ihm aus der Liste.
+Threads werden im MVP nicht einzeln archiviert oder gelöscht. Umbenennen: Ersteller (`created_by`) oder Spielleitung (`APP-THREAD-RENAME`, Plan `007`, 2026-09-23). Archiviert der Kanal, verschwinden seine Threads mit ihm aus der Liste.
 
 #### `chat_messages` (Chat-Nachricht)
 
@@ -495,15 +495,16 @@ Threads werden im MVP nicht einzeln archiviert oder gelöscht. Archiviert der Ka
 | `world_id` | uuid FK `worlds` ON DELETE CASCADE | ✅ | bleibt; dieselbe Welt wie der Kanal |
 | `channel_id` | uuid FK `chat_channels` | ✅ | |
 | `thread_id` | uuid FK `chat_threads` | – | leer = Hauptstrom des Kanals |
-| `opens_thread_id` | uuid FK `chat_threads` | – | optional, eindeutig. Die Nachricht bleibt im Hauptstrom (`thread_id` leer) und eröffnet den Thread |
+| `opens_thread_id` | uuid FK `chat_threads` | – | optional, eindeutig. Die Nachricht bleibt im Hauptstrom (`thread_id` leer) und eröffnet den Thread; `body` dann leer (C8) |
 | `author_id` | text FK `users` | ✅ | Anzeige immer als Benutzer |
-| `body` | text | ✅ | Klartext, max. 2000 |
+| `body` | text | – | Klartext, max. 2000; `NULL` genau dann, wenn `opens_thread_id` gesetzt (`CHK-OPENER-BODY`, Plan `007`, 2026-09-23) |
 | `dice_expression` | text | – | nur Server (`APP-DICE-SERVER`) |
 | `dice_terms` | jsonb | – | Würfe **pro Term**, z. B. `[{ "sides": 20, "sign": 1, "values": [15] }, { "modifier": -1 }]`. Ersetzt eine flache Werteliste |
 | `dice_sum` | integer | – | |
 | `sent_at` | timestamptz | ✅ | |
+| `edited_at` | timestamptz | – | gesetzt = Nachricht wurde bearbeitet; Anzeige „(bearbeitet)“ (Plan `007`, 2026-09-23) |
 
-Kein `updated_*`. `UQ-MSG-OPENS-THREAD`: `opens_thread_id` eindeutig, wo gesetzt (mehrere `NULL` bleiben erlaubt). Würfelwurf = `dice_expression`, `dice_terms` und `dice_sum` gemeinsam gesetzt. `CHK-DICE-SHAPE`: alle drei Dice-Spalten gesetzt oder alle drei leer. Löschen: physisches DELETE; Würfelwürfe nur durch Spielleitung (`APP-CHAT-DELETE`). Eine Nachricht, die einen Thread eröffnet (`opens_thread_id` gesetzt), ist ebenfalls nicht löschbar.
+Kein vollständiges `updated_*`-Paar — bei Bearbeitung nur `edited_at` (`APP-CHAT-EDIT`). `UQ-MSG-OPENS-THREAD`: `opens_thread_id` eindeutig, wo gesetzt (mehrere `NULL` bleiben erlaubt). `CHK-OPENER-BODY`: `body IS NULL` genau dann, wenn `opens_thread_id IS NOT NULL`. Würfelwurf = `dice_expression`, `dice_terms` und `dice_sum` gemeinsam gesetzt. `CHK-DICE-SHAPE`: alle drei Dice-Spalten gesetzt oder alle drei leer. Bearbeiten: nur Autor, nur Textnachrichten ohne Würfelwurf und ohne `opens_thread_id`, Text 1–2000 Zeichen, kein Würfelbefehl (`APP-CHAT-EDIT`). Löschen: physisches DELETE; Würfelwürfe nur durch Spielleitung (`APP-CHAT-DELETE`). Eine Nachricht, die einen Thread eröffnet (`opens_thread_id` gesetzt), ist weder bearbeitbar noch löschbar.
 
 ---
 
@@ -532,7 +533,7 @@ Jede Eigenschaft aus `.ai/architecture/datenmodell-fachlich.md`. Nichts ausgelas
 |---|---|
 | Discord-ID | `users.discord_id` UNIQUE |
 | Anzeigename | `users.name` |
-| Avatar | `users.image` (URL) |
+| Avatar | `users.image` (URL, statisch via `APP-AVATAR-STATIC`) |
 | E-Mail | `users.email` `NOT NULL UNIQUE` (fachlich optional → Pflicht, Abschnitt 13 A) |
 | Registriert am | `users.created_at` |
 | Letzter Login | `users.last_login_at` |
@@ -690,8 +691,10 @@ Jede Eigenschaft aus `.ai/architecture/datenmodell-fachlich.md`. Nichts ausgelas
 | Fachlich | Schema |
 |---|---|
 | Welt / Autor / Text / Gesendet am | `chat_messages.world_id`, `author_id`, `body`, `sent_at` |
+| Bearbeitet am | `chat_messages.edited_at` (Plan `007`) |
 | Würfelwurf Ausdruck / Terme / Summe | `dice_expression`, `dice_terms`, `dice_sum` |
 | Kanal, Thread | Abweichung, siehe Abschnitt 13 B und 3.17 (`chat_channels`, `chat_threads`, `channel_id`, `thread_id`) |
+| Thread-Titel | nur `chat_threads.title` (Eröffnungsnachricht `body` leer) |
 
 ---
 
@@ -769,10 +772,12 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 | R-3.15-2 | Erwähnungen ohne Relationen | `APP-JOURNAL-NO-REL` |
 | R-3.15-3 | Nur Besitzer schreibt | `APP-AUTHZ` |
 | R-3.16-1 | Anzeige unter Benutzer | nur `author_id`, keine Charakter-FK |
-| R-3.16-2 | Nicht bearbeitbar | kein Update-Pfad |
+| R-3.16-2 | Bearbeiten nur Autor, nur Textnachrichten (kein Würfelwurf, keine Eröffnungsnachricht, kein Würfelbefehl) | `APP-CHAT-EDIT` setzt `edited_at` (Plan `007`, 2026-09-23; ersetzt frühere „nicht editierbar“-Aussage) |
 | R-3.16-3 | Löschen Autor/Spielleitung; Würfel nur Spielleitung | `APP-CHAT-DELETE` |
 | R-3.16-4 | Gelöscht = weg | physisches DELETE |
 | R-3.16-5 | Würfel nur Server | `APP-DICE-SERVER` ignoriert Client-Ergebnisse |
+| R-3.16-6 | Thread umbenennen: Ersteller oder Spielleitung | `APP-THREAD-RENAME` (Plan `007`, 2026-09-23) |
+| R-3.16-7 | Eröffnungsnachricht: `body` leer, Titel nur in `chat_threads.title` | `CHK-OPENER-BODY` (Plan `007`, 2026-09-23) |
 
 **Datenebene (Abnahmekriterium 2) — die drei Pflicht-Uniques:**
 
@@ -1085,7 +1090,10 @@ Default neuer Inhalte: Artikel/Quest/Kapitel/Pin → `owner_only`; Universum/Kar
 |---|---|
 | `APP-WORLD-CREATE` | INSERT world → membership (`game_master`, kein Invite) → universe (`Hauptuniversum`, `published`, `sort_order = 0`) → Kanal „Allgemein“ (`sort_order = 0`) |
 | `APP-CHANNEL-LAST` | Archivieren ablehnen, wenn der Kanal der letzte aktive der Welt ist |
-| `APP-THREAD-OPEN` | Thread, Eröffnungsnachricht (`opens_thread_id`) und `created_from_message_id` in einer Transaktion |
+| `APP-THREAD-OPEN` | Thread, Eröffnungsnachricht (`opens_thread_id`, `body` leer) und `created_from_message_id` in einer Transaktion; Titel nur in `chat_threads.title` |
+| `APP-THREAD-RENAME` | Thread-Titel ändern (1–80 Zeichen); nur Ersteller (`created_by`) oder Spielleitung; setzt `updated_at/by` (Plan `007`, 2026-09-23) |
+| `APP-CHAT-EDIT` | Nachrichtentext ändern; nur Autor; nur ohne Würfelwurf und ohne `opens_thread_id`; Text 1–2000 Zeichen, kein Würfelbefehl (`isRollCommand`); setzt `edited_at` (Plan `007`, 2026-09-23) |
+| `APP-AVATAR-STATIC` | Discord-Avatar-URLs auf `cdn.discordapp.com` mit Endung `.gif` auf `.png` umschreiben (Login-Sync und Migration; Plan `007`, 2026-09-23) |
 | `APP-INVITE-JOIN` | gültigen Link prüfen → bestehende aktive Mitgliedschaft: no-op → archivierte: `archived_at` leeren, Rolle `player` → sonst INSERT player; `use_count++` |
 | `APP-MEMBER-ARCHIVE` | Mitgliedschaft archivieren; alle eigenen `world_participations` der Welt archivieren; Marker/Relationen/Tagebuch unverändert |
 | `APP-PART-REACTIVATE` | archivierte Teilnahme finden und leeren, sonst INSERT |

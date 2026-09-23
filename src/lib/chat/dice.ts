@@ -145,11 +145,11 @@ export function parseStructuredRoll(input: StructuredRoll): ParseResult {
 }
 
 export function isRollCommand(body: string): boolean {
-  return /^\s*\/roll(?:\s|$)/i.test(body);
+  return /^\s*\/(?:roll|r)(?:\s|$)/i.test(body);
 }
 
 export function extractRollExpression(body: string): string {
-  return body.replace(/^\s*\/roll\s*/i, "");
+  return body.replace(/^\s*\/(?:roll|r)\s*/i, "");
 }
 
 export function rollTerms(parsed: ParseOk, randomFace: (sides: number) => number): RolledDice {

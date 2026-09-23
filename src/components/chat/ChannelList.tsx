@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import type { ChatChannelDto, ChatThreadDto } from "@/lib/chat/types";
+import { readExpanded, writeExpanded } from "@/lib/client/chat-expanded";
 
 type Props = {
   channels: ChatChannelDto[];
@@ -9,10 +10,12 @@ type Props = {
   archived: ChatChannelDto[];
   currentChannelId: string | null;
   currentThreadId: string | null;
+  actorId: string;
   staff: boolean;
   onOpenChannel: (channelId: string) => void;
   onOpenThread: (channelId: string, threadId: string) => void;
   onManage: (channelId: string) => void;
+  onManageThread: (threadId: string) => void;
   onCreate: () => void;
   onRestore: (channelId: string) => void;
 };
@@ -23,15 +26,25 @@ export function ChannelList({
   archived,
   currentChannelId,
   currentThreadId,
+  actorId,
   staff,
   onOpenChannel,
   onOpenThread,
   onManage,
+  onManageThread,
   onCreate,
   onRestore,
 }: Props) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => readExpanded());
   const threadChannelId = threads.find((row) => row.id === currentThreadId)?.channelId ?? null;
+
+  function toggleExpanded(channelId: string, currentlyOpen: boolean) {
+    setExpanded((prev) => {
+      const next = { ...prev, [channelId]: !currentlyOpen };
+      writeExpanded(next);
+      return next;
+    });
+  }
 
   return (
     <div className="chan-list">
@@ -56,7 +69,7 @@ export function ChannelList({
                   className={open ? "chev open" : "chev"}
                   aria-expanded={open}
                   aria-label={open ? "Threads zuklappen" : "Threads aufklappen"}
-                  onClick={() => setExpanded((prev) => ({ ...prev, [channel.id]: !open }))}
+                  onClick={() => toggleExpanded(channel.id, open)}
                 >
                   ▶
                 </button>
@@ -80,13 +93,30 @@ export function ChannelList({
               ) : null}
             </div>
             {open
-              ? channelThreads.map((thread) => (
-                  <div key={thread.id} className={thread.id === currentThreadId ? "thr on" : "thr"}>
-                    <button type="button" onClick={() => onOpenThread(channel.id, thread.id)}>
-                      🧵 {thread.title}
-                    </button>
-                  </div>
-                ))
+              ? channelThreads.map((thread) => {
+                  const canManageThread = thread.createdBy === actorId || staff;
+                  return (
+                    <div key={thread.id} className={thread.id === currentThreadId ? "thr on" : "thr"}>
+                      <button
+                        type="button"
+                        className="thr-name"
+                        onClick={() => onOpenThread(channel.id, thread.id)}
+                      >
+                        🧵 {thread.title}
+                      </button>
+                      {canManageThread ? (
+                        <button
+                          type="button"
+                          className="more"
+                          aria-label="Thread verwalten"
+                          onClick={() => onManageThread(thread.id)}
+                        >
+                          ⋯
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })
               : null}
           </div>
         );

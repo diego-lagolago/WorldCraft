@@ -18,6 +18,7 @@ export type ChatThreadDto = {
   channelId: string;
   title: string;
   createdFromMessageId: string;
+  createdBy: string;
   replyCount: number;
   createdAt: string;
 };
@@ -36,9 +37,10 @@ export type ChatMessageDto = {
   authorId: string;
   authorName: string;
   authorImage: string | null;
-  body: string;
+  body: string | null;
   dice: ChatDiceDto | null;
   sentAt: string;
+  editedAt: string | null;
 };
 
 export type ChatState = {

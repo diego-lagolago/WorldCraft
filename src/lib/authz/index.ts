@@ -1,5 +1,7 @@
 export {
   authorizeDeleteChatMessage,
+  authorizeEditChatMessage,
+  authorizeRenameChatThread,
   authorizeJournalWrite,
   authorizeLeave,
   authorizeMarkerAction,

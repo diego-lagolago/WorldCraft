@@ -105,7 +105,13 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 | Kanalverwaltung | Anlegen, umbenennen, Reihenfolge, archivieren/wiederherstellen (Spielleitung) | shipped |
 | Composer | Leerzeichen ohne Cursor-Sprung; Absätze (Shift+Enter) in Nachrichten sichtbar | shipped |
 | Würfel | Serverseitige Auswertung; UI am Prototyp (Grid, fette Summe, Toast) | MVP F10 / shipped |
-| Nachrichten löschen | Autor oder Spielleitung; Würfel nur Spielleitung (Player nicht) | shipped |
+| Nachrichten löschen | Autor oder Spielleitung; Würfel nur Spielleitung (Player nicht); Bestätigungsdialog, Shift = sofort | Plan 007 / shipped |
+| Eigene Nachrichten rechts | Gespiegeltes Layout (`msg mine`), Avatar rechts | Plan 007 / shipped |
+| Statische Avatare | Discord-GIFs → PNG beim Login und Backfill | Plan 007 / shipped |
+| Nachrichten bearbeiten | Nur Autor, Textnachrichten; „(bearbeitet)“; kein Würfelbefehl nachträglich | Plan 007 / shipped |
+| Nachrichten kopieren | Zwischenablage + Toast; Würfel formatiert, Eröffnung = Thread-Titel | Plan 007 / shipped |
+| Thread umbenennen | ⋯ in Kanalliste; Ersteller oder Spielleitung; Titel nur in `chat_threads.title` | Plan 007 / shipped |
+| Kanal-Aufklapp merken | `localStorage` `worldcraft:chat-expanded` | Plan 007 / shipped |
 
 ## Rechte & Sichtbarkeit
 
