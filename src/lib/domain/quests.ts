@@ -14,20 +14,24 @@ import {
   type VisibilityStatus,
 } from "@/lib/authz";
 import { parseUuid } from "@/lib/http";
+import {
+  QUEST_STATUS_LABEL,
+  QUEST_STATUSES,
+  type QuestParticipant,
+  type QuestStatus,
+} from "@/lib/quests/status";
 import { mapDbError } from "./db-errors";
 import { recalcQuestRelations } from "./relations";
 import { richFieldFromInput } from "./rich-field";
 
-export const QUEST_TITLE_MAX = 200;
-export const QUEST_STATUSES = ["open", "active", "completed", "failed"] as const;
-export type QuestStatus = (typeof QUEST_STATUSES)[number];
+export {
+  QUEST_STATUS_LABEL,
+  QUEST_STATUSES,
+  type QuestParticipant,
+  type QuestStatus,
+} from "@/lib/quests/status";
 
-export const QUEST_STATUS_LABEL: Record<QuestStatus, string> = {
-  open: "offen",
-  active: "aktiv",
-  completed: "abgeschlossen",
-  failed: "gescheitert",
-};
+export const QUEST_TITLE_MAX = 200;
 
 export const questTitleSchema = z.string().trim().min(1).max(QUEST_TITLE_MAX);
 export const questStatusSchema = z.enum(QUEST_STATUSES);
@@ -61,13 +65,6 @@ export const questUpdateSchema = z
     participantIds: questFields.participantIds.optional(),
   })
   .refine((value) => Object.keys(value).length > 0);
-
-export type QuestParticipant = {
-  characterId: string | null;
-  characterName: string;
-  /** Link only when the character is still actively brought into the world. */
-  href: boolean;
-};
 
 export type QuestSummary = {
   id: string;

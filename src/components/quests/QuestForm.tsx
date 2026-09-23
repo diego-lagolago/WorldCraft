@@ -14,7 +14,7 @@ import {
   QUEST_STATUS_LABEL,
   type QuestParticipant,
   type QuestStatus,
-} from "@/lib/domain/quests";
+} from "@/lib/quests/status";
 
 type CharacterOption = { id: string; name: string };
 

@@ -1,11 +1,8 @@
 import Link from "next/link";
 import { worldPath } from "@/components/shell/nav";
 import { GmBadge } from "@/components/world/display";
-import {
-  QUEST_STATUS_LABEL,
-  type QuestStatus,
-  type QuestSummary,
-} from "@/lib/domain/quests";
+import type { QuestSummary } from "@/lib/domain/quests";
+import { QUEST_STATUS_LABEL, type QuestStatus } from "@/lib/quests/status";
 
 function StatusBadge({ status }: { status: QuestStatus }) {
   return <span className={`badge st-${status}`}>{QUEST_STATUS_LABEL[status]}</span>;
