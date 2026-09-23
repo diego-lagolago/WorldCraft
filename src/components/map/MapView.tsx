@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { rememberUniverse } from "@/lib/client/last-context";
 import type { MapState, MarkerDto, PinDetails } from "@/lib/map/types";
@@ -53,6 +54,8 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
 
   useMapRealtime(worldId, state.universe?.id ?? null, (event) => stream.applyEvent(event, leaflet.dragging), onResync);
 
+  const mapPublished = state.map?.visibility === "published";
+
   return (
     <div className={placing ? "map-page placing" : "map-page"}>
       <div className="map-top">
@@ -67,45 +70,31 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
           </Link>
         ))}
         {state.staff && state.map ? (
-          <>
-            <button
-              type="button"
-              className="chip"
-              onClick={() =>
-                void stream.setMapVisibility(
-                  state.map!.id,
-                  state.map!.visibility === "published" ? "gm_only" : "published",
-                )
-              }
-            >
-              {state.map.visibility === "published" ? "Karte sichtbar" : "Karte · SL"}
-            </button>
-            <label className="chip">
-              Bild ersetzen
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                hidden
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = "";
-                  if (file && state.map) void stream.replaceImage(state.map.id, file);
-                }}
-              />
-            </label>
-          </>
+          <label className="chip">
+            Bild ersetzen
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file && state.map) void stream.replaceImage(state.map.id, file);
+              }}
+            />
+          </label>
         ) : null}
       </div>
 
       {state.mapHidden ? (
-        <div className="content">
+        <div className="map-empty">
           <div className="card">Diese Karte ist nur für die Spielleitung sichtbar.</div>
         </div>
       ) : state.map ? (
         <div ref={containerRef} className="map-vp" />
       ) : (
-        <div className="content">
-          <div className="card">
+        <div className="map-empty">
+          <div className="card stack text-center">
             <p>Für dieses Universum gibt es noch keine Karte.</p>
             {state.staff && state.universe ? (
               <label className="btn primary">
@@ -126,38 +115,46 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
       )}
 
       {state.map ? (
-        <>
-          <p className="map-hint">
-            {placing
-              ? "Tippe auf die Karte, um den Pin zu setzen."
-              : "Ziehen = verschieben · Pinch/Scroll = zoomen · Pin antippen = Details. Nach dem Ablegen sehen alle die neue Position."}
-          </p>
-          <div className="map-ctrl">
-            <button type="button" className="zbtn" aria-label="Hineinzoomen" onClick={() => leaflet.zoomBy(1.4)}>
-              ＋
+        <div className="map-ctrl">
+          {state.staff ? (
+            <button
+              type="button"
+              className="zbtn"
+              aria-label={mapPublished ? "Karte freigegeben" : "Karte versteckt"}
+              title={mapPublished ? "Karte freigegeben (für alle sichtbar)" : "Karte versteckt (nur Spielleitung)"}
+              onClick={() =>
+                void stream.setMapVisibility(state.map!.id, mapPublished ? "gm_only" : "published")
+              }
+            >
+              {mapPublished ? <Eye size={20} aria-hidden /> : <EyeOff size={20} aria-hidden />}
             </button>
-            <button type="button" className="zbtn" aria-label="Herauszoomen" onClick={() => leaflet.zoomBy(0.7)}>
-              －
+          ) : null}
+          <button type="button" className="zbtn" aria-label="Hineinzoomen" onClick={() => leaflet.zoomBy(1.4)}>
+            ＋
+          </button>
+          <button type="button" className="zbtn" aria-label="Herauszoomen" onClick={() => leaflet.zoomBy(0.7)}>
+            －
+          </button>
+          <button type="button" className="zbtn" aria-label="Ganze Karte" onClick={() => leaflet.fit()}>
+            ⤢
+          </button>
+          <button type="button" className="zbtn" aria-label="Charakter platzieren" onClick={() => setSheet({ kind: "place" })}>
+            🧝
+          </button>
+          {state.staff ? (
+            <button
+              type="button"
+              className="fab"
+              aria-label={placing ? "Abbrechen" : "Pin setzen"}
+              onClick={() => setPlacing((current) => !current)}
+            >
+              {placing ? "×" : "+"}
             </button>
-            <button type="button" className="zbtn" aria-label="Ganze Karte" onClick={() => leaflet.fit()}>
-              ⤢
-            </button>
-            <button type="button" className="zbtn" aria-label="Charakter platzieren" onClick={() => setSheet({ kind: "place" })}>
-              🧝
-            </button>
-            {state.staff ? (
-              <button
-                type="button"
-                className="fab"
-                aria-label={placing ? "Abbrechen" : "Pin setzen"}
-                onClick={() => setPlacing((current) => !current)}
-              >
-                {placing ? "×" : "+"}
-              </button>
-            ) : null}
-          </div>
-        </>
+          ) : null}
+        </div>
       ) : null}
+
+      {placing ? <p className="map-hint">Tippe auf die Karte, um den Pin zu setzen.</p> : null}
 
       {stream.error ? <p className="chat-error map-error">{stream.error}</p> : null}
 

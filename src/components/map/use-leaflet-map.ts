@@ -69,10 +69,21 @@ export function useLeafletMap(
         zoomDelta: 0.5,
         attributionControl: false,
         zoomControl: false,
-        scrollWheelZoom: true,
+        // Custom wheel below (prototype-like continuous sensitivity).
+        scrollWheelZoom: false,
         touchZoom: true,
+        wheelPxPerZoomLevel: 40,
       });
       mapRef.current = map;
+      const onWheel = (event: WheelEvent) => {
+        event.preventDefault();
+        // Match spikes/ui-prototype: scale *= exp(-deltaY * 0.0022) → Δzoom = -deltaY * 0.0022 / ln(2)
+        const delta = (-event.deltaY * 0.0022) / Math.LN2;
+        const next = Math.min(4, Math.max(-5, map.getZoom() + delta));
+        map.setZoom(next, { animate: false });
+      };
+      container.addEventListener("wheel", onWheel, { passive: false });
+      map.once("unload", () => container.removeEventListener("wheel", onWheel));
       map.on("click", (event: L.LeafletMouseEvent) => {
         if (!handlersRef.current.placing) return;
         const current = mapDataRef.current;
@@ -231,7 +242,8 @@ export function useLeafletMap(
   function zoomBy(factor: number) {
     const map = mapRef.current;
     if (!map) return;
-    map.setZoom(map.getZoom() + (factor > 1 ? 0.5 : -0.5));
+    // Prototype multiplies scale by 1.4 / 0.7 → Leaflet zoom += log2(factor).
+    map.setZoom(map.getZoom() + Math.log2(factor), { animate: true });
   }
 
   function fit() {

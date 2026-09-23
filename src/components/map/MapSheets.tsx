@@ -3,7 +3,6 @@
 import { useState, type ReactNode } from "react";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { RichTextView } from "@/components/editor/RichTextView";
-import { LinkedPanel } from "./LinkedPanel";
 import { PIN_TYPE_META, pinTypeIconUrl, type PinType } from "@/lib/map/pin-types";
 import type { MarkerDto, PinDetails, PlaceableCharacterDto } from "@/lib/map/types";
 import type { RichDoc } from "@/lib/editor/rich-text";
@@ -52,9 +51,12 @@ export function PinViewSheet({
         </div>
       </div>
       <div style={{ margin: "14px 0" }}>
-        <RichTextView doc={pin.descriptionJson} empty={<p className="muted">Keine Beschreibung.</p>} />
+        <RichTextView
+          doc={pin.descriptionJson}
+          mentions={pin.mentions}
+          empty={<p className="muted">Keine Beschreibung.</p>}
+        />
       </div>
-      <LinkedPanel items={pin.linked} />
       <div className="row" style={{ marginTop: 12, flexWrap: "wrap", gap: 8 }}>
         {staff && !pin.locked ? (
           <button type="button" className="btn grow" onClick={onEdit}>

@@ -1,4 +1,5 @@
 import type { MembershipRole, VisibilityStatus } from "@/lib/authz";
+import type { ResolvedMention } from "@/lib/domain/mention-resolve";
 import type { RichDoc } from "@/lib/editor/rich-text";
 import type { LinkedItem } from "./linked";
 import type { PinType } from "./pin-types";
@@ -68,4 +69,7 @@ export type MapState = {
   highlightPinId: string | null;
 };
 
-export type PinDetails = PinDto & { linked: LinkedItem[] };
+export type PinDetails = PinDto & {
+  linked: LinkedItem[];
+  mentions: Record<string, ResolvedMention>;
+};

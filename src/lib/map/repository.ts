@@ -28,6 +28,8 @@ import {
   type VisibilityStatus,
 } from "@/lib/authz";
 import { recalcOutgoingMentions, listLinked } from "@/lib/domain/relations";
+import { resolveMentions } from "@/lib/domain/mention-resolve";
+import { asRichDoc, extractMentions } from "@/lib/editor/rich-text";
 import { mapDbError } from "@/lib/domain/db-errors";
 import { listUniverses } from "@/lib/domain/universes";
 import { richFieldFromInput } from "@/lib/domain/rich-field";
@@ -383,7 +385,13 @@ export async function getPinDetails(input: {
     return fail(404, "Diesen Pin gibt es nicht.");
   }
   const linked = await listLinked({ worldId: input.worldId, role: input.role, kind: "pin", id: input.pinId });
-  return ok({ ...serializePin(row.pin), linked });
+  const dto = serializePin(row.pin);
+  const mentions = await resolveMentions(
+    input.worldId,
+    input.role,
+    extractMentions(asRichDoc(dto.descriptionJson)),
+  );
+  return ok({ ...dto, linked, mentions });
 }
 
 export async function createPin(input: {
