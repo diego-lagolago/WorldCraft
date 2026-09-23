@@ -136,6 +136,7 @@ async function loadParticipants(questIds: string[], worldId: string): Promise<Ma
 async function resolveParticipants(
   worldId: string,
   ids: string[],
+  exec: DbTx | typeof db = db,
 ): Promise<AuthzResult<{ characterId: string; characterName: string }[]>> {
   const unique = [...new Set(ids)];
   for (const id of unique) {
@@ -143,7 +144,7 @@ async function resolveParticipants(
   }
   if (unique.length === 0) return ok([]);
 
-  const rows = await db
+  const rows = await exec
     .select({ id: characters.id, name: characters.name })
     .from(characters)
     .innerJoin(
@@ -227,7 +228,7 @@ async function applyParticipantChanges(
   }
 
   if (input.addParticipantIds?.length) {
-    const resolved = await resolveParticipants(input.worldId, input.addParticipantIds);
+    const resolved = await resolveParticipants(input.worldId, input.addParticipantIds, tx);
     if (!resolved.ok) return resolved;
     const remaining = await tx
       .select({ characterId: questParticipants.characterId })
@@ -249,7 +250,7 @@ async function applyParticipantChanges(
   }
 
   if (input.participantIds !== undefined) {
-    const resolved = await resolveParticipants(input.worldId, input.participantIds);
+    const resolved = await resolveParticipants(input.worldId, input.participantIds, tx);
     if (!resolved.ok) return resolved;
     const currentRows = await tx
       .select({

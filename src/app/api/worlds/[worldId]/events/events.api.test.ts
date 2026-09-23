@@ -59,12 +59,12 @@ beforeAll(async () => {
   masterMembershipId = members.data.members.find((m) => m.userId === master.user.id)!.membershipId;
   playerMembershipId = members.data.members.find((m) => m.userId === playerA.user.id)!.membershipId;
 
-  const created = await api<{ map?: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/map`, {
+  const mapCreated = await api<{ map?: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/map`, {
     universeId,
     name: "SSE-Karte",
   });
-  expect(created.status).toBe(201);
-  mapId = created.data.map!.id;
+  expect(mapCreated.status).toBe(201);
+  mapId = mapCreated.data.map!.id;
   const form = new FormData();
   form.set("kind", "map");
   form.set("worldId", worldId);
@@ -154,101 +154,117 @@ describe("SSE events (CR-001 / CR-002 / CR-017)", () => {
   it("filters gm_only pin events: master gets map.pin, player gets none or deleted on hide", async () => {
     const masterStream = await openSse(master);
     const playerStream = await openSse(playerA);
-    await readSseEvents(masterStream, 1);
-    await readSseEvents(playerStream, 1);
+    try {
+      await readSseEvents(masterStream, 1);
+      await readSseEvents(playerStream, 1);
 
-    const created = await api<{ pin: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/map/pins`, {
-      mapId,
-      pinType: "location",
-      title: "Geheim",
-      posX: 0.2,
-      posY: 0.3,
-      visibility: "gm_only",
-    });
-    expect(created.status).toBe(201);
-    const pinId = created.data.pin.id;
+      const created = await api<{ pin: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/map/pins`, {
+        mapId,
+        pinType: "landmark",
+        title: "Geheim",
+        posX: 0.2,
+        posY: 0.3,
+        visibility: "gm_only",
+      });
+      expect(created.status).toBe(201);
+      const pinId = created.data.pin.id;
 
-    const masterEvents = await readSseEvents(masterStream, 1);
-    const playerEvents = await readSseEvents(playerStream, 1, 1500);
-    expect(masterEvents.some((e) => e.type === "map.pin" && e.pinId === pinId)).toBe(true);
-    expect(playerEvents.some((e) => e.type === "map.pin" && e.pinId === pinId)).toBe(false);
-    expect(playerEvents.some((e) => e.type === "map.pin.deleted" && e.pinId === pinId)).toBe(false);
+      const masterEvents = await readSseEvents(masterStream, 1);
+      const playerEvents = await readSseEvents(playerStream, 1, 1500);
+      expect(masterEvents.some((e) => e.type === "map.pin" && e.pinId === pinId)).toBe(true);
+      // Invisible upsert becomes a delete signal so the client drops the pin (CR-001 / eventForViewer).
+      expect(playerEvents.some((e) => e.type === "map.pin" && e.pinId === pinId)).toBe(false);
+      expect(playerEvents.some((e) => e.type === "map.pin.deleted" && e.pinId === pinId)).toBe(true);
 
-    const published = await api(gm, "PATCH", `/api/worlds/${worldId}/map/pins/${pinId}`, {
-      visibility: "published",
-    });
-    expect(published.status).toBe(200);
-    await readSseEvents(masterStream, 1);
-    await readSseEvents(playerStream, 1);
+      const published = await api(gm, "PATCH", `/api/worlds/${worldId}/map/pins/${pinId}`, {
+        visibility: "published",
+      });
+      expect(published.status).toBe(200);
+      await readSseEvents(masterStream, 1);
+      await readSseEvents(playerStream, 1);
 
-    const hidden = await api(gm, "PATCH", `/api/worlds/${worldId}/map/pins/${pinId}`, {
-      visibility: "gm_only",
-    });
-    expect(hidden.status).toBe(200);
-    const hideMaster = await readSseEvents(masterStream, 1);
-    const hidePlayer = await readSseEvents(playerStream, 1);
-    expect(hideMaster.some((e) => e.type === "map.pin" && e.pinId === pinId)).toBe(true);
-    expect(hidePlayer.some((e) => e.type === "map.pin.deleted" && e.pinId === pinId)).toBe(true);
-
-    masterStream.controller.abort();
-    playerStream.controller.abort();
+      const hidden = await api(gm, "PATCH", `/api/worlds/${worldId}/map/pins/${pinId}`, {
+        visibility: "gm_only",
+      });
+      expect(hidden.status).toBe(200);
+      const hideMaster = await readSseEvents(masterStream, 1);
+      const hidePlayer = await readSseEvents(playerStream, 1);
+      expect(hideMaster.some((e) => e.type === "map.pin" && e.pinId === pinId)).toBe(true);
+      expect(hidePlayer.some((e) => e.type === "map.pin.deleted" && e.pinId === pinId)).toBe(true);
+    } finally {
+      masterStream.controller.abort();
+      playerStream.controller.abort();
+    }
   });
 
   it("closes the stream when a member is removed (CR-002)", async () => {
     const stream = await openSse(playerA);
-    await readSseEvents(stream, 1);
+    try {
+      await readSseEvents(stream, 1);
 
-    expect((await api(gm, "DELETE", `/api/worlds/${worldId}/members/${playerMembershipId}`)).status).toBe(200);
-    const closed = await drainUntilClosed(stream);
-    expect(closed).toBe(true);
+      expect((await api(gm, "DELETE", `/api/worlds/${worldId}/members/${playerMembershipId}`)).status).toBe(200);
+      const closed = await drainUntilClosed(stream);
+      expect(closed).toBe(true);
 
-    const channels = await api(gm, "GET", `/api/worlds/${worldId}/chat`);
-    expect(channels.status).toBe(200);
-    const channelId = (channels.data as { channel?: { id: string } }).channel?.id;
-    if (channelId) {
-      await api(gm, "POST", `/api/worlds/${worldId}/chat/messages`, {
-        channelId,
-        body: "nach remove",
-      });
+      const channels = await api(gm, "GET", `/api/worlds/${worldId}/chat`);
+      expect(channels.status).toBe(200);
+      const channelId = (channels.data as { channel?: { id: string } }).channel?.id;
+      if (channelId) {
+        await api(gm, "POST", `/api/worlds/${worldId}/chat/messages`, {
+          channelId,
+          body: "nach remove",
+        });
+      }
+
+      await sql`
+        UPDATE memberships SET archived_at = NULL, updated_at = now()
+        WHERE id = ${playerMembershipId}
+      `;
+    } finally {
+      stream.controller.abort();
     }
-
-    await sql`
-      UPDATE memberships SET archived_at = NULL, updated_at = now()
-      WHERE id = ${playerMembershipId}
-    `;
   });
 
   it("closes the stream on leave (CR-002)", async () => {
     const stream = await openSse(playerB);
-    await readSseEvents(stream, 1);
-    expect((await api(playerB, "POST", `/api/worlds/${worldId}/leave`)).status).toBe(200);
-    expect(await drainUntilClosed(stream)).toBe(true);
+    try {
+      await readSseEvents(stream, 1);
+      expect((await api(playerB, "POST", `/api/worlds/${worldId}/leave`)).status).toBe(200);
+      expect(await drainUntilClosed(stream)).toBe(true);
+    } finally {
+      stream.controller.abort();
+    }
   });
 
   it("closes the stream on role demotion; reconnect filters as player (CR-017)", async () => {
     const stream = await openSse(master);
-    await readSseEvents(stream, 1);
+    let reconnect: Awaited<ReturnType<typeof openSse>> | null = null;
+    try {
+      await readSseEvents(stream, 1);
 
-    expect(
-      (await api(gm, "PATCH", `/api/worlds/${worldId}/members/${masterMembershipId}`, { role: "player" })).status,
-    ).toBe(200);
-    expect(await drainUntilClosed(stream)).toBe(true);
+      expect(
+        (await api(gm, "PATCH", `/api/worlds/${worldId}/members/${masterMembershipId}`, { role: "player" })).status,
+      ).toBe(200);
+      expect(await drainUntilClosed(stream)).toBe(true);
 
-    const reconnect = await openSse(master);
-    await readSseEvents(reconnect, 1);
-    const created = await api<{ pin: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/map/pins`, {
-      mapId,
-      pinType: "location",
-      title: "Nach Demotion",
-      posX: 0.5,
-      posY: 0.5,
-      visibility: "gm_only",
-    });
-    expect(created.status).toBe(201);
-    const after = await readSseEvents(reconnect, 1, 1500);
-    expect(after.some((e) => e.type === "map.pin" && e.pinId === created.data.pin.id)).toBe(false);
-    reconnect.controller.abort();
+      reconnect = await openSse(master);
+      await readSseEvents(reconnect, 1);
+      const created = await api<{ pin: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/map/pins`, {
+        mapId,
+        pinType: "landmark",
+        title: "Nach Demotion",
+        posX: 0.5,
+        posY: 0.5,
+        visibility: "gm_only",
+      });
+      expect(created.status).toBe(201);
+      const after = await readSseEvents(reconnect, 1, 1500);
+      expect(after.some((e) => e.type === "map.pin" && e.pinId === created.data.pin.id)).toBe(false);
 
-    await api(gm, "PATCH", `/api/worlds/${worldId}/members/${masterMembershipId}`, { role: "master" });
+      await api(gm, "PATCH", `/api/worlds/${worldId}/members/${masterMembershipId}`, { role: "master" });
+    } finally {
+      stream.controller.abort();
+      reconnect?.controller.abort();
+    }
   });
 });

@@ -80,19 +80,27 @@ beforeAll(async () => {
   expect(titleRes.status).toBe(201);
   worldTitleId = titleData.fileId!;
 
+  const mapCreated = await api<{ map?: { id: string; imageId: string | null } }>(
+    gm,
+    "POST",
+    `/api/worlds/${worldId}/map`,
+    { universeId, name: "Hidden Map" },
+  );
+  expect(mapCreated.status).toBe(201);
+  mapId = mapCreated.data.map!.id;
   const mapForm = new FormData();
-  mapForm.set("universeId", universeId);
-  mapForm.set("name", "Hidden Map");
+  mapForm.set("kind", "map");
+  mapForm.set("worldId", worldId);
+  mapForm.set("targetId", mapId);
   mapForm.set("image", new Blob([PNG], { type: "image/png" }), "map.png");
-  const mapRes = await fetch(`${BASE}/api/worlds/${worldId}/map`, {
+  const mapImg = await fetch(`${BASE}/api/files`, {
     method: "POST",
     headers: { cookie: gm.cookie, origin: BASE },
     body: mapForm,
   });
-  const mapData = (await mapRes.json()) as { map?: { id: string; imageId: string } };
-  expect(mapRes.status).toBe(201);
-  mapId = mapData.map!.id;
-  mapImageId = mapData.map!.imageId;
+  expect(mapImg.status).toBe(201);
+  const mapImgData = (await mapImg.json()) as { fileId?: string };
+  mapImageId = mapImgData.fileId!;
   expect((await api(gm, "PATCH", `/api/worlds/${worldId}/map`, { mapId, visibility: "gm_only" })).status).toBe(
     200,
   );
@@ -116,11 +124,11 @@ beforeAll(async () => {
   expect(artImg.status).toBe(201);
   articleHiddenImageId = artData.fileId!;
 
-  const character = await api<{ character: { id: string } }>(playerA, "POST", "/api/characters", {
+  const character = await api<{ id: string }>(playerA, "POST", "/api/characters", {
     name: `FilesChar ${Date.now()}`,
   });
   expect(character.status).toBe(201);
-  charOwner = character.data.character.id;
+  charOwner = character.data.id;
   const portraitForm = new FormData();
   portraitForm.set("kind", "character_portrait");
   portraitForm.set("targetId", charOwner);
@@ -134,7 +142,7 @@ beforeAll(async () => {
   expect(portraitRes.status).toBe(201);
   portraitId = portraitData.fileId!;
   expect((await api(playerA, "POST", `/api/worlds/${worldId}/characters`, { characterId: charOwner })).status).toBe(
-    201,
+    200,
   );
 });
 

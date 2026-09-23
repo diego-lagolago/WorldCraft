@@ -129,8 +129,15 @@ describe("T-011 (3): name snapshot after character delete", () => {
     }>(gm, "GET", w(`/quests/${quest.id}`));
     expect(view.status).toBe(200);
     expect(view.data.quest.participants).toEqual([
-      { characterId: null, characterName: "Opferheld", href: false },
+      expect.objectContaining({
+        characterId: null,
+        characterName: "Opferheld",
+        href: false,
+      }),
     ]);
+    expect(view.data.quest.participants[0]?.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
   });
 });
 

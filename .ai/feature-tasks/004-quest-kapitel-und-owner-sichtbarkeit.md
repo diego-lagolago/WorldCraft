@@ -193,10 +193,16 @@ Wie in Plan `003` und `.ai/conventions.md` (*Commit & Push*): nach jeder abgesch
 - Umsetzung (2026-09-23): `QuestNotesSheet.tsx` (📝 FAB bei Verknüpft, Sheet mit Anzeige/Bearbeiten); Domäne liefert `updatedByName`; `apiRequest` reicht 409-Body durch. API: (1) Player-PUT → Master-GET sieht Text; (2) Konflikt 409 + eigener Text bleibt bis Neu laden; (3) View-Modus mit `RichTextView`/resolveMentions (klickbar). Dual-Session-Browser im gemeinsamen Cookie nicht praktikabel — Konflikt per API, UI per Browser-Smoke. Features-Katalog: Quest-Notizblock shipped.
 
 ### T-011: Rechte-Testskript erweitern
-- [ ] Beschreibung: `npm run test:rechte` (Konfiguration `vitest.rechte.config.ts`) führt alle `src/**/*.api.test.ts` aus; die API-Tests aus T-004, T-006 und T-009 laufen dort also automatisch mit. Diese Aufgabe prüft die Abdeckung und ergänzt fehlende Fälle: Owner-Stufe je Inhaltsart (Artikel, Quest, Kapitel, Pin), Bearbeiten fremder `owner_only`-Datensätze, Kapitel-Vererbung, Notizblock-Zugriff, Karten-Ausnahme (Universum/Karte lehnen `owner_only` ab).
+- [x] Beschreibung: `npm run test:rechte` (Konfiguration `vitest.rechte.config.ts`) führt alle `src/**/*.api.test.ts` aus; die API-Tests aus T-004, T-006 und T-009 laufen dort also automatisch mit. Diese Aufgabe prüft die Abdeckung und ergänzt fehlende Fälle: Owner-Stufe je Inhaltsart (Artikel, Quest, Kapitel, Pin), Bearbeiten fremder `owner_only`-Datensätze, Kapitel-Vererbung, Notizblock-Zugriff, Karten-Ausnahme (Universum/Karte lehnen `owner_only` ab).
 - Abhängigkeiten: T-004, T-006, T-009
 - Abnahmekriterium: `npm run test:rechte` läuft grün und enthält je genannter Fallgruppe mindestens einen Test (Liste der Testnamen im Umsetzungsvermerk).
-
+- Umsetzung (2026-09-23): Neue Suite `owner-coverage.api.test.ts` mit den fünf Fallgruppen. Zusätzlich Drift-Fixes für grünes `test:rechte`: Deadlock `resolveParticipants` innerhalb von Quest-Tx (Dev-Pool max=1); SSE-Test Pin-Typ/`eventForViewer`-Erwartung; Files-Test Map-JSON+Charakter-Shape; Quest-Participant-Assertion inkl. `id`. Features-Katalog N/A (Tests/Bugfix).
+  - Owner-Stufe: `T-011 owner tier per content type > hides owner_only article, quest, chapter and pin from non-owners` (+ T-004/T-006)
+  - Fremdes `owner_only` bearbeiten: `T-011 editing foreign owner_only > rejects GM PATCH on master's owner_only quest, chapter and pin` (+ T-004 Artikel)
+  - Kapitel-Vererbung: `T-011 chapter inheritance > hides published chapters when the quest itself is gm_only for players` (+ T-006 (1))
+  - Notizblock: `T-011 notes access > allows player notes on published quest and denies gm_only quest` (+ T-009 (1))
+  - Karten-Ausnahme: `T-011 map exception > rejects owner_only for universe and map visibility`
+- `npm run test:rechte`: 138 grün.
 ### T-012: Abgleich Plan 002
 - [ ] Beschreibung: `.ai/feature-tasks/002-mcp-server.md` gegen den neuen Stand lesen (dreistufige Sichtbarkeit, Owner, Kapitel, Notizblock). Abweichungen und offene Fragen im bestehenden Abschnitt *Abgleich Plan 002 nach MVP* in `.ai/architecture.md` ergänzen, u. a.: Sieht Claude `owner_only`-Inhalte des angemeldeten Owners? Werden Kapitel mit ausgeliefert? Ist der Notizblock (wie Tagebuch) ausgeschlossen? Plan `002` nicht eigenmächtig ändern.
 - Abhängigkeiten: T-004, T-006, T-009
