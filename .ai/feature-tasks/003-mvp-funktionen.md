@@ -398,9 +398,10 @@ Regeln:
 - Abnahmekriterium: Protokollabschnitt existiert. Auf Prod per HTTPS: Login, Welt öffnen, Artikel mit Erwähnung speichern, Karte mit Pin, Chat-Nachricht. Rechte-Skript lokal bestanden. `ENABLE_TEST_LOGIN` in Coolify weiterhin unset.
 
 ### T-018: Abgleich Plan 002
-- [ ] Beschreibung: Plan `.ai/feature-tasks/002-mcp-server.md` gegen den **tatsächlichen** Stand nach T-016 lesen (Rechteschicht-Pfad, Routen, Tabellennamen, Chat-/Staging-Formulierungen, MCP-Parameternamen). Abweichungen als Liste in `.ai/tech-stack.md` unter einem neuen Unterabschnitt *Abgleich Plan 002 nach MVP* festhalten. Plan `002` nicht eigenmächtig ändern.
+- [x] Beschreibung: Plan `.ai/feature-tasks/002-mcp-server.md` gegen den **tatsächlichen** Stand nach T-016 lesen (Rechteschicht-Pfad, Routen, Tabellennamen, Chat-/Staging-Formulierungen, MCP-Parameternamen). Abweichungen als Liste in `.ai/tech-stack.md` unter einem neuen Unterabschnitt *Abgleich Plan 002 nach MVP* festhalten. Plan `002` nicht eigenmächtig ändern.
 - Abhängigkeiten: T-016
 - Abnahmekriterium: Der Abschnitt existiert und listet jede Abweichung mit Fundstelle in Plan `002` oder vermerkt „keine neuen Abweichungen gegenüber dem Abgleich aus Plan 001 T-013“. Offene Fragen aus Plan 001 (Staging-Texte, deutsche vs. englische MCP-Parameter) werden wiederholt, falls noch unbeantwortet.
+- Umsetzung (Plan 003 T-018, 2026-09-23): Abschnitt *Abgleich Plan 002 nach MVP* in `.ai/tech-stack.md` (M1–M7). Keine neuen Kernabweichungen; Staging- und Parameter-Rückfragen wiederholt; TipTap→Markdown noch fehlend.
 
 ### T-019: Verschobene Browser-Abnahmen
 - [ ] Beschreibung: Abnahmekriterien, die der Projektinhaber auf die Zeit nach der Umsetzung aller Aufgaben verschoben hat, lokal im Browser (Test-Login, Testwelt, ~390 px und Desktop) prüfen und das Ergebnis je Kriterium (bestanden / nicht bestanden) in dieser Aufgabe festhalten. Nicht bestandene Punkte werden behoben oder als neue Aufgabe gemeldet. Verschoben (Entscheidung Projektinhaber 2026-09-23):

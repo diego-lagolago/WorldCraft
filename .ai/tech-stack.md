@@ -83,3 +83,26 @@ Plan `.ai/feature-tasks/002-mcp-server.md` wurde gegen ADRs, technisches/fachlic
 
 1. Staging-Referenzen in Plan 002 auf **lokal + Prod** umschreiben lassen (ja/nein / eigener Mini-Patch)?
 2. MCP-Parameter: deutsche Namen (`welt_id`, `art: artikel`) beibehalten oder an englische DB-Schlüssel angleichen?
+
+---
+
+## Abgleich Plan 002 nach MVP
+
+Stand nach Plan `003` T-016 (2026-09-23). Plan `.ai/feature-tasks/002-mcp-server.md` erneut gegen den **tatsächlichen** Code gelesen. **Plan 002 wurde nicht geändert.**
+
+| # | Fundstelle in Plan 002 | Abweichung / Ist nach MVP | Bezug |
+|---|---|---|---|
+| M1 | Staging / „Produktiv- bzw. Staging-Domain“ (u. a. Globale Abhängigkeiten, T-002/T-003/T-005/T-010) | Unverändert: **kein Staging**. Nur `worldcraft.lagolago.at` + lokal. | Abgleich #1–#3 oben; deployment.md |
+| M2 | MCP-Parameter `welt_id`, `art: artikel` / `quest` / … (deutsch) | Produkt-HTTP nutzt Englisch: Pfad `/api/worlds/[worldId]/…`, Query `kind=article\|quest\|character\|pin\|universe`, Enums `content_kind` / `quest_status` (`open`/`active`/`completed`/`failed`). MCP-Fassade braucht Abbildung oder Angleichung. | Abgleich #4; `src/lib/search.ts`, `src/db/schema.ts` |
+| M3 | „Rechteschicht“ für Werkzeuge | Pfad bestätigt: `src/lib/authz/` (+ Domäne `src/lib/domain/*`). MCP darf nicht an Tabellen vorbei. | conventions.md, architecture/README.md |
+| M4 | Werkzeug `suchen` (limit 20/50, kein Tagebuch) | Entspricht `searchWorld` / `GET …/search?q=&kind=&limit=` (Snippet ≤300, kein Journal). Wiederverwendbar. | Plan 003 T-014 |
+| M5 | TipTap-JSON → Markdown für `inhalt_lesen` | **Noch nicht implementiert** (kein `toMarkdown` o. ä. in `src/`). Für Plan 002 neu zu bauen. | Plan 002 T-001 Punkt 6 |
+| M6 | Chat-/Tagebuch-Ausschluss über MCP | Tabellen `chat_*` und `journal_entries` existieren produktiv; Ausschlussregel unverändert gültig. Hub-Suche schließt Journal bereits aus. | Plan 002 Abgrenzung; T-014 |
+| M7 | Globale Abhängigkeit „MVP-Funktionsplan abgeschlossen“ | Mit T-016 Spike-Cutover (Code/Migration lokal) erfüllt für den Start von Plan 002; Prod-Daten-Cleanup und Smoketest T-017 ggf. noch offen. | Plan 003 T-016/T-017 |
+
+**Keine neuen Abweichungen** gegenüber dem Abgleich aus Plan 001 T-013 bei Backend (Better Auth / Next same-origin `/mcp`), Scope `worlds:read`, Relationen-Herkunft (`mention` / `template_field` / `participation` / `manual`) oder der gemeinsamen Rechteschicht.
+
+**Offene Rückfragen (wiederholt, noch unbeantwortet):**
+
+1. Staging-Texte in Plan 002 auf **lokal + Prod** umschreiben?
+2. MCP-Parameter deutsch belassen oder an englische Produkt-/DB-Schlüssel angleichen?
