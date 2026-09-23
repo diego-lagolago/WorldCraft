@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CharacterSheetView } from "@/components/characters/CharacterSheetView";
+import { LinkedSection } from "@/components/linked/LinkedSection";
 import { worldPath } from "@/components/shell/nav";
 import { isStaff } from "@/lib/authz/types";
 import { getWorldCharacter } from "@/lib/domain/characters";
@@ -38,6 +39,13 @@ export default async function WorldCharacterPage({ params }: PageProps<"/w/[worl
             ) : null}
           </div>
         }
+      />
+      <LinkedSection
+        worldId={world.id}
+        role={membership.role}
+        kind="character"
+        id={sheet.id}
+        canEdit={isStaff(membership.role)}
       />
     </>
   );

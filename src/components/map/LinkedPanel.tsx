@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { linkedGroupLabel, type LinkedItem } from "@/lib/map/linked";
-import { pinTypeIconUrl } from "@/lib/map/pin-types";
+import { pinTypeIconUrl, isPinType } from "@/lib/map/pin-types";
 
 const KIND_ORDER = ["pin", "article", "quest", "character", "universe"] as const;
 
@@ -54,7 +54,7 @@ export function LinkedPanel({ items }: { items: LinkedItem[] }) {
 function LinkedRow({ item }: { item: LinkedItem }) {
   return (
     <Link className="item" href={item.href}>
-      {item.kind === "pin" && item.pinType ? (
+      {item.kind === "pin" && item.pinType && isPinType(item.pinType) ? (
         <img src={pinTypeIconUrl(item.pinType)} width={26} height={31} alt="" />
       ) : null}
       {item.kind === "character" ? (

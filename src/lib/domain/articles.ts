@@ -28,6 +28,7 @@ import {
   type TemplateType,
 } from "@/lib/templates/registry";
 import { mapDbError } from "./db-errors";
+import { recalcArticleRelations } from "./relations";
 import { richFieldFromInput } from "./rich-field";
 
 export const ARTICLE_TITLE_MAX = 200;
@@ -271,6 +272,7 @@ export async function createArticle(input: {
         updatedBy: input.actorId,
       })
       .returning(summaryColumns);
+    await recalcArticleRelations(input.worldId, input.actorId, row.id);
     return ok(row);
   } catch (error) {
     const mapped = mapDbError(error);
@@ -331,6 +333,7 @@ export async function updateArticle(input: {
     throw error;
   }
   if (input.removeTitleImage) await collectUnreferencedFiles([current.titleImageId]);
+  await recalcArticleRelations(input.worldId, input.actorId, current.id);
   return ok({ id: current.id });
 }
 

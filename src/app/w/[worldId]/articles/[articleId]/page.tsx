@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArticleFields } from "@/components/articles/ArticleFields";
+import { LinkedSection } from "@/components/linked/LinkedSection";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { worldPath } from "@/components/shell/nav";
 import { GmBadge, Hero } from "@/components/world/display";
@@ -64,6 +65,13 @@ export default async function ArticlePage({ params }: PageProps<"/w/[worldId]/ar
             />
           </div>
         </div>
+        <LinkedSection
+          worldId={world.id}
+          role={membership.role}
+          kind="article"
+          id={article.id}
+          canEdit={isStaff(membership.role)}
+        />
       </div>
     </>
   );

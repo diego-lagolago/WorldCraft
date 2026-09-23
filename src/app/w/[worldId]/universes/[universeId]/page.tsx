@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LinkedSection } from "@/components/linked/LinkedSection";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { worldPath } from "@/components/shell/nav";
 import { GmBadge } from "@/components/world/display";
@@ -54,6 +55,13 @@ export default async function UniversePage({ params }: PageProps<"/w/[worldId]/u
               </span>
             </Link>
           </div>
+          <LinkedSection
+            worldId={world.id}
+            role={membership.role}
+            kind="universe"
+            id={universe.id}
+            canEdit={isStaff(membership.role)}
+          />
         </div>
       </div>
     </>

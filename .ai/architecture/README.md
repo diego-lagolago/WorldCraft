@@ -74,6 +74,12 @@ Die App läuft mit **genau einer App-Replica**. Realtime ist In-Process (`src/li
 
 Jede lesende/schreibende API (und später MCP) fragt die **gemeinsame Rechteschicht** mit Benutzerkontext. Sichtbarkeit erbt Universum → Karte → Pin/Marker; Relationen nur wenn Quelle **und** Ziel sichtbar. Mitgliedschaften/Teilnahmen werden archiviert, nicht hart gelöscht (siehe fachliches Modell).
 
+### Relationen
+
+1. Speichern von Artikel, Universumsbeschreibung und Pin berechnet ausgehende automatische Relationen neu (`APP-REL-RECALC` in `src/lib/domain/relations.ts`); manuelle Relationen bleiben.
+2. `listLinked` lädt Ziele je Inhaltsart in einer Query (CR-011). Sichtbar nur, wenn Quelle **und** Ziel sichtbar sind.
+3. UI „Verknüpft“: Artikel, Charakter, Universum (`src/components/linked/`); Pin im Karten-Popup (T-013); Quest in T-011.
+
 ### Geplant: MCP (Plan 002)
 
 ```text
