@@ -113,6 +113,7 @@ describe("Produkt-Chat", () => {
     expect((await api(playerA, "DELETE", `/api/worlds/${worldId}/chat/messages/${messageId}`)).status).toBe(200);
     expect((await api(master, "DELETE", `/api/worlds/${worldId}/chat/messages/${foreignId}`)).status).toBe(200);
 
+    await api(gm, "PATCH", `/api/worlds/${worldId}/chat/settings`, { dicePostToChat: true });
     const dice = await chat(gm, "", "POST", {
       kind: "roll",
       terms: [{ n: 1, m: 20 }],
