@@ -204,9 +204,10 @@ Wie in Plan `003` und `.ai/conventions.md` (*Commit & Push*): nach jeder abgesch
   - Karten-Ausnahme: `T-011 map exception > rejects owner_only for universe and map visibility`
 - `npm run test:rechte`: 138 grün.
 ### T-012: Abgleich Plan 002
-- [ ] Beschreibung: `.ai/feature-tasks/002-mcp-server.md` gegen den neuen Stand lesen (dreistufige Sichtbarkeit, Owner, Kapitel, Notizblock). Abweichungen und offene Fragen im bestehenden Abschnitt *Abgleich Plan 002 nach MVP* in `.ai/architecture.md` ergänzen, u. a.: Sieht Claude `owner_only`-Inhalte des angemeldeten Owners? Werden Kapitel mit ausgeliefert? Ist der Notizblock (wie Tagebuch) ausgeschlossen? Plan `002` nicht eigenmächtig ändern.
+- [x] Beschreibung: `.ai/feature-tasks/002-mcp-server.md` gegen den neuen Stand lesen (dreistufige Sichtbarkeit, Owner, Kapitel, Notizblock). Abweichungen und offene Fragen im bestehenden Abschnitt *Abgleich Plan 002 nach MVP* in `.ai/architecture.md` ergänzen, u. a.: Sieht Claude `owner_only`-Inhalte des angemeldeten Owners? Werden Kapitel mit ausgeliefert? Ist der Notizblock (wie Tagebuch) ausgeschlossen? Plan `002` nicht eigenmächtig ändern.
 - Abhängigkeiten: T-004, T-006, T-009
 - Abnahmekriterium: Der Abschnitt enthält einen Unterpunkt „nach Plan 004“ mit jeder Abweichung samt Fundstelle in Plan `002` und den drei genannten Fragen, sofern nicht bereits beantwortet.
+- Umsetzung (2026-09-23): Unterpunkt *nach Plan 004* in `.ai/architecture.md` (P4-1–P4-6 + drei offene Fragen). Plan 002 unverändert. Features-Katalog N/A (Doku).
 
 ### T-013: Browser-Gesamtabnahme und Abschluss
 - [ ] Beschreibung: Alle Browser-Abnahmen aus T-005, T-008, T-010 in einem Durchgang gegen die lokale Testwelt wiederholen (Rollen Game Master, Master, Player). `.ai/roadmap.md` Status von `004` nachziehen. Push nur nach ausdrücklicher Freigabe des Projektinhabers.

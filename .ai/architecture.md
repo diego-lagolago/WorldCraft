@@ -106,3 +106,22 @@ Stand nach Plan `003` T-016 (2026-09-23). Plan `.ai/feature-tasks/002-mcp-server
 
 1. Staging-Texte in Plan 002 auf **lokal + Prod** umschreiben?
 2. MCP-Parameter deutsch belassen oder an englische Produkt-/DB-Schlüssel angleichen?
+
+### nach Plan 004 (2026-09-23)
+
+Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `004` (dreistufige Sichtbarkeit, Owner, Quest-Kapitel, Quest-Notizblock) gelesen. **Plan 002 wurde nicht geändert.** Start von Plan 002 erst nach Abschluss von `004` (R4).
+
+| # | Fundstelle in Plan 002 | Abweichung / Ist nach Plan 004 | Bezug |
+|---|---|---|---|
+| P4-1 | Abgrenzung / Rechteschicht „Rechtematrix aus Plan `001`“; Werkzeuge „Kennzeichnung, ob … `nur Spielleitung`“ (`inhalt_lesen`); T-002/T-008 nur `nur Spielleitung` vs. veröffentlicht | Inhalt ist **dreistufig** (`owner_only` / `gm_only` / `published`) für Artikel, Quests, Kapitel, Pins; Owner-Rechte ruhen bei herabgestuftem Master (R1); nur der Owner setzt `owner_only` (R2). Universen/Karten bleiben zweistufig. MCP-Texte und Rechte-Tests müssen die dritte Stufe und den Owner abbilden. | Plan 004 Fachliche Regeln; `APP-VIS-OWNER`; datenmodell.md |
+| P4-2 | `inhalt_lesen` Quest: „Titel, Status, beteiligte Charaktere, Beschreibung“ | Quests haben zusätzlich **Kapitel** (`quest_chapters`) mit eigener Sichtbarkeit und Vererbung Quest→Kapitel. Plan 002 nennt Kapitel nicht. | Plan 004 E1/E2; `src/lib/domain/quest-chapters.ts` |
+| P4-3 | Abgrenzung schließt Tagebuch/Chat aus; Notizblock nicht erwähnt | Pro Quest existiert ein gemeinsamer **Notizblock** (`quest_notes`). Hub-Suche schließt ihn aus (wie Tagebuch); Relationen entstehen nicht (`APP-NOTE-NO-REL`). Ob MCP ihn ebenfalls ausschließt, ist offen (Frage 3). | Plan 004 E4/E6/E7; `src/lib/domain/quest-notes.ts` |
+| P4-4 | `suchen` (Treffer auf Inhalte) | Hub-Suche findet Quests auch über **sichtbare Kapiteltexte** (Treffer auf die Quest, Snippet aus Kapitel). Plan 002 erwähnt nur Quest-Titel/Beschreibung implizit über die Rechteschicht. | Plan 004 E7; `searchQuestChapters` |
+| P4-5 | T-002 Testwelt: Artikel/Pins nur `nur Spielleitung` / veröffentlicht; kein Owner | Seed muss `owner_only`-Fälle und ggf. Kapitel/Notizblock vorsehen, sobald die offenen Fragen entschieden sind. Default neuer Datensätze: `owner_only`. | Plan 004 E8; T-002 in Plan 002 |
+| P4-6 | Globale Abhängigkeit „MVP-Funktionsplan“ | Ergänzt: **Plan `004` vor `002`** (Roadmap R4). Abgleich dieses Unterabschnitts ist Voraussetzung vor `/plan-run` für `002`. | roadmap.md; Plan 004 R4 |
+
+**Offene Fragen (Antwort vor Umsetzung Plan 002 nötig):**
+
+1. Sieht Claude `owner_only`-Inhalte des angemeldeten Owners (über dieselbe Rechteschicht wie die App), oder sollen `owner_only`-Inhalte über MCP wie Tagebuch ausgeschlossen werden?
+2. Werden Quest-Kapitel bei `inhalt_lesen` / `suchen` / Relationen mit ausgeliefert (nur sichtbare Kapitel), oder bleiben sie außerhalb von MCP?
+3. Ist der Quest-Notizblock über MCP ausgeschlossen (Analogie Tagebuch), oder lesbar für alle, die die Quest sehen?
