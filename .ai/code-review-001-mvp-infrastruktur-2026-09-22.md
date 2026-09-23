@@ -19,7 +19,7 @@
 |----|-----------|-------------|--------|-------------------|
 | CR-001 | Sicherheit | kritisch | offen | Spike-APIs in Produktion für jedes Discord-Konto offen (Upload, Chat, Rechte-API auf echten Tabellen). Teil 1 (Allowlist) in T-001 umgesetzt; Teile 2 und 3 folgen in T-016 |
 | CR-002 | Testabdeckung | kritisch | behoben | `npm test` ist rot: `dice.test.ts` und `authz.test.ts` scheitern an `ERR_MODULE_NOT_FOUND` |
-| CR-003 | Sicherheit | mittel | offen | `discordId` ist als `input: true` über `/api/auth/update-user` vom Benutzer änderbar |
+| CR-003 | Sicherheit | mittel | behoben | `discordId` ist als `input: true` über `/api/auth/update-user` vom Benutzer änderbar |
 | CR-004 | Sicherheit | mittel | offen | Manuelle Relationen prüfen nicht, ob Quelle und Ziel zur Welt gehören (weltübergreifend, 500 bei fremder ID) |
 | CR-005 | Runtime-Risiken | mittel | offen | Ungültige UUID bzw. ungültiges JSON führen in Karten- und Chat-Routen zu HTTP 500. Helfer in T-003; Anwendung folgt in T-007 bis T-014 |
 | CR-006 | Runtime-Risiken | mittel | offen | SSE-Reconnect lädt den Stand nicht neu, Ereignisse während der Trennung gehen verloren |
@@ -33,7 +33,7 @@
 | CR-014 | Fehlerbehandlung & Validierung | niedrig | offen | Frontend-`fetch` ohne `try/catch`, `persistMarkerMove` ignoriert die Antwort, `JSON.parse` ungeschützt |
 | CR-015 | Bad Practices | niedrig | offen | ESLint-Fehler (Ref-Zuweisung beim Rendern), Komponenten mit 700 bis 1000 Zeilen. ESLint-Fehler in T-001 behoben; Struktur folgt in T-012/T-013 |
 | CR-016 | Sicherheit | niedrig | offen | Endung beim Upload kommt aus dem Client-MIME, `nosniff` fehlt, Kartenbild wird pro Abruf komplett gelesen. Produktroute `/api/files` prüft die Bytes und streamt; die Spike-Route folgt erst mit T-016 |
-| CR-017 | Fehlerbehandlung & Validierung | niedrig | offen | Keine Startvalidierung für `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL`, localhost-Origins auch in Produktion vertraut |
+| CR-017 | Fehlerbehandlung & Validierung | niedrig | behoben | Keine Startvalidierung für `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL`, localhost-Origins auch in Produktion vertraut |
 | CR-018 | Aufgaben-Abgleich | niedrig | behoben | 8 dokumentierte `TRIG-*`-Regeln fehlen in den Migrationen: alle bauen (Plan-Review) |
 | CR-019 | Sicherheit | niedrig | offen | Persistenz-Snapshot liefert `privat`-Tagebuchtexte an die Spielleitung, Journal auf archivierter Teilnahme möglich |
 | CR-020 | Aufgaben-Abgleich | niedrig | offen | Pin-Sperre (`locked`) nicht dokumentiert: übernehmen, nur Spielleitung (Plan-Review). Spalte in T-002; Rechte und UI folgen in T-013 |
@@ -77,6 +77,7 @@
 - **Beschreibung:** Better Auth übernimmt Zusatzfelder mit `input: true` sowohl beim Anlegen als auch in `POST /api/auth/update-user`. Ein angemeldeter Benutzer kann damit seine eigene `discord_id` auf einen beliebigen freien Wert setzen. Folgen: (a) Er kann die Discord-ID einer Person belegen, die sich noch nicht registriert hat. Deren erster Login scheitert dann am Unique-Constraint. (b) Lokal kann er `test-gm` usw. belegen, und der Test-Login meldet danach auf seinem Konto an. (c) Später (Plan 002/003) wird `discord_id` womöglich als Identitätsmerkmal genutzt.
 - **Empfehlung:** `input: false` setzen. Die ID kommt ausschließlich aus `mapProfileToUser` bzw. dem Test-Login-Plugin, das über `internalAdapter.createUser` schreibt und nicht auf `input` angewiesen ist.
 - **Abnahmekriterium:** `POST /api/auth/update-user` mit `{ "discordId": "x" }` ändert `users.discord_id` nicht (Antwort 400 oder Feld ignoriert, per Datenbankabfrage geprüft). Discord- und Test-Login legen weiterhin Benutzer mit korrekter `discord_id` an.
+- **Umsetzung (Plan 003 T-006, 2026-09-23):** `discordId` hat `input: false`. Better Auth antwortet auf `update-user` mit `discordId` mit 400; OAuth (`mapProfileToUser`) und das Test-Login-Plugin (`internalAdapter.createUser`) nutzen `parseUserInput` nicht und setzen die ID weiter. Nachweis: `src/app/api/auth/auth.api.test.ts` (400, `discord_id` per SQL unverändert, Test-Login liefert denselben Benutzer).
 
 ### CR-004 – Manuelle Relationen ohne Weltzugehörigkeitsprüfung
 - **Fundstelle:** `src/spike/rechte/repository.ts:1338-1385` (`createManualRelation`)
@@ -219,6 +220,7 @@
 - **Beschreibung:** Beim Start wird nur `DATABASE_URL` geprüft. Fehlen `BETTER_AUTH_SECRET` oder `BETTER_AUTH_URL` in Coolify, merkt man das erst beim ersten Login (Fallback `http://localhost:3000` → falsche Redirects bzw. Better-Auth-Fehler). `trustedOrigins` enthält `http://localhost:3000` und `http://127.0.0.1:3000` auch bei `APP_ENV=production`.
 - **Empfehlung:** Ein Zod-Schema für die Umgebung in `src/lib/env.ts` (Pflichtfelder abhängig von `APP_ENV`, Mindestlänge des Secrets, URL-Format), aufgerufen in `instrumentation.ts`. localhost-Origins nur bei `APP_ENV !== "production"` aufnehmen.
 - **Abnahmekriterium:** Ein Start mit `APP_ENV=production` ohne `BETTER_AUTH_SECRET` bricht mit einer verständlichen deutschen Meldung ab. In Produktion enthält `trustedOrigins` nur die `BETTER_AUTH_URL`. Ein Unit-Test in `env.test.ts` deckt beides ab.
+- **Umsetzung (Plan 003 T-006, 2026-09-23):** `findEnvIssues`/`assertServerEnv` in `src/lib/env.ts` (Zod): `DATABASE_URL` immer Pflicht (postgres-URL); in Produktion zusätzlich `BETTER_AUTH_SECRET` (mind. 32 Zeichen) und `BETTER_AUTH_URL` (http/https). Aufruf in `src/instrumentation.ts`; die Meldung nennt nur Variablennamen, keine Werte. `getTrustedOrigins()` nimmt localhost nur außerhalb von Produktion auf; `auth.ts` nutzt sie. Der Docker-Build setzt kein `APP_ENV=production`, die Prüfung greift erst beim Start. Nachweis: `src/lib/env.test.ts`.
 
 ### CR-018 – Dokumentierte Trigger fehlen in den Migrationen
 - **Fundstelle:** `.ai/architecture/datenmodell.md` (u. a. Zeilen 143, 604, 656) vs. `src/db/migrations/*.sql`

@@ -1,36 +1,92 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   ALLOWED_DISCORD_IDS_REQUIRED_MESSAGE,
+  ENV_INVALID_MESSAGE_PREFIX,
   TEST_LOGIN_IN_PRODUCTION_MESSAGE,
   assertDiscordAllowlistConfigured,
+  assertServerEnv,
   assertTestLoginNotInProduction,
+  findEnvIssues,
+  getTrustedOrigins,
   isDiscordIdAllowed,
   isProductionAppEnv,
   isTestLoginEnabled,
 } from "./env";
 
-const original = {
-  ENABLE_TEST_LOGIN: process.env.ENABLE_TEST_LOGIN,
-  APP_ENV: process.env.APP_ENV,
-  ALLOWED_DISCORD_IDS: process.env.ALLOWED_DISCORD_IDS,
-};
+const KEYS = ["ENABLE_TEST_LOGIN", "APP_ENV", "ALLOWED_DISCORD_IDS", "BETTER_AUTH_URL"] as const;
+const original = Object.fromEntries(KEYS.map((key) => [key, process.env[key]]));
 
 afterEach(() => {
-  if (original.ENABLE_TEST_LOGIN === undefined) {
-    delete process.env.ENABLE_TEST_LOGIN;
-  } else {
-    process.env.ENABLE_TEST_LOGIN = original.ENABLE_TEST_LOGIN;
+  for (const key of KEYS) {
+    if (original[key] === undefined) delete process.env[key];
+    else process.env[key] = original[key];
   }
-  if (original.APP_ENV === undefined) {
-    delete process.env.APP_ENV;
-  } else {
-    process.env.APP_ENV = original.APP_ENV;
-  }
-  if (original.ALLOWED_DISCORD_IDS === undefined) {
-    delete process.env.ALLOWED_DISCORD_IDS;
-  } else {
-    process.env.ALLOWED_DISCORD_IDS = original.ALLOWED_DISCORD_IDS;
-  }
+});
+
+const SECRET = "s".repeat(32);
+const validProduction = {
+  APP_ENV: "production",
+  DATABASE_URL: "postgresql://user:pw@db:5432/worldcraft",
+  BETTER_AUTH_SECRET: SECRET,
+  BETTER_AUTH_URL: "https://worldcraft.example.com",
+} as NodeJS.ProcessEnv;
+
+describe("assertServerEnv (CR-017)", () => {
+  it("accepts a complete production environment", () => {
+    expect(findEnvIssues(validProduction)).toEqual([]);
+    expect(() => assertServerEnv(validProduction)).not.toThrow();
+  });
+
+  it("refuses production without BETTER_AUTH_SECRET, with a German message naming the variable", () => {
+    const env = { ...validProduction, BETTER_AUTH_SECRET: undefined };
+    expect(() => assertServerEnv(env)).toThrow(ENV_INVALID_MESSAGE_PREFIX);
+    expect(() => assertServerEnv(env)).toThrow("BETTER_AUTH_SECRET fehlt");
+  });
+
+  it("refuses production without BETTER_AUTH_URL and short secrets or bad URLs anywhere", () => {
+    expect(findEnvIssues({ ...validProduction, BETTER_AUTH_URL: "" }).map((i) => i.name)).toEqual([
+      "BETTER_AUTH_URL",
+    ]);
+    const dev = { APP_ENV: "development", DATABASE_URL: validProduction.DATABASE_URL } as NodeJS.ProcessEnv;
+    expect(findEnvIssues({ ...dev, BETTER_AUTH_SECRET: "kurz" }).map((i) => i.name)).toEqual([
+      "BETTER_AUTH_SECRET",
+    ]);
+    expect(findEnvIssues({ ...dev, BETTER_AUTH_URL: "worldcraft" }).map((i) => i.name)).toEqual([
+      "BETTER_AUTH_URL",
+    ]);
+    expect(findEnvIssues({ ...dev, DATABASE_URL: "mysql://x" }).map((i) => i.name)).toEqual(["DATABASE_URL"]);
+  });
+
+  it("allows missing auth variables locally but never a missing DATABASE_URL", () => {
+    expect(findEnvIssues({ APP_ENV: "development", DATABASE_URL: validProduction.DATABASE_URL } as NodeJS.ProcessEnv)).toEqual([]);
+    expect(findEnvIssues({ APP_ENV: "development" } as NodeJS.ProcessEnv).map((i) => i.name)).toEqual([
+      "DATABASE_URL",
+    ]);
+  });
+
+  it("never puts secret values into the message", () => {
+    const env = { ...validProduction, BETTER_AUTH_SECRET: "geheim-zu-kurz" };
+    expect(() => assertServerEnv(env)).toThrow(/BETTER_AUTH_SECRET ist kürzer/);
+    try {
+      assertServerEnv(env);
+    } catch (error) {
+      expect(String(error)).not.toContain("geheim-zu-kurz");
+    }
+  });
+});
+
+describe("getTrustedOrigins (CR-017)", () => {
+  it("trusts only BETTER_AUTH_URL in production", () => {
+    process.env.APP_ENV = "production";
+    process.env.BETTER_AUTH_URL = "https://worldcraft.example.com/";
+    expect(getTrustedOrigins()).toEqual(["https://worldcraft.example.com"]);
+  });
+
+  it("adds localhost outside production", () => {
+    process.env.APP_ENV = "development";
+    process.env.BETTER_AUTH_URL = "http://localhost:3000";
+    expect(getTrustedOrigins()).toEqual(["http://localhost:3000", "http://127.0.0.1:3000"]);
+  });
 });
 
 describe("isTestLoginEnabled", () => {

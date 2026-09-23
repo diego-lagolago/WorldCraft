@@ -14,6 +14,7 @@ import {
   assertDiscordAllowlistConfigured,
   assertTestLoginNotInProduction,
   getAuthUrl,
+  getTrustedOrigins,
   isDiscordConfigured,
   isDiscordIdAllowed,
   isTestLoginEnabled,
@@ -37,11 +38,7 @@ export const auth = betterAuth({
       verification: schema.verifications,
     },
   }),
-  trustedOrigins: [
-    APP_URL,
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-  ].filter((value, index, all) => all.indexOf(value) === index),
+  trustedOrigins: getTrustedOrigins(),
   emailAndPassword: {
     enabled: false,
   },
@@ -50,7 +47,7 @@ export const auth = betterAuth({
       discordId: {
         type: "string",
         required: true,
-        input: true,
+        input: false,
       },
       lastLoginAt: {
         type: "date",

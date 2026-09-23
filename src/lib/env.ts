@@ -1,5 +1,7 @@
 /** Runtime environment helpers. No secrets are logged or returned. */
 
+import { z } from "zod";
+
 export function isTestLoginEnabled(): boolean {
   return process.env.ENABLE_TEST_LOGIN === "true";
 }
@@ -20,6 +22,77 @@ export function getAuthUrl(): string {
     /\/$/,
     "",
   );
+}
+
+const LOCAL_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"];
+
+/** Production trusts only BETTER_AUTH_URL; localhost only outside production (CR-017). */
+export function getTrustedOrigins(): string[] {
+  const origins = [getAuthUrl(), ...(isProductionAppEnv() ? [] : LOCAL_ORIGINS)];
+  return origins.filter((value, index, all) => all.indexOf(value) === index);
+}
+
+export const BETTER_AUTH_SECRET_MIN_LENGTH = 32;
+
+const httpUrl = z
+  .string()
+  .trim()
+  .refine((value) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+      return false;
+    }
+  });
+
+const postgresUrl = z
+  .string()
+  .trim()
+  .regex(/^postgres(ql)?:\/\/\S+$/);
+
+type EnvIssue = { name: string; message: string };
+
+/**
+ * Checks the process environment at start (CR-017). Returns German messages
+ * naming the variable, never its value.
+ */
+export function findEnvIssues(env: NodeJS.ProcessEnv = process.env): EnvIssue[] {
+  const production = env.APP_ENV === "production";
+  const issues: EnvIssue[] = [];
+  const present = (name: string) => Boolean(env[name]?.trim());
+
+  if (!present("DATABASE_URL")) {
+    issues.push({ name: "DATABASE_URL", message: "fehlt" });
+  } else if (!postgresUrl.safeParse(env.DATABASE_URL).success) {
+    issues.push({ name: "DATABASE_URL", message: "ist keine postgres://-Adresse" });
+  }
+
+  if (!present("BETTER_AUTH_SECRET")) {
+    if (production) issues.push({ name: "BETTER_AUTH_SECRET", message: "fehlt" });
+  } else if ((env.BETTER_AUTH_SECRET ?? "").trim().length < BETTER_AUTH_SECRET_MIN_LENGTH) {
+    issues.push({
+      name: "BETTER_AUTH_SECRET",
+      message: `ist kürzer als ${BETTER_AUTH_SECRET_MIN_LENGTH} Zeichen`,
+    });
+  }
+
+  if (!present("BETTER_AUTH_URL")) {
+    if (production) issues.push({ name: "BETTER_AUTH_URL", message: "fehlt" });
+  } else if (!httpUrl.safeParse(env.BETTER_AUTH_URL).success) {
+    issues.push({ name: "BETTER_AUTH_URL", message: "ist keine gültige http(s)-Adresse" });
+  }
+
+  return issues;
+}
+
+export const ENV_INVALID_MESSAGE_PREFIX = "Die Umgebung ist unvollständig, die Anwendung startet nicht:";
+
+export function assertServerEnv(env: NodeJS.ProcessEnv = process.env): void {
+  const issues = findEnvIssues(env);
+  if (issues.length === 0) return;
+  const lines = issues.map((issue) => `- ${issue.name} ${issue.message}`);
+  throw new Error([ENV_INVALID_MESSAGE_PREFIX, ...lines].join("\n"));
 }
 
 export const TEST_LOGIN_IN_PRODUCTION_MESSAGE =

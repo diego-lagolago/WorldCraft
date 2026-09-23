@@ -141,7 +141,7 @@ Nach dem Login gilt die Shell. **Handy:** angeheftete Bottom-Bar mit den vier Ei
 
 Letzte Welt und letztes Universum: `localStorage` (gerätelokal reicht im MVP). Ungültige IDs → Onboarding bzw. erstes sichtbares Universum.
 
-Icons der Bottom-Bar: **Während des Baus definieren** (Norm sagt ausdrücklich „Icons … während der Shell-Umsetzung“). Labels und Reihenfolge sind fest.
+Icons der Bottom-Bar: festgelegt in T-006 (Projektinhaber 2026-09-23): 🌍 Kampagne · 🗺️ Karte · 💬 Chat · ☰ Menü, wie im UI-Prototyp. Labels und Reihenfolge sind fest.
 
 Sichtbarkeit `nur Spielleitung` in der UI: Player sehen den Inhalt nicht (kein grauer Platzhalter). Spielleitung sieht eine klare Kennzeichnung.
 
@@ -308,12 +308,13 @@ Regeln:
 - Umsetzung (2026-09-23): Editor unter `src/components/editor/`, reine Logik unter `src/lib/editor/` (Sanitizing, Klartext, Verweisliste, Links, Ranking). APIs `GET /api/worlds/[worldId]/mentions?q=` (vorerst Artikel) und `POST /api/worlds/[worldId]/articles` (Stub, nur Spielleitung). Nachweise: Unit- und headless-TipTap-Tests (`npm test`), API-Tests gegen eine Testwelt (`src/**/*.api.test.ts`, `npm run test:rechte`). Die Browser-Prüfung von Kriterium (1) sowie (2) und (3) in der Oberfläche ist nach **T-019** verschoben (Entscheidung Projektinhaber 2026-09-23), weil erst T-007/T-009 den Editor in Produktseiten einbauen.
 
 ### T-006: App-Shell, Login-Flow, Navigation
-- [ ] Beschreibung: Shell gemäß *Informationsarchitektur* bauen. Mobile-First ~390 px, große Touch-Ziele. Chat-Route verdeckt die Bottom-Bar durch den Composer. Abgemeldet nur Login (Discord, lokal zusätzlich Test-Login). Angemeldet: Onboarding oder Welt-Redirect. Versionsbadge bleibt global. Spike-Links auf der Startseite entfernen, sobald die Shell die Einstiege ersetzt (spätestens T-016). Shell und alle Oberflächen aus T-006 bis T-014 folgen der *Design-Referenz* `spikes/ui-prototype/index.html`; Umbruch Handy/Desktop bei 768 px wie im Prototyp.
+- [x] Beschreibung: Shell gemäß *Informationsarchitektur* bauen. Mobile-First ~390 px, große Touch-Ziele. Chat-Route verdeckt die Bottom-Bar durch den Composer. Abgemeldet nur Login (Discord, lokal zusätzlich Test-Login). Angemeldet: Onboarding oder Welt-Redirect. Versionsbadge bleibt global. Spike-Links auf der Startseite entfernen, sobald die Shell die Einstiege ersetzt (spätestens T-016). Shell und alle Oberflächen aus T-006 bis T-014 folgen der *Design-Referenz* `spikes/ui-prototype/index.html`; Umbruch Handy/Desktop bei 768 px wie im Prototyp.
 - Code-Review: CR-003, CR-017. Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
 - Abhängigkeiten: T-003
 - **UI:** `.ai/standards/mobile-first.md`, `.ai/standards/mobile-navigation.md`.
-- Während des Baus definieren: konkrete Icons der vier Tabs (Begründung: Norm verweist die Ikonografie auf die Shell-Umsetzung). Nicht offen: Labels, Reihenfolge, Routen-Tabelle oben.
+- Icons der vier Tabs: festgelegt (siehe *Informationsarchitektur*). Nicht offen: Labels, Reihenfolge, Routen-Tabelle oben.
 - Abnahmekriterium: (1) Bei 390 px Breite sind die vier Tabs einhändig erreichbar und beschriftet. (2) Wechsel Kampagne → Karte → Chat → Menü ändert die Ansicht ohne Neuladen der Session; der Weltkontext bleibt. (3) Im Chat ist die Bottom-Bar vom Composer verdeckt; auf Karte/Menü/Kampagne nicht. (4) Desktop zeigt dieselben vier Ziele ohne Hover-only. (5) Unangemeldeter Aufruf von `/w/…` landet beim Login.
+- Umsetzung (2026-09-23): Shell `src/components/shell/AppShell.tsx` mit Prototyp-Stilen in `globals.css` (Bottom-Bar bis 767 px, Seitenleiste ab 768 px, `chat-focus` blendet die Bar auf `/w/…/chat` aus). `/` zeigt abgemeldet den Login (Discord, lokal Test-Login), angemeldet Redirect auf die letzte Welt aus `localStorage` oder Onboarding (eigene Welten, Einladung einlösen; „Welt anlegen“ folgt mit T-007). `/w/[worldId]/*` leitet ohne Sitzung auf `/` um und liefert für Nicht-Mitglieder 404. Spike-Links und Grundgerüst-Anzeige von der Startseite entfernt. Nachweise: `nav.test.ts` (Labels, aktiver Tab, Chat-Fokus), `last-context.test.ts`, `env.test.ts` (CR-017), `src/app/api/auth/auth.api.test.ts` (CR-003, Kriterium 5). Browser-Prüfung der Kriterien (1)–(4) ist wie bei T-005 nach **T-019** verschoben.
 
 ### T-007: Welten, Universen, Mitglieder, Einladungen (F1, F6)
 - [ ] Beschreibung: Oberflächen und APIs für: Welt anlegen (Name, optionale Beschreibung ohne `@`, optionales Titelbild); automatisch Mitgliedschaft Game Master und Universum „Hauptuniversum“ (`veröffentlicht`); weitere Universen (Name eindeutig in der Welt, Beschreibung mit Erwähnungen, Reihenfolge, Sichtbarkeit); Welt bearbeiten / löschen nur GM; Mitgliederliste; Player ↔ Master nur GM; Entfernen nur GM; Austreten jedes Mitglieds außer GM (archivieren); Einladungslink 1 Tag / 7 Tage / unbegrenzt, widerrufen, Beitritt inkl. Reaktivierung. Letztes Universum nicht löschbar. Standard-Sichtbarkeit neuer Universen `nur Spielleitung` außer dem ersten.
@@ -396,6 +397,7 @@ Regeln:
 ### T-019: Verschobene Browser-Abnahmen
 - [ ] Beschreibung: Abnahmekriterien, die der Projektinhaber auf die Zeit nach der Umsetzung aller Aufgaben verschoben hat, lokal im Browser (Test-Login, Testwelt, ~390 px und Desktop) prüfen und das Ergebnis je Kriterium (bestanden / nicht bestanden) in dieser Aufgabe festhalten. Nicht bestandene Punkte werden behoben oder als neue Aufgabe gemeldet. Verschoben (Entscheidung Projektinhaber 2026-09-23):
   - T-005 (1): Plan `001` T-005 (2)–(6) im Editor der Next-App gegen eine Testwelt — Werkzeugleiste mit genau den erlaubten Formatierungen; eingefügte Bilder/Tabellen verschwinden, Text bleibt; `@` mit Kategorien laut Fachmodell 2.4 (`@schleim` findet Artikel und Quest, sobald T-009/T-011 umgesetzt sind); gespeichertes JSON lädt identisch; Weltbeschreibung ohne Vorschlagsliste. Dazu T-005 (2) und (3) in der Oberfläche: `@Tore von Wer` mitten im Satz, „Neuen Artikel anlegen“ und rote Erwähnung bis zur ersten Bearbeitung.
+  - T-006 (1)–(4): Bottom-Bar bei 390 px einhändig erreichbar und beschriftet; Tabwechsel ohne Neuladen der Session mit bleibendem Weltkontext; im Chat verdeckt der Composer die Bar, auf Karte/Menü/Kampagne nicht; Desktop zeigt die vier Ziele dauerhaft (nicht Hover-only).
 - Abhängigkeiten: T-016
 - Abnahmekriterium: Jedes oben gelistete Kriterium ist mit Ergebnis und Datum vermerkt; kein Punkt bleibt ohne Ergebnis.
 

@@ -1,6 +1,6 @@
 # Mobile-Navigation (Bottom Bar)
 
-**Status:** Verbindliche Produktnorm für die spätere App-Chrome (Projektinhaber 2026-09-22). Noch nicht als Produkt-Shell gebaut — Spezifikation für die Umsetzung.
+**Status:** Verbindliche Produktnorm für die App-Chrome (Projektinhaber 2026-09-22). Als Produkt-Shell gebaut in Plan 003 T-006.
 **Bezug:** `.ai/standards/mobile-first.md`, Plan `.ai/feature-tasks/001-mvp-infrastruktur.md`.
 **Vorbild (Vitura/Teinei):** `MobileNavigation` — `Teinei/src/components/app/mobile-navigation.tsx` (`fixed inset-x-0 bottom-0`, Safe-Area-Padding, `md:hidden`); Auswahl-Logik in `Teinei/src/lib/mobile-navigation.ts`; Einbindung über `Sidebar`, Layout-Padding `pb-24` und `h-dvh` in `Teinei/src/app/(app)/layout.tsx`.
 
@@ -17,7 +17,7 @@ WorldCraft hat auf dem Handy eine **angeheftete Navigationsleiste am unteren Bil
 | 3 | **Chat**      | Kontext: aktuelle Welt |
 | 4 | **Menü**      | Burger-Menü; weitere Funktionen später |
 
-Reihenfolge und Labels sind festgelegt. Icons und genaue Routen: während der Shell-Umsetzung.
+Reihenfolge und Labels sind festgelegt. Icons (festgelegt in Plan 003 T-006, Projektinhaber 2026-09-23, wie im UI-Prototyp): 🌍 Kampagne · 🗺️ Karte · 💬 Chat · ☰ Menü. Routen: Plan 003 *Informationsarchitektur*. Umsetzung: `src/components/shell/` (Bottom-Bar bis 767 px, ab 768 px dauerhafte Seitenleiste).
 
 ## Überschreiben nur durch Chat
 
