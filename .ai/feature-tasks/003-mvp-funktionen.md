@@ -390,7 +390,7 @@ Regeln:
 - Umsetzung (Plan 003 T-016, 2026-09-23): Spike-Code und Editor-Spike entfernt; Migration `0011_drop_spike_tables`; Cleanup-Skript `scripts/cleanup-spike-data.sql`. Lokal: Spike-Tabellen weg, Dry-Run ohne Treffer. Produktion: Prod-Dry-Run 2026-09-23 (Projektinhaber, Datenbank `worldcraft`): keine Welten `Rechte-Spike%`, keine Dateien `spike/%`, keine Tabellen `spike_*` – kein APPLY nötig (CR-001 Teil 3 abgeschlossen).
 
 ### T-017: Smoketest auf Produktion
-- [ ] Beschreibung: Stand nach T-016 auf `main` pushen, **erst nach ausdrücklicher Freigabe** laut *Commit & Push*. Coolify pullt GHCR. Protokoll in `.ai/infrastructure/smoketest.md` um einen Abschnitt **MVP F1–F10** ergänzen (bestanden / nicht bestanden / N/A). Test-Login nur lokal. Prod: echter Discord-Login.
+- [x] Beschreibung: Stand nach T-016 auf `main` pushen, **erst nach ausdrücklicher Freigabe** laut *Commit & Push*. Coolify pullt GHCR. Protokoll in `.ai/infrastructure/smoketest.md` um einen Abschnitt **MVP F1–F10** ergänzen (bestanden / nicht bestanden / N/A). Test-Login nur lokal. Prod: echter Discord-Login.
 - Abhängigkeiten: T-016
 - **Stopp (Freigabe erforderlich):** `/plan-run` pausiert vor dem Push und nennt die Commits seit dem letzten Push. Gepusht wird erst nach „Push freigegeben“ o. ä. im Chat.
 - **UI:** Phone-first ~390 px stichprobenartig (Shell, Karte, Chat, Editor).
@@ -399,6 +399,7 @@ Regeln:
   - Optional zweites Discord-Konto für Chat- und Pin-Realtime.
   - Welt anlegen, Kartenbild hochladen, eine Nachricht senden — oder dem Agenten bestätigen, dass der Durchgang passt.
 - Abnahmekriterium: Protokollabschnitt existiert. Auf Prod per HTTPS: Login, Welt öffnen, Artikel mit Erwähnung speichern, Karte mit Pin, Chat-Nachricht. Rechte-Skript lokal bestanden. `ENABLE_TEST_LOGIN` in Coolify weiterhin unset.
+- Umsetzungsvermerk (2026-09-23): Push `cca6fbe` nach Freigabe, Image-Build grün, neuer Stand auf Prod ausgeliefert. Owner-Smoketest auf Prod bestanden (Abschnitt *MVP F1–F10* in `smoketest.md`), F.5 `test:rechte` lokal grün, F.6 Test-Login auf Prod 404. Spike-Cleanup: Prod-Dry-Run ohne Treffer (CR-001 Teil 3 aus Review 001).
 
 ### T-018: Abgleich Plan 002
 - [x] Beschreibung: Plan `.ai/feature-tasks/002-mcp-server.md` gegen den **tatsächlichen** Stand nach T-016 lesen (Rechteschicht-Pfad, Routen, Tabellennamen, Chat-/Staging-Formulierungen, MCP-Parameternamen). Abweichungen als Liste in `.ai/architecture.md` unter einem neuen Unterabschnitt *Abgleich Plan 002 nach MVP* festhalten. Plan `002` nicht eigenmächtig ändern.

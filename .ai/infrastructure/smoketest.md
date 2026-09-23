@@ -100,7 +100,8 @@ Produktion liefert `POST /api/test-login` → **404** (geprüft 2026-09-22). `te
 **Umgebung:** Prod `https://worldcraft.lagolago.at` (Discord); Test-Login / Rechte-Skript nur lokal.  
 **Ergebnis je Zeile:** bestanden / nicht bestanden / N/A — ggf. Prod vs. lokal vermerken.
 
-**Owner-Protokoll:** 2026-09-23 (Prod Discord; F.5/F.6 ohne lokale Umgebung nicht getestet).
+**Owner-Protokoll:** 2026-09-23 (Prod Discord; F.5/F.6 ohne lokale Umgebung nicht getestet).  
+**Zweiter Durchgang:** 2026-09-23 nach Push `cca6fbe` (Pläne 004, 007, 008 live): Owner-Smoketest auf Prod bestanden; F.5 und F.6 von Claude nachgeholt.
 
 ### Kernpfad F1–F10 (Stichprobe)
 
@@ -110,8 +111,8 @@ Produktion liefert `POST /api/test-login` → **404** (geprüft 2026-09-22). `te
 | F.2 | Artikel mit Erwähnung speichern | Prod | **bestanden** | Owner 2026-09-23. |
 | F.3 | Karte: Bild + Pin setzen | Prod | **bestanden** | Owner 2026-09-23. |
 | F.4 | Chat: Nachricht senden | Prod | **bestanden** | Owner 2026-09-23. |
-| F.5 | Rechte-Skript (`npm run test:rechte`) | Lokal | **N/A** | Nicht getestet — keine lokale Umgebung beim Owner-Lauf 2026-09-23. |
-| F.6 | `ENABLE_TEST_LOGIN` in Coolify unset; Test-Login auf Prod 404 | Prod | **N/A** | Nicht getestet (Owner 2026-09-23). |
+| F.5 | Rechte-Skript (`npm run test:rechte`) | Lokal | **bestanden** | Claude 2026-09-23 vor Push `cca6fbe`: 18 Dateien, 148 Tests grün (Owner-Lauf 1: N/A). |
+| F.6 | `ENABLE_TEST_LOGIN` in Coolify unset; Test-Login auf Prod 404 | Prod | **bestanden** | Claude 2026-09-23 nach Push `cca6fbe`: `POST /api/test-login` → 404. |
 | F.7 | Phone-first ~390 px: Shell, Karte, Chat, Editor stichprobenartig | Prod/Lokal | **bestanden** | Owner 2026-09-23. |
 
 ### Offene Multi-Personen-Tests
