@@ -515,6 +515,20 @@ export const questChapters = pgTable(
   ],
 );
 
+/** One shared note pad per quest; row created on first save (APP-NOTE-VERSION / APP-NOTE-NO-REL). */
+export const questNotes = pgTable("quest_notes", {
+  questId: uuid("quest_id")
+    .primaryKey()
+    .references(() => quests.id, { onDelete: "cascade" }),
+  bodyJson: jsonb("body_json"),
+  bodyPlain: text("body_plain"),
+  version: integer("version").default(0).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedBy: text("updated_by")
+    .notNull()
+    .references(() => users.id),
+});
+
 export const questParticipants = pgTable(
   "quest_participants",
   {
