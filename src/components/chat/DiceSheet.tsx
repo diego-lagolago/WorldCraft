@@ -78,7 +78,7 @@ function NumberStepper({
         }}
         onChange={(event) => {
           setText(event.target.value);
-          const parsed = parseDraftInt(event.target.value);
+          const parsed = parseDraftInt(event.target.value, { allowNegative });
           if (parsed !== null) onChange(parsed);
         }}
         onBlur={() => {

@@ -53,9 +53,11 @@ describe("dice-draft", () => {
   it("parses typed stepper values for inline editing", () => {
     expect(parseDraftInt("7")).toBe(7);
     expect(parseDraftInt(" 12 ")).toBe(12);
-    expect(parseDraftInt("-5")).toBe(-5);
-    expect(parseDraftInt("\u22123")).toBe(-3);
-    expect(parseDraftInt("-0")).toBe(0);
+    expect(parseDraftInt("-3")).toBeNull();
+    expect(parseDraftInt("\u22123")).toBeNull();
+    expect(parseDraftInt("-5", { allowNegative: true })).toBe(-5);
+    expect(parseDraftInt("\u22123", { allowNegative: true })).toBe(-3);
+    expect(parseDraftInt("-0", { allowNegative: true })).toBe(0);
     expect(parseDraftInt("")).toBeNull();
     expect(parseDraftInt("-")).toBeNull();
     expect(parseDraftInt("1.5")).toBeNull();
@@ -66,6 +68,8 @@ describe("dice-draft", () => {
   it("clamps typed values through the setters", () => {
     expect(setTermCount(DEFAULT_DICE_DRAFT, 0, parseDraftInt("50")!).terms[0]?.n).toBe(20);
     expect(setTermCount(DEFAULT_DICE_DRAFT, 0, parseDraftInt("0")!).terms[0]?.n).toBe(1);
-    expect(setModifier(DEFAULT_DICE_DRAFT, parseDraftInt("-150")!).modifier).toBe(-99);
+    expect(setModifier(DEFAULT_DICE_DRAFT, parseDraftInt("-150", { allowNegative: true })!).modifier).toBe(
+      -99,
+    );
   });
 });

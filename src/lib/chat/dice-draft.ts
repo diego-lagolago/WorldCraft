@@ -59,12 +59,19 @@ export function setModifier(draft: DiceDraft, modifier: number): DiceDraft {
 }
 
 /** Parses a typed stepper value (inline edit): whole number, optional leading minus
- * (ASCII or U+2212). Returns null for empty or invalid input; clamping is left to the setters. */
-export function parseDraftInt(text: string): number | null {
+ * (ASCII or U+2212) when `allowNegative` is true. Returns null for empty or invalid
+ * input; clamping is left to the setters. */
+export function parseDraftInt(
+  text: string,
+  options?: { allowNegative?: boolean },
+): number | null {
+  const allowNegative = options?.allowNegative ?? false;
   const match = /^\s*([-\u2212]?)(\d{1,4})\s*$/.exec(text);
   if (!match) return null;
+  const sign = match[1];
+  if (sign && !allowNegative) return null;
   const value = Number(match[2]);
-  return match[1] && value !== 0 ? -value : value;
+  return sign && value !== 0 ? -value : value;
 }
 
 export type RollPayload = {

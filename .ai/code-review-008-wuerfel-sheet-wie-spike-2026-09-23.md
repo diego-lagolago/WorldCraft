@@ -12,7 +12,7 @@
 | CR-003 | Fehlerbehandlung & Validierung | niedrig | behoben | Wurf-Fehler doppelt angezeigt (Sheet + Chat-Banner) und löst immer Voll-Reload aus |
 | CR-004 | Fehlerbehandlung & Validierung | niedrig | behoben | „Im Chat posten“: Fehler unsichtbar hinter dem Sheet, Doppelklick schaltet mit veraltetem Wert |
 | CR-005 | Duplizierung & Modularisierung | niedrig | behoben | Roll-Ein-/Ausgabetyp doppelt in `use-chat-stream.ts` und `DiceSheet.tsx` |
-| CR-006 | Lesbarkeit & Wartbarkeit | niedrig | offen | `allowNegative` steuert nur die Tastatur, nicht die Eingabe |
+| CR-006 | Lesbarkeit & Wartbarkeit | niedrig | behoben | `allowNegative` steuert nur die Tastatur, nicht die Eingabe |
 | CR-007 | Runtime-Risiken | niedrig | behoben | `keepSelection` bleibt nach Tastatur-Fokus gesetzt und schluckt den nächsten Klick |
 | CR-008 | Runtime-Risiken | niedrig | verworfen | Index als React-Key bei entfernbaren Termen mit lokalem Stepper-State |
 | CR-009 | Fehlerbehandlung & Validierung | niedrig | offen | Kopieren schlägt still fehl (kein Feedback bei verweigerter Zwischenablage) |
@@ -87,6 +87,7 @@
 - **Entscheidung (Owner, 2026-09-23, Plan-Review):** Minus im Anzahl-Feld ablehnen.
 - **Empfehlung:** Signatur `parseDraftInt(text: string, options?: { allowNegative?: boolean }): number | null`, Standard `allowNegative: false`. Ohne Freigabe liefert ein führendes Minus (ASCII oder U+2212) `null`, also ungültig wie bei leerer Eingabe (N1: Feld springt beim Verlassen auf den letzten Wert zurück). `NumberStepper` reicht seine Prop `allowNegative` an `parseDraftInt` weiter; der Bonus-Stepper setzt sie wie bisher.
 - **Abnahmekriterium:** (a) `dice-draft.test.ts`: `parseDraftInt("-3")` → `null`, `parseDraftInt("−3")` → `null`, `parseDraftInt("-3", { allowNegative: true })` → `-3`; bestehende Fälle mit Minus laufen mit `{ allowNegative: true }`. (b) Im Browser: „-3“ im Anzahl-Feld ändert die Vorschau nicht, beim Verlassen steht wieder der alte Wert. (c) Bonus „-4“ funktioniert unverändert.
+- **Umsetzung (2026-09-23):** `parseDraftInt` mit `allowNegative` (Default false); NumberStepper reicht die Prop durch. Tests angepasst. Commit `a987a50`. Features.md: N/A.
 
 ## CR-007 – `keepSelection` nach Tastatur-Fokus
 
@@ -97,7 +98,7 @@
 - **Beschreibung:** `keepSelection` wird bei jedem Fokus gesetzt, aber nur bei `mouseup` zurückgesetzt. Kommt der Fokus per Tab, bleibt das Flag stehen; der nächste Klick ins bereits fokussierte Feld (um den Cursor zu setzen) wird per `preventDefault` geschluckt.
 - **Empfehlung:** Flag in `onBlur` zurücksetzen und/oder nur bei Maus-Fokus setzen (z. B. in `onMouseDown`, wenn das Feld noch nicht fokussiert ist).
 - **Abnahmekriterium:** Per Tab ins Anzahl-Feld, dann einmal in die Zahl klicken: Der Cursor steht an der Klickposition (Auswahl aufgehoben). Klick ins unfokussierte Feld markiert weiterhin die ganze Zahl.
-- **Umsetzung (2026-09-23):** `keepSelection` nur noch bei Maus-Fokus (`onMouseDown` wenn noch nicht fokussiert); Reset in `onBlur`. Commit `6b8c42c`. Features.md: N/A.
+- **Umsetzung (2026-09-23):** `keepSelection` nur noch bei Maus-Fokus (`onMouseDown` wenn noch nicht fokussiert); Reset in `onBlur`. Commit `065dc1e`. Features.md: N/A.
 
 ## CR-008 – Index als Key bei entfernbaren Termen
 
