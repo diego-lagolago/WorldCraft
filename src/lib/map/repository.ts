@@ -248,7 +248,7 @@ export async function loadMapState(input: {
       return !mapVisible(input.role, row.universeVisibility, row.map.visibility);
     });
 
-  let selected =
+  const selected =
     (preferredMapId ? options.find((row) => row.id === preferredMapId) : undefined) ??
     (preferredUniverseId ? options.find((row) => row.universeId === preferredUniverseId) : undefined) ??
     options[0] ??

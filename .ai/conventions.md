@@ -88,6 +88,16 @@ Neue Rechtefälle: zuerst in `src/lib/authz` plus Test, nicht nur in der UI und 
 - [standards/mobile-navigation.md](standards/mobile-navigation.md) — Bottom-Bar später
 - [standards/erwaehnungen.md](standards/erwaehnungen.md)
 
+## Commit & Push (verbindlich)
+
+Vor jedem Commit und vor `/plan-run`-Abschluss lokal grün:
+
+1. `npm test`
+2. `npm run lint`
+3. `npm run typecheck` (bzw. Build, wenn der Task Build/Deploy berührt)
+
+Schlägt eines fehl → nicht committen, pausieren. Push auf `main` nur nach ausdrücklicher Freigabe (löst Deploy aus). Keine Secrets, keine `.env`, keine Uploads im Commit.
+
 ## Deployment-Kurzregel
 
 - Build: GitHub Actions → GHCR. Coolify: Image pull, kein Dockerfile-Build auf dem VPS.

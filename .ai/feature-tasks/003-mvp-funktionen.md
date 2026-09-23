@@ -105,7 +105,7 @@ Nicht verbindlich sind: Testdaten, Farben im Detail, die Emoji-Symbole (Platzhal
 
 **Entscheidung Projektinhaber 2026-09-22 (Plan-Review):**
 
-- Nach **jeder** abgeschlossenen Aufgabe committet `/plan-run` den Stand (ein Commit pro Task, Task-ID in der Commit-Nachricht, z. B. `T-007: Welten, Universen, Mitglieder`). Vorher laufen `npm test` und, sofern betroffen, der Build; schlägt etwas fehl, wird nicht committet, sondern pausiert.
+- Nach **jeder** abgeschlossenen Aufgabe committet `/plan-run` den Stand (ein Commit pro Task, Task-ID in der Commit-Nachricht, z. B. `T-007: Welten, Universen, Mitglieder`). Vorher laufen `npm test`, `npm run lint`, `npm run typecheck` und, sofern betroffen, der Build; schlägt etwas fehl, wird nicht committet, sondern pausiert. (Maßgeblich: `.ai/conventions.md` *Commit & Push*.)
 - **Nie automatisch pushen.** Ein Push auf `main` löst über GHCR und Coolify ein Deploy auf `worldcraft.lagolago.at` aus. Gepusht wird nur nach ausdrücklicher Freigabe des Projektinhabers im Chat, jeweils für den dann vorliegenden Stand.
 - Keine Secrets, keine `.env`, keine Uploads (`data/uploads/`) im Commit.
 
