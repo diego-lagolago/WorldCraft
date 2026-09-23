@@ -1,7 +1,8 @@
+import type { VisibilityLayer } from "@/lib/authz";
 import type { ChatMessageDto, ChatThreadDto } from "@/lib/chat/types";
 import { createRealtimeBus } from "./bus";
 
-/** Events on the single world bus. Chat and map publish here (CR-012). Map pin/marker are signals only (R5). */
+/** Events on the single world bus. Chat and map publish here (CR-012). Map pin/marker are signals only (R5); `layers` is for SSE visibility filtering (CR-001). */
 export type WorldRealtimeEvent =
   | { type: "chat.message"; worldId: string; message: ChatMessageDto }
   | {
@@ -13,11 +14,17 @@ export type WorldRealtimeEvent =
     }
   | { type: "chat.thread"; worldId: string; thread: ChatThreadDto }
   | { type: "chat.channels"; worldId: string }
-  | { type: "map.updated"; worldId: string; universeId: string }
-  | { type: "map.pin"; worldId: string; pinId: string; mapId: string }
-  | { type: "map.pin.deleted"; worldId: string; pinId: string; mapId: string }
-  | { type: "map.marker"; worldId: string; markerId: string; mapId: string }
-  | { type: "map.marker.deleted"; worldId: string; markerId: string; mapId: string };
+  | { type: "map.updated"; worldId: string; universeId: string; layers: VisibilityLayer[] }
+  | { type: "map.pin"; worldId: string; pinId: string; mapId: string; layers: VisibilityLayer[] }
+  | { type: "map.pin.deleted"; worldId: string; pinId: string; mapId: string; layers: VisibilityLayer[] }
+  | { type: "map.marker"; worldId: string; markerId: string; mapId: string; layers: VisibilityLayer[] }
+  | {
+      type: "map.marker.deleted";
+      worldId: string;
+      markerId: string;
+      mapId: string;
+      layers: VisibilityLayer[];
+    }
 
 export const worldEvents = createRealtimeBus<WorldRealtimeEvent>("world");
 

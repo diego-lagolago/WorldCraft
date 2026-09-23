@@ -12,15 +12,18 @@ import {
   type MembershipRole,
   type MembershipRow,
   canEditMarker,
+  canReceiveWorldEvent,
   canSeeCharacterInWorld,
   canSeeJournal,
   canSeePublishedLayer,
   canSeeVisibility,
+  eventForViewer,
   isGm,
   isStaff,
   isUnlockOnlyPatch,
   relationVisible,
 } from "@/lib/authz";
+import type { WorldRealtimeEvent } from "@/lib/realtime/events";
 
 const OWNER = "owner-a";
 const OTHER = "other-b";
@@ -363,5 +366,194 @@ describe("leaving a world", () => {
     expect(authorizeLeave(row("master")).ok).toBe(true);
     expect(authorizeLeave(row("game_master"))).toMatchObject({ ok: false, status: 409 });
     expect(authorizeLeave(row("player", { archivedAt: new Date() }))).toMatchObject({ ok: false, status: 403 });
+  });
+});
+
+describe("CR-001 canReceiveWorldEvent / eventForViewer", () => {
+  const player = { role: "player" as const, userId: OTHER };
+  const master = { role: "master" as const, userId: OTHER };
+  const ownerMaster = { role: "master" as const, userId: OWNER };
+  const publishedLayers = [{ visibility: "published" as const }, { visibility: "published" as const }];
+  const gmMapLayers = [{ visibility: "published" as const }, { visibility: "gm_only" as const }];
+  const gmPinLayers = [
+    { visibility: "published" as const },
+    { visibility: "published" as const },
+    { visibility: "gm_only" as const, ownerId: OWNER },
+  ];
+  const ownerPinLayers = [
+    { visibility: "published" as const },
+    { visibility: "published" as const },
+    { visibility: "owner_only" as const, ownerId: OWNER },
+  ];
+  const publishedPinLayers = [
+    { visibility: "published" as const },
+    { visibility: "published" as const },
+    { visibility: "published" as const, ownerId: OWNER },
+  ];
+
+  it("always delivers chat events", () => {
+    const chat = {
+      type: "chat.channels",
+      worldId: "w",
+    } satisfies WorldRealtimeEvent;
+    expect(canReceiveWorldEvent(player, chat)).toBe(true);
+    expect(eventForViewer(player, chat)).toEqual(chat);
+  });
+
+  it("matrix: map.* × role × visibility", () => {
+    const cases: Array<{
+      name: string;
+      event: WorldRealtimeEvent;
+      playerOk: boolean;
+      masterOk: boolean;
+      ownerMasterOk: boolean;
+    }> = [
+      {
+        name: "map.updated published",
+        event: { type: "map.updated", worldId: "w", universeId: "u", layers: publishedLayers },
+        playerOk: true,
+        masterOk: true,
+        ownerMasterOk: true,
+      },
+      {
+        name: "map.updated gm_only map",
+        event: { type: "map.updated", worldId: "w", universeId: "u", layers: gmMapLayers },
+        playerOk: false,
+        masterOk: true,
+        ownerMasterOk: true,
+      },
+      {
+        name: "map.pin gm_only",
+        event: { type: "map.pin", worldId: "w", pinId: "p", mapId: "m", layers: gmPinLayers },
+        playerOk: false,
+        masterOk: true,
+        ownerMasterOk: true,
+      },
+      {
+        name: "map.pin on gm_only map",
+        event: {
+          type: "map.pin",
+          worldId: "w",
+          pinId: "p",
+          mapId: "m",
+          layers: [
+            { visibility: "published" },
+            { visibility: "gm_only" },
+            { visibility: "published", ownerId: OWNER },
+          ],
+        },
+        playerOk: false,
+        masterOk: true,
+        ownerMasterOk: true,
+      },
+      {
+        name: "map.pin owner_only",
+        event: { type: "map.pin", worldId: "w", pinId: "p", mapId: "m", layers: ownerPinLayers },
+        playerOk: false,
+        masterOk: false,
+        ownerMasterOk: true,
+      },
+      {
+        name: "map.pin published",
+        event: { type: "map.pin", worldId: "w", pinId: "p", mapId: "m", layers: publishedPinLayers },
+        playerOk: true,
+        masterOk: true,
+        ownerMasterOk: true,
+      },
+      {
+        name: "map.marker on gm_only map",
+        event: { type: "map.marker", worldId: "w", markerId: "mk", mapId: "m", layers: gmMapLayers },
+        playerOk: false,
+        masterOk: true,
+        ownerMasterOk: true,
+      },
+      {
+        name: "map.marker.deleted on gm_only map",
+        event: {
+          type: "map.marker.deleted",
+          worldId: "w",
+          markerId: "mk",
+          mapId: "m",
+          layers: gmMapLayers,
+        },
+        playerOk: false,
+        masterOk: true,
+        ownerMasterOk: true,
+      },
+      {
+        name: "map.pin.deleted gm_only",
+        event: {
+          type: "map.pin.deleted",
+          worldId: "w",
+          pinId: "p",
+          mapId: "m",
+          layers: gmPinLayers,
+        },
+        playerOk: false,
+        masterOk: true,
+        ownerMasterOk: true,
+      },
+    ];
+
+    for (const row of cases) {
+      expect(canReceiveWorldEvent(player, row.event), `${row.name}/player`).toBe(row.playerOk);
+      expect(canReceiveWorldEvent(master, row.event), `${row.name}/master`).toBe(row.masterOk);
+      expect(canReceiveWorldEvent(ownerMaster, row.event), `${row.name}/ownerMaster`).toBe(
+        row.ownerMasterOk,
+      );
+    }
+  });
+
+  it("turns invisible pin/marker upserts into deletes for the viewer", () => {
+    const pin: WorldRealtimeEvent = {
+      type: "map.pin",
+      worldId: "w",
+      pinId: "p",
+      mapId: "m",
+      layers: gmPinLayers,
+    };
+    expect(eventForViewer(master, pin)).toEqual(pin);
+    expect(eventForViewer(player, pin)).toEqual({
+      type: "map.pin.deleted",
+      worldId: "w",
+      pinId: "p",
+      mapId: "m",
+      layers: gmPinLayers,
+    });
+
+    const marker: WorldRealtimeEvent = {
+      type: "map.marker",
+      worldId: "w",
+      markerId: "mk",
+      mapId: "m",
+      layers: gmMapLayers,
+    };
+    expect(eventForViewer(player, marker)).toEqual({
+      type: "map.marker.deleted",
+      worldId: "w",
+      markerId: "mk",
+      mapId: "m",
+      layers: gmMapLayers,
+    });
+  });
+
+  it("drops invisible map.updated and delete signals", () => {
+    const updated: WorldRealtimeEvent = {
+      type: "map.updated",
+      worldId: "w",
+      universeId: "u",
+      layers: gmMapLayers,
+    };
+    expect(eventForViewer(player, updated)).toBeNull();
+    expect(eventForViewer(master, updated)).toEqual(updated);
+
+    const deleted: WorldRealtimeEvent = {
+      type: "map.pin.deleted",
+      worldId: "w",
+      pinId: "p",
+      mapId: "m",
+      layers: gmPinLayers,
+    };
+    expect(eventForViewer(player, deleted)).toBeNull();
   });
 });

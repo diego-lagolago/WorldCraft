@@ -1,5 +1,6 @@
 /** APP-AUTHZ / APP-VIS-INHERIT / APP-REL-VISIBLE — one layer for HTTP, UI loaders, and later MCP. */
 
+import type { WorldRealtimeEvent } from "@/lib/realtime/events";
 import {
   canSeeVisibility,
   fail,
@@ -89,6 +90,47 @@ export function canSeePublishedLayer(
       ownerId: layer.ownerId,
     }),
   );
+}
+
+/** CR-001: chat events reach every active member; map events need APP-VIS-INHERIT via `layers`. */
+export function canReceiveWorldEvent(
+  viewer: { role: MembershipRole; userId: string },
+  event: WorldRealtimeEvent,
+): boolean {
+  if (!event.type.startsWith("map.")) return true;
+  if (!("layers" in event) || !Array.isArray(event.layers)) return false;
+  return canSeePublishedLayer(viewer, event.layers);
+}
+
+/**
+ * CR-001: drop invisible map events; turn invisible pin/marker upserts into deletes so
+ * clients that previously saw the entity remove it without a refetch.
+ */
+export function eventForViewer(
+  viewer: { role: MembershipRole; userId: string },
+  event: WorldRealtimeEvent,
+): WorldRealtimeEvent | null {
+  if (!event.type.startsWith("map.")) return event;
+  if (canReceiveWorldEvent(viewer, event)) return event;
+  if (event.type === "map.pin") {
+    return {
+      type: "map.pin.deleted",
+      worldId: event.worldId,
+      pinId: event.pinId,
+      mapId: event.mapId,
+      layers: event.layers,
+    };
+  }
+  if (event.type === "map.marker") {
+    return {
+      type: "map.marker.deleted",
+      worldId: event.worldId,
+      markerId: event.markerId,
+      mapId: event.mapId,
+      layers: event.layers,
+    };
+  }
+  return null;
 }
 
 /** Content write for article/quest/pin: staff + visible; setting owner_only only by owner (R2). */

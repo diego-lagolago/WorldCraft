@@ -27,6 +27,7 @@ import {
   type ContentVisibility,
   type MembershipRole,
   type MembershipRow,
+  type VisibilityLayer,
   type VisibilityStatus,
 } from "@/lib/authz";
 import { recalcOutgoingMentions, listLinked } from "@/lib/domain/relations";
@@ -161,6 +162,26 @@ function mapVisible(
     { visibility: universeVisibility },
     { visibility: mapVisibility },
   ]);
+}
+
+function mapEventLayers(
+  universeVisibility: VisibilityStatus,
+  mapVisibility: VisibilityStatus,
+): VisibilityLayer[] {
+  return [{ visibility: universeVisibility }, { visibility: mapVisibility }];
+}
+
+function pinEventLayers(
+  universeVisibility: VisibilityStatus,
+  mapVisibility: VisibilityStatus,
+  pinVisibility: ContentVisibility,
+  ownerId: string,
+): VisibilityLayer[] {
+  return [
+    { visibility: universeVisibility },
+    { visibility: mapVisibility },
+    { visibility: pinVisibility, ownerId },
+  ];
 }
 
 export async function loadMapState(input: {
@@ -428,7 +449,12 @@ export async function createMap(input: {
       })
       .returning();
     const dto = serializeMap(row, null);
-    worldEvents.publish({ type: "map.updated", worldId: input.worldId, universeId: input.universeId });
+    worldEvents.publish({
+      type: "map.updated",
+      worldId: input.worldId,
+      universeId: input.universeId,
+      layers: mapEventLayers(universe.visibility, row.visibility),
+    });
     return ok({ map: dto });
   } catch (error) {
     const mapped = mapDbError(error);
@@ -474,7 +500,12 @@ export async function createMapWithImage(input: {
       })
       .returning();
     const dto = serializeMap(row, { widthPx: saved.image.width, heightPx: saved.image.height });
-    worldEvents.publish({ type: "map.updated", worldId: input.worldId, universeId: input.universeId });
+    worldEvents.publish({
+      type: "map.updated",
+      worldId: input.worldId,
+      universeId: input.universeId,
+      layers: mapEventLayers(universe.visibility, row.visibility),
+    });
     return ok({ map: dto });
   } catch (error) {
     await removeStoredFile(saved.id);
@@ -495,7 +526,12 @@ export async function deleteMap(input: {
   if (!loaded) return fail(404, "Diese Karte gibt es nicht.");
   await db.delete(maps).where(eq(maps.id, input.mapId));
   await collectUnreferencedFiles([loaded.map.imageId]);
-  worldEvents.publish({ type: "map.updated", worldId: input.worldId, universeId: loaded.universeId });
+  worldEvents.publish({
+    type: "map.updated",
+    worldId: input.worldId,
+    universeId: loaded.universeId,
+    layers: mapEventLayers(loaded.universeVisibility, loaded.map.visibility),
+  });
   return ok({ id: input.mapId });
 }
 
@@ -520,7 +556,12 @@ export async function updateMap(input: {
   const [row] = await db.update(maps).set(patch).where(eq(maps.id, input.mapId)).returning();
   if (!row) return fail(404, "Diese Karte gibt es nicht.");
   const dto = serializeMap(row, loaded);
-  worldEvents.publish({ type: "map.updated", worldId: input.worldId, universeId: loaded.universeId });
+  worldEvents.publish({
+    type: "map.updated",
+    worldId: input.worldId,
+    universeId: loaded.universeId,
+    layers: mapEventLayers(loaded.universeVisibility, row.visibility),
+  });
   return ok({ map: dto });
 }
 
@@ -645,6 +686,12 @@ export async function createPin(input: {
       worldId: input.worldId,
       pinId: row.id,
       mapId: row.mapId,
+      layers: pinEventLayers(
+        loaded.universeVisibility,
+        loaded.map.visibility,
+        row.visibility,
+        row.ownerId,
+      ),
     });
     return ok({ pin });
   } catch (error) {
@@ -668,7 +715,12 @@ export async function updatePin(input: {
   locked?: boolean;
 }): Promise<AuthzResult<{ pin: PinDto }>> {
   const [row] = await db
-    .select({ pin: pins, worldId: universes.worldId })
+    .select({
+      pin: pins,
+      worldId: universes.worldId,
+      universeVisibility: universes.visibility,
+      mapVisibility: maps.visibility,
+    })
     .from(pins)
     .innerJoin(maps, eq(maps.id, pins.mapId))
     .innerJoin(universes, eq(universes.id, maps.universeId))
@@ -724,6 +776,12 @@ export async function updatePin(input: {
       worldId: input.worldId,
       pinId: updated.id,
       mapId: updated.mapId,
+      layers: pinEventLayers(
+        row.universeVisibility,
+        row.mapVisibility,
+        updated.visibility,
+        updated.ownerId,
+      ),
     });
     return ok({ pin });
   } catch (error) {
@@ -739,7 +797,11 @@ export async function deletePin(input: {
   pinId: string;
 }): Promise<AuthzResult<{ id: string }>> {
   const [row] = await db
-    .select({ pin: pins })
+    .select({
+      pin: pins,
+      universeVisibility: universes.visibility,
+      mapVisibility: maps.visibility,
+    })
     .from(pins)
     .innerJoin(maps, eq(maps.id, pins.mapId))
     .innerJoin(universes, eq(universes.id, maps.universeId))
@@ -754,6 +816,12 @@ export async function deletePin(input: {
     worldId: input.worldId,
     pinId: input.pinId,
     mapId: row.pin.mapId,
+    layers: pinEventLayers(
+      row.universeVisibility,
+      row.mapVisibility,
+      row.pin.visibility,
+      row.pin.ownerId,
+    ),
   });
   return ok({ id: input.pinId });
 }
@@ -819,8 +887,15 @@ export async function placeMarker(input: {
   try {
     const marker = await db.transaction(async (tx) => {
       const previous = await tx
-        .select({ id: characterMarkers.id, mapId: characterMarkers.mapId })
+        .select({
+          id: characterMarkers.id,
+          mapId: characterMarkers.mapId,
+          mapVisibility: maps.visibility,
+          universeVisibility: universes.visibility,
+        })
         .from(characterMarkers)
+        .innerJoin(maps, eq(maps.id, characterMarkers.mapId))
+        .innerJoin(universes, eq(universes.id, maps.universeId))
         .where(eq(characterMarkers.characterId, input.characterId));
       for (const old of previous) {
         await tx.delete(characterMarkers).where(eq(characterMarkers.id, old.id));
@@ -829,6 +904,7 @@ export async function placeMarker(input: {
           worldId: input.worldId,
           markerId: old.id,
           mapId: old.mapId,
+          layers: mapEventLayers(old.universeVisibility, old.mapVisibility),
         });
       }
       const [row] = await tx
@@ -854,6 +930,7 @@ export async function placeMarker(input: {
       worldId: input.worldId,
       markerId: marker.id,
       mapId: marker.mapId,
+      layers: mapEventLayers(loaded.universeVisibility, loaded.map.visibility),
     });
     return ok({ marker });
   } catch (error) {
@@ -904,6 +981,7 @@ export async function moveMarker(input: {
     worldId: input.worldId,
     markerId: marker.id,
     mapId: marker.mapId,
+    layers: mapEventLayers(loaded.universeVisibility, loaded.mapVisibility),
   });
   return ok({ marker });
 }
@@ -932,6 +1010,7 @@ export async function deleteMarker(input: {
     worldId: input.worldId,
     markerId: input.markerId,
     mapId: loaded.marker.mapId,
+    layers: mapEventLayers(loaded.universeVisibility, loaded.mapVisibility),
   });
   return ok({ id: input.markerId });
 }

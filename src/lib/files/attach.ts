@@ -172,7 +172,13 @@ async function linkStaffImage(
     return { ok: true, data: true };
   }
   const [map] = await db
-    .select({ id: maps.id, imageId: maps.imageId, universeId: maps.universeId })
+    .select({
+      id: maps.id,
+      imageId: maps.imageId,
+      universeId: maps.universeId,
+      mapVisibility: maps.visibility,
+      universeVisibility: universes.visibility,
+    })
     .from(maps)
     .innerJoin(universes, eq(universes.id, maps.universeId))
     .where(and(eq(maps.id, targetId), eq(universes.worldId, worldId)))
@@ -183,6 +189,11 @@ async function linkStaffImage(
     .set({ imageId: fileId, updatedAt: now, updatedBy: actorId })
     .where(eq(maps.id, map.id));
   if (map.imageId) await collectUnreferencedFiles([map.imageId]);
-  worldEvents.publish({ type: "map.updated", worldId, universeId: map.universeId });
+  worldEvents.publish({
+    type: "map.updated",
+    worldId,
+    universeId: map.universeId,
+    layers: [{ visibility: map.universeVisibility }, { visibility: map.mapVisibility }],
+  });
   return { ok: true, data: true };
 }
