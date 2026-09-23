@@ -3,7 +3,8 @@
 **Status:** Freigegeben durch den Projektinhaber am 2026-09-22.
 **Datum:** 2026-09-22
 **Änderung 2026-09-23 (Plan `004`):** Enum `content_visibility` (`owner_only`, `gm_only`, `published`) für Artikel, Quests, Pins, Quest-Kapitel; `visibility_status` bleibt für Universen und Karten. Spalte `owner_id` an Artikeln, Quests, Pins, Kapiteln. Neue Tabellen `quest_chapters`, `quest_notes`. Regeln `APP-VIS-OWNER`, `APP-CHAPTER-REL`, `APP-NOTE-VERSION`, `APP-NOTE-NO-REL`.
-**Bezug:** `.ai/architecture/datenmodell-fachlich.md` (freigegeben 2026-09-22, Plan `004` 2026-09-23), ADR-001 (PostgreSQL + Drizzle + Better Auth), ADR-003 (relative Position 0–1), ADR-004 (TipTap-JSON + Klartext)
+**Änderung 2026-09-23 (Plan `005`, M1–M7 / PR1–PR6):** Tabelle `monsters`; Enums `monster_kind`, `monster_rarity`, `monster_danger`, `monster_size`; `content_kind` um `monster`; `relations` um `source_monster_id` / `target_monster_id` (COALESCE, CHECK, Unique). Owner und dreistufige Sichtbarkeit wie Artikel.
+**Bezug:** `.ai/architecture/datenmodell-fachlich.md` (freigegeben 2026-09-22, Plan `004`/`005` 2026-09-23), ADR-001 (PostgreSQL + Drizzle + Better Auth), ADR-003 (relative Position 0–1), ADR-004 (TipTap-JSON + Klartext)
 **Nicht Ziel:** SQL-Migrationen oder Drizzle-Dateien — die entstehen im Grundgerüst (T-007) und in den Folgeplänen. Dieses Dokument ist die verbindliche Vorlage dafür.
 
 **Leseregel:** Fachliche Namen bleiben Deutsch. Tabellen- und Spaltennamen sind Englisch/`snake_case` (Drizzle, Better Auth). Fachliche Enum-Werte werden intern als englische Schlüssel gespeichert; die Oberfläche zeigt die deutschen Bezeichnungen.
@@ -28,6 +29,7 @@ erDiagram
     worlds ||--|{ universes : contains
     worlds ||--o{ articles : contains
     worlds ||--o{ quests : contains
+    worlds ||--o{ monsters : contains
     worlds ||--o{ relations : contains
     worlds ||--|{ chat_channels : contains
     chat_channels ||--o{ chat_threads : has
@@ -47,14 +49,16 @@ erDiagram
     quests ||--o{ quest_participants : involves
     quests ||--o{ quest_chapters : has
     quests ||--o| quest_notes : has
+    monsters }o--o| articles : habitat
     files ||--o{ worlds : title_image
     files ||--o{ maps : map_image
     files ||--o{ articles : title_image
     files ||--o{ characters : portrait
+    files ||--o{ monsters : portrait
     files ||--o{ character_images : image
 ```
 
-Relationen verbinden Artikel, Quests, Charaktere, Pins und Universen polymorph (Abschnitt 7). Sie sind im Diagramm nur als Zugehörigkeit zur Welt dargestellt.
+Relationen verbinden Artikel, Quests, Charaktere, Pins, Universen und Monster polymorph (Abschnitt 7). Sie sind im Diagramm nur als Zugehörigkeit zur Welt dargestellt.
 
 **Mehrere Karten pro Universum:** `maps.universe_id` hat **keinen** Unique-Constraint. Mehrere Karten sind Produktregel (Owner 2026-09-23; früher `APP-MAP-MVP-ONE` aufgehoben). `maps.image_id` ist optional (leere Karte).
 
@@ -78,15 +82,19 @@ Relationen verbinden Artikel, Quests, Charaktere, Pins und Universen polymorph (
 | Typ | Schlüssel (DB) | Fachlich |
 |---|---|---|
 | `visibility_status` | `published`, `gm_only` | veröffentlicht, nur Spielleitung — **nur** Universen und Karten (Karten-Ausnahme) |
-| `content_visibility` | `owner_only`, `gm_only`, `published` | nur ich, nur Spielleitung, veröffentlicht — Artikel, Quests, Quest-Kapitel, Pins |
+| `content_visibility` | `owner_only`, `gm_only`, `published` | nur ich, nur Spielleitung, veröffentlicht — Artikel, Quests, Quest-Kapitel, Pins, Monster |
 | `membership_role` | `game_master`, `master`, `player` | Game Master, Master, Player |
 | `invite_validity` | `one_day`, `seven_days`, `unlimited` | 1 Tag, 7 Tage, unbegrenzt |
 | `pin_type` | `danger`, `boss`, `house`, `city`, `treasure`, `landmark`, `fishing`, `plants`, `dungeon`, `quest`, `teleporter`, `shop` | Gefahr, Boss, Haus, Stadt, Schatz, Stern, Angeln, Pflanzen, Dungeon, Quest, Teleporter, Shop |
 | `quest_status` | `open`, `active`, `completed`, `failed` | offen, aktiv, abgeschlossen, gescheitert |
 | `skill_level` | `untalented`, `untrained`, `trained`, `expertise` | untalentiert, ungeübt, geübt, Expertise |
 | `journal_visibility` | `private`, `shared_with_gm` | privat, mit Spielleitung geteilt |
-| `content_kind` | `article`, `quest`, `character`, `pin`, `universe` | artikel, quest, charakter, pin, universum |
+| `content_kind` | `article`, `quest`, `character`, `pin`, `universe`, `monster` | artikel, quest, charakter, pin, universum, monster |
 | `relation_origin` | `mention`, `template_field`, `participation`, `manual` | Erwähnung, Vorlagenfeld, Beteiligung, manuell |
+| `monster_kind` | `beast`, `undead`, `demon`, `dragon`, `humanoid`, `construct`, `aberration`, `plant`, `magical`, `other` | Bestie, Untoter, Dämon, Drache, Humanoid, Konstrukt, Aberration, Pflanze, Magisch, sonstiges |
+| `monster_rarity` | `common`, `uncommon`, `rare`, `epic`, `legendary` | Common, Uncommon, Rare, Epic, Legendary (UI-Labels englisch) |
+| `monster_danger` | `harmless`, `dangerous`, `deadly`, `devastating`, `divine`, `apocalyptic` | Harmlos, Gefährlich, Tödlich, Verheerend, Göttlich, Apokalyptisch |
+| `monster_size` | `tiny`, `small`, `medium`, `large`, `gigantic` | Winzig, Klein, Durchschnitt, Groß, Gigantisch |
 
 ### 2.2 Dateien (`files`)
 
@@ -289,6 +297,42 @@ Geordnetes Array frei angelegter Fähigkeiten (Entscheidung Projektinhaber 2026-
 
 Kein Übungsgrad und kein Übungsbonus. Angezeigt wird nur abgerundet((Attributwert − 10) / 2), nicht gespeichert; leeres Attribut → 0. Höchstens 30 Einträge; neuer Charakter startet mit `[]`. Prüfung per Zod (`APP-CHAR-ABILITIES`); zusätzlich `CHECK (jsonb_typeof(abilities) = 'array')`. Spalte entsteht in Plan `003` T-008.
 
+### 3.8a `monsters` (Monster)
+
+Gehört zu einer Welt. Charakterblatt wie `characters` (Abschnitte 3.8.1 / 3.8.2), plus monsterspezifische Felder (Plan `005`, M1–M7 / PR4).
+
+| Spalte | Typ | Pflicht | Regel |
+|---|---|:-:|---|
+| `id` | uuid PK | ✅ | |
+| `world_id` | uuid FK `worlds` ON DELETE CASCADE | ✅ | |
+| `name` | text | ✅ | max. 120; Trigram-Index für `@`-Suche |
+| `portrait_id` | uuid FK `files` ON DELETE SET NULL | – | max. 10 MB; Bildart `monster_portrait`; genau eines; in `FILE_REFERENCE_COLUMNS` (PR5) |
+| `class` | text | – | max. 60 |
+| `attr_str` … `attr_cha` | smallint | – | je `CHECK (NULL OR BETWEEN 1 AND 30)` |
+| `skills` | jsonb | ✅ | Default `[]`, max. 30; `CHECK (jsonb_typeof(skills) = 'array')` |
+| `proficiency_bonus` | smallint | ✅ | Default 2, `CHECK (BETWEEN 0 AND 10)` |
+| `abilities` | jsonb | ✅ | Default `[]`, max. 30; `CHECK (jsonb_typeof(abilities) = 'array')` |
+| `personality` | text | – | max. 1000 |
+| `ideals` | text | – | max. 1000 |
+| `bonds` | text | – | max. 1000 |
+| `flaws` | text | – | max. 1000 |
+| `bio_json` | jsonb | – | Rich-Text **mit** Erwähnungen; Relationen `origin = mention` |
+| `bio_plain` | text | – | |
+| `bio_tsv` | tsvector generated | ✅ | aus `name` und `bio_plain`, Konfiguration `german`; GIN-Index (PR4). Kein `name_tsv`. |
+| `kind` | `monster_kind` | ✅ | Default `other` |
+| `rarity` | `monster_rarity` | ✅ | Default `common` |
+| `is_legendary` | boolean | ✅ | Default `false` |
+| `danger` | `monster_danger` | ✅ | Default `harmless` |
+| `size` | `monster_size` | ✅ | Default `medium` |
+| `habitat_article_id` | uuid FK `articles` ON DELETE SET NULL | – | nur Artikel `template_type = 'place'` derselben Welt (`APP-MONSTER-HABITAT`); Relation `origin = template_field`, `template_field_key = 'habitat'` |
+| `visibility` | `content_visibility` | ✅ | Default `owner_only` |
+| `owner_id` | text FK `users` | ✅ | anlegender Benutzer; Löschverhalten wie `created_by`; **nicht** änderbar über API/UI; kein `TRIG-CHAR-OWNER-IMMUTABLE`; Index `(world_id, owner_id)` (PR4) |
+| Protokollfelder | | ✅ | |
+
+Indizes: `(world_id)`, `(world_id, owner_id)`, GIN `pg_trgm` auf `name`, GIN auf `bio_tsv`.
+
+**Unterschiede zu `characters`:** Welt-FK statt weltunabhängigem Besitz; Bio mit Erwähnungen; kein `character_images`; Owner wie Artikel (kein Immutable-Trigger).
+
 ### 3.9 `character_images` (Bildanhänge)
 
 | Spalte | Typ | Pflicht | Regel |
@@ -415,10 +459,10 @@ Keine Erwähnungs-Relationen (`APP-NOTE-NO-REL`). Nicht in der Hub-Suche.
 | `id` | uuid PK | ✅ | |
 | `world_id` | uuid FK `worlds` ON DELETE CASCADE | ✅ | |
 | `source_kind` | `content_kind` | ✅ | |
-| `source_article_id` … `source_universe_id` | uuid FK, ON DELETE CASCADE | genau eine | siehe Abschnitt 7 |
-| `source_id` | uuid generated | ✅ | `COALESCE` der fünf Source-FKs |
+| `source_article_id` … `source_universe_id`, `source_monster_id` | uuid FK, ON DELETE CASCADE | genau eine | siehe Abschnitt 7; Monster-FK → `monsters` |
+| `source_id` | uuid generated | ✅ | `COALESCE` der sechs Source-FKs (inkl. Monster) |
 | `target_kind` | `content_kind` | ✅ | |
-| `target_article_id` … `target_universe_id` | uuid FK, ON DELETE CASCADE | genau eine | |
+| `target_article_id` … `target_universe_id`, `target_monster_id` | uuid FK, ON DELETE CASCADE | genau eine | |
 | `target_id` | uuid generated | ✅ | analog |
 | `origin` | `relation_origin` | ✅ | |
 | `template_field_key` | text | – | Pflicht bei `template_field` |
@@ -441,7 +485,7 @@ UNIQUE (world_id, source_kind, source_id, target_kind, target_id, origin,
         COALESCE(template_field_key, ''), COALESCE(label, ''))
 ```
 
-Gleiche Welt: `TRIG-REL-SAME-WORLD` (Artikel/Quest/Universum direkt; Pin über Karte→Universum; Charakter über `world_participations`, Archiv erlaubt).
+Gleiche Welt: `TRIG-REL-SAME-WORLD` (Artikel/Quest/Universum/Monster direkt; Pin über Karte→Universum; Charakter über `world_participations`, Archiv erlaubt).
 
 ### 3.16 `journal_entries` (Tagebucheintrag)
 
@@ -519,7 +563,7 @@ Jede Eigenschaft aus `.ai/architecture/datenmodell-fachlich.md`. Nichts ausgelas
 | Inhaltsverweis Art | `content_kind` / `source_kind` / `target_kind` |
 | Inhaltsverweis Ziel | Exclusive-FK plus generated `source_id` / `target_id` |
 | Sichtbarkeitsstatus (zweistufig) | `visibility_status` an `universes`, `maps` |
-| Sichtbarkeitsstatus (dreistufig) | `content_visibility` an `pins`, `articles`, `quests`, `quest_chapters` |
+| Sichtbarkeitsstatus (dreistufig) | `content_visibility` an `pins`, `articles`, `quests`, `quest_chapters`, `monsters` |
 | Owner | `owner_id` an `pins`, `articles`, `quests`, `quest_chapters` |
 | Rich-Text | `*_json` + `*_plain` |
 | Erwähnung im Text | TipTap-Mention-Node `{ id, label, art }` in `*_json` |
@@ -619,6 +663,20 @@ Jede Eigenschaft aus `.ai/architecture/datenmodell-fachlich.md`. Nichts ausgelas
 | Bildanhänge (≤10, Caption, Reihenfolge) | `character_images` |
 | Volk, Kampfwerte, Inventar, Zauber | bewusst nicht (OF-08) — keine Spalten |
 
+### 3.8a Monster
+
+| Fachlich | Schema |
+|---|---|
+| Welt | `monsters.world_id` |
+| Name | `monsters.name` |
+| Profilbild | `monsters.portrait_id` → `files` |
+| Charakterblatt | wie `characters` (Klasse, Attribute, Skills, Abilities, Textfelder, Bio) |
+| Art / Seltenheit / Legendär / Gefahr / Größe | `kind`, `rarity`, `is_legendary`, `danger`, `size` |
+| Lebensraum | `habitat_article_id` → `articles` |
+| Sichtbarkeit | `monsters.visibility` (`content_visibility`) |
+| Owner | `monsters.owner_id` |
+| Bildanhänge | bewusst nicht — nur `portrait_id` |
+
 ### 3.9 Welt-Teilnahme
 
 | Fachlich | Schema |
@@ -707,8 +765,9 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 | R-2.1-1 | Ziel gehört zur selben Welt (Charakter: mitgebracht) | `TRIG-REL-SAME-WORLD` |
 | R-2.1-2 | Pins nicht über `@` erwähnbar | `APP-MENTION-SEARCH` schließt `pin` aus |
 | R-2.1-3 | Universum erwähnbar, Quelle und Ziel | `content_kind` enthält `universe` |
+| R-2.1-3a | Monster erwähnbar, Quelle und Ziel | `content_kind` enthält `monster`; Exclusive-FKs `source_monster_id` / `target_monster_id` |
 | R-2.1-4 | Welt kein Inhaltsverweis | keine `content_kind = world`, keine Relationen auf `worlds` |
-| R-2.2-1 | Default Sichtbarkeit | Universen/Karten: DB-Default `gm_only` (`visibility_status`). Artikel/Quests/Pins/Kapitel: DB-Default `owner_only` (`content_visibility`) |
+| R-2.2-1 | Default Sichtbarkeit | Universen/Karten: DB-Default `gm_only` (`visibility_status`). Artikel/Quests/Pins/Kapitel/Monster: DB-Default `owner_only` (`content_visibility`) |
 | R-2.2-2 | Erstes Universum veröffentlicht | `APP-WORLD-CREATE` setzt erstes Universum `published` |
 | R-2.2-3 | Vererbung nach unten | `APP-VIS-INHERIT` (Abschnitt 8), keine denormalisierte Spalte; gilt auch Quest → Kapitel und Quest → Notizblock |
 | R-2.2-4 | Veröffentlichen erbt nicht nach unten | jeder Datensatz behält eigene `visibility` |
@@ -716,7 +775,7 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 | R-2.3-1 | Rich-Text + Klartext | `*_json` + `*_plain`; Plain beim Speichern aus JSON (`APP-PLAIN`) |
 | R-2.3-2 | Weltbeschreibung ohne Erwähnungen | Editor ohne Mention-Extension; `APP-WORLD-NO-MENTIONS` weist Mention-Nodes zurück |
 | R-2.4-1 | Erwähnungssuche Teilwort, case-insensitive | `pg_trgm` + `ILIKE` (Abschnitt 9) |
-| R-2.4-2 | Quellen: Artikel, Quest, Charakter, Universum | View/Union `mention_search_targets` |
+| R-2.4-2 | Quellen: Artikel, Quest, Charakter, Universum, Monster | View/Union `mention_search_targets` |
 | R-2.4-3 | max. 10, Prefix vor Infix, dann alpha | `APP-MENTION-RANK` |
 | R-2.4-4 | Anzeige aktueller Titel; sonst letzter bekannter als Text | Mention-Attr `label`; Resolve zur Lesezeit (`APP-MENTION-RENDER`) |
 | R-2.5-1 | Verknüpft ein/ausgehend, nur sichtbare | Query `relations` + `APP-REL-VISIBLE` |
@@ -747,6 +806,11 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 | R-3.8-3 | Eigene Fertigkeiten (Name, Übungsgrad, Attribut), max. 30, Name eindeutig, Start leer; Gesamtbonus −4 / −2 / +Ü / +2Ü, nicht gespeichert | `skills` JSONB-Array + `APP-CHAR-SKILLS`; `proficiency_bonus` CHECK 0–10 |
 | R-3.8-3a | Eigene Fähigkeiten (Text, Attribut), max. 30, Text eindeutig, Start leer; Anzeige nur Attributsmodifikator | `abilities` JSONB-Array + `APP-CHAR-ABILITIES` |
 | R-3.8-4 | Höchstens 10 Bildanhänge | `TRIG-CHAR-IMAGES-MAX` |
+| R-3.8a-1 | Monster an Welt gebunden; Owner wie Artikel | `monsters.world_id` CASCADE; `owner_id` unveränderlich in App |
+| R-3.8a-2 | Blatt-Checks wie Charakter | Attribute 1–30, Übungsbonus 0–10, skills/abilities Array |
+| R-3.8a-3 | Lebensraum nur Ort-Artikel derselben Welt | `APP-MONSTER-HABITAT` + Relation `habitat` |
+| R-3.8a-4 | Bio mit Erwähnungen | `APP-REL-RECALC` auf Monster-Bio |
+| R-3.8a-5 | Genau ein Profilbild | `portrait_id`; GC über `FILE_REFERENCE_COLUMNS` |
 | R-3.9-1 | Höchstens eine Teilnahme pro Charakter und Welt | `UQ-PARTICIPATION` |
 | R-3.9-2 | Besitzer muss aktives Mitglied sein (solange aktiv) | `TRIG-PART-OWNER-MEMBER` |
 | R-3.9-3 | Mehrere Charaktere gleichzeitig, kein Aktiv-Schalter | keine `is_active`-Spalte |
@@ -855,11 +919,11 @@ Bewertung gemäß *Vorgehen bei Architekturentscheidungen* in Plan `001`. Gewich
 
 ### Kontext
 
-Relationen, Erwähnungen und Vorlagen-Verweise zeigen auf Artikel, Quest, Charakter, Pin oder Universum. Charaktere sind weltunabhängig. Löschen eines Inhalts muss zugehörige Relationen entfernen (Abschnitt 4). MCP `relationen_abrufen` liest ein- und ausgehend inkl. Tiefe 2.
+Relationen, Erwähnungen und Vorlagen-Verweise zeigen auf Artikel, Quest, Charakter, Pin, Universum oder Monster. Charaktere sind weltunabhängig; Monster gehören zur Welt. Löschen eines Inhalts muss zugehörige Relationen entfernen (Abschnitt 4). MCP `relationen_abrufen` liest ein- und ausgehend inkl. Tiefe 2.
 
 ### Kandidaten
 
-**A – Exclusive Foreign Keys** (empfohlen). Fünf nullable FKs je Seite, CHECK „genau eine, passend zum Kind“, generated `source_id`/`target_id` als `COALESCE`. Echte `ON DELETE CASCADE`.
+**A – Exclusive Foreign Keys** (empfohlen). Sechs nullable FKs je Seite (inkl. `*_monster_id`), CHECK „genau eine, passend zum Kind“, generated `source_id`/`target_id` als `COALESCE`. Echte `ON DELETE CASCADE`. Plan `005` PR1: Spalten ergänzen, Generated Columns und abhängige Indizes neu anlegen (Generated Columns lassen sich nicht ändern).
 
 **Eignung:** Abschnitt 4 (Artikel/Quest/Pin/Universum/Charakter löschen → Relationen weg) läuft über Postgres, nicht über vergessene `DELETE`-Zweige. Charakter-FK funktioniert, obwohl der Charakter keiner Welt gehört. Generated Columns halten Queries (`WHERE source_id = $1`) kurz. Drizzle kann die FKs und Checks abbilden; Generated Columns als `sql\`…\`` in der Migration.
 
@@ -909,8 +973,9 @@ Die Empfehlung bleibt A. B gewinnt bei Einfachheit, verliert bei den Löschregel
 ### Konsequenzen
 
 - Relationen-INSERT setzt Kind + die eine passende FK; IDs generiert die DB.
-- Löschen von Artikel, Quest, Pin, Universum, Charakter entfernt Relationen automatisch.
+- Löschen von Artikel, Quest, Pin, Universum, Charakter, Monster entfernt Relationen automatisch.
 - Quest-Beteiligung ist zusätzlich `quest_participants` (Namens-Snapshot); die Relation `origin = participation` hängt am Charakter-FK und fällt beim Charakterlöschen weg — der Snapshot in `quest_participants` bleibt (`character_id` NULL). Das entspricht OF-05.
+- Monster-Lebensraum: Relation `origin = template_field`, `template_field_key = 'habitat'`; Ort-Artikel löschen setzt `habitat_article_id` NULL und entfernt die Relation per CASCADE auf der Artikel-Seite bzw. Neuberechnung.
 
 ---
 
@@ -918,10 +983,11 @@ Die Empfehlung bleibt A. B gewinnt bei Einfachheit, verliert bei den Löschregel
 
 | Wenn gelöscht wird | Technisch |
 |---|---|
-| **Welt** | `ON DELETE CASCADE` von `worlds` auf Mitgliedschaften, Links, Universen (→ Karten → Pins/Marker), Artikel, Quests (→ Participants), Relationen, Teilnahmen, Tagebuch dieser Welt, Chat. `files` werden nicht automatisch gelöscht (kein CASCADE von Welt auf `files`). `APP-FILE-GC` entfernt verwaiste Dateien nach dem Commit. **Charaktere** haben keine Welt-FK und bleiben. |
+| **Welt** | `ON DELETE CASCADE` von `worlds` auf Mitgliedschaften, Links, Universen (→ Karten → Pins/Marker), Artikel, Quests (→ Participants), Monster, Relationen, Teilnahmen, Tagebuch dieser Welt, Chat. `files` werden nicht automatisch gelöscht (kein CASCADE von Welt auf `files`). `APP-FILE-GC` entfernt verwaiste Dateien nach dem Commit. **Charaktere** haben keine Welt-FK und bleiben. |
 | **Universum** | CASCADE auf Karten → Pins/Marker. Relationen mit Universum oder seinen Pins als Ende: Pin-CASCADE plus Universum-CASCADE. `TRIG-UNIVERSE-LAST` blockiert das letzte Universum. Erwähnungen in anderen Texten bleiben Nodes; `APP-MENTION-RENDER` zeigt `label` ohne Link. |
 | **Karte** | CASCADE auf Pins und Marker. Relationen der Pins über Pin-CASCADE. |
-| **Artikel / Quest** | CASCADE auf deren Relationen-FKs. Quest zusätzlich Participants, Kapitel (`quest_chapters`) und Notizblock (`quest_notes`). Mentions in anderen Texten: Render ohne Link. |
+| **Artikel / Quest** | CASCADE auf deren Relationen-FKs. Quest zusätzlich Participants, Kapitel (`quest_chapters`) und Notizblock (`quest_notes`). Ort-Artikel: `monsters.habitat_article_id` SET NULL; Habitat-Relation fällt weg. Mentions in anderen Texten: Render ohne Link. |
+| **Monster** | CASCADE auf Relationen mit diesem Monster (`source_monster_id` / `target_monster_id`). Mentions: Render ohne Link. |
 | **Quest-Kapitel** | Zeile löschen; `APP-CHAPTER-REL` / `APP-REL-RECALC` berechnet Relationen der Quest neu. |
 | **Pin** | CASCADE auf Relationen mit diesem Pin. |
 | **Mitgliedschaft** (Austritt/Entfernen) | **Kein DELETE.** `archived_at = now()` an Mitgliedschaft und an allen `world_participations` des Benutzers in dieser Welt. Marker, Tagebuch, Relationen, Quest-Beteiligungen, Chat, von ihm erstellte Inhalte bleiben. Sichtbarkeit über `APP-AUTHZ` / `APP-REL-VISIBLE`. Re-Join: `archived_at` der Mitgliedschaft leeren, Rolle `player`. Wieder-mitbringen: `archived_at` der Teilnahme leeren. |
@@ -934,7 +1000,7 @@ Die Empfehlung bleibt A. B gewinnt bei Einfachheit, verliert bei den Löschregel
 
 ### Kontext
 
-Zwei Suchen: **Erwähnungssuche** beim Tippen von `@` (Teilwort, case-insensitive, vier Arten, sichtbare Titel, max. 10) und **Volltextsuche** über Klartext (UI später, MCP-Werkzeug `suchen` inkl. Textauszug).
+Zwei Suchen: **Erwähnungssuche** beim Tippen von `@` (Teilwort, case-insensitive, fünf Arten inkl. Monster, sichtbare Titel, max. 10) und **Volltextsuche** über Klartext (UI später, MCP-Werkzeug `suchen` inkl. Textauszug).
 
 ### Kandidaten
 
@@ -988,10 +1054,11 @@ View oder Union `mention_search_targets (world_id, kind, id, name, extra, visibi
 - Quests: `title`
 - Universen: `name`
 - Charaktere: `name` über **nicht archivierte** `world_participations`
+- Monster: `name` (Welt direkt; Sichtbarkeit `APP-VIS-OWNER`)
 
-`APP-MENTION-SEARCH` filtert danach mit `APP-VIS-INHERIT` und `APP-AUTHZ` (Player sehen keine `gm_only`-Ziele und nichts unter einem versteckten Universum). Pins fehlen in der View.
+`APP-MENTION-SEARCH` filtert danach mit `APP-VIS-INHERIT` und `APP-AUTHZ` (Player sehen keine `gm_only`-Ziele und nichts unter einem versteckten Universum). Pins fehlen in der View. Monster sind nicht als Stub anlegbar.
 
-Volltext-Spalten (generated, stored): `articles.body_tsv`, `quests.description_tsv`, `quest_chapters.body_tsv`, `universes.description_tsv`, `pins.description_tsv`, `pins.title` über Trigram, `characters.bio_tsv`, `journal_entries.body_tsv` (nur App, **nicht** MCP — Plan `002` schließt Tagebuch aus). Quest-Kapiteltexte liefern Hub-Treffer auf die **Quest**, nur aus Kapiteln, die der Betrachter sieht (`APP-VIS-OWNER` + Vererbung). `quest_notes` sind **nicht** in der Suche. Weltbeschreibung kann in die App-Suche, nicht in Mentions.
+Volltext-Spalten (generated, stored): `articles.body_tsv`, `quests.description_tsv`, `quest_chapters.body_tsv`, `universes.description_tsv`, `pins.description_tsv`, `pins.title` über Trigram, `characters.bio_tsv`, `monsters.bio_tsv` (Name + Bio), `journal_entries.body_tsv` (nur App, **nicht** MCP — Plan `002` schließt Tagebuch aus). Quest-Kapiteltexte liefern Hub-Treffer auf die **Quest**, nur aus Kapiteln, die der Betrachter sieht (`APP-VIS-OWNER` + Vererbung). `quest_notes` sind **nicht** in der Suche. Weltbeschreibung kann in die App-Suche, nicht in Mentions.
 
 ---
 
@@ -1014,7 +1081,7 @@ canSeePublished(user, world)    = isActiveMember
    - Pin / Marker → Karte sichtbar → Universum sichtbar
    - Karte → Universum sichtbar
    - Quest-Kapitel / Quest-Notizblock → Quest sichtbar
-   - Universum / Artikel / Quest: keine Eltern-Ebene
+   - Universum / Artikel / Quest / Monster: keine Eltern-Ebene
 
 `APP-VIS-OWNER` — dreistufige Sichtbarkeit (Plan `004`):
 
@@ -1049,6 +1116,7 @@ Marker zusätzlich: Teilnahme des Charakters nicht archiviert.
 | Welt-Teilnahme | `isActiveMember` und nicht archiviert | mitbringen/reaktivieren: Besitzer |
 | Charakter-Marker | Mitglied + Teilnahme aktiv + Karte sichtbar | Besitzer oder `isStaff`; Besitzer nur auf sichtbarer Karte |
 | Artikel, Quest | `APP-VIS-OWNER` | Anlegen: `isStaff` (setzt `owner_id`). Bearbeiten/Löschen: Owner oder `isStaff`, jeweils nur wenn sichtbar. `owner_only` setzen: nur Owner |
+| Monster | `APP-VIS-OWNER` | wie Artikel/Quest (Plan `005`, M4) |
 | Quest-Kapitel | Quest sichtbar + `APP-VIS-OWNER` | wie Artikel/Quest |
 | Quest-Notizblock | Quest sichtbar | Lesen/Schreiben: wer die Quest sehen darf (`APP-NOTE-VERSION`) |
 | Relation | `APP-REL-VISIBLE` | automatisch: nie direkt; manuell: `isStaff` |
@@ -1079,7 +1147,7 @@ Default neuer Inhalte: Artikel/Quest/Kapitel/Pin → `owner_only`; Universum/Kar
 | `relations (world_id, target_kind, target_id)` | eingehend |
 | `chat_messages (channel_id, sent_at DESC) WHERE thread_id IS NULL` | letzte 50 im Hauptstrom |
 | `chat_messages (thread_id, sent_at DESC) WHERE thread_id IS NOT NULL` | letzte 50 im Thread |
-| GIN `pg_trgm` auf `articles.title`, `quests.title`, `characters.name`, `universes.name`, `pins.title` | Mentions + Suche |
+| GIN `pg_trgm` auf `articles.title`, `quests.title`, `characters.name`, `universes.name`, `pins.title`, `monsters.name` | Mentions + Suche |
 | GIN auf `*_tsv` | Volltext |
 
 ---

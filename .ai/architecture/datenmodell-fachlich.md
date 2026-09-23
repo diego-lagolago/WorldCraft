@@ -3,7 +3,8 @@
 **Status:** Freigegeben durch den Projektinhaber am 2026-09-22. Alle offenen Fragen (Abschnitt 7) sind geklärt. Änderungen nur nach erneuter Abstimmung mit dem Projektinhaber.
 **Änderung 2026-09-22 (Plan-Review 001, abgestimmt mit dem Projektinhaber):** Rollen ändern und Mitglieder entfernen darf nur der Game Master, nicht mehr die gesamte Spielleitung (3.3, Abschnitt 5). Austreten und Entfernen löschen nichts mehr: Mitgliedschaft, Welt-Teilnahmen, Marker und Relationen werden archiviert und bei erneutem Beitritt wiederhergestellt (3.3, 3.4, 3.9, 3.10, Abschnitt 4). Universen werden Teil des Beziehungsnetzes: erwähnbar über `@`, Quelle (über Erwähnungen in ihrer Beschreibung) und Ziel von Relationen. Die Welt bleibt reines logisches Objekt ohne Erwähnungen und Relationen (2.1, 2.3, 2.4, 2.5, 3.2, 3.14, Abschnitt 4). Das Konzept „aktiver Charakter“ entfällt: Ein Benutzer kann mehrere mitgebrachte Charaktere gleichzeitig spielen, jeder mitgebrachte Charakter kann Marker haben (3.9, 3.10, Abschnitt 5).
 **Änderung 2026-09-23 (Plan `004`, abgestimmt mit dem Projektinhaber):** Dreistufige Sichtbarkeit (`nur ich` / `nur Spielleitung` / `veröffentlicht`) mit Owner für Artikel, Quests, Quest-Kapitel und Pins; Universen und Karten bleiben zweistufig (Karten-Ausnahme). Quest-Kapitel und Quest-Notizblock neu (3.13a, 3.13b). Owner-Rechte ruhen bei herabgestufter Rolle Player; `nur ich` setzen darf nur der Owner. Erwähnungen aus veröffentlichten Kapiteln erzeugen Relationen der Quest; Notizblock ohne Relationen.
-**Bezug:** Plan `001-mvp-infrastruktur.md` (F1–F10, Rechtematrix); Plan `004-quest-kapitel-und-owner-sichtbarkeit.md`.
+**Änderung 2026-09-23 (Plan `005`, Entscheidungen M1–M7):** Monster als eigener Inhaltstyp (Bestiarium), kein Artikel. Volles Charakterblatt wie 3.8 plus Art, Seltenheit, Legendär, Gefahrenstufe, Größe, Lebensraum; genau ein Profilbild; dreistufige Sichtbarkeit und Owner wie Artikel; vollwertig in Relationen, Erwähnungen und Suche (Bio mit `@` erlaubt, anders als Charakter). Siehe 3.8a.
+**Bezug:** Plan `001-mvp-infrastruktur.md` (F1–F10, Rechtematrix); Plan `004-quest-kapitel-und-owner-sichtbarkeit.md`; Plan `005-monster-bestiarium.md`.
 
 Dieses Dokument beschreibt, **welche Dinge es gibt, welche Eigenschaften sie haben, wie sie zusammenhängen und welche Regeln gelten**, unabhängig von Datenbank und Backend. Datentypen sind fachlich gemeint (z. B. „Text, max. 120 Zeichen“), nicht technisch.
 
@@ -23,6 +24,7 @@ erDiagram
     KARTE ||--o{ CHARAKTER_MARKER : zeigt
     WELT ||--o{ ARTIKEL : enthaelt
     WELT ||--o{ QUEST : enthaelt
+    WELT ||--o{ MONSTER : enthaelt
     QUEST ||--o{ QUEST_KAPITEL : hat
     QUEST ||--o| QUEST_NOTIZBLOCK : hat
     WELT ||--o{ RELATION : enthaelt
@@ -34,12 +36,13 @@ erDiagram
     CHARAKTER ||--o{ TAGEBUCHEINTRAG : schreibt
     WELT ||--o{ TAGEBUCHEINTRAG : "gehoert zu"
     QUEST }o--o{ CHARAKTER : "beteiligt"
+    MONSTER }o--o| ARTIKEL : "Lebensraum (Ort)"
     BENUTZER ||--o{ CHAT_NACHRICHT : schreibt
 ```
 
-Relationen verbinden Artikel, Quests, Charaktere, Pins und Universen beliebig miteinander (Inhaltsverweis, siehe 2.1). Sie sind im Diagramm nur als Zugehörigkeit zur Welt dargestellt.
+Relationen verbinden Artikel, Quests, Charaktere, Pins, Universen und Monster beliebig miteinander (Inhaltsverweis, siehe 2.1). Sie sind im Diagramm nur als Zugehörigkeit zur Welt dargestellt.
 
-**Leseregel:** Alles außer Benutzer und Charakter gehört (direkt oder indirekt) zu genau einer Welt. Wird eine Welt gelöscht, verschwindet alles, was zu ihr gehört. Charaktere gehören dem Benutzer und überleben das Löschen einer Welt.
+**Leseregel:** Alles außer Benutzer und Charakter gehört (direkt oder indirekt) zu genau einer Welt. Wird eine Welt gelöscht, verschwindet alles, was zu ihr gehört. Charaktere gehören dem Benutzer und überleben das Löschen einer Welt. Monster gehören zur Welt und werden mit ihr gelöscht.
 
 ---
 
@@ -51,20 +54,21 @@ Mehrere Stellen verweisen auf „einen Inhalt der Welt“ (Pins, Relationen, Erw
 
 | Feld | Werte |
 |---|---|
-| Art | `artikel`, `quest`, `charakter`, `pin`, `universum` |
-| Ziel | der konkrete Artikel, die Quest, der Charakter oder der Pin |
+| Art | `artikel`, `quest`, `charakter`, `pin`, `universum`, `monster` |
+| Ziel | der konkrete Artikel, die Quest, der Charakter, der Pin, das Universum oder das Monster |
 
 Regeln:
-- Das Ziel muss zur selben Welt gehören (bei Charakteren: in diese Welt mitgebracht sein).
+- Das Ziel muss zur selben Welt gehören (bei Charakteren: in diese Welt mitgebracht sein; Monster gehören direkt zur Welt).
 - Pins können Quelle einer Relation sein (über Erwähnungen in ihrer Beschreibung) und Ende einer manuellen Relation. Über `@` erwähnbar sind sie **nicht** (siehe 2.4).
 - Universen sind über `@` erwähnbar, können Quelle einer Relation sein (über Erwähnungen in ihrer Beschreibung) und Quelle oder Ziel einer manuellen Relation.
+- Monster sind über `@` erwähnbar, Quelle (Bio-Erwähnungen, Lebensraum-Feld) und Ziel von Relationen (Plan `005`, M5).
 - Die **Welt** ist kein Inhaltsverweis: Sie ist nur das logische Objekt (die Gruppe) für die Geschichte, nicht erwähnbar und nie Quelle oder Ziel einer Relation.
 
 ### 2.2 Sichtbarkeitsstatus
 
 Es gibt zwei Varianten (Plan `004`, 2026-09-23):
 
-**Dreistufig** (`content_visibility`) für **Artikel, Quests, Quest-Kapitel und Pins**:
+**Dreistufig** (`content_visibility`) für **Artikel, Quests, Quest-Kapitel, Pins und Monster**:
 
 | Wert (UI) | Schlüssel (DB) | Bedeutung |
 |---|---|---|
@@ -74,10 +78,10 @@ Es gibt zwei Varianten (Plan `004`, 2026-09-23):
 
 **Zweistufig** (`visibility_status`) für **Universen und Karten** (**Karten-Ausnahme**): nur `veröffentlicht` / `nur Spielleitung`. Kein Owner, kein `nur ich`.
 
-**Owner:** Jeder Artikel, jede Quest, jedes Quest-Kapitel und jeder Pin hat einen Owner (Benutzer). Beim Anlegen wird der anlegende Benutzer Owner. Owner und `erstellt von` sind getrennt, damit ein späteres Übertragen möglich bleibt. Was passiert, wenn der Owner die Welt verlässt, steht im Backlog.
+**Owner:** Jeder Artikel, jede Quest, jedes Quest-Kapitel, jeder Pin und jedes Monster hat einen Owner (Benutzer). Beim Anlegen wird der anlegende Benutzer Owner. Owner und `erstellt von` sind getrennt, damit ein späteres Übertragen möglich bleibt. Was passiert, wenn der Owner die Welt verlässt, steht im Backlog.
 
 Regeln:
-- **Standardwert neu:** Artikel, Quest, Quest-Kapitel, Pin → `nur ich`. Universum und Karte → `nur Spielleitung` (unverändert); Ausnahme: das automatisch angelegte erste Universum ist `veröffentlicht`.
+- **Standardwert neu:** Artikel, Quest, Quest-Kapitel, Pin, Monster → `nur ich`. Universum und Karte → `nur Spielleitung` (unverändert); Ausnahme: das automatisch angelegte erste Universum ist `veröffentlicht`.
 - Bestandsdaten behalten ihren bisherigen Wert; `owner` wird aus `erstellt von` befüllt.
 - **`nur ich` setzen** darf nur der Owner. Andere Spielleiter wechseln bei fremden Datensätzen nur zwischen `nur Spielleitung` und `veröffentlicht`.
 - **Vererbung nach unten:** Ein Inhalt ist nur sichtbar, wenn auch alles darüber sichtbar ist. Ist ein Universum `nur Spielleitung`, sehen Player weder seine Karten noch deren Pins und Charakter-Marker, unabhängig von deren eigenem Status. Dasselbe gilt für eine versteckte Karte und ihre Pins. Neu: Kapitel nur sichtbar, wenn die Quest sichtbar ist; Notizblock nur, wenn die Quest sichtbar ist.
@@ -85,7 +89,7 @@ Regeln:
 
 ### 2.3 Rich-Text
 
-Formatierter Text aus dem Artikel-Editor (TipTap) mit dem in Plan 001 festgelegten Funktionsumfang, inkl. Erwähnungen (`@Name`) als Inhaltsverweise. Wird zusätzlich als Klartext für die Suche vorgehalten. Rich-Text wird verwendet für: Weltbeschreibung (**ohne** Erwähnungen), Universumsbeschreibung, Artikelinhalt, Questbeschreibung, Quest-Kapitelinhalt, Quest-Notizblock, Pinbeschreibung, Charakter-Bio (im MVP **ohne** Erwähnungen, siehe 3.8) und Tagebucheinträge.
+Formatierter Text aus dem Artikel-Editor (TipTap) mit dem in Plan 001 festgelegten Funktionsumfang, inkl. Erwähnungen (`@Name`) als Inhaltsverweise. Wird zusätzlich als Klartext für die Suche vorgehalten. Rich-Text wird verwendet für: Weltbeschreibung (**ohne** Erwähnungen), Universumsbeschreibung, Artikelinhalt, Questbeschreibung, Quest-Kapitelinhalt, Quest-Notizblock, Pinbeschreibung, Charakter-Bio (im MVP **ohne** Erwähnungen, siehe 3.8), Monster-Bio (**mit** Erwähnungen, siehe 3.8a) und Tagebucheinträge.
 
 ### 2.4 Erwähnung & Erwähnungssuche
 
@@ -94,16 +98,17 @@ Eine **Erwähnung** ist ein Inhaltsverweis mitten im Rich-Text, z. B.:
 > Hier findet man den **@Gottschleim**. Du musst einen für die Quest **@Töte den Gottschleim** erlegen.
 
 **Erwähnungssuche** (beim Tippen von `@` im Editor):
-- Durchsucht die Titel bzw. Namen aller **Artikel, Quests, Charaktere und Universen** der Welt, die der schreibende Benutzer sehen darf.
+- Durchsucht die Titel bzw. Namen aller **Artikel, Quests, Charaktere, Universen und Monster** der Welt, die der schreibende Benutzer sehen darf.
 - Treffer bei **Teilwort, ohne Beachtung der Groß-/Kleinschreibung**: `@Schleim` findet „Gottschleim“ (Artikel) und „Töte den Gottschleim“ (Quest).
-- Jeder Vorschlag zeigt die **Kategorie** (`Artikel`, `Quest`, `Charakter`, `Universum`), bei Artikeln zusätzlich den Vorlagentyp (z. B. „Artikel · Ort“).
+- Jeder Vorschlag zeigt die **Kategorie** (`Artikel`, `Quest`, `Charakter`, `Universum`, `Monster`), bei Artikeln zusätzlich den Vorlagentyp (z. B. „Artikel · Ort“).
 - Höchstens 10 Vorschläge, sortiert: Treffer am Wortanfang vor Treffern mitten im Wort, danach alphabetisch.
+- Monster sind **nicht** als Stub per `@` neu anlegbar (Stub-Artikel bleiben Artikel).
 
 **Anzeige:** Eine Erwähnung erscheint als Link mit dem **aktuellen** Titel des Ziels (ein Umbenennen des Ziels aktualisiert alle Erwähnungen). Darf der Leser das Ziel nicht sehen oder existiert es nicht mehr, erscheint der zuletzt bekannte Titel als normaler Text ohne Link.
 
 ### 2.5 Verknüpfte Elemente
 
-Jeder Artikel, jede Quest, jeder Charakter, jeder Pin und jedes Universum zeigt einen Bereich **„Verknüpft“** mit allen Relationen, ein- und ausgehend, die der Betrachter sehen darf. Gruppiert nach Kategorie:
+Jeder Artikel, jede Quest, jeder Charakter, jeder Pin, jedes Universum und jedes Monster zeigt einen Bereich **„Verknüpft“** mit allen Relationen, ein- und ausgehend, die der Betrachter sehen darf. Gruppiert nach Kategorie:
 
 | Gruppe | Anzeige | Klick führt zu |
 |---|---|---|
@@ -112,6 +117,7 @@ Jeder Artikel, jede Quest, jeder Charakter, jeder Pin und jedes Universum zeigt 
 | Quests | Titel, Status | der Quest |
 | Charaktere | Porträt, Name | dem Charakter |
 | Universen | Name | dem Universum |
+| Monster | Profilbild/Initialen, Name, Seltenheits-Pill | dem Monster |
 
 Bei manuellen Relationen wird zusätzlich deren Bezeichnung angezeigt (siehe 3.14).
 
@@ -253,6 +259,40 @@ Bewusst **nicht** enthalten (OF-08): Volk, Stufe, Trefferpunkte, Rüstungsklasse
 
 Regel: Nur der Besitzer bearbeitet seinen Charakter. Mitglieder einer Welt sehen alle in diese Welt mitgebrachten Charaktere mit allen oben genannten Eigenschaften.
 
+### 3.8a Monster
+
+Gehört zu einer Welt (nicht zum Benutzer). Eigener Inhaltstyp, **kein** Artikel (Entscheidung M1, Plan `005`, 2026-09-23).
+
+**Unterschiede zu Charakter (3.8):** Welt-Bindung statt Benutzer-Besitz; Bio **mit** Erwähnungen (`@`); genau ein Profilbild statt Bildanhängen; zusätzlich monsterspezifische Felder (Art, Seltenheit, Legendär, Gefahrenstufe, Größe, Lebensraum); Owner und dreistufige Sichtbarkeit wie Artikel (M4).
+
+| Eigenschaft | Typ | Pflicht | Regel |
+|---|---|:-:|---|
+| Welt | Welt | ✅ | |
+| Name | Text, max. 120 | ✅ | |
+| Profilbild | Bild (JPG/PNG/WebP, max. 10 MB) | – | genau eines; ohne Bild: Platzhalter mit Initialen; dient in Phase 2 als Marker-Bild |
+| Klasse | Text, max. 60 | – | wie Charakter (3.8) |
+| Attribute | je eine Ganzzahl 1–30 für Stärke, Geschicklichkeit, Konstitution, Intelligenz, Weisheit, Charisma | – | wie Charakter |
+| Fertigkeiten | geordnete Liste wie Charakter | – | wie Charakter (max. 30) |
+| Übungsbonus | Ganzzahl 0–10 | ✅ | Standard +2 |
+| Fähigkeiten | geordnete Liste wie Charakter | – | wie Charakter (max. 30) |
+| Persönlichkeitsmerkmale | Text, max. 1000 | – | |
+| Ideale | Text, max. 1000 | – | |
+| Bindungen | Text, max. 1000 | – | |
+| Makel | Text, max. 1000 | – | |
+| Bio | Rich-Text | – | **mit** Erwähnungen; erzeugen Relationen (`Erwähnung`) |
+| Art | `beast` Bestie / `undead` Untoter / `demon` Dämon / `dragon` Drache / `humanoid` Humanoid / `construct` Konstrukt / `aberration` Aberration / `plant` Pflanze / `magical` Magisch / `other` sonstiges | ✅ | Standard `other` |
+| Seltenheit | `common` Common / `uncommon` Uncommon / `rare` Rare / `epic` Epic / `legendary` Legendary | ✅ | Standard `common`; Anzeige als farbige Pill (Labels englisch) |
+| Legendär | Ja/Nein | ✅ | Standard Nein; unabhängig von der Seltenheit |
+| Gefahrenstufe | `harmless` Harmlos / `dangerous` Gefährlich / `deadly` Tödlich / `devastating` Verheerend / `divine` Göttlich / `apocalyptic` Apokalyptisch | ✅ | Standard `harmless` |
+| Größe | `tiny` Winzig / `small` Klein / `medium` Durchschnitt / `large` Groß / `gigantic` Gigantisch | ✅ | Standard `medium`; Hinweis zu `medium`: „ca. 1,50 m Schulterhöhe“ |
+| Lebensraum | Verweis auf Artikel derselben Welt mit Vorlage `place` | – | erzeugt Relation Monster → Ort mit Herkunft `Vorlagenfeld`, Feld `habitat` |
+| Owner | Benutzer | ✅ | anlegender Benutzer; unveränderlich im MVP |
+| Sichtbarkeit | dreistufig (2.2) | ✅ | Standard `nur ich` |
+
+Bewusst **nicht** enthalten (wie OF-08 bei Charakteren): Trefferpunkte, Rüstungsklasse, Kampfwerte. Keine mehreren Bildanhänge.
+
+Regel: Anlegen nur Spielleitung; Bearbeiten und Löschen durch Owner und Spielleitung, sofern sie das Monster sehen (E10, R1, R2 aus Plan `004` sinngemäß).
+
 ### 3.9 Welt-Teilnahme
 
 Ein Charakter, der in eine Welt mitgebracht wurde.
@@ -379,8 +419,8 @@ Gerichtete Verbindung zwischen zwei Inhalten. Es gibt zwei Sorten (OF-06):
 
 | Herkunft | Entsteht aus |
 |---|---|
-| `Erwähnung` | `@Name` im Rich-Text eines Artikels, einer Quest (Beschreibung), eines **veröffentlichten** Quest-Kapitels (Quelle = Quest), eines Pins, eines Charakters oder eines Universums (nicht aus Tagebucheinträgen, siehe 3.15, nicht aus dem Quest-Notizblock, siehe 3.13b, und nicht aus der Weltbeschreibung) |
-| `Vorlagenfeld` | Verweis- oder Verweislisten-Feld eines Artikels |
+| `Erwähnung` | `@Name` im Rich-Text eines Artikels, einer Quest (Beschreibung), eines **veröffentlichten** Quest-Kapitels (Quelle = Quest), eines Pins, eines Charakters, eines Universums oder eines Monsters (Bio) (nicht aus Tagebucheinträgen, siehe 3.15, nicht aus dem Quest-Notizblock, siehe 3.13b, und nicht aus der Weltbeschreibung) |
+| `Vorlagenfeld` | Verweis- oder Verweislisten-Feld eines Artikels; Lebensraum eines Monsters (`habitat`) |
 | `Beteiligung` | beteiligter Charakter einer Quest (Quelle = Quest) |
 | `manuell` | direkt von der Spielleitung angelegt |
 
@@ -427,10 +467,11 @@ Regeln (OF-03, erweitert Plan `007`, 2026-09-23):
 
 | Wenn gelöscht wird … | … passiert mit abhängigen Daten |
 |---|---|
-| **Welt** | Alles, was zur Welt gehört, wird gelöscht (Mitgliedschaften, Einladungslinks, Universen, Karten, Pins, Marker, Artikel, Quests, Relationen, Welt-Teilnahmen, Tagebucheinträge dieser Welt, Chat). Charaktere bleiben beim Besitzer erhalten. |
+| **Welt** | Alles, was zur Welt gehört, wird gelöscht (Mitgliedschaften, Einladungslinks, Universen, Karten, Pins, Marker, Artikel, Quests, Monster, Relationen, Welt-Teilnahmen, Tagebucheinträge dieser Welt, Chat). Charaktere bleiben beim Besitzer erhalten. |
 | **Universum** | Seine Karten samt Pins und Markern werden gelöscht, ebenso alle Relationen mit dem Universum (oder einem seiner Pins) als Quelle oder Ziel. Erwähnungen in anderen Texten werden als nicht verlinkter Text angezeigt. Das letzte Universum einer Welt kann nicht gelöscht werden. |
 | **Karte** | Pins und Marker der Karte werden gelöscht. |
-| **Artikel**, **Quest** | Alle Relationen (automatisch und manuell) mit dem Inhalt als Quelle oder Ziel werden gelöscht. Erwähnungen in anderen Texten werden als nicht verlinkter Text angezeigt. Quest löschen löscht zusätzlich ihre Kapitel und den Notizblock. |
+| **Artikel**, **Quest** | Alle Relationen (automatisch und manuell) mit dem Inhalt als Quelle oder Ziel werden gelöscht. Erwähnungen in anderen Texten werden als nicht verlinkter Text angezeigt. Quest löschen löscht zusätzlich ihre Kapitel und den Notizblock. Ort-Artikel löschen: `Lebensraum` betroffener Monster wird geleert, die zugehörige `habitat`-Relation entfällt. |
+| **Monster** | Alle Relationen mit dem Monster als Quelle oder Ziel werden gelöscht. Erwähnungen in anderen Texten werden als nicht verlinkter Text angezeigt. |
 | **Quest-Kapitel** | Relationen der Quest werden neu berechnet (Erwähnungen aus diesem Kapitel entfallen, sofern nicht in Beschreibung oder anderen veröffentlichten Kapiteln). |
 | **Pin** | Alle Relationen mit dem Pin als Quelle oder Ziel werden gelöscht. |
 | **Mitgliedschaft** (Benutzer tritt aus oder wird entfernt) | **Es wird nichts gelöscht.** Die Mitgliedschaft wird **archiviert**, ebenso seine Welt-Teilnahmen in dieser Welt. Seine Charakter-Marker, Tagebucheinträge und alle Relationen mit seinen Charakteren als Quelle oder Ziel bleiben gespeichert, sind aber für niemanden in der Welt sichtbar, solange die Teilnahme archiviert ist (siehe 3.9; Relationen folgen der Regel „Quelle und Ziel sichtbar“). Erwähnungen seiner Charaktere erscheinen solange als nicht verlinkter Text. Quest-Beteiligungen seiner Charaktere und seine Chat-Nachrichten bleiben unverändert. Von ihm erstellte Artikel, Quests usw. bleiben erhalten. Bei erneutem Beitritt wird die Mitgliedschaft reaktiviert (als Player). Bringt er einen Charakter wieder mit, werden dessen Teilnahme, Marker, Tagebucheinträge und Relationen unverändert wieder sichtbar (OF-05).
@@ -454,6 +495,7 @@ Umsetzung der Rechtematrix aus Plan 001. „Spielleitung“ = Game Master + Mast
 | Welt-Teilnahme | Mitglieder (nicht archivierte) | mitbringen: nur Besitzer des Charakters |
 | Charakter-Marker | Mitglieder, sofern Teilnahme nicht archiviert und Karte für sie sichtbar | platzieren, verschieben, entfernen: Besitzer des Charakters und Spielleitung |
 | Artikel, Quest | dreistufig (2.2); `nur ich` nur Owner (solange Spielleitung) | Anlegen: Spielleitung. Bearbeiten/Löschen: Owner und Spielleitung, jeweils nur wenn sie den Datensatz sehen. `nur ich` setzen: nur Owner |
+| Monster | wie Artikel/Quest | wie Artikel/Quest (Plan `005`, M4) |
 | Quest-Kapitel | dreistufig inkl. Vererbung Quest → Kapitel | wie Artikel/Quest |
 | Quest-Notizblock | wer die Quest sehen darf | Lesen und Schreiben: alle, die die Quest sehen |
 | Relation | wer Quelle **und** Ziel sehen darf | automatische: nie direkt; manuelle: Spielleitung |
