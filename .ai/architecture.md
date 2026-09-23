@@ -125,3 +125,22 @@ Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `004` (drei
 1. Sieht Claude `owner_only`-Inhalte des angemeldeten Owners (über dieselbe Rechteschicht wie die App), oder sollen `owner_only`-Inhalte über MCP wie Tagebuch ausgeschlossen werden?
 2. Werden Quest-Kapitel bei `inhalt_lesen` / `suchen` / Relationen mit ausgeliefert (nur sichtbare Kapitel), oder bleiben sie außerhalb von MCP?
 3. Ist der Quest-Notizblock über MCP ausgeschlossen (Analogie Tagebuch), oder lesbar für alle, die die Quest sehen?
+
+### nach Plan 005 (2026-09-23)
+
+Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `005` (Monster/Bestiarium) gelesen. **Plan 002 wurde nicht geändert** (PR3 / wie `004` T-012).
+
+| # | Fundstelle in Plan 002 | Abweichung / Ist nach Plan 005 | Bezug |
+|---|---|---|---|
+| P5-1 | Inhaltsarten in Suche / `inhalt_lesen` / Relationen (Artikel, Quest, Charakter, Pin, Universum) | Neu: Inhaltsart **`monster`** (Bestiarium). Volles Charakterblatt + Art/Seltenheit/Gefahr/Größe/Lebensraum; dreistufige Sichtbarkeit wie Artikel; Bio mit Erwähnungen. | Plan `005` M1–M5; `monsters`; `content_kind` |
+| P5-2 | Werkzeug `suchen` / Filter `art` | Offene Frage: Liefern Such- und Lese-Werkzeuge Monster? Optional Filter nach Art (`monster_kind`)? | Plan 005 T-011 |
+| P5-3 | `inhalt_lesen` | Offene Frage: Wird das Charakterblatt (Attribute, Fertigkeiten, …) mit ausgeliefert? | Plan 005 T-011 |
+| P5-4 | Sichtbarkeit / Rechteschicht | Offene Frage: Gilt die dreistufige Sichtbarkeit für Monster wie bei Artikeln (inkl. Owner / `owner_only`)? | Plan 005 M4; `APP-VIS-OWNER` |
+
+**Offene Fragen für das spätere Review von Plan `002` (Antwort vor Umsetzung nötig):**
+
+1. Liefern Such- und Lese-Werkzeuge Monster?
+2. Filter nach Art (`monster_kind`)?
+3. Wird das Charakterblatt mit ausgeliefert?
+4. Gilt die dreistufige Sichtbarkeit wie bei Artikeln?
+

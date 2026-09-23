@@ -133,6 +133,6 @@ Die Begriffe aus Plan `003`, Plan `004` und `.ai/architecture/datenmodell-fachli
 - Abnahmekriterium: Neue Smoketest-Punkte lokal einmal durchlaufen und abgehakt; `npm test`, `npm run test:rechte`, `npm run lint`, `npm run build` grün.
 
 ### T-011: Abgleich mit Plan 002 (MCP)
-- [ ] Beschreibung: Im Abschnitt *Abgleich Plan 002 nach MVP* in `.ai/architecture.md` ergänzen (PR3): `monster` ist eine neue lesbare Inhaltsart (Plan `005`); offene Fragen für das spätere Review von `002`: Liefern Such- und Lese-Werkzeuge Monster? Filter nach Art? Wird das Charakterblatt mit ausgeliefert? Gilt die dreistufige Sichtbarkeit wie bei Artikeln? `.ai/feature-tasks/002-mcp-server.md` wird **nicht** geändert (Regel aus Plan `004` T-012). Keine Umsetzung von `002`.
+- [x] Beschreibung: Im Abschnitt *Abgleich Plan 002 nach MVP* in `.ai/architecture.md` ergänzen (PR3): `monster` ist eine neue lesbare Inhaltsart (Plan `005`); offene Fragen für das spätere Review von `002`: Liefern Such- und Lese-Werkzeuge Monster? Filter nach Art? Wird das Charakterblatt mit ausgeliefert? Gilt die dreistufige Sichtbarkeit wie bei Artikeln? `.ai/feature-tasks/002-mcp-server.md` wird **nicht** geändert (Regel aus Plan `004` T-012). Keine Umsetzung von `002`.
 - Abhängigkeiten: T-001
 - Abnahmekriterium: `.ai/architecture.md` enthält im Abschnitt *Abgleich Plan 002 nach MVP* einen datierten Eintrag (2026-09-23 oder Umsetzungsdatum) zu Monster mit Verweis auf Plan `005` und den offenen Fragen; `git diff` zeigt keine Änderung an `002-mcp-server.md`.
