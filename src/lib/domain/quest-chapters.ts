@@ -210,27 +210,30 @@ export async function createChapter(input: {
   const position = (agg?.maxPos ?? -1) + 1;
 
   try {
-    const [row] = await db
-      .insert(questChapters)
-      .values({
-        ...patch.data,
-        questId: quest.id,
-        title: input.title,
-        position,
-        ownerId: input.actorId,
-        createdBy: input.actorId,
-        updatedBy: input.actorId,
-      })
-      .returning({
-        id: questChapters.id,
-        questId: questChapters.questId,
-        title: questChapters.title,
-        bodyJson: questChapters.bodyJson,
-        visibility: questChapters.visibility,
-        ownerId: questChapters.ownerId,
-        position: questChapters.position,
-      });
-    await recalcQuestRelations(input.worldId, input.actorId, quest.id);
+    const row = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(questChapters)
+        .values({
+          ...patch.data,
+          questId: quest.id,
+          title: input.title,
+          position,
+          ownerId: input.actorId,
+          createdBy: input.actorId,
+          updatedBy: input.actorId,
+        })
+        .returning({
+          id: questChapters.id,
+          questId: questChapters.questId,
+          title: questChapters.title,
+          bodyJson: questChapters.bodyJson,
+          visibility: questChapters.visibility,
+          ownerId: questChapters.ownerId,
+          position: questChapters.position,
+        });
+      await recalcQuestRelations(input.worldId, input.actorId, quest.id, tx);
+      return created;
+    });
     return ok(toSummary(row));
   } catch (error) {
     const mapped = mapDbError(error);
@@ -282,18 +285,20 @@ export async function updateChapter(input: {
   if (!patch.ok) return patch;
 
   try {
-    if (Object.keys(patch.data).length > 0) {
-      await db
-        .update(questChapters)
-        .set({ ...patch.data, updatedAt: new Date(), updatedBy: input.actorId })
-        .where(eq(questChapters.id, current.id));
-    }
+    await db.transaction(async (tx) => {
+      if (Object.keys(patch.data).length > 0) {
+        await tx
+          .update(questChapters)
+          .set({ ...patch.data, updatedAt: new Date(), updatedBy: input.actorId })
+          .where(eq(questChapters.id, current.id));
+      }
+      await recalcQuestRelations(input.worldId, input.actorId, quest.id, tx);
+    });
   } catch (error) {
     const mapped = mapDbError(error);
     if (mapped) return mapped;
     throw error;
   }
-  await recalcQuestRelations(input.worldId, input.actorId, quest.id);
   return ok({ id: current.id });
 }
 
@@ -332,8 +337,10 @@ export async function deleteChapter(input: {
   if (!allowed.ok) return allowed;
   if (!current) return fail(404, CHAPTER_NOT_FOUND);
 
-  await db.delete(questChapters).where(eq(questChapters.id, current.id));
-  await recalcQuestRelations(input.worldId, input.actorId, quest.id);
+  await db.transaction(async (tx) => {
+    await tx.delete(questChapters).where(eq(questChapters.id, current.id));
+    await recalcQuestRelations(input.worldId, input.actorId, quest.id, tx);
+  });
   return ok({ id: current.id });
 }
 

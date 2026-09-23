@@ -38,15 +38,15 @@ Maßgeblich sind `.ai/architecture/datenmodell-fachlich.md` (fachliche Regeln, V
 | CR-003 | Sicherheit | mittel | behoben | `GET /api/files/[id]` prüft nur die Anmeldung, nicht Welt-Mitgliedschaft oder Sichtbarkeit |
 | CR-004 | Fehlerbehandlung & Validierung | mittel | behoben | Vorlagen-Verweis mit Nicht-UUID-`id` führt zu HTTP 500 (Verstoß gegen CR-005 aus Review 001) |
 | CR-005 | Aufgaben-Abgleich | mittel | behoben | Quest mit Beteiligtem, dessen Teilnahme archiviert oder dessen Charakter gelöscht ist, lässt sich nicht mehr speichern bzw. verliert den Namens-Snapshot |
-| CR-006 | Runtime-Risiken | mittel | offen | Mehrstufige Schreibvorgänge (Artikel, Quest, Pin, Universum + Relationen/Beteiligte) ohne Transaktion |
+| CR-006 | Runtime-Risiken | mittel | behoben | Mehrstufige Schreibvorgänge (Artikel, Quest, Pin, Universum + Relationen/Beteiligte) ohne Transaktion |
 | CR-007 | Testabdeckung | mittel | behoben | Keine Tests für Inhalt und Filterung der SSE-Events und für die Autorisierung der Dateiauslieferung |
-| CR-008 | Runtime-Risiken | niedrig | offen | `placeMarker` publiziert `map.marker.deleted` innerhalb der Transaktion (vor dem Commit) und löscht in einer Schleife |
-| CR-009 | Sicherheit | niedrig | offen | `POST /api/files` liest den ganzen Body in den Speicher, bevor die Größe geprüft wird |
+| CR-008 | Runtime-Risiken | niedrig | behoben | `placeMarker` publiziert `map.marker.deleted` innerhalb der Transaktion (vor dem Commit) und löscht in einer Schleife |
+| CR-009 | Sicherheit | niedrig | behoben | `POST /api/files` liest den ganzen Body in den Speicher, bevor die Größe geprüft wird |
 | CR-010 | Duplizierung & Modularisierung | niedrig | offen | Chat-Limits: lokale Funktion `CHANNEL_NAME_MAX()` überschattet die Konstante, Literal `80` dreifach; Karten-Route dupliziert `MAP_NAME_MAX` und „20 MB“ |
 | CR-011 | Toter Code | niedrig | offen | `createMapWithImage` ist als `@deprecated … kept for API tests` markiert, wird aber von der Produkt-Route genutzt |
 | CR-012 | Performance | niedrig | offen | Sichtbarkeitsfilter in JS statt SQL (Artikel-, Quest-, Tagebuchliste, Suche ohne SQL-`LIMIT`) |
-| CR-013 | Runtime-Risiken | niedrig | offen | „Letzter aktiver Kanal“ wird nicht atomar geprüft: parallele Archivierungen können alle Kanäle archivieren |
-| CR-014 | Bad Practices | niedrig | offen | `GET …/chat` schreibt (`ensureDefaultChannel` bei jedem Laden) |
+| CR-013 | Runtime-Risiken | niedrig | behoben | „Letzter aktiver Kanal“ wird nicht atomar geprüft: parallele Archivierungen können alle Kanäle archivieren |
+| CR-014 | Bad Practices | niedrig | behoben | `GET …/chat` schreibt (`ensureDefaultChannel` bei jedem Laden) |
 | CR-015 | Lesbarkeit & Wartbarkeit | niedrig | offen | Datei-GC kennt die referenzierenden Tabellen nur als hartkodierte SQL-Liste |
 | CR-016 | Aufgaben-Abgleich | niedrig | offen | Review 001 führt CR-004, CR-021, CR-023 noch als `offen`, obwohl der Plan „kein Finding `offen`“ und Nachführen im Task-Commit verlangt |
 | CR-017 | Sicherheit | mittel | behoben | Rollenwechsel wirkt nicht live: Karte und SSE-Leitung behalten die alte Rolle (z. B. SL-Karte bleibt nach Herabstufung sichtbar). Nachgetragen im Plan-Review 2026-09-23 |

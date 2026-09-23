@@ -116,14 +116,17 @@ export async function createUniverse(input: {
           visibility: universes.visibility,
           sortOrder: universes.sortOrder,
         });
+      await recalcOutgoingMentions(
+        {
+          worldId: input.worldId,
+          actorId: input.actorId,
+          sourceKind: "universe",
+          sourceId: row.id,
+          mentions: description.data.mentions,
+        },
+        tx,
+      );
       return row;
-    });
-    await recalcOutgoingMentions({
-      worldId: input.worldId,
-      actorId: input.actorId,
-      sourceKind: "universe",
-      sourceId: created.id,
-      mentions: description.data.mentions,
     });
     return ok(created);
   } catch (error) {
@@ -158,24 +161,31 @@ export async function updateUniverse(input: {
   }
 
   try {
-    const updated = await db
-      .update(universes)
-      .set(patch)
-      .where(and(eq(universes.id, input.universeId), eq(universes.worldId, input.worldId)))
-      .returning({ id: universes.id });
-    if (updated.length === 0) return fail(404, "Dieses Universum gibt es nicht.");
-    const [stored] = await db
-      .select({ descriptionJson: universes.descriptionJson })
-      .from(universes)
-      .where(eq(universes.id, input.universeId))
-      .limit(1);
-    await recalcOutgoingMentions({
-      worldId: input.worldId,
-      actorId: input.actorId,
-      sourceKind: "universe",
-      sourceId: input.universeId,
-      mentions: extractMentions(asRichDoc(stored?.descriptionJson)),
+    const updated = await db.transaction(async (tx) => {
+      const rows = await tx
+        .update(universes)
+        .set(patch)
+        .where(and(eq(universes.id, input.universeId), eq(universes.worldId, input.worldId)))
+        .returning({ id: universes.id });
+      if (rows.length === 0) return null;
+      const [stored] = await tx
+        .select({ descriptionJson: universes.descriptionJson })
+        .from(universes)
+        .where(eq(universes.id, input.universeId))
+        .limit(1);
+      await recalcOutgoingMentions(
+        {
+          worldId: input.worldId,
+          actorId: input.actorId,
+          sourceKind: "universe",
+          sourceId: input.universeId,
+          mentions: extractMentions(asRichDoc(stored?.descriptionJson)),
+        },
+        tx,
+      );
+      return rows[0];
     });
+    if (!updated) return fail(404, "Dieses Universum gibt es nicht.");
     return ok({ id: input.universeId, mentions });
   } catch (error) {
     const mapped = mapDbError(error, { unique: DUPLICATE_NAME });

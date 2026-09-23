@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/db/client";
+import { db, type DbTx } from "@/db/client";
 import { characters, questParticipants, quests, worldParticipations } from "@/db/schema";
 import {
   CONTENT_VISIBILITIES,
@@ -166,10 +166,11 @@ async function replaceParticipants(
   questId: string,
   actorId: string,
   participants: { characterId: string; characterName: string }[],
+  tx: DbTx,
 ): Promise<void> {
-  await db.delete(questParticipants).where(eq(questParticipants.questId, questId));
+  await tx.delete(questParticipants).where(eq(questParticipants.questId, questId));
   if (participants.length === 0) return;
-  await db.insert(questParticipants).values(
+  await tx.insert(questParticipants).values(
     participants.map((row) => ({
       questId,
       characterId: row.characterId,
@@ -184,15 +185,18 @@ async function replaceParticipants(
  * CR-005: add/remove or sync actives via participantIds; snapshot rows (left or
  * deleted) are never dropped unless explicitly removed.
  */
-async function applyParticipantChanges(input: {
-  questId: string;
-  worldId: string;
-  actorId: string;
-  addParticipantIds?: string[];
-  removeParticipantIds?: string[];
-  participantIds?: string[];
-}): Promise<AuthzResult<true>> {
-  const existing = await db
+async function applyParticipantChanges(
+  input: {
+    questId: string;
+    worldId: string;
+    actorId: string;
+    addParticipantIds?: string[];
+    removeParticipantIds?: string[];
+    participantIds?: string[];
+  },
+  tx: DbTx,
+): Promise<AuthzResult<true>> {
+  const existing = await tx
     .select({
       id: questParticipants.id,
       characterId: questParticipants.characterId,
@@ -217,21 +221,21 @@ async function applyParticipantChanges(input: {
       .filter((row) => removeSet.has(row.id) || (row.characterId !== null && removeSet.has(row.characterId)))
       .map((row) => row.id);
     if (toDelete.length > 0) {
-      await db.delete(questParticipants).where(inArray(questParticipants.id, toDelete));
+      await tx.delete(questParticipants).where(inArray(questParticipants.id, toDelete));
     }
   }
 
   if (input.addParticipantIds?.length) {
     const resolved = await resolveParticipants(input.worldId, input.addParticipantIds);
     if (!resolved.ok) return resolved;
-    const remaining = await db
+    const remaining = await tx
       .select({ characterId: questParticipants.characterId })
       .from(questParticipants)
       .where(eq(questParticipants.questId, input.questId));
     const have = new Set(remaining.map((row) => row.characterId).filter(Boolean));
     const toInsert = resolved.data.filter((row) => !have.has(row.characterId));
     if (toInsert.length > 0) {
-      await db.insert(questParticipants).values(
+      await tx.insert(questParticipants).values(
         toInsert.map((row) => ({
           questId: input.questId,
           characterId: row.characterId,
@@ -246,7 +250,7 @@ async function applyParticipantChanges(input: {
   if (input.participantIds !== undefined) {
     const resolved = await resolveParticipants(input.worldId, input.participantIds);
     if (!resolved.ok) return resolved;
-    const currentRows = await db
+    const currentRows = await tx
       .select({
         id: questParticipants.id,
         characterId: questParticipants.characterId,
@@ -267,14 +271,14 @@ async function applyParticipantChanges(input: {
       .filter((row) => row.characterId && !wanted.has(row.characterId))
       .map((row) => row.id);
     if (deleteIds.length > 0) {
-      await db.delete(questParticipants).where(inArray(questParticipants.id, deleteIds));
+      await tx.delete(questParticipants).where(inArray(questParticipants.id, deleteIds));
     }
     const haveActive = new Set(
       actives.filter((row) => row.characterId && wanted.has(row.characterId)).map((row) => row.characterId!),
     );
     const toInsert = resolved.data.filter((row) => !haveActive.has(row.characterId));
     if (toInsert.length > 0) {
-      await db.insert(questParticipants).values(
+      await tx.insert(questParticipants).values(
         toInsert.map((row) => ({
           questId: input.questId,
           characterId: row.characterId,
@@ -287,7 +291,7 @@ async function applyParticipantChanges(input: {
   }
 
   // Refresh stored names for currently active participants.
-  const activeRows = await db
+  const activeRows = await tx
     .select({
       id: questParticipants.id,
       name: characters.name,
@@ -304,7 +308,7 @@ async function applyParticipantChanges(input: {
     )
     .where(eq(questParticipants.questId, input.questId));
   for (const row of activeRows) {
-    await db
+    await tx
       .update(questParticipants)
       .set({ characterName: row.name, updatedAt: new Date(), updatedBy: input.actorId })
       .where(eq(questParticipants.id, row.id));
@@ -429,33 +433,36 @@ export async function createQuest(input: {
   if (!participants.ok) return participants;
 
   try {
-    const [row] = await db
-      .insert(quests)
-      .values({
-        ...patch.data,
-        worldId: input.worldId,
-        title: input.title,
-        ownerId: input.actorId,
-        createdBy: input.actorId,
-        updatedBy: input.actorId,
-      })
-      .returning({
-        id: quests.id,
-        title: quests.title,
-        status: quests.status,
-        visibility: quests.visibility,
-        ownerId: quests.ownerId,
-      });
-    await replaceParticipants(row.id, input.actorId, participants.data);
-    await recalcQuestRelations(input.worldId, input.actorId, row.id);
-    const loaded = await loadParticipants([row.id], input.worldId);
+    const summary = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(quests)
+        .values({
+          ...patch.data,
+          worldId: input.worldId,
+          title: input.title,
+          ownerId: input.actorId,
+          createdBy: input.actorId,
+          updatedBy: input.actorId,
+        })
+        .returning({
+          id: quests.id,
+          title: quests.title,
+          status: quests.status,
+          visibility: quests.visibility,
+          ownerId: quests.ownerId,
+        });
+      await replaceParticipants(row.id, input.actorId, participants.data, tx);
+      await recalcQuestRelations(input.worldId, input.actorId, row.id, tx);
+      return row;
+    });
+    const loaded = await loadParticipants([summary.id], input.worldId);
     return ok({
-      id: row.id,
-      title: row.title,
-      status: asStatus(row.status),
-      visibility: row.visibility,
-      ownerId: row.ownerId,
-      participants: loaded.get(row.id) ?? [],
+      id: summary.id,
+      title: summary.title,
+      status: asStatus(summary.status),
+      visibility: summary.visibility,
+      ownerId: summary.ownerId,
+      participants: loaded.get(summary.id) ?? [],
     });
   } catch (error) {
     const mapped = mapDbError(error);
@@ -499,29 +506,39 @@ export async function updateQuest(input: {
     input.removeParticipantIds !== undefined;
 
   try {
-    if (Object.keys(patch.data).length > 0) {
-      await db
-        .update(quests)
-        .set({ ...patch.data, updatedAt: new Date(), updatedBy: input.actorId })
-        .where(eq(quests.id, current.id));
-    }
-    if (touchesParticipants) {
-      const changed = await applyParticipantChanges({
-        questId: current.id,
-        worldId: input.worldId,
-        actorId: input.actorId,
-        addParticipantIds: input.addParticipantIds,
-        removeParticipantIds: input.removeParticipantIds,
-        participantIds: input.participantIds,
-      });
-      if (!changed.ok) return changed;
-    }
+    await db.transaction(async (tx) => {
+      if (Object.keys(patch.data).length > 0) {
+        await tx
+          .update(quests)
+          .set({ ...patch.data, updatedAt: new Date(), updatedBy: input.actorId })
+          .where(eq(quests.id, current.id));
+      }
+      if (touchesParticipants) {
+        const changed = await applyParticipantChanges(
+          {
+            questId: current.id,
+            worldId: input.worldId,
+            actorId: input.actorId,
+            addParticipantIds: input.addParticipantIds,
+            removeParticipantIds: input.removeParticipantIds,
+            participantIds: input.participantIds,
+          },
+          tx,
+        );
+        if (!changed.ok) {
+          throw Object.assign(new Error("authz"), { authzResult: changed });
+        }
+      }
+      await recalcQuestRelations(input.worldId, input.actorId, current.id, tx);
+    });
   } catch (error) {
+    if (error && typeof error === "object" && "authzResult" in error) {
+      return (error as { authzResult: AuthzResult<never> }).authzResult;
+    }
     const mapped = mapDbError(error);
     if (mapped) return mapped;
     throw error;
   }
-  await recalcQuestRelations(input.worldId, input.actorId, current.id);
   return ok({ id: current.id });
 }
 

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import {
@@ -657,40 +657,45 @@ export async function createPin(input: {
   const description = richFieldFromInput(input.description ?? null, { mentions: true });
   if (!description.ok) return description;
   try {
-    const [row] = await db
-      .insert(pins)
-      .values({
-        mapId: input.mapId,
-        pinType: input.pinType,
-        title: input.title,
-        descriptionJson: description.data.json,
-        descriptionPlain: description.data.plain,
-        posX: positionSql(input.posX),
-        posY: positionSql(input.posY),
-        visibility: input.visibility ?? "owner_only",
-        ownerId: input.actorId,
-        createdBy: input.actorId,
-        updatedBy: input.actorId,
-      })
-      .returning();
-    await recalcOutgoingMentions({
-      worldId: input.worldId,
-      actorId: input.actorId,
-      sourceKind: "pin",
-      sourceId: row.id,
-      mentions: description.data.mentions,
+    const pin = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(pins)
+        .values({
+          mapId: input.mapId,
+          pinType: input.pinType,
+          title: input.title,
+          descriptionJson: description.data.json,
+          descriptionPlain: description.data.plain,
+          posX: positionSql(input.posX),
+          posY: positionSql(input.posY),
+          visibility: input.visibility ?? "owner_only",
+          ownerId: input.actorId,
+          createdBy: input.actorId,
+          updatedBy: input.actorId,
+        })
+        .returning();
+      await recalcOutgoingMentions(
+        {
+          worldId: input.worldId,
+          actorId: input.actorId,
+          sourceKind: "pin",
+          sourceId: row.id,
+          mentions: description.data.mentions,
+        },
+        tx,
+      );
+      return serializePin(row);
     });
-    const pin = serializePin(row);
     worldEvents.publish({
       type: "map.pin",
       worldId: input.worldId,
-      pinId: row.id,
-      mapId: row.mapId,
+      pinId: pin.id,
+      mapId: pin.mapId,
       layers: pinEventLayers(
         loaded.universeVisibility,
         loaded.map.visibility,
-        row.visibility,
-        row.ownerId,
+        pin.visibility,
+        pin.ownerId,
       ),
     });
     return ok({ pin });
@@ -760,27 +765,32 @@ export async function updatePin(input: {
   if (input.locked !== undefined) dbPatch.locked = input.locked;
 
   try {
-    const [updated] = await db.update(pins).set(dbPatch).where(eq(pins.id, input.pinId)).returning();
-    if (descriptionMentions?.ok) {
-      await recalcOutgoingMentions({
-        worldId: input.worldId,
-        actorId: input.actorId,
-        sourceKind: "pin",
-        sourceId: input.pinId,
-        mentions: descriptionMentions.data.mentions,
-      });
-    }
-    const pin = serializePin(updated);
+    const pin = await db.transaction(async (tx) => {
+      const [updated] = await tx.update(pins).set(dbPatch).where(eq(pins.id, input.pinId)).returning();
+      if (descriptionMentions?.ok) {
+        await recalcOutgoingMentions(
+          {
+            worldId: input.worldId,
+            actorId: input.actorId,
+            sourceKind: "pin",
+            sourceId: input.pinId,
+            mentions: descriptionMentions.data.mentions,
+          },
+          tx,
+        );
+      }
+      return serializePin(updated);
+    });
     worldEvents.publish({
       type: "map.pin",
       worldId: input.worldId,
-      pinId: updated.id,
-      mapId: updated.mapId,
+      pinId: pin.id,
+      mapId: pin.mapId,
       layers: pinEventLayers(
         row.universeVisibility,
         row.mapVisibility,
-        updated.visibility,
-        updated.ownerId,
+        pin.visibility,
+        pin.ownerId,
       ),
     });
     return ok({ pin });
@@ -885,28 +895,20 @@ export async function placeMarker(input: {
   if (!character || character.archivedAt) return fail(400, "Der Charakter ist nicht in diese Welt mitgebracht.");
 
   try {
-    const marker = await db.transaction(async (tx) => {
-      const previous = await tx
-        .select({
-          id: characterMarkers.id,
-          mapId: characterMarkers.mapId,
-          mapVisibility: maps.visibility,
-          universeVisibility: universes.visibility,
-        })
-        .from(characterMarkers)
-        .innerJoin(maps, eq(maps.id, characterMarkers.mapId))
-        .innerJoin(universes, eq(universes.id, maps.universeId))
-        .where(eq(characterMarkers.characterId, input.characterId));
-      for (const old of previous) {
-        await tx.delete(characterMarkers).where(eq(characterMarkers.id, old.id));
-        worldEvents.publish({
-          type: "map.marker.deleted",
-          worldId: input.worldId,
-          markerId: old.id,
-          mapId: old.mapId,
-          layers: mapEventLayers(old.universeVisibility, old.mapVisibility),
-        });
-      }
+    const { marker, removed } = await db.transaction(async (tx) => {
+      const removedRows = await tx.execute<{
+        id: string;
+        map_id: string;
+        map_visibility: VisibilityStatus;
+        universe_visibility: VisibilityStatus;
+      }>(sql`
+        DELETE FROM character_markers AS cm
+        USING maps AS m, universes AS u
+        WHERE cm.character_id = ${input.characterId}
+          AND m.id = cm.map_id
+          AND u.id = m.universe_id
+        RETURNING cm.id, cm.map_id, m.visibility AS map_visibility, u.visibility AS universe_visibility
+      `);
       const [row] = await tx
         .insert(characterMarkers)
         .values({
@@ -918,13 +920,25 @@ export async function placeMarker(input: {
           updatedBy: input.actorId,
         })
         .returning();
-      return serializeMarker({
-        ...row,
-        name: character.name,
-        portraitId: character.portraitId,
-        ownerId: character.ownerId,
-      });
+      return {
+        marker: serializeMarker({
+          ...row,
+          name: character.name,
+          portraitId: character.portraitId,
+          ownerId: character.ownerId,
+        }),
+        removed: [...removedRows],
+      };
     });
+    for (const old of removed) {
+      worldEvents.publish({
+        type: "map.marker.deleted",
+        worldId: input.worldId,
+        markerId: old.id,
+        mapId: old.map_id,
+        layers: mapEventLayers(old.universe_visibility, old.map_visibility),
+      });
+    }
     worldEvents.publish({
       type: "map.marker",
       worldId: input.worldId,

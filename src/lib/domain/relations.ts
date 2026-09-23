@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
-import { db } from "@/db/client";
+import { db, type DbTx } from "@/db/client";
 import {
   articles,
   characters,
@@ -75,47 +75,53 @@ function targetValues(kind: ContentKind, id: string) {
 /**
  * APP-REL-RECALC for mention origins of one source. Manual, template_field and
  * participation rows stay. Missing targets are skipped (the next save retries).
+ * Caller must pass an open `tx` (CR-006: no nested transaction).
  */
-export async function recalcOutgoingMentions(input: {
-  worldId: string;
-  actorId: string;
-  sourceKind: ContentKind;
-  sourceId: string;
-  mentions: readonly MentionRef[];
-}): Promise<void> {
+export async function recalcOutgoingMentions(
+  input: {
+    worldId: string;
+    actorId: string;
+    sourceKind: ContentKind;
+    sourceId: string;
+    mentions: readonly MentionRef[];
+  },
+  tx: DbTx,
+): Promise<void> {
   const unique = new Map<string, MentionRef>();
   for (const mention of input.mentions) {
     if (mention.kind === input.sourceKind && mention.id === input.sourceId) continue;
     unique.set(mentionKey(mention), mention);
   }
   const mentions = [...unique.values()];
-  const existing = await existingMentionTargets(input.worldId, mentions);
+  const existing = await existingMentionTargets(tx, input.worldId, mentions);
 
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(relations)
-      .where(
-        and(
-          eq(relations.worldId, input.worldId),
-          eq(relations.origin, "mention"),
-          eq(SOURCE_FK[input.sourceKind], input.sourceId),
-        ),
-      );
-    if (existing.length === 0) return;
-    await tx.insert(relations).values(
-      existing.map((mention) => ({
-        worldId: input.worldId,
-        ...sourceValues(input.sourceKind, input.sourceId),
-        ...targetValues(mention.kind, mention.id),
-        origin: "mention" as const,
-        createdBy: input.actorId,
-        updatedBy: input.actorId,
-      })),
+  await tx
+    .delete(relations)
+    .where(
+      and(
+        eq(relations.worldId, input.worldId),
+        eq(relations.origin, "mention"),
+        eq(SOURCE_FK[input.sourceKind], input.sourceId),
+      ),
     );
-  });
+  if (existing.length === 0) return;
+  await tx.insert(relations).values(
+    existing.map((mention) => ({
+      worldId: input.worldId,
+      ...sourceValues(input.sourceKind, input.sourceId),
+      ...targetValues(mention.kind, mention.id),
+      origin: "mention" as const,
+      createdBy: input.actorId,
+      updatedBy: input.actorId,
+    })),
+  );
 }
 
-async function existingMentionTargets(worldId: string, mentions: MentionRef[]): Promise<MentionRef[]> {
+async function existingMentionTargets(
+  tx: DbTx,
+  worldId: string,
+  mentions: MentionRef[],
+): Promise<MentionRef[]> {
   if (mentions.length === 0) return [];
   const byKind = (kind: MentionRef["kind"]) => mentions.filter((row) => row.kind === kind).map((row) => row.id);
   const articleIds = byKind("article");
@@ -124,13 +130,13 @@ async function existingMentionTargets(worldId: string, mentions: MentionRef[]): 
   const universeIds = byKind("universe");
   const [articleRows, questRows, characterRows, universeRows] = await Promise.all([
     articleIds.length
-      ? db.select({ id: articles.id }).from(articles).where(and(eq(articles.worldId, worldId), inArray(articles.id, articleIds)))
+      ? tx.select({ id: articles.id }).from(articles).where(and(eq(articles.worldId, worldId), inArray(articles.id, articleIds)))
       : [],
     questIds.length
-      ? db.select({ id: quests.id }).from(quests).where(and(eq(quests.worldId, worldId), inArray(quests.id, questIds)))
+      ? tx.select({ id: quests.id }).from(quests).where(and(eq(quests.worldId, worldId), inArray(quests.id, questIds)))
       : [],
     characterIds.length
-      ? db
+      ? tx
           .select({ id: characters.id })
           .from(characters)
           .innerJoin(
@@ -144,7 +150,7 @@ async function existingMentionTargets(worldId: string, mentions: MentionRef[]): 
           .where(inArray(characters.id, characterIds))
       : [],
     universeIds.length
-      ? db.select({ id: universes.id }).from(universes).where(and(eq(universes.worldId, worldId), inArray(universes.id, universeIds)))
+      ? tx.select({ id: universes.id }).from(universes).where(and(eq(universes.worldId, worldId), inArray(universes.id, universeIds)))
       : [],
   ]);
   const present = new Set([
@@ -169,50 +175,57 @@ function refsFromFields(fields: StoredTemplateFields): TemplateRef[] {
 }
 
 /** APP-REL-RECALC for `template_field` rows of one article. Manual and mentions stay. */
-export async function recalcOutgoingTemplateFields(input: {
-  worldId: string;
-  actorId: string;
-  sourceId: string;
-  fields: StoredTemplateFields;
-}): Promise<void> {
+export async function recalcOutgoingTemplateFields(
+  input: {
+    worldId: string;
+    actorId: string;
+    sourceId: string;
+    fields: StoredTemplateFields;
+  },
+  tx: DbTx,
+): Promise<void> {
   const refs = refsFromFields(input.fields).filter(
     (ref) => !(ref.kind === "article" && ref.id === input.sourceId),
   );
   const existing = await existingMentionTargets(
+    tx,
     input.worldId,
     refs.map((ref) => ({ kind: ref.kind, id: ref.id })),
   );
   const present = new Set(existing.map((row) => mentionKey(row)));
   const kept = refs.filter((ref) => present.has(`${ref.kind}:${ref.id}`));
 
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(relations)
-      .where(
-        and(
-          eq(relations.worldId, input.worldId),
-          eq(relations.origin, "template_field"),
-          eq(relations.sourceArticleId, input.sourceId),
-        ),
-      );
-    if (kept.length === 0) return;
-    await tx.insert(relations).values(
-      kept.map((ref) => ({
-        worldId: input.worldId,
-        ...sourceValues("article", input.sourceId),
-        ...targetValues(ref.kind, ref.id),
-        origin: "template_field" as const,
-        templateFieldKey: ref.key,
-        createdBy: input.actorId,
-        updatedBy: input.actorId,
-      })),
+  await tx
+    .delete(relations)
+    .where(
+      and(
+        eq(relations.worldId, input.worldId),
+        eq(relations.origin, "template_field"),
+        eq(relations.sourceArticleId, input.sourceId),
+      ),
     );
-  });
+  if (kept.length === 0) return;
+  await tx.insert(relations).values(
+    kept.map((ref) => ({
+      worldId: input.worldId,
+      ...sourceValues("article", input.sourceId),
+      ...targetValues(ref.kind, ref.id),
+      origin: "template_field" as const,
+      templateFieldKey: ref.key,
+      createdBy: input.actorId,
+      updatedBy: input.actorId,
+    })),
+  );
 }
 
 /** Load current article body + fields and rebuild outgoing auto-relations. */
-export async function recalcArticleRelations(worldId: string, actorId: string, articleId: string): Promise<void> {
-  const [row] = await db
+export async function recalcArticleRelations(
+  worldId: string,
+  actorId: string,
+  articleId: string,
+  tx: DbTx,
+): Promise<void> {
+  const [row] = await tx
     .select({ bodyJson: articles.bodyJson, templateFields: articles.templateFields })
     .from(articles)
     .where(and(eq(articles.id, articleId), eq(articles.worldId, worldId)))
@@ -222,25 +235,30 @@ export async function recalcArticleRelations(worldId: string, actorId: string, a
     row.templateFields && typeof row.templateFields === "object" && !Array.isArray(row.templateFields)
       ? (row.templateFields as StoredTemplateFields)
       : {};
-  await Promise.all([
-    recalcOutgoingMentions({
+  // Sequential writes on the same tx (CR-006).
+  await recalcOutgoingMentions(
+    {
       worldId,
       actorId,
       sourceKind: "article",
       sourceId: articleId,
       mentions: extractMentions(asRichDoc(row.bodyJson)),
-    }),
-    recalcOutgoingTemplateFields({ worldId, actorId, sourceId: articleId, fields }),
-  ]);
+    },
+    tx,
+  );
+  await recalcOutgoingTemplateFields({ worldId, actorId, sourceId: articleId, fields }, tx);
 }
 
 /** APP-REL-RECALC for `participation` rows of one quest. Mentions and manual stay. */
-export async function recalcOutgoingParticipations(input: {
-  worldId: string;
-  actorId: string;
-  questId: string;
-}): Promise<void> {
-  const rows = await db
+export async function recalcOutgoingParticipations(
+  input: {
+    worldId: string;
+    actorId: string;
+    questId: string;
+  },
+  tx: DbTx,
+): Promise<void> {
+  const rows = await tx
     .select({ characterId: questParticipants.characterId })
     .from(questParticipants)
     .where(and(eq(questParticipants.questId, input.questId)));
@@ -248,28 +266,26 @@ export async function recalcOutgoingParticipations(input: {
     ...new Set(rows.map((row) => row.characterId).filter((id): id is string => Boolean(id))),
   ];
 
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(relations)
-      .where(
-        and(
-          eq(relations.worldId, input.worldId),
-          eq(relations.origin, "participation"),
-          eq(relations.sourceQuestId, input.questId),
-        ),
-      );
-    if (characterIds.length === 0) return;
-    await tx.insert(relations).values(
-      characterIds.map((characterId) => ({
-        worldId: input.worldId,
-        ...sourceValues("quest", input.questId),
-        ...targetValues("character", characterId),
-        origin: "participation" as const,
-        createdBy: input.actorId,
-        updatedBy: input.actorId,
-      })),
+  await tx
+    .delete(relations)
+    .where(
+      and(
+        eq(relations.worldId, input.worldId),
+        eq(relations.origin, "participation"),
+        eq(relations.sourceQuestId, input.questId),
+      ),
     );
-  });
+  if (characterIds.length === 0) return;
+  await tx.insert(relations).values(
+    characterIds.map((characterId) => ({
+      worldId: input.worldId,
+      ...sourceValues("quest", input.questId),
+      ...targetValues("character", characterId),
+      origin: "participation" as const,
+      createdBy: input.actorId,
+      updatedBy: input.actorId,
+    })),
+  );
 }
 
 /**
@@ -277,15 +293,20 @@ export async function recalcOutgoingParticipations(input: {
  * and rebuild outgoing auto-relations. Manual and participation stay intact
  * across mention recalcs; participation is rebuilt separately from participants.
  */
-export async function recalcQuestRelations(worldId: string, actorId: string, questId: string): Promise<void> {
-  const [row] = await db
+export async function recalcQuestRelations(
+  worldId: string,
+  actorId: string,
+  questId: string,
+  tx: DbTx,
+): Promise<void> {
+  const [row] = await tx
     .select({ descriptionJson: quests.descriptionJson })
     .from(quests)
     .where(and(eq(quests.id, questId), eq(quests.worldId, worldId)))
     .limit(1);
   if (!row) return;
 
-  const publishedChapters = await db
+  const publishedChapters = await tx
     .select({ bodyJson: questChapters.bodyJson })
     .from(questChapters)
     .where(and(eq(questChapters.questId, questId), eq(questChapters.visibility, "published")));
@@ -295,16 +316,18 @@ export async function recalcQuestRelations(worldId: string, actorId: string, que
     ...publishedChapters.flatMap((chapter) => extractMentions(asRichDoc(chapter.bodyJson))),
   ];
 
-  await Promise.all([
-    recalcOutgoingMentions({
+  // Sequential writes on the same tx (CR-006).
+  await recalcOutgoingMentions(
+    {
       worldId,
       actorId,
       sourceKind: "quest",
       sourceId: questId,
       mentions,
-    }),
-    recalcOutgoingParticipations({ worldId, actorId, questId }),
-  ]);
+    },
+    tx,
+  );
+  await recalcOutgoingParticipations({ worldId, actorId, questId }, tx);
 }
 
 type RelationRow = typeof relations.$inferSelect;

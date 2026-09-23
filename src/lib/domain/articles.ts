@@ -275,18 +275,21 @@ export async function createArticle(input: {
   const patch = await toPatch(input.worldId, input);
   if (!patch.ok) return patch;
   try {
-    const [row] = await db
-      .insert(articles)
-      .values({
-        ...patch.data,
-        worldId: input.worldId,
-        title: input.title,
-        ownerId: input.actorId,
-        createdBy: input.actorId,
-        updatedBy: input.actorId,
-      })
-      .returning(summaryColumns);
-    await recalcArticleRelations(input.worldId, input.actorId, row.id);
+    const row = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(articles)
+        .values({
+          ...patch.data,
+          worldId: input.worldId,
+          title: input.title,
+          ownerId: input.actorId,
+          createdBy: input.actorId,
+          updatedBy: input.actorId,
+        })
+        .returning(summaryColumns);
+      await recalcArticleRelations(input.worldId, input.actorId, created.id, tx);
+      return created;
+    });
     return ok(row);
   } catch (error) {
     const mapped = mapDbError(error);
@@ -344,17 +347,19 @@ export async function updateArticle(input: {
   const patch = await toPatch(input.worldId, input, current);
   if (!patch.ok) return patch;
   try {
-    await db
-      .update(articles)
-      .set({ ...patch.data, updatedAt: new Date(), updatedBy: input.actorId })
-      .where(eq(articles.id, current.id));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(articles)
+        .set({ ...patch.data, updatedAt: new Date(), updatedBy: input.actorId })
+        .where(eq(articles.id, current.id));
+      await recalcArticleRelations(input.worldId, input.actorId, current.id, tx);
+    });
   } catch (error) {
     const mapped = mapDbError(error);
     if (mapped) return mapped;
     throw error;
   }
   if (input.removeTitleImage) await collectUnreferencedFiles([current.titleImageId]);
-  await recalcArticleRelations(input.worldId, input.actorId, current.id);
   return ok({ id: current.id });
 }
 
