@@ -101,9 +101,12 @@ export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
     };
   }, []);
@@ -128,6 +131,8 @@ export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) 
     setError(null);
     try {
       const result = await onRoll(toRollPayload(draft));
+      // W6: cancel unmounts this instance; a late response must not close a newly opened sheet.
+      if (!mountedRef.current) return;
       if (!result.ok) {
         setError(result.error);
         return;
@@ -138,7 +143,7 @@ export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) 
       }
       setResultText(result.text);
     } finally {
-      setSending(false);
+      if (mountedRef.current) setSending(false);
     }
   }
 
