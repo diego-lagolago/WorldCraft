@@ -1,4 +1,5 @@
 export {
+  authorizeDeleteChatMessage,
   authorizeLeave,
   authorizeMemberAdmin,
   canEditMarker,

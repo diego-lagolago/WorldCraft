@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  authorizeDeleteChatMessage,
   authorizeLeave,
   authorizeMemberAdmin,
   type MembershipRow,
@@ -138,6 +139,29 @@ describe("APP-MEMBER-ADMIN", () => {
       status: 404,
     });
     expect(authorizeMemberAdmin(row("game_master"), null)).toMatchObject({ ok: false, status: 404 });
+  });
+});
+
+describe("APP-CHAT-DELETE", () => {
+  const text = { authorId: "player", hasDice: false, opensThread: false };
+
+  it("lets the author and staff delete text, and nobody delete dice or thread openers", () => {
+    expect(authorizeDeleteChatMessage(row("player"), text).ok).toBe(true);
+    expect(authorizeDeleteChatMessage(row("master"), { ...text, authorId: "someone" }).ok).toBe(true);
+    expect(authorizeDeleteChatMessage(row("player"), { ...text, authorId: "master" })).toMatchObject({
+      ok: false,
+      status: 403,
+    });
+    expect(authorizeDeleteChatMessage(row("game_master"), { ...text, hasDice: true })).toMatchObject({
+      ok: false,
+      status: 403,
+    });
+    expect(authorizeDeleteChatMessage(row("master"), { ...text, opensThread: true })).toMatchObject({
+      ok: false,
+      status: 403,
+    });
+    expect(authorizeDeleteChatMessage(null, text)).toMatchObject({ ok: false, status: 403 });
+    expect(authorizeDeleteChatMessage(row("player"), null)).toMatchObject({ ok: false, status: 404 });
   });
 });
 

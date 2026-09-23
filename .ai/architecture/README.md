@@ -20,7 +20,7 @@
 │  • Rechteschicht (TypeScript)                               │
 │  • Drizzle → PostgreSQL                                     │
 │  • Dateien → Volume (FILE_STORAGE_PATH)                     │
-│  • SSE-Bus (Spike: in-process; Prod: ein App-Prozess)       │
+│  • SSE-Bus (in-process, genau eine App-Replica)             │
 └───────────────┬─────────────────────────────┬───────────────┘
                 │                             │
                 ▼                             ▼
@@ -62,8 +62,12 @@ Test-Login (nur lokal): `POST /api/test-login` → gleiche Session-Form, Seed-Us
 ### Chat
 
 1. Nachricht oder Würfel-Aktion → Server speichert (Würfel **nur serverseitig**).
-2. SSE benachrichtigt andere Clients.
-3. Composer-UI: Würfel-Sheet; `/roll` bleibt API-/Test-Pfad.
+2. SSE benachrichtigt andere Clients derselben Welt.
+3. Composer-UI: Würfel-Sheet; `/roll` bleibt API-/Test-Pfad und folgt dem Schalter „Im Chat posten“.
+
+### Realtime
+
+Die App läuft mit **genau einer App-Replica**. Realtime ist In-Process (`src/lib/realtime`). Chat und Karte teilen sich den Bus und eine SSE-Route pro Welt (`/api/worlds/[worldId]/events`). Skalierung auf mehr als eine Replica nur nach einem neuen ADR (Kandidaten: PostgreSQL `LISTEN/NOTIFY`, Redis Pub/Sub).
 
 ### Rechte
 

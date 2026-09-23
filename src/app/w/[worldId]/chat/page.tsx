@@ -1,12 +1,37 @@
-export default function ChatPage() {
+import { ChatView } from "@/components/chat/ChatView";
+import { loadChatState } from "@/lib/chat/repository";
+import { optionalUuid } from "@/lib/chat/query";
+import { requireWorldPage } from "@/lib/page-context";
+
+export default async function ChatPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ worldId: string }>;
+  searchParams: Promise<{ channel?: string; thread?: string }>;
+}) {
+  const { worldId } = await params;
+  const query = await searchParams;
+  const { world, membership, user } = await requireWorldPage(worldId);
+  const channel = optionalUuid(query.channel ?? null);
+  const thread = optionalUuid(query.thread ?? null);
+  const state = await loadChatState({
+    worldId: world.id,
+    actorId: user.id,
+    role: membership.role,
+    channelId: channel.ok ? channel.id : null,
+    threadId: thread.ok ? thread.id : null,
+  });
+  if (!state.ok) {
+    return <p className="empty">{state.error}</p>;
+  }
+  const focusStream = Boolean(query.channel || query.thread);
   return (
-    <div className="chat-page">
-      <div className="msgs">
-        <p className="empty">Der Chat dieser Welt erscheint hier.</p>
-      </div>
-      <div className="composer">
-        <input disabled placeholder="Nachricht …" aria-label="Nachricht" />
-      </div>
-    </div>
+    <ChatView
+      key={`${state.data.channel?.id ?? ""}:${state.data.thread?.id ?? ""}`}
+      worldId={world.id}
+      initial={state.data}
+      focusStream={focusStream}
+    />
   );
 }

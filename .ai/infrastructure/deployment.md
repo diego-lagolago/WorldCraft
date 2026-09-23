@@ -6,6 +6,10 @@ Die KI kann Git-Hosting und Coolify nicht anlegen. Bitte die folgenden Schritte 
 
 **Abweichung (Projektinhaber, 2026-09-22):** Coolify darf das Dockerfile **nicht** auf dem Server bauen. `next build` hat den Host per RAM/CPU gekillt. Muster wie Vitura: **GitHub Actions** baut das Image (`linux/amd64`) und pusht nach **GHCR**. Coolify macht nur `docker pull` und startet den Container. Lokal bleiben `docker compose` (Postgres) und `npm run dev` unverändert.
 
+## Realtime
+
+Die App läuft in Coolify mit **genau einer App-Replica**. Realtime ist In-Process; horizontales Skalieren ist nicht vorgesehen. Mehr als eine Replica nur nach einem neuen ADR (Kandidaten: PostgreSQL `LISTEN/NOTIFY`, Redis Pub/Sub).
+
 ## 1. Repository auf GitHub
 
 Remote: `https://github.com/diego-lagolago/WorldCraft.git` (privat). Branch `main`.

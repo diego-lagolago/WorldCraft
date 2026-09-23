@@ -23,7 +23,7 @@ Später, nicht MVP-jetzt: **„Auswahl zur Erwähnung machen“** (markierten Te
 
 ## 2026-09-22 – Chat: Channel-Verwaltung & Thread-UX
 
-**Übernommen in Plan `003`** (`.ai/feature-tasks/003-mvp-funktionen.md`, *Chat-Produktmodell*, T-012). Kein offener Backlog-Punkt mehr.
+**Erledigt in Plan `003` T-012** (2026-09-23). Kanalverwaltung und eingerückte Threads mit Chevron liegen in der Produktroute `/w/[worldId]/chat`.
 
 Ursprünglich: Projektinhaber während T-010. Infrastruktur (Tabellen, Default-Kanal, Thread anlegen) lag im Spike `/spike/chat`. Fachmodell bleibt welt-scoped; die Abweichung steht in `datenmodell.md` Abschnitt 13 B, nicht in `datenmodell-fachlich.md`.
 

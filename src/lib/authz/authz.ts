@@ -117,3 +117,19 @@ export function relationVisible(input: {
 }): boolean {
   return input.sourceVisible && input.targetVisible;
 }
+
+/** APP-CHAT-DELETE: author or staff may delete text; dice and thread openers never. */
+export function authorizeDeleteChatMessage(
+  actor: MembershipRow | null,
+  message: { authorId: string; hasDice: boolean; opensThread: boolean } | null,
+): AuthzResult<true> {
+  const denied = denyIfNoMembership(actor);
+  if (denied || !actor) return denied ?? fail(403, "Kein aktives Mitglied dieser Welt.");
+  if (!message) return fail(404, "Diese Nachricht gibt es nicht.");
+  if (message.hasDice) return fail(403, "Würfelwürfe kann niemand löschen.");
+  if (message.opensThread) {
+    return fail(403, "Eine Nachricht, die einen Thread eröffnet, kann nicht gelöscht werden.");
+  }
+  if (message.authorId === actor.userId || isStaff(actor.role)) return ok(true);
+  return fail(403, "Nur der Autor oder die Spielleitung darf diese Nachricht löschen.");
+}
