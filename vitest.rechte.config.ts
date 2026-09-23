@@ -5,7 +5,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/spike/rechte/run-rechte-tests.ts", "src/**/*.api.test.ts"],
+    include: ["src/**/*.api.test.ts"],
     fileParallelism: false,
   },
   resolve: {

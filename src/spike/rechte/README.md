@@ -1,6 +1,6 @@
-# Spike T-011 — Rechteprüfung auf Datenebene
+# Rechteprüfung (Produkt)
 
-Keine eigene Oberfläche. Die Rechtematrix aus Plan 001 läuft über Session-Cookies gegen `/api/spike/rechte`.
+Die Rechtematrix aus Plan 001 T-011 läuft gegen die **Produkt-APIs** (Plan 003 T-015), nicht mehr gegen `/api/spike/rechte`.
 
 ## Start
 
@@ -18,25 +18,8 @@ Zweites Terminal:
 npm run test:rechte
 ```
 
-Das Skript `src/spike/rechte/run-rechte-tests.ts` meldet `test-gm`, `test-master`, `test-player-a` und `test-player-b` über `/api/test-login` an, legt Welt, Rollen, Charaktere und Einträge selbst an und prüft die Matrix per `fetch` (nicht über die UI).
-
-Unit-Tests der Sichtbarkeitsregeln (ohne Server):
-
-```bash
-npm test
-```
+Das führt alle `src/**/*.api.test.ts` aus, darunter `src/app/api/rechte-matrix.api.test.ts` (Plan-001-Matrix) und die feature-spezifischen API-Tests. Persistenz nach Austritt: `GET /api/worlds/:id/persistence` (nur mit Test-Login, ohne Klartext privater Tagebücher — CR-019a).
 
 Andere Basis-URL: `RECHTE_BASE_URL=http://127.0.0.1:3000 npm run test:rechte`.
 
-## API (Auszug)
-
-Session wie beim Test-Login (`Cookie` aus `Set-Cookie`).
-
-| Aktion | Methode |
-|---|---|
-| Welt anlegen (Aufrufer = Game Master) | `POST /api/spike/rechte/worlds` `{ name }` |
-| Einladen / widerrufen / beitreten | `POST …/worlds/:id/invites`, `POST …/invites/:id/revoke`, `POST …/invites/:code/join` |
-| Rolle / Entfernen / Austreten | `PATCH …/members/:userId`, `DELETE …/members/:userId`, `POST …/leave` |
-| Artikel, Universen, Karten, Pins, Relationen | Staff schreibt; Listen filtern `gm_only` und Vererbung |
-| Charaktere mitbringen, Tagebuch, Marker | Besitzer bzw. Staff laut Matrix |
-| Persistenz nach Archiv (nur bei Test-Login) | `GET …/worlds/:id/_persistence` |
+Der Spike-Code unter `src/spike/rechte/` bleibt bis T-016 ungenutzt und wird dort entfernt.

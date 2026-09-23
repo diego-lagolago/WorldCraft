@@ -35,7 +35,7 @@
 | CR-016 | Sicherheit | niedrig | offen | Endung beim Upload kommt aus dem Client-MIME, `nosniff` fehlt, Kartenbild wird pro Abruf komplett gelesen. Produktroute `/api/files` prüft die Bytes und streamt; die Spike-Route folgt erst mit T-016 |
 | CR-017 | Fehlerbehandlung & Validierung | niedrig | behoben | Keine Startvalidierung für `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL`, localhost-Origins auch in Produktion vertraut |
 | CR-018 | Aufgaben-Abgleich | niedrig | behoben | 8 dokumentierte `TRIG-*`-Regeln fehlen in den Migrationen: alle bauen (Plan-Review) |
-| CR-019 | Sicherheit | niedrig | offen | Persistenz-Snapshot liefert `privat`-Tagebuchtexte an die Spielleitung, Journal auf archivierter Teilnahme möglich |
+| CR-019 | Sicherheit | niedrig | behoben | Persistenz-Snapshot liefert `privat`-Tagebuchtexte an die Spielleitung, Journal auf archivierter Teilnahme möglich |
 | CR-020 | Aufgaben-Abgleich | niedrig | behoben | Pin-Sperre (`locked`) nicht dokumentiert: übernehmen, nur Spielleitung (Plan-Review). Spalte in T-002; Rechte und UI folgen in T-013 |
 | CR-021 | Lesbarkeit & Wartbarkeit | niedrig | offen | Würfelausgabe: negative Würfelterme ohne Vorzeichen, versteckter `/roll`-Pfad ignoriert `dicePostToChat`. Schema `dice_terms` in T-002; Formatierer folgt in T-012 |
 | CR-022 | Bad Practices | niedrig | behoben | Editor-Spike: Link/Underline doppelt registriert (StarterKit v3), deutsche Identifier entgegen Konvention |
@@ -266,6 +266,7 @@
 - **Empfehlung:** (a) Im Snapshot nur IDs, Sichtbarkeit und einen Hash oder die Länge des Texts ausgeben. (b) `isNull(worldParticipations.archivedAt)` in die Abfrage aufnehmen. (c) Parameter und Zweig entfernen oder wirklich prüfen.
 - **Abnahmekriterium:** Die Snapshot-Antwort enthält keinen Klartext von `privat`-Einträgen. `POST …/journals` für einen Charakter mit archivierter Teilnahme liefert 400. `authz.test.ts` deckt beides ab.
 - **Umsetzung (Plan 003 T-008, 2026-09-23):** (b) `authorizeJournalWrite` verlangt den Besitzer und eine aktive (nicht archivierte) Teilnahme; Produkt-`POST …/journal` und Spike-`createJournal` nutzen dieselbe Funktion. Nachweis: `authz.test.ts`, `characters.api.test.ts` (Austritt → Wiederbeitritt ohne Mitbringen → 400). (c) `canSeeCharacterInWorld` prüft nur die Teilnahme (`null` oder `archivedAt`). (a) Snapshot bleibt bei T-015/Spike. Status bleibt `offen`.
+- **Umsetzung (Plan 003 T-015, 2026-09-23):** (a) Produkt-`GET /api/worlds/[worldId]/persistence` liefert für `privat` nur `bodyFingerprint: len:N`, nie Klartext; Shared nur Hash-Länge-Kennung. Spike-Snapshot angepasst. Nachweis: `rechte-matrix.api.test.ts`. Status `behoben`.
 
 ### CR-020 – Pin-Sperre als undokumentierter Zusatzumfang
 - **Fundstelle:** `src/spike/karte/pin-lock.ts`, `src/app/api/spike/karte/pins/[id]/route.ts:24,49-51`, Spalte `spike_pins.locked`

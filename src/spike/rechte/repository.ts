@@ -1458,7 +1458,15 @@ export async function persistenceSnapshot(actor: Actor, worldId: string) {
       id: row.id,
       characterId: row.characterId,
       visibility: row.visibility,
-      bodyPlain: row.bodyPlain,
+      // CR-019a: never expose private journal plaintext (Plan 003 T-015)
+      bodyFingerprint:
+        row.visibility === "private"
+          ? row.bodyPlain === null
+            ? null
+            : `len:${row.bodyPlain.length}`
+          : row.bodyPlain === null
+            ? null
+            : `hash:${row.bodyPlain.length}`,
     })),
     markers: markerRows.map(({ marker }) => ({
       id: marker.id,

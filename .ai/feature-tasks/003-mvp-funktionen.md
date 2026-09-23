@@ -373,10 +373,11 @@ Regeln:
 - Umsetzung (Plan 003 T-014, 2026-09-23): Domäne `src/lib/domain/search.ts` (ILIKE + `plainto_tsquery`, APP-SEARCH-SNIPPET), API `GET /api/worlds/[worldId]/search`, UI `CampaignSearch` (Debounce 300 ms ab 2 Zeichen). Nachweise: `search.test.ts`, `search.api.test.ts` (1–5, CR-005).
 
 ### T-015: Rechte-Testskript auf Produkt-APIs
-- [ ] Beschreibung: `npm run test:rechte` (oder Nachfolger) gegen die **Produkt-APIs** richten, nicht mehr gegen `/api/spike/rechte`. Dieselben Fälle wie Plan `001` T-011, plus Vorlagen-Verweis und Stub nur soweit sie Rechte berühren. Spike-Rechte-HTTP danach ungenutzt.
+- [x] Beschreibung: `npm run test:rechte` (oder Nachfolger) gegen die **Produkt-APIs** richten, nicht mehr gegen `/api/spike/rechte`. Dieselben Fälle wie Plan `001` T-011, plus Vorlagen-Verweis und Stub nur soweit sie Rechte berühren. Spike-Rechte-HTTP danach ungenutzt.
 - Code-Review: CR-019 (Teil a: Persistenz-Snapshot). Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
 - Abhängigkeiten: T-007, T-008, T-009, T-010, T-011, T-012, T-013
 - Abnahmekriterium: (1) Skript ist lokal mit Test-Login wiederholbar und deckt alle Punkte aus dem Abnahmekriterium von Plan `001` T-011. (2) Es ruft keine `/api/spike/`-Pfade mehr auf. (3) Produktion bleibt ohne Test-Login (404 / Guard unverändert).
+- Umsetzung (Plan 003 T-015, 2026-09-23): `vitest.rechte.config.ts` nur noch `*.api.test.ts`. Matrix in `rechte-matrix.api.test.ts` gegen Produkt-APIs. Persistenz `GET /api/worlds/[worldId]/persistence` ohne Klartext privater Tagebücher (CR-019a). Spike-`run-rechte-tests.ts` entfernt.
 
 ### T-016: Spike-Abbau und Normen
 - [ ] Beschreibung: Routen `/spike/*` und `/api/spike/*` entfernen. Tabellen `spike_*` und Enum `spike_pin_type` per Migration droppen. Code unter `src/spike/` und `spikes/editor/` entfernen (der Editor lebt ab T-005 in der App; die Historie bleibt in Git). `spikes/ui-prototype/` bleibt als Design-Referenz erhalten und wird nicht entfernt. `conventions.md`, `architecture/README.md`, `tech-stack.md` (Spike-Zeilen) aktualisieren. Test-Includes in `vitest.config.ts` an die neuen Pfade anpassen. Zusätzlich CR-001 Teile 2 und 3: Spike-Code entfernen und Spike-Daten aus den Produktivtabellen per `scripts/cleanup-spike-data.sql` bereinigen (Welten `Rechte-Spike*` samt Kaskade, `files` mit `storage_key LIKE 'spike/%'`). Vor der Ausführung auf Produktion zeigt ein Dry-Run die betroffenen Zeilen, und der Projektinhaber bestätigt im Chat.
