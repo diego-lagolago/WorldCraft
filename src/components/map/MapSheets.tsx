@@ -327,14 +327,13 @@ export function ReplaceImageDialog({
         <p className="muted">
           Das aktuelle Kartenbild wird überschrieben. Alle Pins und Charakter-Marker bleiben an ihren Positionen.
         </p>
-        <label className="row" style={{ alignItems: "flex-start", gap: 10 }}>
+        <label className="confirm-check">
           <input
             type="checkbox"
             checked={checked}
             onChange={(event) => setChecked(event.target.checked)}
-            style={{ marginTop: 3 }}
           />
-          <span>Ich verstehe, dass das bisherige Bild ersetzt wird und die Pins bleiben.</span>
+          <span>Ich verstehe — Bild ersetzen, Pins bleiben.</span>
         </label>
         <div className="row" style={{ gap: 8 }}>
           <button type="button" className="btn grow" onClick={onCancel}>
