@@ -34,6 +34,8 @@ let journalPrivate = "";
 let journalShared = "";
 let articlePublished = "";
 let articleHidden = "";
+let monsterPublished = "";
+let monsterHidden = "";
 let markerA1 = "";
 let markerA2 = "";
 let markerB = "";
@@ -130,7 +132,7 @@ describe("T-015 Rechte-Matrix (Produkt-APIs, Plan 001 T-011)", () => {
     ).toBe(200);
   });
 
-  it("legt Charaktere, Tagebücher, Artikel, Karten, Marker und Relationen an", async () => {
+  it("legt Charaktere, Tagebücher, Artikel, Monster, Karten, Marker und Relationen an", async () => {
     const a1 = await api<{ id: string }>(playerA, "POST", "/api/characters", { name: "Aria Eins" });
     const a2 = await api<{ id: string }>(playerA, "POST", "/api/characters", { name: "Aria Zwei" });
     const b1 = await api<{ id: string }>(playerB, "POST", "/api/characters", { name: "Bram" });
@@ -173,6 +175,21 @@ describe("T-015 Rechte-Matrix (Produkt-APIs, Plan 001 T-011)", () => {
     expect(hid.status).toBe(201);
     articlePublished = pub.data.article.id;
     articleHidden = hid.data.article.id;
+
+    const monPub = await api<{ monster: { id: string } }>(gm, "POST", w("/monsters"), {
+      name: "Öffentliches Biest",
+      visibility: "published",
+      kind: "beast",
+    });
+    const monHid = await api<{ monster: { id: string } }>(gm, "POST", w("/monsters"), {
+      name: "Nur SL Monster",
+      visibility: "gm_only",
+      kind: "demon",
+    });
+    expect(monPub.status).toBe(201);
+    expect(monHid.status).toBe(201);
+    monsterPublished = monPub.data.monster.id;
+    monsterHidden = monHid.data.monster.id;
 
     const map = await uploadMap(gm, hauptUniverse, "Hauptkarte");
     expect(map.status).toBe(201);
@@ -296,6 +313,17 @@ describe("T-015 Rechte-Matrix (Produkt-APIs, Plan 001 T-011)", () => {
     expect(staff.data.articles.map((row) => row.id)).toContain(articleHidden);
   });
 
+  it("Monster wie Artikel: Player nur published; Staff sieht gm_only", async () => {
+    const player = await api<{ monsters: { id: string }[] }>(playerA, "GET", w("/monsters"));
+    expect(player.data.monsters.map((row) => row.id)).toContain(monsterPublished);
+    expect(player.data.monsters.map((row) => row.id)).not.toContain(monsterHidden);
+    expect((await api(playerA, "GET", w(`/monsters/${monsterHidden}`))).status).toBe(404);
+
+    const staff = await api<{ monsters: { id: string }[] }>(master, "GET", w("/monsters"));
+    expect(staff.data.monsters.map((row) => row.id)).toContain(monsterHidden);
+    expect((await api(master, "GET", w(`/monsters/${monsterHidden}`))).status).toBe(200);
+  });
+
   it("verstecktes Universum: Player sieht Karte/Pins nicht", async () => {
     const playerUnis = await api<{ universes: { id: string }[] }>(playerA, "GET", w("/universes"));
     expect(playerUnis.data.universes.map((row) => row.id)).not.toContain(hiddenUniverse);
@@ -340,10 +368,13 @@ describe("T-015 Rechte-Matrix (Produkt-APIs, Plan 001 T-011)", () => {
     expect(staff.data.items.some((row) => row.id === hiddenUniverse)).toBe(true);
   });
 
-  it("Player dürfen keine Artikel, Pins, Karten, Universen oder manuellen Relationen schreiben", async () => {
+  it("Player dürfen keine Artikel, Monster, Pins, Karten, Universen oder manuellen Relationen schreiben", async () => {
     expect((await api(playerA, "POST", w("/articles"), { title: "Unerlaubt" })).status).toBe(403);
     expect((await api(playerA, "PATCH", w(`/articles/${articlePublished}`), { title: "Hack" })).status).toBe(403);
     expect((await api(playerA, "DELETE", w(`/articles/${articlePublished}`))).status).toBe(403);
+    expect((await api(playerA, "POST", w("/monsters"), { name: "Unerlaubt" })).status).toBe(403);
+    expect((await api(playerA, "PATCH", w(`/monsters/${monsterPublished}`), { name: "Hack" })).status).toBe(403);
+    expect((await api(playerA, "DELETE", w(`/monsters/${monsterPublished}`))).status).toBe(403);
     expect((await api(playerA, "POST", w("/universes"), { name: "Player-U" })).status).toBe(403);
     expect((await api(playerA, "PATCH", w(`/universes/${hauptUniverse}`), { name: "Hack" })).status).toBe(403);
     expect((await uploadMap(playerA, hauptUniverse, "Zweite")).status).toBe(403);

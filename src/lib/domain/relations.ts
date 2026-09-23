@@ -253,6 +253,78 @@ export async function recalcArticleRelations(
   await recalcOutgoingTemplateFields({ worldId, actorId, sourceId: articleId, fields }, tx);
 }
 
+/** APP-REL-RECALC for monster `habitat` (template_field). Mentions and manual stay. */
+export async function recalcOutgoingMonsterHabitat(
+  input: {
+    worldId: string;
+    actorId: string;
+    monsterId: string;
+    habitatArticleId: string | null;
+  },
+  tx: DbTx,
+): Promise<void> {
+  await tx
+    .delete(relations)
+    .where(
+      and(
+        eq(relations.worldId, input.worldId),
+        eq(relations.origin, "template_field"),
+        eq(relations.sourceMonsterId, input.monsterId),
+      ),
+    );
+  if (!input.habitatArticleId) return;
+  const [target] = await tx
+    .select({ id: articles.id })
+    .from(articles)
+    .where(and(eq(articles.id, input.habitatArticleId), eq(articles.worldId, input.worldId)))
+    .limit(1);
+  if (!target) return;
+  await tx.insert(relations).values({
+    worldId: input.worldId,
+    ...sourceValues("monster", input.monsterId),
+    ...targetValues("article", input.habitatArticleId),
+    origin: "template_field" as const,
+    templateFieldKey: "habitat",
+    createdBy: input.actorId,
+    updatedBy: input.actorId,
+  });
+}
+
+/** Load current monster bio + habitat and rebuild outgoing auto-relations. */
+export async function recalcMonsterRelations(
+  worldId: string,
+  actorId: string,
+  monsterId: string,
+  tx: DbTx,
+): Promise<void> {
+  const [row] = await tx
+    .select({ bioJson: monsters.bioJson, habitatArticleId: monsters.habitatArticleId })
+    .from(monsters)
+    .where(and(eq(monsters.id, monsterId), eq(monsters.worldId, worldId)))
+    .limit(1);
+  if (!row) return;
+  // Sequential writes on the same tx (CR-006).
+  await recalcOutgoingMentions(
+    {
+      worldId,
+      actorId,
+      sourceKind: "monster",
+      sourceId: monsterId,
+      mentions: extractMentions(asRichDoc(row.bioJson)),
+    },
+    tx,
+  );
+  await recalcOutgoingMonsterHabitat(
+    {
+      worldId,
+      actorId,
+      monsterId,
+      habitatArticleId: row.habitatArticleId,
+    },
+    tx,
+  );
+}
+
 /** APP-REL-RECALC for `participation` rows of one quest. Mentions and manual stay. */
 export async function recalcOutgoingParticipations(
   input: {

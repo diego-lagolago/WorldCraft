@@ -53,6 +53,12 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 | Erwähnungen (`@`) | Teilwortsuche mit Kategorie; Bestätigen per Enter, Tab oder Klick; Stub rot → blau | MVP F2 / shipped |
 | Stub-Artikel | Über `@` angelegt; `first_edited_at` erst bei echtem Inhalt | MVP / shipped |
 
+## Monster (Bestiarium)
+
+| Feature | Was es tut | Status |
+|---|---|---|
+| Monster-API | Anlegen/Ändern/Löschen nur Spielleitung; Liste (Filter Art), Detail; dreistufige Sichtbarkeit (Default `nur ich`); Charakterblatt + Art/Seltenheit/Legendär/Gefahr/Größe/Lebensraum; Bio mit `@`; Lebensraum → Ort-Artikel | Plan 005 T-005 / API |
+
 ## Relationen
 
 | Feature | Was es tut | Status |
