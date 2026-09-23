@@ -1,4 +1,6 @@
-export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string; status: number };
+export type ApiResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; status: number; body?: unknown };
 
 const FALLBACK_ERROR = "Das hat nicht geklappt. Bitte erneut versuchen.";
 
@@ -6,8 +8,10 @@ async function readResult<T>(response: Response): Promise<ApiResult<T>> {
   const body: unknown = await response.json().catch(() => null);
   if (response.ok) return { ok: true, data: body as T };
   const error =
-    body && typeof body === "object" && "error" in body && typeof body.error === "string" ? body.error : FALLBACK_ERROR;
-  return { ok: false, error, status: response.status };
+    body && typeof body === "object" && "error" in body && typeof body.error === "string"
+      ? body.error
+      : FALLBACK_ERROR;
+  return { ok: false, error, status: response.status, body: body ?? undefined };
 }
 
 /** JSON request against the product API; network errors become a readable message. */

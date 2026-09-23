@@ -3,10 +3,12 @@ import { notFound } from "next/navigation";
 import { LinkedSection } from "@/components/linked/LinkedSection";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { QuestChapters } from "@/components/quests/QuestChapters";
+import { QuestNotesSheet } from "@/components/quests/QuestNotesSheet";
 import { worldPath } from "@/components/shell/nav";
 import { GmBadge } from "@/components/world/display";
 import { isStaff } from "@/lib/authz/types";
 import { editorMentionStates, resolveMentions } from "@/lib/domain/mention-resolve";
+import { getQuestNote } from "@/lib/domain/quest-notes";
 import { getQuest, QUEST_STATUS_LABEL } from "@/lib/domain/quests";
 import { asRichDoc, extractMentions } from "@/lib/editor/rich-text";
 import { parseUuid } from "@/lib/http";
@@ -21,11 +23,20 @@ export default async function QuestPage({ params }: PageProps<"/w/[worldId]/ques
 
   const doc = asRichDoc(quest.descriptionJson);
   const chapterRefs = quest.chapters.flatMap((chapter) => extractMentions(asRichDoc(chapter.bodyJson)));
+  const noteResult = await getQuestNote({
+    worldId: world.id,
+    questId: quest.id,
+    role: membership.role,
+    viewerId: membership.userId,
+  });
+  const note = noteResult.ok ? noteResult.data : null;
   const mentions = await resolveMentions(world.id, membership.role, membership.userId, [
     ...extractMentions(doc),
     ...chapterRefs,
   ]);
   const staff = isStaff(membership.role);
+  const pageMentions = { ...mentions, ...(note?.mentions ?? {}) };
+  const allMentionStates = editorMentionStates(pageMentions);
 
   return (
     <>
@@ -70,17 +81,36 @@ export default async function QuestPage({ params }: PageProps<"/w/[worldId]/ques
             )}
           </div>
           <div className="card">
-            <RichTextView doc={doc} mentions={mentions} empty={<p className="muted">Noch keine Beschreibung.</p>} />
+            <RichTextView doc={doc} mentions={pageMentions} empty={<p className="muted">Noch keine Beschreibung.</p>} />
           </div>
         </div>
-        <LinkedSection
-          worldId={world.id}
-          role={membership.role}
-          viewerId={membership.userId}
-          kind="quest"
-          id={quest.id}
-          canEdit={staff}
-        />
+        <div className="quest-side">
+          {note ? (
+            <div className="row" style={{ justifyContent: "flex-end" }}>
+              <QuestNotesSheet
+                worldId={world.id}
+                questId={quest.id}
+                canCreateArticle={staff}
+                mentionStates={allMentionStates}
+                initialNote={{
+                  bodyJson: note.bodyJson,
+                  version: note.version,
+                  updatedAt: note.updatedAt ? note.updatedAt.toISOString() : null,
+                  updatedByName: note.updatedByName,
+                  mentions: note.mentions,
+                }}
+              />
+            </div>
+          ) : null}
+          <LinkedSection
+            worldId={world.id}
+            role={membership.role}
+            viewerId={membership.userId}
+            kind="quest"
+            id={quest.id}
+            canEdit={staff}
+          />
+        </div>
       </div>
       <QuestChapters
         worldId={world.id}
@@ -88,8 +118,8 @@ export default async function QuestPage({ params }: PageProps<"/w/[worldId]/ques
         chapters={quest.chapters}
         actorId={membership.userId}
         staff={staff}
-        mentions={mentions}
-        mentionStates={editorMentionStates(mentions)}
+        mentions={pageMentions}
+        mentionStates={allMentionStates}
       />
     </>
   );

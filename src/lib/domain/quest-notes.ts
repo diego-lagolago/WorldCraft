@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { questNotes, quests } from "@/db/schema";
+import { questNotes, quests, users } from "@/db/schema";
 import {
   canSeeVisibility,
   fail,
@@ -28,6 +28,7 @@ export type QuestNote = {
   version: number;
   updatedAt: Date | null;
   updatedBy: string | null;
+  updatedByName: string | null;
   mentions: Record<string, ResolvedMention>;
 };
 
@@ -75,8 +76,10 @@ async function loadNoteRow(questId: string) {
       version: questNotes.version,
       updatedAt: questNotes.updatedAt,
       updatedBy: questNotes.updatedBy,
+      updatedByName: users.name,
     })
     .from(questNotes)
+    .leftJoin(users, eq(users.id, questNotes.updatedBy))
     .where(eq(questNotes.questId, questId))
     .limit(1);
   return row ?? null;
@@ -90,6 +93,7 @@ async function withMentions(
   version: number,
   updatedAt: Date | null,
   updatedBy: string | null,
+  updatedByName: string | null,
 ): Promise<QuestNote> {
   const mentions = await resolveMentions(
     worldId,
@@ -97,7 +101,7 @@ async function withMentions(
     viewerId,
     extractMentions(asRichDoc(bodyJson)),
   );
-  return { bodyJson, version, updatedAt, updatedBy, mentions };
+  return { bodyJson, version, updatedAt, updatedBy, updatedByName, mentions };
 }
 
 function conflict(version: number): NoteConflict {
@@ -120,7 +124,7 @@ export async function getQuestNote(input: {
   }
   const row = await loadNoteRow(quest.id);
   if (!row) {
-    return ok(await withMentions(input.worldId, input.role, input.viewerId, null, 0, null, null));
+    return ok(await withMentions(input.worldId, input.role, input.viewerId, null, 0, null, null, null));
   }
   return ok(
     await withMentions(
@@ -131,6 +135,7 @@ export async function getQuestNote(input: {
       row.version,
       row.updatedAt,
       row.updatedBy,
+      row.updatedByName,
     ),
   );
 }
@@ -200,15 +205,17 @@ export async function saveQuestNote(input: {
     throw error;
   }
 
+  const saved = await loadNoteRow(quest.id);
   return ok(
     await withMentions(
       input.worldId,
       input.role,
       input.actorId,
-      body.data.json,
-      nextVersion,
-      now,
-      input.actorId,
+      saved?.bodyJson ?? body.data.json,
+      saved?.version ?? nextVersion,
+      saved?.updatedAt ?? now,
+      saved?.updatedBy ?? input.actorId,
+      saved?.updatedByName ?? null,
     ),
   );
 }

@@ -2,7 +2,7 @@
 
 **Status:** Lebender Katalog — **verbindlich nachzuziehen**, wenn sich die Produktoberfläche ändert (siehe [conventions.md](conventions.md) § Features-Katalog).  
 **Quellen:** Plan `001` F1–F10, Plan `003` MVP, Fachmodell, nachgezogene UX.  
-**Nicht enthalten:** geplante, noch nicht gebaute Features (z. B. Quest-Notizblock aus Plan `004` T-010).
+**Nicht enthalten:** geplante, noch nicht gebaute Features (siehe Abschnitt *Geplant*).
 
 Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (meist ebenfalls shipped).
 
@@ -68,6 +68,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 | Quests | Titel, Beschreibung mit `@`, Status offen/aktiv/abgeschlossen/gescheitert, dreistufige Sichtbarkeit; Default `nur ich` | MVP F7 / Plan 004 / shipped |
 | Quest-Beteiligte | Mitgebrachte Charaktere zuordnen; erzeugt `participation`-Relationen | MVP F7 / shipped |
 | Quest-Kapitel | Geordnete Abschnitte unter der Beschreibung; eigene Sichtbarkeit; Spielleitung legt an/bearbeitet/löscht/verschiebt/schaltet frei; Player sieht nur freigegebene, nummeriert 1…n über Sichtbare | Plan 004 T-008 / shipped |
+| Quest-Notizblock | Gemeinsamer Rich-Text pro Quest (alle, die die Quest sehen); Speichern mit Versionskonflikt („Neu laden“); Erwähnungen klickbar, keine Relationen | Plan 004 T-010 / shipped |
 
 ## Charaktere & Tagebuch
 
@@ -123,4 +124,4 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 
 ## Geplant (nicht shipped)
 
-Siehe Pläne unter `.ai/feature-tasks/` und [backlog.md](backlog.md) — u. a. MCP (Plan `002`), Quest-Notizblock (Plan `004` T-010). Hier nicht als Produktfeatures führen, bis sie gebaut sind.
+Siehe Pläne unter `.ai/feature-tasks/` und [backlog.md](backlog.md) — u. a. MCP (Plan `002`), Rest Plan `004` (T-011–T-013). Hier nicht als Produktfeatures führen, bis sie gebaut sind.
