@@ -1,11 +1,12 @@
 -- Plan 007 T-008: opener body is NULL; title only on chat_threads (CHK-OPENER-BODY).
-UPDATE "chat_messages"
-SET "body" = NULL
-WHERE "opens_thread_id" IS NOT NULL;
-
+-- Order matters: NOT NULL and the old length check must go before openers are set to NULL (CR-001, Review 007).
 ALTER TABLE "chat_messages" ALTER COLUMN "body" DROP NOT NULL;
 
 ALTER TABLE "chat_messages" DROP CONSTRAINT IF EXISTS "chat_messages_body_length";
+
+UPDATE "chat_messages"
+SET "body" = NULL
+WHERE "opens_thread_id" IS NOT NULL;
 
 ALTER TABLE "chat_messages" ADD CONSTRAINT "chk_opener_body" CHECK (
   (

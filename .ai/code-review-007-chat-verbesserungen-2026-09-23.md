@@ -6,7 +6,7 @@
 
 | ID | Kategorie | Schweregrad | Status | Kurzbeschreibung |
 |----|-----------|-------------|--------|-------------------|
-| CR-001 | Runtime-Risiken | kritisch | offen | Migration 0018 setzt `body = NULL`, bevor `NOT NULL` entfernt ist – schlägt auf jeder DB mit bestehenden Threads fehl |
+| CR-001 | Runtime-Risiken | kritisch | behoben | Migration 0018 setzt `body = NULL`, bevor `NOT NULL` entfernt ist – schlägt auf jeder DB mit bestehenden Threads fehl |
 | CR-002 | Runtime-Risiken | mittel | offen | Bearbeitete Nachricht per SSE wird bei Clients ohne diese Nachricht angehängt und erhöht `replyCount` |
 | CR-003 | Runtime-Risiken | mittel | offen | `ChannelList` liest `localStorage` im `useState`-Initialisierer → Hydration-Mismatch |
 | CR-004 | Sicherheit | mittel | offen | Lösch-Dialog: Enter löscht, sobald der Fokus nicht auf „Abbrechen“ liegt; kein Fokus-Trap |
@@ -40,6 +40,7 @@
 - **Entscheidung (Projektinhaber, Plan-Review 2026-09-23):** **0018 direkt korrigieren, keine Folgemigration.** `scripts/migrate.mjs` verfolgt Migrationen nur per Dateiname in `schema_migrations` (keine Prüfsumme). Wo 0018 bereits als angewendet eingetragen ist, lief sie auf einer DB ohne Eröffnungsnachrichten (mit Daten wäre sie abgebrochen und nicht eingetragen worden) – der Endzustand ist dort schon richtig.
 - **Empfehlung:** Reihenfolge in `0018_chat_opener_body.sql`: `ALTER COLUMN body DROP NOT NULL` → `DROP CONSTRAINT IF EXISTS chat_messages_body_length` → `UPDATE … SET body = NULL WHERE opens_thread_id IS NOT NULL` → `ADD CONSTRAINT chk_opener_body`.
 - **Abnahmekriterium:** Auf einer DB mit Stand 0017 und mindestens einer Eröffnungsnachricht (`body` = Titel) läuft `npm run db:migrate` (bzw. der Projekt-Migrationsbefehl) fehlerfrei durch; danach liefert `SELECT count(*) FROM chat_messages WHERE opens_thread_id IS NOT NULL AND body IS NOT NULL` 0.
+- **Umsetzung (2026-09-23):** Reihenfolge in `0018_chat_opener_body.sql` wie empfohlen umgestellt. Geprüft auf einer Wegwerf-DB (Stand 0017, eine Eröffnungsnachricht mit `body` = Titel, eine normale Nachricht): `scripts/migrate.mjs` wendet 0018 fehlerfrei an, die Zählabfrage liefert 0, die normale Nachricht behält ihren Text.
 
 ### CR-002 – Bearbeitungs-Ereignis wird bei anderen Clients als neue Nachricht / neue Antwort gewertet
 - **Fundstelle:** `src/components/chat/use-chat-stream.ts`, `withMessage` (Zeile 17 ff.); Auslöser `editChatMessage` in `src/lib/chat/repository.ts` (publiziert `chat.message`)
