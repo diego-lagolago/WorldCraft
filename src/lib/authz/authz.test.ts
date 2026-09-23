@@ -556,4 +556,14 @@ describe("CR-001 canReceiveWorldEvent / eventForViewer", () => {
     };
     expect(eventForViewer(player, deleted)).toBeNull();
   });
+
+  it("never forwards membership.changed to clients", () => {
+    const event: WorldRealtimeEvent = {
+      type: "membership.changed",
+      worldId: "w",
+      userId: OTHER,
+    };
+    expect(canReceiveWorldEvent(player, event)).toBe(false);
+    expect(eventForViewer(player, event)).toBeNull();
+  });
 });

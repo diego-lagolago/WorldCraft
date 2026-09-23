@@ -97,6 +97,7 @@ export function canReceiveWorldEvent(
   viewer: { role: MembershipRole; userId: string },
   event: WorldRealtimeEvent,
 ): boolean {
+  if (event.type === "membership.changed") return false;
   if (!event.type.startsWith("map.")) return true;
   if (!("layers" in event) || !Array.isArray(event.layers)) return false;
   return canSeePublishedLayer(viewer, event.layers);
@@ -110,6 +111,7 @@ export function eventForViewer(
   viewer: { role: MembershipRole; userId: string },
   event: WorldRealtimeEvent,
 ): WorldRealtimeEvent | null {
+  if (event.type === "membership.changed") return null;
   if (!event.type.startsWith("map.")) return event;
   if (canReceiveWorldEvent(viewer, event)) return event;
   if (event.type === "map.pin") {

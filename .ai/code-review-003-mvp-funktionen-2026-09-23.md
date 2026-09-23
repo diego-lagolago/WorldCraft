@@ -34,7 +34,7 @@ Maßgeblich sind `.ai/architecture/datenmodell-fachlich.md` (fachliche Regeln, V
 | ID | Kategorie | Schweregrad | Status | Kurzbeschreibung |
 |----|-----------|-------------|--------|-------------------|
 | CR-001 | Sicherheit | kritisch | behoben | SSE-Events der Karte gehen ungefiltert an alle Mitglieder: Player erhalten `gm_only`-Pins (Titel, Beschreibung), Marker und Karten-Events verborgener Karten |
-| CR-002 | Sicherheit | mittel | offen | Offene SSE-Verbindung bleibt nach Austritt/Entfernen aktiv und liefert weiter Chat- und Karten-Events |
+| CR-002 | Sicherheit | mittel | behoben | Offene SSE-Verbindung bleibt nach Austritt/Entfernen aktiv und liefert weiter Chat- und Karten-Events |
 | CR-003 | Sicherheit | mittel | offen | `GET /api/files/[id]` prüft nur die Anmeldung, nicht Welt-Mitgliedschaft oder Sichtbarkeit |
 | CR-004 | Fehlerbehandlung & Validierung | mittel | offen | Vorlagen-Verweis mit Nicht-UUID-`id` führt zu HTTP 500 (Verstoß gegen CR-005 aus Review 001) |
 | CR-005 | Aufgaben-Abgleich | mittel | offen | Quest mit Beteiligtem, dessen Teilnahme archiviert oder dessen Charakter gelöscht ist, lässt sich nicht mehr speichern bzw. verliert den Namens-Snapshot |
@@ -49,7 +49,7 @@ Maßgeblich sind `.ai/architecture/datenmodell-fachlich.md` (fachliche Regeln, V
 | CR-014 | Bad Practices | niedrig | offen | `GET …/chat` schreibt (`ensureDefaultChannel` bei jedem Laden) |
 | CR-015 | Lesbarkeit & Wartbarkeit | niedrig | offen | Datei-GC kennt die referenzierenden Tabellen nur als hartkodierte SQL-Liste |
 | CR-016 | Aufgaben-Abgleich | niedrig | offen | Review 001 führt CR-004, CR-021, CR-023 noch als `offen`, obwohl der Plan „kein Finding `offen`“ und Nachführen im Task-Commit verlangt |
-| CR-017 | Sicherheit | mittel | offen | Rollenwechsel wirkt nicht live: Karte und SSE-Leitung behalten die alte Rolle (z. B. SL-Karte bleibt nach Herabstufung sichtbar). Nachgetragen im Plan-Review 2026-09-23 |
+| CR-017 | Sicherheit | mittel | behoben | Rollenwechsel wirkt nicht live: Karte und SSE-Leitung behalten die alte Rolle (z. B. SL-Karte bleibt nach Herabstufung sichtbar). Nachgetragen im Plan-Review 2026-09-23 |
 
 ---
 

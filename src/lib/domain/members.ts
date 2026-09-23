@@ -9,6 +9,7 @@ import {
   type MembershipRole,
   type MembershipRow,
 } from "@/lib/authz";
+import { worldEvents } from "@/lib/realtime/events";
 
 export type MemberSummary = {
   membershipId: string;
@@ -53,6 +54,10 @@ async function loadMembership(membershipId: string): Promise<MembershipRow | nul
   return row ?? null;
 }
 
+function publishMembershipChanged(worldId: string, userId: string) {
+  worldEvents.publish({ type: "membership.changed", worldId, userId });
+}
+
 /** Player ↔ Master, only by the game master. */
 export async function changeMemberRole(input: {
   actor: MembershipRow | null;
@@ -66,6 +71,7 @@ export async function changeMemberRole(input: {
     .update(memberships)
     .set({ role: input.role, updatedAt: new Date(), updatedBy: input.actorId })
     .where(eq(memberships.id, allowed.data.id));
+  publishMembershipChanged(allowed.data.worldId, allowed.data.userId);
   return ok({ membershipId: allowed.data.id, role: input.role });
 }
 
@@ -104,6 +110,7 @@ export async function removeMember(input: {
   const allowed = authorizeMemberAdmin(input.actor, await loadMembership(input.membershipId));
   if (!allowed.ok) return allowed;
   await db.transaction((tx) => archiveMembership(tx, allowed.data, input.actorId));
+  publishMembershipChanged(allowed.data.worldId, allowed.data.userId);
   return ok({ membershipId: allowed.data.id });
 }
 
@@ -114,5 +121,6 @@ export async function leaveWorld(input: {
   const allowed = authorizeLeave(input.membership);
   if (!allowed.ok) return allowed;
   await db.transaction((tx) => archiveMembership(tx, allowed.data, input.actorId));
+  publishMembershipChanged(allowed.data.worldId, allowed.data.userId);
   return ok({ worldId: allowed.data.worldId });
 }

@@ -10,12 +10,12 @@ const SSE_HEADERS = {
 };
 
 /**
- * `subscribe` receives a `send` that no-ops once the stream is closed.
- * Heartbeat and `send` both check that flag before `enqueue` (CR-007).
+ * `subscribe` receives `send` (no-op once closed) and `stop` (CR-002/CR-017: close
+ * on membership.changed). Heartbeat and `send` both check the closed flag before enqueue.
  */
 export function createSseResponse(
   request: Request,
-  subscribe: (send: (event: unknown) => void) => () => void,
+  subscribe: (send: (event: unknown) => void, stop: () => void) => () => void,
   hello: unknown = { type: "hello" },
 ): Response {
   const encoder = new TextEncoder();
@@ -25,26 +25,6 @@ export function createSseResponse(
 
   const stream = new ReadableStream({
     start(controller) {
-      const send = (event: unknown) => {
-        if (closed) return;
-        try {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
-        } catch {
-          closed = true;
-        }
-      };
-      unsubscribe = subscribe(send);
-      send(hello);
-      heartbeat = setInterval(() => {
-        if (closed) return;
-        try {
-          controller.enqueue(encoder.encode(`: ping\n\n`));
-        } catch {
-          closed = true;
-          if (heartbeat) clearInterval(heartbeat);
-          unsubscribe();
-        }
-      }, HEARTBEAT_MS);
       const stop = () => {
         if (closed) return;
         closed = true;
@@ -56,6 +36,26 @@ export function createSseResponse(
           /* already closed */
         }
       };
+      const send = (event: unknown) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        } catch {
+          closed = true;
+        }
+      };
+      unsubscribe = subscribe(send, stop);
+      send(hello);
+      heartbeat = setInterval(() => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(`: ping\n\n`));
+        } catch {
+          closed = true;
+          if (heartbeat) clearInterval(heartbeat);
+          unsubscribe();
+        }
+      }, HEARTBEAT_MS);
       request.signal.addEventListener("abort", stop);
     },
     cancel() {

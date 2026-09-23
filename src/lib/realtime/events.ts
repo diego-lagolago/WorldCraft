@@ -2,7 +2,7 @@ import type { VisibilityLayer } from "@/lib/authz";
 import type { ChatMessageDto, ChatThreadDto } from "@/lib/chat/types";
 import { createRealtimeBus } from "./bus";
 
-/** Events on the single world bus. Chat and map publish here (CR-012). Map pin/marker are signals only (R5); `layers` is for SSE visibility filtering (CR-001). */
+/** Events on the single world bus. Chat and map publish here (CR-012). Map pin/marker are signals only (R5); `layers` is for SSE visibility filtering (CR-001). `membership.changed` is internal (CR-002/CR-017): never forwarded to clients. */
 export type WorldRealtimeEvent =
   | { type: "chat.message"; worldId: string; message: ChatMessageDto }
   | {
@@ -25,6 +25,7 @@ export type WorldRealtimeEvent =
       mapId: string;
       layers: VisibilityLayer[];
     }
+  | { type: "membership.changed"; worldId: string; userId: string };
 
 export const worldEvents = createRealtimeBus<WorldRealtimeEvent>("world");
 
