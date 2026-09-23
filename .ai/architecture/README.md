@@ -78,7 +78,7 @@ Jede lesende/schreibende API (und später MCP) fragt die **gemeinsame Rechteschi
 
 1. Speichern von Artikel, Universumsbeschreibung und Pin berechnet ausgehende automatische Relationen neu (`APP-REL-RECALC` in `src/lib/domain/relations.ts`); manuelle Relationen bleiben.
 2. `listLinked` lädt Ziele je Inhaltsart in einer Query (CR-011). Sichtbar nur, wenn Quelle **und** Ziel sichtbar sind.
-3. UI „Verknüpft“: Artikel, Charakter, Universum (`src/components/linked/`); Pin im Karten-Popup (T-013); Quest in T-011.
+3. UI „Verknüpft“: Artikel, Charakter, Universum, Quest (`src/components/linked/`); Pin im Karten-Popup.
 
 ### Geplant: MCP (Plan 002)
 

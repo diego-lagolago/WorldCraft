@@ -112,6 +112,26 @@ describe("GET /api/worlds/[worldId]/mentions", () => {
     expect(res.data.hits?.map((hit) => hit.title)).toEqual(["Schleimi", "Schleimtal", "Gottschleim"]);
     expect(res.data.hits?.map((hit) => hit.kind)).toEqual(["character", "universe", "article"]);
   });
+
+  it("includes quest titles (T-011 (4))", async () => {
+    await sql`
+      INSERT INTO quests (world_id, title, visibility, created_by, updated_by)
+      VALUES (${worldId}, 'Töte den Gottschleim', 'published', ${gm.user.id}, ${gm.user.id})
+    `;
+    const res = await search(gm, "schleim");
+    expect(res.data.hits?.map((hit) => hit.title)).toEqual([
+      "Schleimi",
+      "Schleimtal",
+      "Gottschleim",
+      "Töte den Gottschleim",
+    ]);
+    expect(res.data.hits?.map((hit) => hit.kind)).toEqual([
+      "character",
+      "universe",
+      "article",
+      "quest",
+    ]);
+  });
 });
 
 describe("POST /api/worlds/[worldId]/articles (stub from @)", () => {

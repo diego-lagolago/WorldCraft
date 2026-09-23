@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { ArticleList } from "@/components/articles/ArticleList";
+import { QuestList } from "@/components/quests/QuestList";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { worldPath } from "@/components/shell/nav";
 import { GmBadge, Hero } from "@/components/world/display";
 import { ROLE_LABEL } from "@/components/world/labels";
 import { isStaff } from "@/lib/authz/types";
 import { listArticles } from "@/lib/domain/articles";
+import { listQuests } from "@/lib/domain/quests";
 import { listUniverses } from "@/lib/domain/universes";
 import { getWorldDetails, listMyWorlds } from "@/lib/domain/worlds";
 import { asRichDoc } from "@/lib/editor/rich-text";
@@ -17,11 +19,12 @@ export default async function CampaignHubPage({ params, searchParams }: PageProp
   const { template } = await searchParams;
   const { world, membership, user } = await requireWorldPage(worldId);
   const filter = typeof template === "string" && isTemplateType(template) ? template : "all";
-  const [details, universes, myWorlds, articles] = await Promise.all([
+  const [details, universes, myWorlds, articles, quests] = await Promise.all([
     getWorldDetails(world.id),
     listUniverses(world.id, membership.role),
     listMyWorlds(user.id),
     listArticles(world.id, membership.role, filter),
+    listQuests(world.id, membership.role),
   ]);
   const staff = isStaff(membership.role);
 
@@ -74,6 +77,8 @@ export default async function CampaignHubPage({ params, searchParams }: PageProp
           </Link>
         ))}
       </div>
+
+      <QuestList worldId={world.id} quests={quests} canCreate={staff} />
 
       <ArticleList worldId={world.id} articles={articles} canCreate={staff} filter={filter} />
     </>

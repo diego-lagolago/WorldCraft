@@ -104,6 +104,7 @@
 - **Umsetzung (Plan 003 T-008, 2026-09-23):** Charakter- und Tagebuch-Routen nutzen `parseUuid`/`parseJsonBody`/`openWorldRequest`; `POST /api/files` mit kaputtem Body ist 400 statt 500. Nachweis: `src/app/api/characters/characters.api.test.ts` („CR-005: bad ids and bodies“). Status bleibt `offen`.
 - **Umsetzung (Plan 003 T-009, 2026-09-23):** Artikel-Routen nutzen `openWorldRequest`/`parseUuid`/`parseJsonBody`; ungültige `articleId` und kaputte Bodies sind 404/400. Nachweis: `src/app/api/worlds/[worldId]/articles/articles.api.test.ts` („CR-005: bad ids and bodies“). Status bleibt `offen`.
 - **Umsetzung (Plan 003 T-010, 2026-09-23):** Relationen-Routen nutzen `openWorldRequest`/`parseUuid`/`parseJsonBody`; ungültige `kind`/`id` und kaputte Bodies sind 404/400. Nachweis: `relations.api.test.ts` („CR-005 on relation routes“). Status bleibt `offen`.
+- **Umsetzung (Plan 003 T-011, 2026-09-23):** Quest-Routen nutzen `openWorldRequest`/`parseUuid`/`parseJsonBody`; ungültige `questId` und kaputte Bodies sind 404/400. Nachweis: `quests.api.test.ts` („CR-005: bad ids and bodies“). Status bleibt `offen`, bis T-014 und T-016.
 
 ### CR-006 – SSE-Reconnect ohne Neusynchronisierung
 - **Fundstelle:** `src/spike/karte/KarteBoard.tsx:167-196`, `src/spike/chat/ChatSpikePage.tsx:159-179`, Server: `src/app/api/spike/*/events/route.ts` (`send({ type: "hello" })`)

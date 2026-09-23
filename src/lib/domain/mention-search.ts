@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/client";
-import { articles, characters, universes, worldParticipations } from "@/db/schema";
+import { articles, characters, quests, universes, worldParticipations } from "@/db/schema";
 import { isStaff, type MembershipRole } from "@/lib/authz";
 import {
   MENTION_QUERY_MAX,
@@ -10,15 +10,21 @@ import {
   type MentionHit,
 } from "@/lib/editor/mentions";
 
+type TitleColumn =
+  | typeof articles.title
+  | typeof quests.title
+  | typeof universes.name
+  | typeof characters.name;
+
 /** `title ILIKE '%q%'` plus a word-start flag for ranking (Fachmodell 2.4). */
-function titleMatch(column: typeof articles.title | typeof universes.name | typeof characters.name, query: string) {
+function titleMatch(column: TitleColumn, query: string) {
   const escaped = escapeLikePattern(query);
   const contains = ilike(column, `%${escaped}%`);
   const wordStart = or(ilike(column, `${escaped}%`), ilike(column, `% ${escaped}%`)) as SQL;
   return { contains, wordStart };
 }
 
-function orderFor(column: typeof articles.title | typeof universes.name | typeof characters.name, query: string): SQL[] {
+function orderFor(column: TitleColumn, query: string): SQL[] {
   if (!query) return [asc(column)];
   const match = titleMatch(column, query);
   return [desc(sql`(${match.wordStart})`), asc(column)];
@@ -63,20 +69,31 @@ async function searchCharacters(worldId: string, query: string): Promise<Mention
   return rows.map((row): MentionHit => ({ kind: "character", ...row }));
 }
 
-/**
- * APP-MENTION-SEARCH: visible mention targets of one world. T-011 adds quests
- * as one more source with the same limit and ranking.
- */
+async function searchQuests(worldId: string, role: MembershipRole, query: string): Promise<MentionHit[]> {
+  const filters: SQL[] = [eq(quests.worldId, worldId)];
+  if (!isStaff(role)) filters.push(eq(quests.visibility, "published"));
+  if (query) filters.push(titleMatch(quests.title, query).contains);
+  const rows = await db
+    .select({ id: quests.id, title: quests.title })
+    .from(quests)
+    .where(and(...filters))
+    .orderBy(...orderFor(quests.title, query))
+    .limit(MENTION_RESULT_LIMIT);
+  return rows.map((row): MentionHit => ({ kind: "quest", ...row }));
+}
+
+/** APP-MENTION-SEARCH: visible mention targets of one world (articles, quests, characters, universes). */
 export async function searchMentionTargets(input: {
   worldId: string;
   role: MembershipRole;
   query: string;
 }): Promise<MentionHit[]> {
   const query = input.query.trim().slice(0, MENTION_QUERY_MAX);
-  const [articleHits, universeHits, characterHits] = await Promise.all([
+  const [articleHits, questHits, universeHits, characterHits] = await Promise.all([
     searchArticles(input.worldId, input.role, query),
+    searchQuests(input.worldId, input.role, query),
     searchUniverses(input.worldId, input.role, query),
     searchCharacters(input.worldId, query),
   ]);
-  return rankMentionHits([...articleHits, ...universeHits, ...characterHits], query);
+  return rankMentionHits([...articleHits, ...questHits, ...universeHits, ...characterHits], query);
 }

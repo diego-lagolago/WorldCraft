@@ -383,6 +383,25 @@ textarea {
   border-color: #4b3c7a;
 }
 
+.badge.st-open {
+  color: #cbd5e1;
+}
+
+.badge.st-active {
+  color: var(--accent);
+  border-color: #5a4415;
+}
+
+.badge.st-completed {
+  color: var(--ok);
+  border-color: #1f5a3f;
+}
+
+.badge.st-failed {
+  color: var(--red);
+  border-color: #5b1f24;
+}
+
 .av {
   flex: none;
   display: grid;

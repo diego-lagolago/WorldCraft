@@ -6,6 +6,7 @@ import {
   characters,
   maps,
   pins,
+  questParticipants,
   quests,
   relations,
   universes,
@@ -229,6 +230,64 @@ export async function recalcArticleRelations(worldId: string, actorId: string, a
       mentions: extractMentions(asRichDoc(row.bodyJson)),
     }),
     recalcOutgoingTemplateFields({ worldId, actorId, sourceId: articleId, fields }),
+  ]);
+}
+
+/** APP-REL-RECALC for `participation` rows of one quest. Mentions and manual stay. */
+export async function recalcOutgoingParticipations(input: {
+  worldId: string;
+  actorId: string;
+  questId: string;
+}): Promise<void> {
+  const rows = await db
+    .select({ characterId: questParticipants.characterId })
+    .from(questParticipants)
+    .where(and(eq(questParticipants.questId, input.questId)));
+  const characterIds = [
+    ...new Set(rows.map((row) => row.characterId).filter((id): id is string => Boolean(id))),
+  ];
+
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(relations)
+      .where(
+        and(
+          eq(relations.worldId, input.worldId),
+          eq(relations.origin, "participation"),
+          eq(relations.sourceQuestId, input.questId),
+        ),
+      );
+    if (characterIds.length === 0) return;
+    await tx.insert(relations).values(
+      characterIds.map((characterId) => ({
+        worldId: input.worldId,
+        ...sourceValues("quest", input.questId),
+        ...targetValues("character", characterId),
+        origin: "participation" as const,
+        createdBy: input.actorId,
+        updatedBy: input.actorId,
+      })),
+    );
+  });
+}
+
+/** Load quest description + participants and rebuild outgoing auto-relations. */
+export async function recalcQuestRelations(worldId: string, actorId: string, questId: string): Promise<void> {
+  const [row] = await db
+    .select({ descriptionJson: quests.descriptionJson })
+    .from(quests)
+    .where(and(eq(quests.id, questId), eq(quests.worldId, worldId)))
+    .limit(1);
+  if (!row) return;
+  await Promise.all([
+    recalcOutgoingMentions({
+      worldId,
+      actorId,
+      sourceKind: "quest",
+      sourceId: questId,
+      mentions: extractMentions(asRichDoc(row.descriptionJson)),
+    }),
+    recalcOutgoingParticipations({ worldId, actorId, questId }),
   ]);
 }
 
