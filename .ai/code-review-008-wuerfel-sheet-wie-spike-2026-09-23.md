@@ -159,3 +159,22 @@
 3. **CR-004**, **CR-003** – Rückmeldungen im Sheet vereinheitlichen.
 4. **CR-007**, **CR-006** – Stepper-Feinschliff (CR-008 verworfen).
 5. **CR-009**, **CR-010** – Kosmetik.
+
+---
+
+## Review-Check 2026-09-23
+
+- **Geprüfter Stand:** Commit `51c4fbb` (`main`), verglichen mit Baseline `ca2eccc`. Dazwischen: `8c622a7`, `f5389d7`, `ba33d16`, `f48823e`, `065dc1e`, `6612349`, `3dc75aa`, `61f5690`, `51c4fbb`. Uncommittete Änderungen im Arbeitsverzeichnis betreffen keine der geprüften Dateien.
+- **Statusänderungen:** keine. Alle neun als `behoben` markierten Findings (CR-001–CR-007, CR-009, CR-010) im aktuellen Code bestätigt; 0 Regressionen, 0 `drift`. CR-008 (`verworfen`) nicht erneut geprüft.
+  - CR-001: `mountedRef` + Abbruch nach `await onRoll`, `setSending` nur wenn noch eingehängt.
+  - CR-002/CR-005: `dice.sum` in `PostResponse`, `copyResult` nutzt `String(result.sum)`, keine Regex mehr; `RollPayload`/`RollResult` nur in `dice-draft.ts`.
+  - CR-003: `roll` ohne `failAndReload`/`setError`, `reload()` nur bei `status >= 401`.
+  - CR-004: optimistisches `setPostToChat` mit Seq-Rollback, Fehler im Sheet, `roll` wartet auf `postToChatPendingRef`.
+  - CR-006: `parseDraftInt(text, { allowNegative })`, Default `false`, Tests entsprechend.
+  - CR-007: `keepSelection` nur in `onMouseDown` bei unfokussiertem Feld, Reset in `onBlur`.
+  - CR-009: `resultHint = "copy-failed"` → 1,2 s „Kopieren nicht möglich“ ohne `.copied`.
+  - CR-010: `grep "#1f1a0e"` findet nur noch die Variablendefinition in `:root`.
+- **Nicht abgedeckte Änderungen (ohne neue CR-ID):**
+  1. `src/lib/client/api-fetch.ts`: Fehlerzweig hat jetzt **Pflicht**-`status` (`0` bei Netzwerkfehler) statt des empfohlenen optionalen `status?`. Im CR-003-Vermerk begründet; einziger weiterer Aufrufer `src/components/map/use-map-state.ts` liest `status` im Fehlerfall nicht — kompatibel.
+  2. `src/components/chat/DiceSheet.tsx`, Schalter „Im Chat posten“: Ein erfolgreicher PATCH ruft `setError(null)` und löscht damit auch eine noch angezeigte Wurf-Fehlermeldung (z. B. aus CR-003). Kleine Verhaltensänderung über die Empfehlung von CR-004 hinaus; ggf. beim nächsten `/code-review` bewerten.
+- **Empfehlung:** Kein erneuter `/code-review`-Lauf nötig. Die beiden Punkte oben sind klein und direkt aus der Umsetzung der Findings entstanden; nur falls Punkt 2 als unerwünscht gilt, gezielt nachziehen.
