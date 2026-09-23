@@ -105,7 +105,7 @@
 - **Umsetzung (Plan 003 T-009, 2026-09-23):** Artikel-Routen nutzen `openWorldRequest`/`parseUuid`/`parseJsonBody`; ungültige `articleId` und kaputte Bodies sind 404/400. Nachweis: `src/app/api/worlds/[worldId]/articles/articles.api.test.ts` („CR-005: bad ids and bodies“). Status bleibt `offen`.
 - **Umsetzung (Plan 003 T-010, 2026-09-23):** Relationen-Routen nutzen `openWorldRequest`/`parseUuid`/`parseJsonBody`; ungültige `kind`/`id` und kaputte Bodies sind 404/400. Nachweis: `relations.api.test.ts` („CR-005 on relation routes“). Status bleibt `offen`.
 - **Umsetzung (Plan 003 T-011, 2026-09-23):** Quest-Routen nutzen `openWorldRequest`/`parseUuid`/`parseJsonBody`; ungültige `questId` und kaputte Bodies sind 404/400. Nachweis: `quests.api.test.ts` („CR-005: bad ids and bodies“). Status bleibt `offen`, bis T-014 und T-016.
-
+- **Umsetzung (Plan 003 T-014, 2026-09-23):** Suche nutzt `openWorldRequest`; ungültige Welt-IDs sind 404. Nachweis: `search.api.test.ts` („CR-005“). Status bleibt `offen`, bis T-016 die Spike-Routen entfernt.
 ### CR-006 – SSE-Reconnect ohne Neusynchronisierung
 - **Fundstelle:** `src/spike/karte/KarteBoard.tsx:167-196`, `src/spike/chat/ChatSpikePage.tsx:159-179`, Server: `src/app/api/spike/*/events/route.ts` (`send({ type: "hello" })`)
 - **Kategorie:** Runtime-Risiken

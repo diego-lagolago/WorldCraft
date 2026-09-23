@@ -3,6 +3,7 @@ import { ArticleList } from "@/components/articles/ArticleList";
 import { QuestList } from "@/components/quests/QuestList";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { worldPath } from "@/components/shell/nav";
+import { CampaignSearch } from "@/components/world/CampaignSearch";
 import { GmBadge, Hero } from "@/components/world/display";
 import { ROLE_LABEL } from "@/components/world/labels";
 import { isStaff } from "@/lib/authz/types";
@@ -32,6 +33,8 @@ export default async function CampaignHubPage({ params, searchParams }: PageProp
     <>
       <Hero title={world.name} imageId={details?.titleImageId} />
       <RichTextView doc={asRichDoc(details?.descriptionJson)} />
+
+      <CampaignSearch worldId={world.id} />
 
       <div className="section-h">
         <h2>Welten</h2>
