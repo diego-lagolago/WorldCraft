@@ -40,10 +40,6 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Editor spike tests
-        working-directory: spikes/editor
-        run: npm ci && npm test
-
   docker:
     name: Build & Push Docker Image
     needs: verify

@@ -9,30 +9,28 @@ const DEBOUNCE_MS = 300;
 
 export function CampaignSearch({ worldId }: { worldId: string }) {
   const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<SearchHit[] | null>(null);
+  const [hits, setHits] = useState<SearchHit[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const trimmed = query.trim();
+  const active = trimmed.length >= SEARCH_QUERY_MIN;
 
   useEffect(() => {
-    const trimmed = query.trim();
-    if (trimmed.length < SEARCH_QUERY_MIN) {
-      setHits(null);
-      setError(null);
-      setPending(false);
-      return;
-    }
+    if (!active) return;
 
-    setPending(true);
+    let cancelled = false;
     const timer = window.setTimeout(() => {
+      setPending(true);
       void (async () => {
         const result = await apiRequest<{ hits: SearchHit[] }>(
           `/api/worlds/${worldId}/search?q=${encodeURIComponent(trimmed)}`,
           "GET",
         );
+        if (cancelled) return;
         setPending(false);
         if (!result.ok) {
           setError(result.error);
-          setHits(null);
+          setHits([]);
           return;
         }
         setError(null);
@@ -40,11 +38,11 @@ export function CampaignSearch({ worldId }: { worldId: string }) {
       })();
     }, DEBOUNCE_MS);
 
-    return () => window.clearTimeout(timer);
-  }, [query, worldId]);
-
-  const trimmed = query.trim();
-  const showResults = trimmed.length >= SEARCH_QUERY_MIN;
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [active, trimmed, worldId]);
 
   return (
     <div className="stack" style={{ gap: 8, margin: "12px 0" }}>
@@ -55,18 +53,18 @@ export function CampaignSearch({ worldId }: { worldId: string }) {
         aria-label="In dieser Welt suchen"
         autoComplete="off"
       />
-      {showResults ? (
+      {active ? (
         <div className="card list" style={{ padding: "0 4px" }} aria-live="polite">
-          {pending && hits === null ? <div className="empty">Suche …</div> : null}
+          {pending && hits.length === 0 && !error ? <div className="empty">Suche …</div> : null}
           {error ? (
             <div className="empty error-text" role="alert">
               {error}
             </div>
           ) : null}
-          {!pending && !error && hits && hits.length === 0 ? (
+          {!pending && !error && hits.length === 0 ? (
             <div className="empty">Keine Treffer für „{trimmed}“.</div>
           ) : null}
-          {hits?.map((hit) => (
+          {hits.map((hit) => (
             <Link key={`${hit.kind}:${hit.id}`} className="item" href={hit.href}>
               <div className="grow">
                 <div>
@@ -76,7 +74,7 @@ export function CampaignSearch({ worldId }: { worldId: string }) {
               </div>
             </Link>
           ))}
-          {hits && hits.length > 0 ? (
+          {hits.length > 0 ? (
             <div className="small muted" style={{ padding: "8px 12px" }}>
               Tagebücher werden nicht durchsucht.
             </div>

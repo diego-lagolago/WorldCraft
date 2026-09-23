@@ -15,7 +15,7 @@
 ┌─────────────────────────────────────────────────────────────┐
 │  Next.js App (ein Container, Port 3000)                     │
 │  • Seiten (App Router)                                      │
-│  • Route Handlers: /api/auth, /api/spike/*, später /mcp     │
+│  • Route Handlers: /api/auth, /api/worlds/…, später /mcp    │
 │  • Better Auth (Discord-Client jetzt; OAuth-AS für MCP später)│
 │  • Rechteschicht (TypeScript)                               │
 │  • Drizzle → PostgreSQL                                     │
@@ -41,7 +41,7 @@
 | **TipTap** | Rich-Text JSON + Klartext ([ADR-004](../decisions/004-editor.md)) |
 | **Coolify + GHCR** | Betrieb Prod; Image vorgebaut ([deployment.md](../infrastructure/deployment.md)) |
 
-Isolierter Spike: `spikes/editor/` (Vite) — nur Editor-Beweis, nicht produktiv verdrahtet.
+Design-Referenz: `spikes/ui-prototype/` (HTML-Prototyp, nicht Teil der Next-App).
 
 ## Datenfluss (kurz)
 
@@ -99,4 +99,4 @@ Rollen pro Welt: Game Master | Master | Player (Rechtematrix in Plan `001`).
 
 ## UI-Shell (später)
 
-Angepinnte Mobile-Navigation: Kampagne · Karte · Chat · Menü — [mobile-navigation.md](../standards/mobile-navigation.md). Spikes bauen die Shell noch nicht nach.
+Angepinnte Mobile-Navigation: Kampagne · Karte · Chat · Menü — [mobile-navigation.md](../standards/mobile-navigation.md).

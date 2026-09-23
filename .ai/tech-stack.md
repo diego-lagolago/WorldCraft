@@ -1,16 +1,16 @@
 # Tech-Stack (verbindlich)
 
 **Status:** Festgehalten durch Plan `001` T-013 (2026-09-22).  
-**Grundlage:** ADRs unter `.ai/decisions/`, Spikes T-005 / T-008–T-011, Smoketest T-014, `package.json` / `spikes/editor/package.json`.
+**Grundlage:** ADRs unter `.ai/decisions/`, Spikes T-005 / T-008–T-011 (historisch), Smoketest, `package.json`. TipTap lebt in der Next-App (`src/components/editor/`, `src/lib/editor/`).
 
-Versionen = installierte bzw. Spike-Stand am 2026-09-22. Patch-Updates innerhalb derselben Major/Minor-Linie sind erlaubt; Major-Sprünge brauchen ein neues oder aktualisiertes ADR.
+Versionen = installierte Stände. Patch-Updates innerhalb derselben Major/Minor-Linie sind erlaubt; Major-Sprünge brauchen ein neues oder aktualisiertes ADR.
 
 ## Kernstack
 
 | Bereich | Technologie | Version (Stand) | ADR / Norm |
 |---|---|---|---|
 | App-Framework | Next.js (App Router) + React | Next `16.3.5`, React `19.2.8` | [ADR-002](decisions/002-frontend.md) |
-| Sprache | TypeScript | `^5` (App), Spike-Editor `^5.9` | ADR-002 |
+| Sprache | TypeScript | `^5` | ADR-002 |
 | Backend (same process) | Next.js Route Handlers + Node | wie Next | [ADR-001](decisions/001-backend.md) |
 | Datenbank | PostgreSQL | `16` (Docker-Image `postgres:16-alpine`) | ADR-001 |
 | ORM / Schema | Drizzle ORM + Drizzle Kit | `drizzle-orm ^0.45.2`, `drizzle-kit ^0.31.10` | ADR-001 · [datenmodell.md](architecture/datenmodell.md) |
@@ -19,7 +19,7 @@ Versionen = installierte bzw. Spike-Stand am 2026-09-22. Patch-Updates innerhalb
 | Dateien | lokales Volume (`FILE_STORAGE_PATH`) | — | [ADR-001](decisions/001-backend.md) · [deployment.md](infrastructure/deployment.md) |
 | Realtime | **SSE** (Server-Sent Events) nach Drop / nach Speichern | Browser `EventSource` | [ADR-002](decisions/002-frontend.md) (Präzisierung); Spike-Beweis T-009/T-010. Kein Socket.IO-Custom-Server. |
 | Karten | Leaflet `CRS.Simple` | `leaflet ^1.9.4` | [ADR-003](decisions/003-karten.md) |
-| Artikel-Editor | TipTap (nur OSS-Extensions) | `@tiptap/* ^3.30.2` (Spike `spikes/editor/`) | [ADR-004](decisions/004-editor.md) |
+| Artikel-Editor | TipTap (nur OSS-Extensions) | `@tiptap/*` in der Next-App | [ADR-004](decisions/004-editor.md) |
 | UI-Styling | Tailwind CSS | `^4` | [ADR-002](decisions/002-frontend.md) (Frontend-Stack; kein eigenes ADR) |
 | Betrieb | Coolify + GHCR-Image (`linux/amd64`) | Domain `worldcraft.lagolago.at` | [ADR-001](decisions/001-backend.md) / [ADR-002](decisions/002-frontend.md) (ein Container) · [deployment.md](infrastructure/deployment.md) |
 | CI-Build | GitHub Actions → GHCR | Tags `:main` und `:<sha>` | [ADR-001](decisions/001-backend.md) (Coolify-Betrieb) · deployment.md |

@@ -17,22 +17,22 @@
 
 | ID | Kategorie | Schweregrad | Status | Kurzbeschreibung |
 |----|-----------|-------------|--------|-------------------|
-| CR-001 | Sicherheit | kritisch | offen | Spike-APIs in Produktion für jedes Discord-Konto offen (Upload, Chat, Rechte-API auf echten Tabellen). Teil 1 (Allowlist) in T-001 umgesetzt; Teile 2 und 3 folgen in T-016 |
+| CR-001 | Sicherheit | kritisch | behoben | Spike-APIs in Produktion für jedes Discord-Konto offen (Upload, Chat, Rechte-API auf echten Tabellen). Teil 1 (Allowlist) in T-001; Teile 2 und 3 in T-016 (Code weg; Prod-Daten-Cleanup nach Freigabe) |
 | CR-002 | Testabdeckung | kritisch | behoben | `npm test` ist rot: `dice.test.ts` und `authz.test.ts` scheitern an `ERR_MODULE_NOT_FOUND` |
 | CR-003 | Sicherheit | mittel | behoben | `discordId` ist als `input: true` über `/api/auth/update-user` vom Benutzer änderbar |
 | CR-004 | Sicherheit | mittel | offen | Manuelle Relationen prüfen nicht, ob Quelle und Ziel zur Welt gehören (weltübergreifend, 500 bei fremder ID) |
-| CR-005 | Runtime-Risiken | mittel | offen | Ungültige UUID bzw. ungültiges JSON führen in Karten- und Chat-Routen zu HTTP 500. Helfer in T-003; Anwendung folgt in T-007 bis T-014 |
-| CR-006 | Runtime-Risiken | mittel | offen | SSE-Reconnect lädt den Stand nicht neu, Ereignisse während der Trennung gehen verloren |
+| CR-005 | Runtime-Risiken | mittel | behoben | Ungültige UUID bzw. ungültiges JSON führen in Karten- und Chat-Routen zu HTTP 500. Helfer in T-003; Anwendung in T-007–T-014; Spike-Routen in T-016 entfernt |
+| CR-006 | Runtime-Risiken | mittel | behoben | SSE-Reconnect lädt den Stand nicht neu; Produkt-Chat/Karte mit `nextHello`; Spike-SSE in T-016 entfernt |
 | CR-007 | Runtime-Risiken | mittel | behoben | Realtime-Bus ohne Fehlerisolation pro Listener: Fehler landet nach dem DB-Write im POST-Handler |
 | CR-008 | Runtime-Risiken | mittel | behoben | Mehrstufige Schreibvorgänge ohne Transaktion, Lost Update bei `use_count`, Get-or-create-Races |
 | CR-009 | Runtime-Risiken | mittel | behoben | `composer-dom.ts:67` addiert einen String auf einen Zähler (`tsc`-Fehler, falsche Caret-Position) |
 | CR-010 | Testabdeckung | mittel | behoben | CI baut nur das Image, ohne `npm test`, `tsc` oder `eslint` |
-| CR-011 | Performance | mittel | offen | N+1-Queries in `listRelations`, `archiveMembershipAndParticipations` und `listWorldGeography` |
-| CR-012 | Duplizierung & Modularisierung | mittel | offen | Realtime-Bus, SSE-Route, `escapeHtml`, Pin-Typen und Positionsrundung sind mehrfach implementiert |
-| CR-013 | Duplizierung & Modularisierung | mittel | offen | Rechte-Repository: Marker-Autorisierung dreimal kopiert, Patches als `Record<string, unknown>`. Schicht und `ColumnPatch` in T-003; Marker-Funktion folgt in T-013 |
-| CR-014 | Fehlerbehandlung & Validierung | niedrig | offen | Frontend-`fetch` ohne `try/catch`, `persistMarkerMove` ignoriert die Antwort, `JSON.parse` ungeschützt |
-| CR-015 | Bad Practices | niedrig | offen | ESLint-Fehler (Ref-Zuweisung beim Rendern), Komponenten mit 700 bis 1000 Zeilen. ESLint-Fehler in T-001 behoben; Struktur folgt in T-012/T-013 |
-| CR-016 | Sicherheit | niedrig | offen | Endung beim Upload kommt aus dem Client-MIME, `nosniff` fehlt, Kartenbild wird pro Abruf komplett gelesen. Produktroute `/api/files` prüft die Bytes und streamt; die Spike-Route folgt erst mit T-016 |
+| CR-011 | Performance | mittel | behoben | N+1-Queries in Relationen/Karten/Teilnahmen — Produktcode ohne Schleifen-Queries |
+| CR-012 | Duplizierung & Modularisierung | mittel | behoben | Realtime-Bus, SSE, Pin-Typen konsolidiert; Spike-Duplikate in T-016 entfernt |
+| CR-013 | Duplizierung & Modularisierung | mittel | behoben | Authz-Helfer und `ColumnPatch` in Produktcode; Spike entfernt |
+| CR-014 | Fehlerbehandlung & Validierung | niedrig | behoben | Frontend-`fetch` mit try/catch in Produkt-Client |
+| CR-015 | Bad Practices | niedrig | behoben | ESLint grün; Spike-Struktur entfernt |
+| CR-016 | Sicherheit | niedrig | behoben | Produkt-`/api/files`; Spike-Upload in T-016 entfernt |
 | CR-017 | Fehlerbehandlung & Validierung | niedrig | behoben | Keine Startvalidierung für `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL`, localhost-Origins auch in Produktion vertraut |
 | CR-018 | Aufgaben-Abgleich | niedrig | behoben | 8 dokumentierte `TRIG-*`-Regeln fehlen in den Migrationen: alle bauen (Plan-Review) |
 | CR-019 | Sicherheit | niedrig | behoben | Persistenz-Snapshot liefert `privat`-Tagebuchtexte an die Spielleitung, Journal auf archivierter Teilnahme möglich |

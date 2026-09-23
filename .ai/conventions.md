@@ -17,15 +17,14 @@
 
 ```
 .ai/                    Normen, ADRs, Pläne, Infrastruktur-Doku
-spikes/editor/          isolierter Editor-Spike (Vite), nicht Teil der Next-App
+spikes/ui-prototype/    Design-Referenz (HTML), nicht Teil der Next-App
 src/
   app/                  Next.js App Router (Seiten, Route Handlers)
-    api/                HTTP-APIs (auth, test-login, worlds/…, characters, spike/*)
+    api/                HTTP-APIs (auth, test-login, worlds/…, characters, files)
     characters/         eigene Charaktere (weltunabhängig, Shell ohne Welt)
     w/[worldId]/        Produktseiten im Weltkontext (Shell aus components/shell)
     invite/[code]/      Einladung annehmen (außerhalb der Welt-Shell)
-    spike/              Spike-Routen /spike/karte, /spike/chat
-  components/           wiederverwendbare UI (shell/, editor/, auth/, world/, characters/, articles/, linked/, map/ …)
+  components/           wiederverwendbare UI (shell/, editor/, auth/, world/, characters/, articles/, linked/, map/, quests/ …)
   db/                   Drizzle-Schema, Migrationen
   lib/                  Auth, Env, Hilfen
     authz/              Rechteschicht (eine Schicht für HTTP, Loader, später MCP)
@@ -35,15 +34,15 @@ src/
     client/             reine Browser-Hilfen (localStorage, fetch-Helfer `apiRequest`)
     templates/          Vorlagen-Registry und Feldvalidierung
     map/                Karten-Logik (Koordinaten, Pin-Typen, Repository)
+    chat/               Chat-Würfel und Query-Hilfen
+    realtime/           gemeinsamer SSE-Bus
   test/                 gemeinsame Test-Hilfen (API-Harness)
-  spike/<name>/         Spike-UI und Spike-Logik (klar als Spike gekennzeichnet)
 scripts/                Migrations-/Hilfsskripte
 data/uploads/           lokale Uploads (nicht committen)
 ```
 
-- Produktcode wächst unter `src/` (nicht neue Top-Level-Apps ohne ADR).
-- Spike-Seiten unter `/spike/…` dürfen im MVP-Folgeplan ausgebaut oder entfernt werden; Discord-Login bleibt.
-- Neue automatisierte Spike-/Rechte-Tests: neben dem Spike oder unter `src/lib/*.test.ts` / `src/spike/**/*.test.ts` (siehe `npm test`).
+- Produktcode lebt unter `src/` (nicht neue Top-Level-Apps ohne ADR).
+- Neue Unit-Tests: `src/**/*.test.ts` (`npm test`). Produkt-API-Tests: `src/**/*.api.test.ts` (`npm run test:rechte`, Dev-Server nötig).
 
 ## Namenskonventionen
 
@@ -77,9 +76,9 @@ Es gibt **kein** separates Staging. Formulierungen „Staging“ in älteren Doc
 1. **Unit-Tests:** `npm test` = Vitest (`vitest run`, `environment: "node"`, Alias `@` → `src`). Führt alle `src/**/*.test.ts` aus (außer `*.integration.test.ts` und `*.api.test.ts`). DOM-Tests setzen `// @vitest-environment happy-dom` in der Datei. Importe ohne `.ts`-Endung.
 2. **Rechte-Matrix und Produkt-API-Tests:** `npm run test:rechte` — Vitest mit eigener Config (`vitest.rechte.config.ts`), getrennt von `npm test`, weil ein laufender Dev-Server und Test-Login nötig sind (nur lokal). Produkt-API-Tests heißen `*.api.test.ts`, liegen neben der Route und nutzen `src/test/api-harness.ts` (Test-Login, Requests, SQL nur für Testdaten und Aufräumen).
 3. **Trigger und Domänen-Integration:** `npm run test:triggers` — Vitest gegen die lokale PostgreSQL (`vitest.triggers.config.ts`, alle `src/**/*.integration.test.ts`), ebenfalls getrennt von `npm test`. Die Config setzt `DATABASE_POOL_MAX=12`, damit Nebenläufigkeitstests (z. B. parallele Beitritte) wirklich parallel laufen; ohne die Variable nutzt der Dev-Pool eine Verbindung.
-4. **Editor-Spike:** `cd spikes/editor && npm test` (eigenes Vitest).
+4. **Editor:** TipTap-Tests unter `src/components/editor/` und `src/lib/editor/` (Teil von `npm test`). Der frühere Vite-Spike `spikes/editor/` ist entfernt (Plan 003 T-016).
 5. **Manuell / Smoketest:** Prod per Discord; Protokoll [infrastructure/smoketest.md](infrastructure/smoketest.md).
-6. **CI:** Job `verify` (Node 22: `npm test`, `tsc --noEmit`, `eslint`, Editor-Spike-Tests) **vor** dem Image-Build (GHCR). Ein fehlschlagender Test bricht den Workflow vor dem Image ab. Rechte-Skript und Trigger-Tests laufen nicht gegen Prod.
+6. **CI:** Job `verify` (Node 22: `npm test`, `tsc --noEmit`, `eslint`) **vor** dem Image-Build (GHCR). Ein fehlschlagender Test bricht den Workflow vor dem Image ab. Rechte-Skript und Trigger-Tests laufen nicht gegen Prod.
 
 Neue Rechtefälle: zuerst in `src/lib/authz` plus Test, nicht nur in der UI und nicht in einem zweiten Pfad unter `src/spike/`. Ungültige UUIDs und ungültiges JSON in Produkt-APIs über `parseUuid` / `parseJsonBody` (`src/lib/http.ts`) als 400 oder 404, nie als 500. Patches an Entitäten als `ColumnPatch<T>`, nicht als `Record<string, unknown>`.
 

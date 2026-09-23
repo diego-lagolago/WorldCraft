@@ -14,7 +14,6 @@ import { contentHref } from "@/lib/content-href";
 import { escapeLikePattern } from "@/lib/editor/mentions";
 import {
   clampSearchLimit,
-  isSearchKind,
   searchSnippet,
   SEARCH_KINDS,
   SEARCH_QUERY_MAX,

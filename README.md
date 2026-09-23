@@ -1,6 +1,6 @@
 # WorldCraft
 
-Selbst gehostete Webapp für D&D-Gruppen. Dieser Ordner enthält die Next.js-App, die Projektnormen unter `.ai/` und die Spikes unter `spikes/`.
+Selbst gehostete Webapp für D&D-Gruppen. Dieser Ordner enthält die Next.js-App und die Projektnormen unter `.ai/`. Design-Referenz: `spikes/ui-prototype/`.
 
 Paketmanager: **npm** (wie im Referenzprojekt).
 
@@ -35,9 +35,9 @@ Voraussetzung: Docker Desktop (oder vergleichbar) und Node 22.
    npm run dev
    ```
 
-5. Im Browser: [http://localhost:3000](http://localhost:3000) — die Startseite zeigt einen Satz aus der Tabelle `app_info`.
+5. Im Browser: [http://localhost:3000](http://localhost:3000) — Login bzw. Onboarding.
 
-### Discord-Login (T-008)
+### Discord-Login
 
 Im Discord Developer Portal eine Anwendung anlegen (Scopes `identify` und `email`) und diese Redirects eintragen:
 
@@ -55,20 +55,10 @@ curl -b /tmp/wc-cookies http://localhost:3000/api/auth/get-session
 
 Hochgeladene Dateien liegen lokal unter `FILE_STORAGE_PATH` (Standard `./data/uploads`, nicht im Git).
 
-Rechte-Spike (T-011), während der Dev-Server läuft:
+Rechte-Matrix und Produkt-API-Tests, während der Dev-Server läuft:
 
 ```bash
 npm run test:rechte
-```
-
-Details: `src/spike/rechte/README.md`.
-
-Der Editor-Spike bleibt unabhängig:
-
-```bash
-cd spikes/editor
-npm install
-npm run dev
 ```
 
 ## Persistente Volumes
@@ -94,7 +84,5 @@ In Coolify **kein** Build Pack **Dockerfile** (das `next build` auf dem VPS hat 
 Lokal bleiben `docker compose` (nur Postgres) und `npm run dev` wie oben.
 
 Schritte: [`.ai/infrastructure/deployment.md`](.ai/infrastructure/deployment.md).
-
-**T-007 ist erst erledigt**, wenn das Repository auf GitHub liegt, Actions das Image nach GHCR schiebt, Coolify dieses Image mit Postgres und Volumes **zieht** (nicht selbst baut) und `https://worldcraft.lagolago.at` per HTTPS die Startseite mit dem Datenbankwert zeigt.
 
 Secrets (Discord-Secret, `BETTER_AUTH_SECRET`, Datenbankpasswort, GHCR-Pull-Token) nie im Chat und nie ins Repository legen — nur in `.env` und in Coolify.
