@@ -1,13 +1,12 @@
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
-import { isUnlockOnlyPatch } from "./pin-lock.ts";
+import { describe, expect, it } from "vitest";
+import { isUnlockOnlyPatch } from "./pin-lock";
 
 describe("locked pin patches", () => {
   it("allows an explicit unlock and nothing else", () => {
-    assert.equal(isUnlockOnlyPatch({ locked: false }), true);
-    assert.equal(isUnlockOnlyPatch({ locked: false, title: undefined }), true);
-    assert.equal(isUnlockOnlyPatch({ locked: true }), false);
-    assert.equal(isUnlockOnlyPatch({ locked: false, title: "X" }), false);
-    assert.equal(isUnlockOnlyPatch({ posX: 0.1, posY: 0.2 }), false);
+    expect(isUnlockOnlyPatch({ locked: false })).toBe(true);
+    expect(isUnlockOnlyPatch({ locked: false, title: undefined })).toBe(true);
+    expect(isUnlockOnlyPatch({ locked: true })).toBe(false);
+    expect(isUnlockOnlyPatch({ locked: false, title: "X" })).toBe(false);
+    expect(isUnlockOnlyPatch({ posX: 0.1, posY: 0.2 })).toBe(false);
   });
 });

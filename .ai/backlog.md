@@ -23,12 +23,14 @@ Später, nicht MVP-jetzt: **„Auswahl zur Erwähnung machen“** (markierten Te
 
 ## 2026-09-22 – Chat: Channel-Verwaltung & Thread-UX
 
-**Quelle:** Projektinhaber während T-010. Infrastruktur (Tabellen, Default-Kanal, Thread anlegen) liegt im Spike `/spike/chat`. Fachmodell bleibt welt-scoped; Erweiterung steht in `src/spike/chat/README.md`, nicht in `datenmodell-fachlich.md`.
+**Übernommen in Plan `003`** (`.ai/feature-tasks/003-mvp-funktionen.md`, *Chat-Produktmodell*, T-012). Kein offener Backlog-Punkt mehr.
 
-Noch offen:
+Ursprünglich: Projektinhaber während T-010. Infrastruktur (Tabellen, Default-Kanal, Thread anlegen) lag im Spike `/spike/chat`. Fachmodell bleibt welt-scoped; die Abweichung steht in `datenmodell.md` Abschnitt 13 B, nicht in `datenmodell-fachlich.md`.
 
-- **Channel-Verwaltung** analog Discord: Kanäle anlegen, umbenennen, Reihenfolge.
-- **Thread-UX** über den `+`-Button hinaus (Liste, Sprung aus Nachricht, Schließen, …).
+Umgesetzt wird dort:
+
+- **Kanalverwaltung:** anlegen, umbenennen, Reihenfolge, archivieren, wiederherstellen (Spielleitung).
+- **Thread-UX:** eingerückt unter dem Kanal, Chevron zum Auf- und Zuklappen.
 
 ## 2026-09-22 – Mobile Bottom-Navigation (App-Chrome)
 

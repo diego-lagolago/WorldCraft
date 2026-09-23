@@ -63,11 +63,11 @@ Es gibt **kein** separates Staging. Formulierungen „Staging“ in älteren Doc
 
 ## Teststrategie
 
-1. **Unit / Node-Tests:** `npm test` (`src/lib/*.test.ts`, `src/spike/**/*.test.ts`).
-2. **Rechte-Matrix:** `npm run test:rechte` — braucht laufenden Dev-Server + Test-Login (nur lokal).
-3. **Editor-Spike:** `cd spikes/editor && npm test`.
+1. **Unit-Tests:** `npm test` = Vitest (`vitest run`, `environment: "node"`, Alias `@` → `src`). Führt alle `src/**/*.test.ts` aus. DOM-Tests setzen `// @vitest-environment happy-dom` in der Datei. Importe ohne `.ts`-Endung.
+2. **Rechte-Matrix:** `npm run test:rechte` — Vitest mit eigener Config (`vitest.rechte.config.ts`), getrennt von `npm test`, weil ein laufender Dev-Server und Test-Login nötig sind (nur lokal).
+3. **Editor-Spike:** `cd spikes/editor && npm test` (eigenes Vitest).
 4. **Manuell / Smoketest:** Prod per Discord; Protokoll [infrastructure/smoketest.md](infrastructure/smoketest.md).
-5. **CI:** Image-Build (GHCR); Rechte-Skript läuft nicht gegen Prod.
+5. **CI:** Job `verify` (Node 22: `npm test`, `tsc --noEmit`, `eslint`, Editor-Spike-Tests) **vor** dem Image-Build (GHCR). Ein fehlschlagender Test bricht den Workflow vor dem Image ab. Rechte-Skript läuft nicht gegen Prod.
 
 Neue Rechtefälle: zuerst in der gemeinsamen Authz-Schicht + Test, nicht nur in der UI.
 

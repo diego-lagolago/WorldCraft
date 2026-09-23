@@ -8,7 +8,7 @@
  */
 
 import assert from "node:assert/strict";
-import { after, describe, it } from "node:test";
+import { afterAll, describe, it } from "vitest";
 
 const BASE = (process.env.RECHTE_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
@@ -678,7 +678,7 @@ describe("T-011 Rechteprüfung auf Datenebene", () => {
     assert.equal(still.status, 200);
   });
 
-  after(async () => {
+  afterAll(async () => {
     if (worldId && gm) {
       await api(gm, "DELETE", `/api/spike/rechte/worlds/${worldId}`);
     }

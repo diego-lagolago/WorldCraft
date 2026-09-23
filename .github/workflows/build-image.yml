@@ -17,8 +17,36 @@ permissions:
   packages: write
 
 jobs:
+  verify:
+    name: Test, typecheck, lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Editor spike tests
+        working-directory: spikes/editor
+        run: npm ci && npm test
+
   docker:
     name: Build & Push Docker Image
+    needs: verify
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

@@ -35,6 +35,14 @@ export function getCaretMarkdownOffset(root: HTMLElement): number {
   let total = 0;
   let found = false;
 
+  if (startContainer === root) {
+    const children = Array.from(root.childNodes);
+    for (let i = 0; i < startOffset && i < children.length; i++) {
+      total += textFromNode(children[i]!).length;
+    }
+    return total;
+  }
+
   function walk(node: Node): void {
     if (found) return;
 
@@ -64,7 +72,7 @@ export function getCaretMarkdownOffset(root: HTMLElement): number {
     if (node === startContainer) {
       const children = Array.from(node.childNodes);
       for (let i = 0; i < startOffset && i < children.length; i++) {
-        total += textFromNode(children[i]!);
+        total += textFromNode(children[i]!).length;
       }
       found = true;
       return;

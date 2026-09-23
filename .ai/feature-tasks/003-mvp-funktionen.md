@@ -255,7 +255,7 @@ Regeln:
 ## Aufgaben
 
 ### T-001: Entscheidungen in die Normen übertragen
-- [ ] Beschreibung: Die im Plan-Review getroffenen Entscheidungen (Abschnitte *Vorlagen (festgelegt)* und *Chat-Produktmodell (festgelegt)*) in die Normdokumente übertragen:
+- [x] Beschreibung: Die im Plan-Review getroffenen Entscheidungen (Abschnitte *Vorlagen (festgelegt)* und *Chat-Produktmodell (festgelegt)*) in die Normdokumente übertragen:
   - `.ai/architecture/datenmodell.md` Abschnitt 3.17: Tabellen `chat_channels` (`world_id`, `name`, `sort_order`, `archived_at`, Protokollfelder), `chat_threads` (`channel_id`, `title`, `created_from_message_id`, Protokollfelder) und an `chat_messages` die Spalten `channel_id` (Pflicht), `thread_id` (optional), `opens_thread_id` (optional, eindeutig). `world_id` an `chat_messages` bleibt.
   - `.ai/architecture/datenmodell.md` Abschnitt 6: die vier Vorlagentypen mit Schlüsseln und Feldern.
   - `.ai/architecture/datenmodell.md` Abschnitt 13: Abweichung „Chat-Kanäle im MVP“ gegenüber Fachmodell 3.16 und Abschnitt 6, mit Datum und Verweis auf diesen Plan.

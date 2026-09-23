@@ -17,21 +17,21 @@
 
 | ID | Kategorie | Schweregrad | Status | Kurzbeschreibung |
 |----|-----------|-------------|--------|-------------------|
-| CR-001 | Sicherheit | kritisch | offen | Spike-APIs in Produktion für jedes Discord-Konto offen (Upload, Chat, Rechte-API auf echten Tabellen) |
-| CR-002 | Testabdeckung | kritisch | offen | `npm test` ist rot: `dice.test.ts` und `authz.test.ts` scheitern an `ERR_MODULE_NOT_FOUND` |
+| CR-001 | Sicherheit | kritisch | offen | Spike-APIs in Produktion für jedes Discord-Konto offen (Upload, Chat, Rechte-API auf echten Tabellen). Teil 1 (Allowlist) in T-001 umgesetzt; Teile 2 und 3 folgen in T-016 |
+| CR-002 | Testabdeckung | kritisch | behoben | `npm test` ist rot: `dice.test.ts` und `authz.test.ts` scheitern an `ERR_MODULE_NOT_FOUND` |
 | CR-003 | Sicherheit | mittel | offen | `discordId` ist als `input: true` über `/api/auth/update-user` vom Benutzer änderbar |
 | CR-004 | Sicherheit | mittel | offen | Manuelle Relationen prüfen nicht, ob Quelle und Ziel zur Welt gehören (weltübergreifend, 500 bei fremder ID) |
 | CR-005 | Runtime-Risiken | mittel | offen | Ungültige UUID bzw. ungültiges JSON führen in Karten- und Chat-Routen zu HTTP 500 |
 | CR-006 | Runtime-Risiken | mittel | offen | SSE-Reconnect lädt den Stand nicht neu, Ereignisse während der Trennung gehen verloren |
 | CR-007 | Runtime-Risiken | mittel | offen | Realtime-Bus ohne Fehlerisolation pro Listener: Fehler landet nach dem DB-Write im POST-Handler |
 | CR-008 | Runtime-Risiken | mittel | offen | Mehrstufige Schreibvorgänge ohne Transaktion, Lost Update bei `use_count`, Get-or-create-Races |
-| CR-009 | Runtime-Risiken | mittel | offen | `composer-dom.ts:67` addiert einen String auf einen Zähler (`tsc`-Fehler, falsche Caret-Position) |
-| CR-010 | Testabdeckung | mittel | offen | CI baut nur das Image, ohne `npm test`, `tsc` oder `eslint` |
+| CR-009 | Runtime-Risiken | mittel | behoben | `composer-dom.ts:67` addiert einen String auf einen Zähler (`tsc`-Fehler, falsche Caret-Position) |
+| CR-010 | Testabdeckung | mittel | behoben | CI baut nur das Image, ohne `npm test`, `tsc` oder `eslint` |
 | CR-011 | Performance | mittel | offen | N+1-Queries in `listRelations`, `archiveMembershipAndParticipations` und `listWorldGeography` |
 | CR-012 | Duplizierung & Modularisierung | mittel | offen | Realtime-Bus, SSE-Route, `escapeHtml`, Pin-Typen und Positionsrundung sind mehrfach implementiert |
 | CR-013 | Duplizierung & Modularisierung | mittel | offen | Rechte-Repository: Marker-Autorisierung dreimal kopiert, Patches als `Record<string, unknown>` |
 | CR-014 | Fehlerbehandlung & Validierung | niedrig | offen | Frontend-`fetch` ohne `try/catch`, `persistMarkerMove` ignoriert die Antwort, `JSON.parse` ungeschützt |
-| CR-015 | Bad Practices | niedrig | offen | ESLint-Fehler (Ref-Zuweisung beim Rendern), Komponenten mit 700 bis 1000 Zeilen |
+| CR-015 | Bad Practices | niedrig | offen | ESLint-Fehler (Ref-Zuweisung beim Rendern), Komponenten mit 700 bis 1000 Zeilen. ESLint-Fehler in T-001 behoben; Struktur folgt in T-012/T-013 |
 | CR-016 | Sicherheit | niedrig | offen | Endung beim Upload kommt aus dem Client-MIME, `nosniff` fehlt, Kartenbild wird pro Abruf komplett gelesen |
 | CR-017 | Fehlerbehandlung & Validierung | niedrig | offen | Keine Startvalidierung für `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL`, localhost-Origins auch in Produktion vertraut |
 | CR-018 | Aufgaben-Abgleich | niedrig | offen | 8 dokumentierte `TRIG-*`-Regeln fehlen in den Migrationen: alle bauen (Plan-Review) |
@@ -56,6 +56,7 @@
   2. **Spike-Routen entfernen:** `src/app/api/spike/**`, `src/app/spike/**` und `src/spike/**` werden entfernt, sobald ihr MVP-Ersatz in Plan 003 steht. Kein Feature-Flag.
   3. **Spike-Daten bereinigen:** Ein einmaliges SQL-Skript (`scripts/cleanup-spike-data.sql`) entfernt die `spike_*`-Tabellen per Migration sowie alle Welten, die über die Rechte-Spike-API angelegt wurden (Name beginnt mit `Rechte-Spike`), samt Kaskade, und die Platzhalter-Dateien mit `storage_key LIKE 'spike/rechte/%'`. Vor der Ausführung auf Produktion listet ein Dry-Run-Abschnitt die betroffenen Zeilen auf, und der Projektinhaber bestätigt sie.
 - **Abnahmekriterium:** (1) Ein Discord-Konto, dessen ID nicht in `ALLOWED_DISCORD_IDS` steht, erhält beim Login eine Fehlermeldung, und es entsteht kein `users`-Datensatz. Ein gelistetes Konto meldet sich normal an. Ein Start mit `APP_ENV=production` ohne `ALLOWED_DISCORD_IDS` bricht mit einer verständlichen Meldung ab. (2) `git ls-files src | grep -i spike` liefert keine Treffer, und `/api/spike/*` antwortet mit 404. (3) Nach dem Cleanup existieren in Produktion keine `spike_*`-Tabellen, keine Welten mit Namen `Rechte-Spike*` und keine `files`-Zeilen mit `storage_key LIKE 'spike/%'`.
+- **Teilfortschritt T-001 (2026-09-23):** Teil 1 umgesetzt (`ALLOWED_DISCORD_IDS`, fail closed in Produktion, Test-Login ausgenommen). Teile 2 und 3 bleiben offen bis T-016. Status bleibt `offen`.
 - **Abhängigkeit:** Die Entfernung (Punkt 2) setzt voraus, dass Karte, Chat und Rechte-API in Plan 003 als MVP-Code stehen. Die Allowlist (Punkt 1) hat keine Abhängigkeit und sollte in Plan 003 zuerst umgesetzt werden.
 
 ### CR-002 – `npm test` ist rot (Module werden nicht gefunden)
@@ -66,6 +67,7 @@
 - **Beschreibung:** `node --experimental-strip-types --test` löst ESM-Importe ohne `.ts`-Endung nicht auf. Nachdem Commit `74a4eff` die Endungen für den Next-Build entfernt hat, scheitern `src/spike/chat/dice.test.ts` („Cannot find module …/dice-sides“) und `src/spike/rechte/authz.test.ts` („Cannot find module …/types“) mit `ERR_MODULE_NOT_FOUND`. Die Würfel- und Autorisierungsregeln, also die Kernnachweise für T-010 (AC 2 bis 4) und T-011, laufen damit nicht mehr als Unit-Tests. Die Go-Einschätzung in `.ai/tech-stack.md` stützt sich auf diese Tests.
 - **Empfehlung (festgelegt im Plan-Review 2026-09-22): Vitest.** `vitest` als devDependency ergänzen (wie in `spikes/editor/`), dazu `vitest.config.ts` mit dem Pfad-Alias `@` → `src` und `environment: "node"` (DOM-Tests per `// @vitest-environment happy-dom` pro Datei). Das Skript wird `"test": "vitest run"`. Bestehende `node:test`-Dateien auf `import { describe, it, expect } from "vitest"` umstellen (`assert.equal` → `expect(...).toBe(...)`). Das Rechte-Integrationsskript (`test:rechte`) läuft ebenfalls über Vitest mit eigener Config bzw. eigenem Include, getrennt von `npm test`, weil es einen laufenden Dev-Server braucht. Importe bleiben ohne `.ts`-Endung (Next-kompatibel). `conventions.md` → Teststrategie auf Vitest aktualisieren.
 - **Abnahmekriterium:** `npm test` (= `vitest run`) endet mit Exit-Code 0 und führt alle `*.test.ts`-Dateien unter `src/` aus. In `src/` wird `node:test` nicht mehr importiert. `npm run build` ist weiterhin erfolgreich. `conventions.md` nennt Vitest als Test-Runner.
+- **Umsetzung T-001 (2026-09-23):** Vitest ist der Test-Runner, `node:test` kommt in `src/` nicht mehr vor, `conventions.md` beschreibt Vitest. Status `behoben`.
 
 ### CR-003 – `discordId` ist vom Benutzer änderbar
 - **Fundstelle:** `src/lib/auth.ts:46-50` (`additionalFields.discordId`, `input: true`)
@@ -133,6 +135,7 @@
 - **Beschreibung:** `total += textFromNode(children[i]!)` addiert einen **String** auf einen `number`-Zähler. `tsc --noEmit` meldet TS2322. Zur Laufzeit wird `total` zu einer Zeichenkette (z. B. `"0abc"`), und der Caret-Offset stimmt nicht mehr, sobald der Caret auf Elementebene (zwischen Kindknoten) steht, etwa nach dem Reparse bei `**fett**`. Das deckt sich mit den offenen Composer-Bugs in `smoketest.md`.
 - **Empfehlung:** `total += textFromNode(children[i]!).length`. Einen Unit-Test für `getCaretMarkdownOffset` mit Caret auf Elementebene ergänzen (happy-dom/jsdom).
 - **Abnahmekriterium:** `npx tsc --noEmit` meldet keinen Fehler. Ein Test prüft, dass der Offset bei Caret zwischen `<strong>`-Kindknoten der Markdown-Länge davor entspricht.
+- **Umsetzung T-001 (2026-09-23):** `textFromNode(…).length`, Test in `composer-dom.test.ts`. Status `behoben`.
 
 ### CR-010 – CI ohne Tests, Typecheck und Lint
 - **Fundstelle:** `.github/workflows/build-image.yml`
@@ -142,6 +145,7 @@
 - **Beschreibung:** Der einzige Workflow baut das Docker-Image und pusht es. `npm test`, `tsc --noEmit` und `eslint` laufen nie automatisch. Deshalb sind CR-002, CR-009 und CR-015 unbemerkt auf `main` gelandet und nach Produktion deployt worden. `conventions.md` nennt als CI-Stufe nur den Image-Build.
 - **Empfehlung:** Einen Job `verify` (Node 22, `npm ci`, `npm test`, `npx tsc --noEmit`, `npm run lint`, optional `cd spikes/editor && npm ci && npm test`) vor `docker` schalten (`needs: verify`). `conventions.md` → Teststrategie entsprechend ergänzen.
 - **Abnahmekriterium:** Ein Push mit einem absichtlich fehlschlagenden Test bricht den Workflow vor dem Image-Build ab. `conventions.md` beschreibt den `verify`-Schritt.
+- **Umsetzung T-001 (2026-09-23):** Job `verify` steht vor `docker` (`needs: verify`). Status `behoben`.
 
 ### CR-011 – N+1-Queries im Rechte-Repository
 - **Fundstelle:** `src/spike/rechte/repository.ts:1396-1425` (`listRelations` → `isContentVisibleFor` :217), `:402-418` (Schleife pro Charakter), `:1271-1285` (`listWorldGeography`, Marker-Query ohne Kartenfilter)
@@ -193,6 +197,7 @@
 - **Beschreibung:** `npm run lint` schlägt mit einem Fehler fehl. Ref-Zuweisungen beim Rendern sind unter React 19 bzw. im Concurrent Rendering nicht garantiert konsistent. Die beiden Hauptkomponenten vermischen Datenladen, SSE, Leaflet-Imperativcode, Sheets und Formulare. Das erschwert Tests und den geplanten Ausbau in Plan 003.
 - **Empfehlung:** Ref-Updates in `useEffect`/`useLayoutEffect` verschieben oder `useEffectEvent` nutzen. Hooks extrahieren (`useKarteRealtime`, `useLeafletMap`, `usePinSheet`, `useChatStream`) und Sheets als eigene Komponenten auslagern.
 - **Abnahmekriterium:** `npx eslint .` meldet 0 Fehler. In Karten- und Chat-Komponenten (bzw. ihren MVP-Nachfolgern) liegen Realtime-Anbindung (SSE), Datenladen und Leaflet-Initialisierung jeweils in eigenen Hooks. Sheets und Formulare sind eigene Komponenten. Die Hauptkomponente enthält keinen `fetch`- und keinen `EventSource`-Aufruf direkt.
+- **Teilfortschritt T-001 (2026-09-23):** Die Ref-Zuweisung in `KarteBoard.tsx` liegt in `useEffect`; `npx eslint .` meldet 0 Fehler. Die Struktur (Hooks, Sheets) folgt in T-012/T-013. Status bleibt `offen`.
 
 ### CR-016 – Upload und Auslieferung des Kartenbilds
 - **Fundstelle:** `src/app/api/spike/karte/upload/route.ts:29-57`, `src/app/api/spike/karte/image/route.ts:26-34`

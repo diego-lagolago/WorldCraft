@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test src/lib/*.test.ts src/spike/**/*.test.ts",
-    "test:rechte": "node --env-file=.env --experimental-strip-types --test src/spike/rechte/run-rechte-tests.ts",
+    "test": "vitest run",
+    "test:rechte": "node --env-file=.env ./node_modules/vitest/vitest.mjs run --config vitest.rechte.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file=.env scripts/migrate.mjs",
     "db:studio": "drizzle-kit studio"
@@ -33,7 +33,9 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
+    "happy-dom": "^20.14.5",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }

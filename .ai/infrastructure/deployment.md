@@ -70,6 +70,7 @@ Namen aus `.env.example` — Werte selbst eintragen. Unverändert zur bisherigen
 | `DISCORD_CLIENT_ID` | Discord Developer Portal (T-008) |
 | `DISCORD_CLIENT_SECRET` | Discord Developer Portal (T-008) |
 | `ENABLE_TEST_LOGIN` | **nicht setzen** (Test-Login nur lokal). Bei `APP_ENV=production` und `ENABLE_TEST_LOGIN=true` darf die App nicht starten. |
+| `ALLOWED_DISCORD_IDS` | Kommagetrennte Discord-User-IDs. In Produktion **Pflicht**: fehlt der Wert oder ist er leer, startet die App nicht (fail closed). Nicht gelistete Discord-Konten werden beim Login abgelehnt. Test-Login (`test-*`) ist ausgenommen. |
 | `FILE_STORAGE_PATH` | `/app/data/uploads` |
 
 `POSTGRES_*` braucht Coolify nur, wenn ihr Postgres selbst per Compose betreibt. Bei der Coolify-Postgres-Ressource reicht `DATABASE_URL`.

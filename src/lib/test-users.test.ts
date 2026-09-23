@@ -1,20 +1,16 @@
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
-import { TEST_USERS, findTestUser } from "./test-users.ts";
+import { describe, expect, it } from "vitest";
+import { TEST_USERS, findTestUser } from "./test-users";
 
 describe("TEST_USERS", () => {
   it("seeds the four T-008 accounts with test- discord ids", () => {
-    assert.deepEqual(
-      TEST_USERS.map((user) => user.discordId),
-      ["test-gm", "test-master", "test-player-a", "test-player-b"],
-    );
+    expect(TEST_USERS.map((user) => user.discordId)).toEqual(["test-gm", "test-master", "test-player-a", "test-player-b"]);
     for (const user of TEST_USERS) {
-      assert.equal(user.email, `${user.discordId}@localhost`);
-      assert.ok(user.discordId.startsWith("test-"));
+      expect(user.email).toBe(`${user.discordId}@localhost`);
+      expect(user.discordId.startsWith("test-")).toBeTruthy();
     }
   });
 
   it("ignores unknown ids", () => {
-    assert.equal(findTestUser("someone-else"), undefined);
+    expect(findTestUser("someone-else")).toBe(undefined);
   });
 });

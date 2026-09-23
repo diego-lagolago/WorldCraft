@@ -28,7 +28,10 @@ erDiagram
     worlds ||--o{ articles : contains
     worlds ||--o{ quests : contains
     worlds ||--o{ relations : contains
-    worlds ||--o{ chat_messages : contains
+    worlds ||--|{ chat_channels : contains
+    chat_channels ||--o{ chat_threads : has
+    chat_channels ||--o{ chat_messages : contains
+    chat_threads ||--o{ chat_messages : groups
     worlds ||--o{ world_participations : has
     worlds ||--o{ journal_entries : has
     invite_links ||--o{ memberships : joined_via
@@ -60,7 +63,7 @@ Relationen verbinden Artikel, Quests, Charaktere, Pins und Universen polymorph (
 |---|---|
 | Primärschlüssel | `users.id` = `text` (Better Auth). Alle übrigen Tabellen: `uuid` mit `gen_random_uuid()`. |
 | Zeit | `timestamptz`, Default `now()` |
-| Protokollfelder (fachl. 2.6) | `created_at`, `created_by` → `users.id`, `updated_at`, `updated_by` → `users.id`. Pflicht auf allen vom Benutzer bearbeitbaren Inhalten außer Chat (nur `sent_at` + `author_id`, nicht editierbar). |
+| Protokollfelder (fachl. 2.6) | `created_at`, `created_by` → `users.id`, `updated_at`, `updated_by` → `users.id`. Pflicht auf allen vom Benutzer bearbeitbaren Inhalten außer Chat-Nachrichten (nur `sent_at` + `author_id`, nicht editierbar). Kanäle und Threads haben Protokollfelder. |
 | Rich-Text (fachl. 2.3, ADR-004) | `*_json jsonb` (TipTap-Dokument) plus `*_plain text` (abgeleiteter Klartext für Suche). Beide zusammen oder beide leer. |
 | Relative Position (fachl. 2.7) | `pos_x`, `pos_y` als `numeric(8,7)` mit `CHECK (… >= 0 AND … <= 1)`. Sieben Nachkommastellen, fachlich mindestens sechs. |
 | Dateien | Zeile in `files` plus Objekt auf Volume. MIME und Größe in der Anwendung, nicht nur in der DB. |
@@ -413,12 +416,44 @@ Gleiche Welt: `TRIG-REL-SAME-WORLD` (Artikel/Quest/Universum direkt; Pin über K
 
 `TRIG-JOURNAL-PART`: es existiert eine `world_participations`-Zeile für dasselbe Paar (Charakter, Welt), archiviert oder nicht. Anzeige folgt der Teilnahme (archiviert = für niemanden in der Welt sichtbar).
 
-### 3.17 `chat_messages` (Chat-Nachricht)
+### 3.17 Chat (Kanäle, Threads, Nachrichten)
+
+Abweichung vom fachlichen Modell: eine Welt hat einen oder mehrere Kanäle, nicht eine einzelne Nachrichtenliste. Begründung, Datum und Verweis: Abschnitt 13 B. Beim Anlegen einer Welt entsteht der Kanal „Allgemein“ (`APP-WORLD-CREATE`).
+
+#### `chat_channels` (Kanal)
 
 | Spalte | Typ | Pflicht | Regel |
 |---|---|:-:|---|
 | `id` | uuid PK | ✅ | |
 | `world_id` | uuid FK `worlds` ON DELETE CASCADE | ✅ | |
+| `name` | text | ✅ | Pflicht, max. 80. Eindeutig unter den **aktiven** Kanälen der Welt |
+| `sort_order` | integer | ✅ | Reihenfolge in der Kanalliste |
+| `archived_at` | timestamptz | – | `NULL` = aktiv. Gesetzt = archiviert, für alle aus der Liste; Nachrichten und Würfe bleiben |
+| Protokollfelder | | ✅ | |
+
+`UQ-CHANNEL-NAME`: partieller Unique-Index auf `(world_id, name) WHERE archived_at IS NULL`. Der letzte aktive Kanal einer Welt kann nicht archiviert werden (`APP-CHANNEL-LAST`). Anlegen, umbenennen, Reihenfolge, Archivieren und Wiederherstellen: nur Spielleitung. Lesen und Schreiben: jedes aktive Mitglied.
+
+#### `chat_threads` (Thread)
+
+| Spalte | Typ | Pflicht | Regel |
+|---|---|:-:|---|
+| `id` | uuid PK | ✅ | |
+| `channel_id` | uuid FK `chat_channels` ON DELETE CASCADE | ✅ | genau ein Kanal |
+| `title` | text | ✅ | max. 80 |
+| `created_from_message_id` | uuid FK `chat_messages` | ✅ | Eröffnungsnachricht im Hauptstrom; dieselbe Transaktion (`APP-THREAD-OPEN`) |
+| Protokollfelder | | ✅ | |
+
+Threads werden im MVP nicht einzeln archiviert oder gelöscht. Archiviert der Kanal, verschwinden seine Threads mit ihm aus der Liste.
+
+#### `chat_messages` (Chat-Nachricht)
+
+| Spalte | Typ | Pflicht | Regel |
+|---|---|:-:|---|
+| `id` | uuid PK | ✅ | |
+| `world_id` | uuid FK `worlds` ON DELETE CASCADE | ✅ | bleibt; dieselbe Welt wie der Kanal |
+| `channel_id` | uuid FK `chat_channels` | ✅ | |
+| `thread_id` | uuid FK `chat_threads` | – | leer = Hauptstrom des Kanals |
+| `opens_thread_id` | uuid FK `chat_threads` | – | optional, eindeutig. Die Nachricht bleibt im Hauptstrom (`thread_id` leer) und eröffnet den Thread |
 | `author_id` | text FK `users` | ✅ | Anzeige immer als Benutzer |
 | `body` | text | ✅ | Klartext, max. 2000 |
 | `dice_expression` | text | – | nur Server (`APP-DICE-SERVER`) |
@@ -426,7 +461,7 @@ Gleiche Welt: `TRIG-REL-SAME-WORLD` (Artikel/Quest/Universum direkt; Pin über K
 | `dice_sum` | integer | – | |
 | `sent_at` | timestamptz | ✅ | |
 
-Kein `updated_*`. Würfelwurf = mindestens `dice_expression` gesetzt. `CHK-DICE-SHAPE`: alle drei Dice-Spalten gesetzt oder alle drei leer. Löschen: physisches DELETE; verboten wenn Dice gesetzt (`APP-CHAT-DELETE`).
+Kein `updated_*`. `UQ-MSG-OPENS-THREAD`: `opens_thread_id` eindeutig, wo gesetzt. Würfelwurf = mindestens `dice_expression` gesetzt. `CHK-DICE-SHAPE`: alle drei Dice-Spalten gesetzt oder alle drei leer. Löschen: physisches DELETE; verboten wenn Dice gesetzt (`APP-CHAT-DELETE`). Eine Nachricht, die einen Thread eröffnet (`opens_thread_id` gesetzt), ist ebenfalls nicht löschbar.
 
 ---
 
@@ -596,6 +631,7 @@ Jede Eigenschaft aus `.ai/architecture/datenmodell-fachlich.md`. Nichts ausgelas
 |---|---|
 | Welt / Autor / Text / Gesendet am | `chat_messages.world_id`, `author_id`, `body`, `sent_at` |
 | Würfelwurf Ausdruck / Einzelwerte / Summe | `dice_expression`, `dice_values`, `dice_sum` |
+| Kanal, Thread | Abweichung, siehe Abschnitt 13 B und 3.17 (`chat_channels`, `chat_threads`, `channel_id`, `thread_id`) |
 
 ---
 
@@ -686,13 +722,12 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 
 ## 6. Vorlagenfelder ohne Schemaänderung
 
-Vorlagentypen leben in einer **Code-Registry** (TypeScript-Modul), nicht in der Datenbank. `articles.template_type` speichert den Schlüssel (`none`, später z. B. `place`, `person`). `articles.template_fields` speichert nur Werte:
+Vorlagentypen leben in einer **Code-Registry** (TypeScript-Modul), nicht in der Datenbank. `articles.template_type` speichert den Schlüssel (`none` oder einer der vier Typen unten). `articles.template_fields` speichert nur Werte:
 
 ```json
 {
-  "herrscher": { "kind": "article", "id": "<uuid>" },
-  "einwohner": 1200,
-  "klima": "gemaessigt"
+  "ruler": { "kind": "article", "id": "<uuid>" },
+  "kind": "city"
 }
 ```
 
@@ -708,7 +743,40 @@ Vorlagentypen leben in einer **Code-Registry** (TypeScript-Modul), nicht in der 
 
 Verweis / Verweisliste erzeugen Relationen `origin = template_field` mit `template_field_key` = Schlüssel (`APP-REL-RECALC`).
 
-Konkrete Typen und Felder legt der MVP-Funktionsplan fest. Dieses Schema nimmt sie unverändert auf.
+**Festgelegt (Entscheidung Projektinhaber 2026-09-22, Plan `003`).** Vier Typen plus `none` / „ohne Vorlage“ (keine Felder). Schlüssel englisch, Bezeichnungen deutsch. Keine weiteren Typen im MVP; Ergänzung nur als neuer Registry-Eintrag.
+
+### `person` — Person
+
+| Schlüssel | Bezeichnung | Feldart | Erlaubte Ziele |
+|---|---|---|---|
+| `aliases` | Andere Namen | Text | — |
+| `occupation` | Beruf / Rolle | Text | — |
+| `status` | Status | Auswahl: `alive` lebendig, `dead` tot, `missing` verschollen, `unknown` unbekannt | — |
+| `location` | Aufenthaltsort | Verweis | Artikel `place` |
+| `organization` | Organisation | Verweis | Artikel `organization` |
+
+### `place` — Ort
+
+| Schlüssel | Bezeichnung | Feldart | Erlaubte Ziele |
+|---|---|---|---|
+| `kind` | Art | Auswahl: `city` Stadt, `village` Dorf, `building` Gebäude, `region` Region, `dungeon` Dungeon, `wilderness` Wildnis, `plane` Ebene, `other` sonstiges | — |
+| `ruler` | Herrscher | Verweis | Artikel `person` |
+| `parent` | Übergeordneter Ort | Verweis | Artikel `place` |
+
+### `organization` — Organisation
+
+| Schlüssel | Bezeichnung | Feldart | Erlaubte Ziele |
+|---|---|---|---|
+| `kind` | Art | Auswahl: `guild` Gilde, `religion` Religion, `house` Adelshaus, `company` Freie Kompanie, `state` Staat, `cult` Kult, `other` sonstiges | — |
+| `leader` | Anführer | Verweis | Artikel `person` |
+| `seat` | Sitz | Verweis | Artikel `place` |
+
+### `item` — Gegenstand
+
+| Schlüssel | Bezeichnung | Feldart | Erlaubte Ziele |
+|---|---|---|---|
+| `kind` | Art | Auswahl: `weapon` Waffe, `armor` Rüstung, `artifact` Artefakt, `relic` Relikt, `mundane` alltäglich, `other` sonstiges | — |
+| `owner` | Besitzer | Verweis | Artikel `person` oder Charakter |
 
 ---
 
@@ -914,7 +982,8 @@ Default neuer Inhalte: `gm_only`, außer erstes Universum (`published`).
 | `articles (world_id)`, `quests (world_id)`, `journal_entries (world_id, character_id)` | |
 | `relations (world_id, source_kind, source_id)` | ausgehend |
 | `relations (world_id, target_kind, target_id)` | eingehend |
-| `chat_messages (world_id, sent_at DESC)` | letzte 50 |
+| `chat_messages (channel_id, sent_at DESC) WHERE thread_id IS NULL` | letzte 50 im Hauptstrom |
+| `chat_messages (thread_id, sent_at DESC) WHERE thread_id IS NOT NULL` | letzte 50 im Thread |
 | GIN `pg_trgm` auf `articles.title`, `quests.title`, `characters.name`, `universes.name`, `pins.title` | Mentions + Suche |
 | GIN auf `*_tsv` | Volltext |
 
@@ -924,7 +993,9 @@ Default neuer Inhalte: `gm_only`, außer erstes Universum (`published`).
 
 | Vorgang | Schritte |
 |---|---|
-| `APP-WORLD-CREATE` | INSERT world → membership (`game_master`, kein Invite) → universe (`Hauptuniversum`, `published`, `sort_order = 0`) |
+| `APP-WORLD-CREATE` | INSERT world → membership (`game_master`, kein Invite) → universe (`Hauptuniversum`, `published`, `sort_order = 0`) → Kanal „Allgemein“ (`sort_order = 0`) |
+| `APP-CHANNEL-LAST` | Archivieren ablehnen, wenn der Kanal der letzte aktive der Welt ist |
+| `APP-THREAD-OPEN` | Thread, Eröffnungsnachricht (`opens_thread_id`) und `created_from_message_id` in einer Transaktion |
 | `APP-INVITE-JOIN` | gültigen Link prüfen → bestehende aktive Mitgliedschaft: no-op → archivierte: `archived_at` leeren, Rolle `player` → sonst INSERT player; `use_count++` |
 | `APP-MEMBER-ARCHIVE` | Mitgliedschaft archivieren; alle eigenen `world_participations` der Welt archivieren; Marker/Relationen/Tagebuch unverändert |
 | `APP-PART-REACTIVATE` | archivierte Teilnahme finden und leeren, sonst INSERT |
@@ -944,11 +1015,12 @@ Nichts stillschweigend.
 
 Technische Hilfstabellen (`files`, `character_images`, `quest_participants`) und englische Spaltennamen sind keine fachlichen Abweichungen.
 
+**B – Chat-Kanäle im MVP (Entscheidung Projektinhaber 2026-09-22, Plan `003`).** Fachmodell 3.16 beschreibt eine Nachrichtenliste pro Welt. Fachmodell Abschnitt 6 nennt „Chat-Kanäle“ unter *Bewusst nicht im MVP-Modell*. Plan `.ai/feature-tasks/003-mvp-funktionen.md` (*Chat-Produktmodell*) weicht davon ab: eine Welt hat Kanäle (`chat_channels`), Threads (`chat_threads`) und Nachrichten mit Pflicht-`channel_id` und optionalem `thread_id` (Abschnitt 3.17). „Löschen“ eines Kanals ist Archivieren (`archived_at`); Würfelwürfe bleiben gespeichert. Das fachliche Datenmodell bleibt unverändert, bis der Projektinhaber es freigibt.
+
 ---
 
 ## 14. Offene Punkte für die Umsetzung (kein Entscheidungsbedarf)
 
-- Konkrete Vorlagentypen: MVP-Funktionsplan.
 - Better-Auth-Plugin-Tabellen für MCP (Plan `002`) kommen später dazu, ohne dieses Schema zu brechen.
 - Realtime (T-009/T-010) speichert nichts zusätzlich; Pin-Drop und Chat schreiben die hier genannten Tabellen.
 - `numeric(8,7)` serialisiert in JSON als String — die API gibt Zahlen mit mindestens 6 Dezimalen aus.

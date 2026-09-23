@@ -1,9 +1,8 @@
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, expect, it } from "vitest";
 import {
   DISCORD_EMAIL_REQUIRED_MESSAGE,
   mapDiscordProfileToUser,
-} from "./discord-profile.ts";
+} from "./discord-profile";
 
 describe("mapDiscordProfileToUser", () => {
   it("maps name, email, avatar and discord id", () => {
@@ -14,7 +13,7 @@ describe("mapDiscordProfileToUser", () => {
       global_name: "Anzeige",
       image_url: "https://cdn.discordapp.com/avatars/123/abc.png",
     });
-    assert.deepEqual(mapped, {
+    expect(mapped).toEqual({
       name: "Anzeige",
       email: "player@example.com",
       image: "https://cdn.discordapp.com/avatars/123/abc.png",
@@ -23,16 +22,11 @@ describe("mapDiscordProfileToUser", () => {
   });
 
   it("rejects a missing Discord email without inventing a placeholder", () => {
-    assert.throws(
-      () =>
+    expect(() =>
         mapDiscordProfileToUser({
           id: "123",
           email: null,
           username: "handle",
-        }),
-      (error: unknown) =>
-        error instanceof Error &&
-        error.message === DISCORD_EMAIL_REQUIRED_MESSAGE,
-    );
+        })).toThrow(DISCORD_EMAIL_REQUIRED_MESSAGE);
   });
 });

@@ -148,7 +148,9 @@ export default function KarteBoard({ highlightPinId, initialState }: Props) {
   }, []);
 
   const openPinSheetRef = useRef(openPinSheet);
-  openPinSheetRef.current = openPinSheet;
+  useEffect(() => {
+    openPinSheetRef.current = openPinSheet;
+  }, [openPinSheet]);
 
   const loadState = useCallback(async () => {
     const response = await fetch("/api/spike/karte", { credentials: "include" });
