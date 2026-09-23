@@ -5,6 +5,7 @@
  */
 
 import { fail, ok, type AuthzResult } from "@/lib/authz";
+import { parseUuid } from "@/lib/http";
 import {
   TEMPLATE_TEXT_MAX,
   templateOf,
@@ -22,7 +23,7 @@ export function parseRefValue(value: unknown): TemplateRefValue | null {
   if ((record.kind !== "article" && record.kind !== "character") || typeof record.id !== "string") {
     return null;
   }
-  const id = record.id.trim();
+  const id = parseUuid(record.id.trim());
   if (!id) return null;
   return { kind: record.kind, id };
 }

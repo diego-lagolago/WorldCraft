@@ -113,6 +113,10 @@ async function assertRefTargets(
   }
   if (refs.length === 0) return ok(true);
 
+  for (const ref of refs) {
+    if (!parseUuid(ref.value.id)) return fail(400, "Ein Verweis ist ungültig.");
+  }
+
   const articleIds = refs.filter((ref) => ref.value.kind === "article").map((ref) => ref.value.id);
   const characterIds = refs.filter((ref) => ref.value.kind === "character").map((ref) => ref.value.id);
   const articleRows = articleIds.length
@@ -140,7 +144,6 @@ async function assertRefTargets(
   const fieldByKey = new Map(templateOf(type).fields.map((field) => [field.key, field]));
 
   for (const ref of refs) {
-    if (!parseUuid(ref.value.id)) return fail(400, "Ein Verweis ist ungültig.");
     const field = fieldByKey.get(ref.key);
     if (!field || field.type !== "ref") return fail(400, "Ein Verweis ist ungültig.");
     if (ref.value.kind === "character") {

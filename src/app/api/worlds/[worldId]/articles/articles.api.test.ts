@@ -125,6 +125,25 @@ describe("T-009 (4): visibility", () => {
   });
 });
 
+describe("CR-004: invalid template ref ids", () => {
+  it("rejects non-UUID refs with 400 on create and patch", async () => {
+    const createRes = await api(gm, "POST", w("/articles"), {
+      title: "X",
+      templateType: "person",
+      templateFields: { location: { kind: "article", id: "abc" } },
+    });
+    expect(createRes.status).toBe(400);
+    expect((createRes.data as { error?: string }).error).toMatch(/akzeptiert dieses Ziel nicht/);
+
+    const article = await create(gm, { title: "Patch-Ref", templateType: "person" });
+    const patchRes = await api(gm, "PATCH", w(`/articles/${article.id}`), {
+      templateFields: { location: { kind: "article", id: "abc" } },
+    });
+    expect(patchRes.status).toBe(400);
+    expect((patchRes.data as { error?: string }).error).toMatch(/akzeptiert dieses Ziel nicht/);
+  });
+});
+
 describe("CR-005: bad ids and bodies on article routes", () => {
   it("answers 400 or 404, never 500", async () => {
     expect((await api(gm, "GET", w("/articles/not-a-uuid"))).status).toBe(404);
