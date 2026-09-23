@@ -9,11 +9,11 @@ import { ChannelList } from "./ChannelList";
 import {
   ChannelSheet,
   ComposerBar,
-  DiceSheet,
   NewChannelSheet,
   RenameThreadSheet,
   ThreadSheet,
 } from "./ComposerBar";
+import { DiceSheet } from "./DiceSheet";
 import { MessageList, messagePreviewText, truncatePreview } from "./MessageList";
 import { Toast } from "./Toast";
 import { useChatRealtime } from "./use-chat-realtime";
@@ -169,7 +169,7 @@ export function ChatView({
         <DiceSheet
           postToChat={state.dicePostToChat}
           onPostToChat={(next) => void stream.setPostToChat(next)}
-          onRoll={(input) => void stream.roll(input)}
+          onRoll={(input) => stream.roll(input)}
           onClose={() => setDiceOpen(false)}
         />
       ) : null}

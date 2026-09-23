@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ALLOWED_SIDES, formatStructuredPreview } from "@/lib/chat/dice-format";
 import { RichComposer } from "./RichComposer";
 import { Sheet } from "./ChannelList";
 
@@ -55,81 +54,6 @@ export function ComposerBar({ disabled, placeholder, inThread, onSend, onStartTh
         ➤
       </button>
     </div>
-  );
-}
-
-export function DiceSheet({
-  postToChat,
-  onPostToChat,
-  onRoll,
-  onClose,
-}: {
-  postToChat: boolean;
-  onPostToChat: (next: boolean) => void;
-  onRoll: (input: { terms: { n: number; m: number }[]; modifier: number }) => void;
-  onClose: () => void;
-}) {
-  const [count, setCount] = useState(1);
-  const [sides, setSides] = useState<number>(20);
-  const [modifier, setModifier] = useState(0);
-  const preview = formatStructuredPreview({ terms: [{ n: count, m: sides }], modifier });
-
-  return (
-    <Sheet title="Würfeln" onClose={onClose}>
-      <div className="dice-dies">
-        {ALLOWED_SIDES.map((value) => (
-          <button key={value} type="button" className={value === sides ? "on" : ""} onClick={() => setSides(value)}>
-            d{value}
-          </button>
-        ))}
-      </div>
-      <div className="row step-row">
-        <span>Anzahl</span>
-        <div className="stepper">
-          <button type="button" onClick={() => setCount((value) => Math.max(1, value - 1))} aria-label="Weniger Würfel">
-            −
-          </button>
-          <span>{count}</span>
-          <button type="button" onClick={() => setCount((value) => Math.min(100, value + 1))} aria-label="Mehr Würfel">
-            ＋
-          </button>
-        </div>
-      </div>
-      <div className="row step-row">
-        <span>Modifikator</span>
-        <div className="stepper">
-          <button type="button" onClick={() => setModifier((value) => Math.max(-999, value - 1))} aria-label="Modifikator senken">
-            −
-          </button>
-          <span>{modifier >= 0 ? `+${modifier}` : modifier}</span>
-          <button type="button" onClick={() => setModifier((value) => Math.min(999, value + 1))} aria-label="Modifikator heben">
-            ＋
-          </button>
-        </div>
-      </div>
-      <div className="row step-row">
-        <span>Im Chat posten</span>
-        <button
-          type="button"
-          className="sw"
-          role="switch"
-          aria-checked={postToChat}
-          aria-label="Im Chat posten"
-          onClick={() => onPostToChat(!postToChat)}
-        />
-      </div>
-      <button
-        type="button"
-        className="btn primary"
-        onClick={() => {
-          onRoll({ terms: [{ n: count, m: sides }], modifier });
-          onClose();
-        }}
-      >
-        {preview} würfeln
-      </button>
-      <p className="small muted">Das Ergebnis entsteht auf dem Server.</p>
-    </Sheet>
   );
 }
 

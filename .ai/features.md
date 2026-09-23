@@ -104,7 +104,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 | Gruppenchat | Kanäle, Threads (eingerückt + Chevron), SSE-Realtime; ohne aktiven Kanal Hinweis statt Auto-Anlage | MVP F10 / shipped |
 | Kanalverwaltung | Anlegen, umbenennen, Reihenfolge, archivieren/wiederherstellen (Spielleitung) | shipped |
 | Composer | Leerzeichen ohne Cursor-Sprung; Absätze (Shift+Enter) in Nachrichten sichtbar | shipped |
-| Würfel | Serverseitige Auswertung; UI am Prototyp (Grid, fette Summe, Toast) | MVP F10 / shipped |
+| Würfel | Serverseitige Auswertung; Sheet wie Chat-Spike (mehrere Terme, Bonus, Ergebnisfeld); Chat-Zeile unverändert | Plan 008 / in Arbeit |
 | Nachrichten löschen | Autor oder Spielleitung; Würfel nur Spielleitung (Player nicht); Bestätigungsdialog, Shift = sofort | Plan 007 / shipped |
 | Eigene Nachrichten rechts | Gespiegeltes Layout (`msg mine`), Avatar rechts | Plan 007 / shipped |
 | Statische Avatare | Discord-GIFs → PNG beim Login und Backfill | Plan 007 / shipped |
