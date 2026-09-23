@@ -1,32 +1,23 @@
 import { NextResponse } from "next/server";
-import { loadWorldContext } from "@/lib/domain/membership";
 import { searchMentionTargets } from "@/lib/domain/mention-search";
 import { MENTION_QUERY_MAX } from "@/lib/editor/mentions";
-import { parseUuid } from "@/lib/http";
-import { failResponse, notFoundResponse } from "@/lib/route";
-import { requireProductSession } from "@/lib/session";
+import { openWorldRequest } from "@/lib/route";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: Request, ctx: { params: Promise<{ worldId: string }> }) {
-  const { session, response } = await requireProductSession();
-  if (response || !session) return response;
-
-  const worldId = parseUuid((await ctx.params).worldId);
-  if (!worldId) return notFoundResponse("Diese Welt gibt es nicht.");
+  const req = await openWorldRequest((await ctx.params).worldId);
+  if (!req.ok) return req.response;
 
   const query = new URL(request.url).searchParams.get("q") ?? "";
   if (query.length > MENTION_QUERY_MAX) {
     return NextResponse.json({ error: "Der Suchbegriff ist zu lang." }, { status: 400 });
   }
 
-  const context = await loadWorldContext(worldId, session.user.id);
-  if (!context.ok) return failResponse(context);
-
   const hits = await searchMentionTargets({
-    worldId,
-    role: context.data.membership.role,
+    worldId: req.context.world.id,
+    role: req.context.membership.role,
     query,
   });
   return NextResponse.json({ hits });

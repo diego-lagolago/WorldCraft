@@ -7,16 +7,19 @@ import { worldPath } from "./nav";
 
 type Props = {
   worldIds: string[];
+  /** `/?new=1`: always show onboarding (new world or invite from the hub). */
+  force?: boolean;
   /** Onboarding, shown when no valid last world is stored on this device. */
   children: ReactNode;
 };
 
 /** `/` for signed-in users: redirect to the last world, else onboarding. */
-export function HomeRedirect({ worldIds, children }: Props) {
+export function HomeRedirect({ worldIds, force = false, children }: Props) {
   const router = useRouter();
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(force);
 
   useEffect(() => {
+    if (force) return;
     const target = pickLastWorld(readLastWorld(), worldIds);
     if (target) {
       router.replace(worldPath(target));
@@ -25,7 +28,7 @@ export function HomeRedirect({ worldIds, children }: Props) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowOnboarding(true);
     }
-  }, [router, worldIds]);
+  }, [router, worldIds, force]);
 
   if (!showOnboarding) {
     return (

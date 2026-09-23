@@ -41,15 +41,16 @@ Die folgenden Funktionen definieren, was die Infrastruktur tragen können muss. 
 
 ### Rechtematrix (MVP, pro Welt)
 
-Grundsatz: Master dürfen alles, was der Game Master darf, **außer Mitglieder zu verwalten** (Personen hinzufügen oder entfernen, Rollen ändern) **und die Welt zu löschen**. Player dürfen Inhalte der Welt nur ansehen und verwalten lediglich ihre eigenen Charaktere, Tagebucheinträge und Chat-Beiträge.
+Grundsatz: Master dürfen alles, was der Game Master darf, **außer Mitglieder zu verwalten** (Personen hinzufügen oder entfernen, Rollen ändern) **und die Welt zu bearbeiten oder zu löschen** (Bearbeiten nachgetragen 2026-09-23, Plan 003 T-007). Player dürfen Inhalte der Welt nur ansehen und verwalten lediglich ihre eigenen Charaktere, Tagebucheinträge und Chat-Beiträge.
 
 | Aktion | Game Master | Master | Player |
 |---|:-:|:-:|:-:|
 | Welt löschen | ✅ | – | – |
+| Welt bearbeiten (Name, Beschreibung, Titelbild) — nachgetragen 2026-09-23 (Plan 003 T-007) | ✅ | – | – |
 | Einladungslinks erstellen und widerrufen (Personen hinzufügen) | ✅ | – | – |
 | Player zu Master ernennen, Master zu Player zurückstufen | ✅ | – | – |
 | Mitglieder entfernen (außer den Game Master) | ✅ | – | – |
-| Welt-Einstellungen, Universen, Karten, Artikel, Quests, Pins, manuelle Relationen erstellen, bearbeiten, löschen | ✅ | ✅ | – |
+| Universen, Karten, Artikel, Quests, Pins, manuelle Relationen erstellen, bearbeiten, löschen | ✅ | ✅ | – |
 | Veröffentlichte Artikel, Quests, Universen, Karten und Pins ansehen (bei Karten und Pins nur, wenn auch alle übergeordneten Ebenen veröffentlicht sind) | ✅ | ✅ | ✅ |
 | Inhalte mit Status `nur Spielleitung` ansehen | ✅ | ✅ | – |
 | In die Welt mitgebrachte Charaktere mit Charakterbogen ansehen und ihre Marker auf der Karte sehen | ✅ | ✅ | ✅ |

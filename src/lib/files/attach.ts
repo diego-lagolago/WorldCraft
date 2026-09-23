@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import { fail, type AuthzResult } from "@/lib/authz";
 import { authorizeImageWrite, type ImageKind } from "./authorize";
+import { collectUnreferencedFiles } from "./gc";
 import { MAP_IMAGE_MAX_BYTES, OTHER_IMAGE_MAX_BYTES } from "./inspect";
 import { persistImage, removeStoredFile } from "./store";
 
@@ -138,21 +139,31 @@ async function linkStaffImage(
 ): Promise<AuthzResult<true>> {
   const now = new Date();
   if (kind === "world_title") {
-    const updated = await db
+    const [previous] = await db
+      .select({ id: worlds.titleImageId })
+      .from(worlds)
+      .where(eq(worlds.id, worldId))
+      .limit(1);
+    if (!previous) return fail(404, "Welt nicht gefunden.");
+    await db
       .update(worlds)
       .set({ titleImageId: fileId, updatedAt: now, updatedBy: actorId })
-      .where(eq(worlds.id, worldId))
-      .returning({ id: worlds.id });
-    if (updated.length === 0) return fail(404, "Welt nicht gefunden.");
+      .where(eq(worlds.id, worldId));
+    await collectUnreferencedFiles([previous.id]);
     return { ok: true, data: true };
   }
   if (kind === "article_title") {
-    const updated = await db
+    const [previous] = await db
+      .select({ id: articles.titleImageId })
+      .from(articles)
+      .where(and(eq(articles.id, targetId), eq(articles.worldId, worldId)))
+      .limit(1);
+    if (!previous) return fail(404, "Artikel nicht gefunden.");
+    await db
       .update(articles)
       .set({ titleImageId: fileId, updatedAt: now, updatedBy: actorId })
-      .where(and(eq(articles.id, targetId), eq(articles.worldId, worldId)))
-      .returning({ id: articles.id });
-    if (updated.length === 0) return fail(404, "Artikel nicht gefunden.");
+      .where(eq(articles.id, targetId));
+    await collectUnreferencedFiles([previous.id]);
     return { ok: true, data: true };
   }
   const [map] = await db

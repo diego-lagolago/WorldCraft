@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  authorizeLeave,
+  authorizeMemberAdmin,
+  type MembershipRow,
   canEditMarker,
   canSeeCharacterInWorld,
   canSeeJournal,
@@ -109,5 +112,40 @@ describe("APP-AUTHZ Sichtbarkeit", () => {
     expect(isGm("master")).toBe(false);
     expect(isStaff("master")).toBe(true);
     expect(isStaff("player")).toBe(false);
+  });
+});
+
+function row(role: MembershipRow["role"], overrides: Partial<MembershipRow> = {}): MembershipRow {
+  return { id: `m-${role}`, worldId: "w", userId: role, role, archivedAt: null, ...overrides };
+}
+
+describe("APP-MEMBER-ADMIN", () => {
+  it("only the game master changes roles or removes members", () => {
+    expect(authorizeMemberAdmin(row("game_master"), row("player")).ok).toBe(true);
+    expect(authorizeMemberAdmin(row("master"), row("player"))).toMatchObject({ ok: false, status: 403 });
+    expect(authorizeMemberAdmin(row("player"), row("master"))).toMatchObject({ ok: false, status: 403 });
+    expect(authorizeMemberAdmin(null, row("player"))).toMatchObject({ ok: false, status: 403 });
+  });
+
+  it("never touches the game master row, archived or foreign members", () => {
+    expect(authorizeMemberAdmin(row("game_master"), row("game_master"))).toMatchObject({ ok: false, status: 409 });
+    expect(authorizeMemberAdmin(row("game_master"), row("player", { archivedAt: new Date() }))).toMatchObject({
+      ok: false,
+      status: 404,
+    });
+    expect(authorizeMemberAdmin(row("game_master"), row("player", { worldId: "other" }))).toMatchObject({
+      ok: false,
+      status: 404,
+    });
+    expect(authorizeMemberAdmin(row("game_master"), null)).toMatchObject({ ok: false, status: 404 });
+  });
+});
+
+describe("leaving a world", () => {
+  it("allows master and player, refuses the game master and non-members", () => {
+    expect(authorizeLeave(row("player")).ok).toBe(true);
+    expect(authorizeLeave(row("master")).ok).toBe(true);
+    expect(authorizeLeave(row("game_master"))).toMatchObject({ ok: false, status: 409 });
+    expect(authorizeLeave(row("player", { archivedAt: new Date() }))).toMatchObject({ ok: false, status: 403 });
   });
 });

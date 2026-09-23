@@ -11,6 +11,8 @@ declare global {
 }
 
 function poolMax(): number {
+  const configured = Number(process.env.DATABASE_POOL_MAX);
+  if (Number.isInteger(configured) && configured > 0) return configured;
   if (process.env.NODE_ENV === "production") return 10;
   return 1;
 }

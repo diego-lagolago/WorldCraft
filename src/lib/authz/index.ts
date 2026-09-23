@@ -1,4 +1,6 @@
 export {
+  authorizeLeave,
+  authorizeMemberAdmin,
   canEditMarker,
   canSeeCharacterInWorld,
   canSeeJournal,

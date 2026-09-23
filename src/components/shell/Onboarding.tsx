@@ -3,16 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { CreateWorldForm } from "@/components/world/CreateWorldForm";
+import { ROLE_LABEL } from "@/components/world/labels";
 import type { MyWorld } from "@/lib/domain/worlds";
 import { inviteCodeFrom } from "./invite-code";
 import { SignOutButton } from "./SignOutButton";
 import { worldPath } from "./nav";
-
-const ROLE_LABEL: Record<MyWorld["role"], string> = {
-  game_master: "Game Master",
-  master: "Master",
-  player: "Player",
-};
 
 export function Onboarding({ userName, worlds }: { userName: string; worlds: MyWorld[] }) {
   const router = useRouter();
@@ -50,6 +46,8 @@ export function Onboarding({ userName, worlds }: { userName: string; worlds: MyW
             ))}
           </div>
         ) : null}
+
+        <CreateWorldForm />
 
         <form className="card stack" onSubmit={onInvite}>
           <h2>Einladung einlösen</h2>

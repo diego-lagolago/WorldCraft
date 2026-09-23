@@ -44,6 +44,33 @@ export function requireGm(membership: MembershipRow | null): AuthzResult<Members
   return ok(membership);
 }
 
+/**
+ * APP-MEMBER-ADMIN: role change and removal only by the game master, never on
+ * the game master row, only on active members of the same world.
+ */
+export function authorizeMemberAdmin(
+  actor: MembershipRow | null,
+  target: MembershipRow | null,
+): AuthzResult<MembershipRow> {
+  const gm = requireGm(actor);
+  if (!gm.ok) return gm;
+  if (!target || target.worldId !== gm.data.worldId || target.archivedAt) {
+    return fail(404, "Dieses Mitglied gibt es nicht.");
+  }
+  if (isGm(target.role)) return fail(409, "Am Game Master lässt sich nichts ändern.");
+  return ok(target);
+}
+
+/** Every active member may leave, except the game master (R-3.3-3). */
+export function authorizeLeave(membership: MembershipRow | null): AuthzResult<MembershipRow> {
+  const denied = denyIfNoMembership(membership);
+  if (denied || !membership) return denied ?? fail(403, "Kein aktives Mitglied dieser Welt.");
+  if (isGm(membership.role)) {
+    return fail(409, "Der Game Master kann die Welt nicht verlassen. Er kann sie nur löschen.");
+  }
+  return ok(membership);
+}
+
 export function canSeePublishedLayer(
   role: MembershipRole,
   layers: VisibilityStatus[],

@@ -1,6 +1,7 @@
 import {
   fail,
   ok,
+  requireGm,
   requireStaff,
   type AuthzResult,
   type MembershipRow,
@@ -24,11 +25,12 @@ export function authorizeImageWrite(input: {
   ownerId: string | null;
   existingCharacterImages: number;
 }): AuthzResult<true> {
-  if (
-    input.kind === "world_title" ||
-    input.kind === "map" ||
-    input.kind === "article_title"
-  ) {
+  if (input.kind === "world_title") {
+    const gm = requireGm(input.membership);
+    if (!gm.ok) return gm;
+    return ok(true);
+  }
+  if (input.kind === "map" || input.kind === "article_title") {
     const staff = requireStaff(input.membership);
     if (!staff.ok) return staff;
     return ok(true);

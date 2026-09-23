@@ -1,10 +1,7 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import { articleTitleSchema, createArticleStub } from "@/lib/domain/articles";
-import { loadWorldContext } from "@/lib/domain/membership";
-import { parseJsonBody, parseUuid } from "@/lib/http";
-import { failResponse, notFoundResponse } from "@/lib/route";
-import { requireProductSession } from "@/lib/session";
+import { parseJsonBody } from "@/lib/http";
+import { failResponse, openWorldRequest, resultResponse } from "@/lib/route";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,24 +9,16 @@ export const runtime = "nodejs";
 const stubSchema = z.object({ title: articleTitleSchema });
 
 export async function POST(request: Request, ctx: { params: Promise<{ worldId: string }> }) {
-  const { session, response } = await requireProductSession();
-  if (response || !session) return response;
-
-  const worldId = parseUuid((await ctx.params).worldId);
-  if (!worldId) return notFoundResponse("Diese Welt gibt es nicht.");
-
+  const req = await openWorldRequest((await ctx.params).worldId);
+  if (!req.ok) return req.response;
   const body = await parseJsonBody(request, stubSchema);
   if (!body.ok) return failResponse(body);
 
-  const context = await loadWorldContext(worldId, session.user.id);
-  if (!context.ok) return failResponse(context);
-
   const created = await createArticleStub({
-    membership: context.data.membership,
-    actorId: session.user.id,
-    worldId,
+    membership: req.context.membership,
+    actorId: req.user.id,
+    worldId: req.context.world.id,
     title: body.data.title,
   });
-  if (!created.ok) return failResponse(created);
-  return NextResponse.json({ article: created.data }, { status: 201 });
+  return resultResponse(created.ok ? { ok: true as const, data: { article: created.data } } : created, 201);
 }

@@ -22,14 +22,15 @@ src/
   app/                  Next.js App Router (Seiten, Route Handlers)
     api/                HTTP-APIs (auth, test-login, worlds/…, spike/*)
     w/[worldId]/        Produktseiten im Weltkontext (Shell aus components/shell)
+    invite/[code]/      Einladung annehmen (außerhalb der Welt-Shell)
     spike/              Spike-Routen /spike/karte, /spike/chat
-  components/           wiederverwendbare UI (shell/, editor/, auth/ …)
+  components/           wiederverwendbare UI (shell/, editor/, auth/, world/ …)
   db/                   Drizzle-Schema, Migrationen
   lib/                  Auth, Env, Hilfen
     authz/              Rechteschicht (eine Schicht für HTTP, Loader, später MCP)
     domain/             Anwendungslogik je Fachbereich (DB-Zugriffe, Transaktionen)
     editor/             reine Editor-Logik (Sanitizing, Klartext, Erwähnungen)
-    client/             reine Browser-Hilfen (z. B. localStorage)
+    client/             reine Browser-Hilfen (localStorage, fetch-Helfer `apiRequest`)
   test/                 gemeinsame Test-Hilfen (API-Harness)
   spike/<name>/         Spike-UI und Spike-Logik (klar als Spike gekennzeichnet)
 scripts/                Migrations-/Hilfsskripte
@@ -71,7 +72,7 @@ Es gibt **kein** separates Staging. Formulierungen „Staging“ in älteren Doc
 
 1. **Unit-Tests:** `npm test` = Vitest (`vitest run`, `environment: "node"`, Alias `@` → `src`). Führt alle `src/**/*.test.ts` aus (außer `*.integration.test.ts` und `*.api.test.ts`). DOM-Tests setzen `// @vitest-environment happy-dom` in der Datei. Importe ohne `.ts`-Endung.
 2. **Rechte-Matrix und Produkt-API-Tests:** `npm run test:rechte` — Vitest mit eigener Config (`vitest.rechte.config.ts`), getrennt von `npm test`, weil ein laufender Dev-Server und Test-Login nötig sind (nur lokal). Produkt-API-Tests heißen `*.api.test.ts`, liegen neben der Route und nutzen `src/test/api-harness.ts` (Test-Login, Requests, SQL nur für Testdaten und Aufräumen).
-3. **Trigger:** `npm run test:triggers` — Vitest gegen die lokale PostgreSQL (`vitest.triggers.config.ts`), ebenfalls getrennt von `npm test`.
+3. **Trigger und Domänen-Integration:** `npm run test:triggers` — Vitest gegen die lokale PostgreSQL (`vitest.triggers.config.ts`, alle `src/**/*.integration.test.ts`), ebenfalls getrennt von `npm test`. Die Config setzt `DATABASE_POOL_MAX=12`, damit Nebenläufigkeitstests (z. B. parallele Beitritte) wirklich parallel laufen; ohne die Variable nutzt der Dev-Pool eine Verbindung.
 4. **Editor-Spike:** `cd spikes/editor && npm test` (eigenes Vitest).
 5. **Manuell / Smoketest:** Prod per Discord; Protokoll [infrastructure/smoketest.md](infrastructure/smoketest.md).
 6. **CI:** Job `verify` (Node 22: `npm test`, `tsc --noEmit`, `eslint`, Editor-Spike-Tests) **vor** dem Image-Build (GHCR). Ein fehlschlagender Test bricht den Workflow vor dem Image ab. Rechte-Skript und Trigger-Tests laufen nicht gegen Prod.

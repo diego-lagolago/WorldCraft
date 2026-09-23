@@ -8,9 +8,11 @@ import { TEST_USERS, type TestUserId } from "@/lib/test-users";
 type Props = {
   discordConfigured: boolean;
   testLoginEnabled: boolean;
+  /** Validated in-app path to open after login, e.g. an invite link. */
+  next?: string | null;
 };
 
-export function LoginScreen({ discordConfigured, testLoginEnabled }: Props) {
+export function LoginScreen({ discordConfigured, testLoginEnabled, next = null }: Props) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +21,7 @@ export function LoginScreen({ discordConfigured, testLoginEnabled }: Props) {
     setError(null);
     setPending("discord");
     try {
-      await signIn.social({ provider: "discord", callbackURL: "/" });
+      await signIn.social({ provider: "discord", callbackURL: next ?? "/" });
     } catch {
       setError("Die Discord-Anmeldung konnte nicht gestartet werden.");
       setPending(null);
@@ -40,7 +42,8 @@ export function LoginScreen({ discordConfigured, testLoginEnabled }: Props) {
         setError("Test-Login fehlgeschlagen.");
         return;
       }
-      router.refresh();
+      if (next) router.push(next);
+      else router.refresh();
     } finally {
       setPending(null);
     }
@@ -54,6 +57,9 @@ export function LoginScreen({ discordConfigured, testLoginEnabled }: Props) {
         </div>
         <h1>WorldCraft</h1>
         <p className="muted">Welten, Karten, Quests und Chat für eure D&amp;D-Runde.</p>
+        {next?.startsWith("/invite/") ? (
+          <p className="small">Melde dich an, um die Einladung anzunehmen.</p>
+        ) : null}
         {discordConfigured ? (
           <button type="button" className="btn discord" onClick={onDiscord} disabled={pending !== null}>
             Mit Discord anmelden

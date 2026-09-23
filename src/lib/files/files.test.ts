@@ -50,6 +50,19 @@ describe("authorizeImageWrite", () => {
     }
   });
 
+  it("lets only the game master set the world title image; master may set map and article images", () => {
+    const master = { ...membership, userId: "master", role: "master" as const };
+    const gm = { ...membership, userId: "gm", role: "game_master" as const };
+    const input = { actorId: "x", ownerId: null, existingCharacterImages: 0 };
+    expect(authorizeImageWrite({ ...input, kind: "world_title", membership: master })).toMatchObject({
+      ok: false,
+      status: 403,
+    });
+    expect(authorizeImageWrite({ ...input, kind: "world_title", membership: gm }).ok).toBe(true);
+    expect(authorizeImageWrite({ ...input, kind: "map", membership: master }).ok).toBe(true);
+    expect(authorizeImageWrite({ ...input, kind: "article_title", membership: master }).ok).toBe(true);
+  });
+
   it("refuses the 11th character attachment", () => {
     const result = authorizeImageWrite({
       kind: "character_image",

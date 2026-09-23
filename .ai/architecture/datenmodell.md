@@ -952,7 +952,7 @@ Marker zusätzlich: Teilnahme des Charakters nicht archiviert.
 
 | Entität | Ansehen | Schreiben |
 |---|---|---|
-| Welt | `isActiveMember` | Update: `isStaff`. Delete: nur `isGm` |
+| Welt | `isActiveMember` | Update und Delete: nur `isGm` (Projektinhaber 2026-09-23, Plan 003 T-007) |
 | Mitgliedschaft | `isActiveMember` | Rolle/Entfernen: `isGm`, nie auf GM-Zeile. Austreten: jedes aktive Mitglied außer GM |
 | Einladungslink | `isGm` | `isGm` |
 | Universum, Karte, Pin | `APP-VIS-INHERIT` | `isStaff` |

@@ -392,7 +392,7 @@ Umsetzung der Rechtematrix aus Plan 001. „Spielleitung“ = Game Master + Mast
 
 | Entität | Ansehen | Erstellen / Bearbeiten / Löschen |
 |---|---|---|
-| Welt | Mitglieder | Bearbeiten: Spielleitung. Löschen: nur Game Master |
+| Welt | Mitglieder | Bearbeiten (Name, Beschreibung, Titelbild) und Löschen: nur Game Master (Entscheidung Projektinhaber 2026-09-23, Plan 003 T-007) |
 | Mitgliedschaft | Mitglieder | Rolle ändern (Player ↔ Master), entfernen: nur Game Master; nie beim Game Master selbst. Austreten: jedes Mitglied außer dem Game Master |
 | Einladungslink | Game Master | nur Game Master |
 | Universum, Karte, Pin | `veröffentlicht` (inkl. aller übergeordneten Ebenen): Mitglieder; sonst: Spielleitung | Spielleitung. Pin sperren/entsperren: Spielleitung; gesperrter Pin: nur Entsperren (siehe 3.7) |
