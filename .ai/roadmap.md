@@ -7,18 +7,20 @@ Reihenfolge der Pläne für WorldCraft. Jeder Plan liegt unter `.ai/feature-task
 | # | Plan | Ziel | Status |
 |---|---|---|---|
 | 1 | [`001` MVP-Umfang & Infrastruktur](feature-tasks/001-mvp-infrastruktur.md) | Infrastruktur gewählt und als ADRs festgehalten, riskante Funktionen als Spikes lokal und auf Produktion bewiesen, Datenmodell und Projektnormen stehen | ✅ abgeschlossen (2026-09-22) |
-| 2 | [`003` MVP-Funktionen](feature-tasks/003-mvp-funktionen.md) | Spikes zur produktiven App ausbauen: Welten, Universen, Mitglieder, Artikel mit Vorlagen, Relationen, Quests, Charaktere, Tagebuch, Karten, Chat, Suche. Design-Referenz: [`spikes/ui-prototype/index.html`](../spikes/ui-prototype/index.html) | ⏭ als Nächstes |
-| 3 | [`002` MCP-Server für Claude](feature-tasks/002-mcp-server.md) | Nur lesender Remote-MCP-Server mit OAuth, nutzt die Daten- und Rechteschicht aus `003` | ⏳ geplant, startet nach `003` |
+| 2 | [`003` MVP-Funktionen](feature-tasks/003-mvp-funktionen.md) | Spikes zur produktiven App ausbauen: Welten, Universen, Mitglieder, Artikel mit Vorlagen, Relationen, Quests, Charaktere, Tagebuch, Karten, Chat, Suche. Design-Referenz: [`spikes/ui-prototype/index.html`](../spikes/ui-prototype/index.html) | ✅ Kern abgeschlossen (2026-09-23); T-017 Prod-Smoke offen (Push-Freigabe) |
+| 3 | [`004` Quest-Kapitel, Notizblock, Owner-Sichtbarkeit](feature-tasks/004-quest-kapitel-und-owner-sichtbarkeit.md) | Dreistufige Sichtbarkeit mit Owner; Quest-Kapitel; gemeinsamer Quest-Notizblock | ⏭ als Nächstes |
+| 4 | [`002` MCP-Server für Claude](feature-tasks/002-mcp-server.md) | Nur lesender Remote-MCP-Server mit OAuth, nutzt die Daten- und Rechteschicht aus `003`/`004` | ⏳ geplant, startet nach `004` |
 
-Die Nummern der Pläne geben die Reihenfolge ihrer Entstehung an, nicht die Reihenfolge der Umsetzung: `002` hängt von der Rechteschicht aus `003` ab und kommt deshalb danach.
+Die Nummern der Pläne geben die Reihenfolge ihrer Entstehung an, nicht die Reihenfolge der Umsetzung: `004` vor `002` (R4); `002` hängt von der Rechteschicht ab.
 
 Offene Ideen außerhalb dieser Pläne stehen in [`backlog.md`](backlog.md).
 
 ## Hinweise je Plan
 
 - **`001`:** Alle Aufgaben erledigt, Smoketest auf Produktion dokumentiert in [`infrastructure/smoketest.md`](infrastructure/smoketest.md). Ein Code-Review liegt vor (`code-review-001-mvp-infrastruktur-2026-09-22.md`). Die Findings des Code Reviews werden im Rahmen von 003 umgesetzt und nur innerhalb von Plan 003 auf das Code Review referenziert.
-- **`003`:** Plan-Review abgeschlossen, UI-Prototyp am 2026-09-22 freigegeben. Start mit `/plan-run 003` bei T-001.
-- **`002`:** Vor dem Start mit T-018 aus `003` abgleichen (Abgleich Plan 002) und bei Bedarf erneut `/plan-review` ausführen.
+- **`003`:** Plan-Review abgeschlossen, UI-Prototyp am 2026-09-22 freigegeben. Kern MVP (T-001–T-016, T-018, T-019) erledigt; T-017 wartet auf Push-Freigabe für Prod-Smoke.
+- **`004`:** Plan-Review abgeschlossen (2026-09-23). Start mit `/plan-run 004` bei T-001. Blockiert Plan `002` (R4).
+- **`002`:** Vor dem Start mit T-012 aus `004` abgleichen (Abgleich Plan 002 nach dreistufiger Sichtbarkeit/Owner/Kapitel/Notizblock, R4) und bei Bedarf erneut `/plan-review` ausführen. Zusätzlich weiter der Abgleich aus `003` T-018 in `architecture.md`.
 
 ## Arbeitsweise
 

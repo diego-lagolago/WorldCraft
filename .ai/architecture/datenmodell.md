@@ -2,7 +2,8 @@
 
 **Status:** Freigegeben durch den Projektinhaber am 2026-09-22.
 **Datum:** 2026-09-22
-**Bezug:** `.ai/architecture/datenmodell-fachlich.md` (freigegeben 2026-09-22), ADR-001 (PostgreSQL + Drizzle + Better Auth), ADR-003 (relative Position 0–1), ADR-004 (TipTap-JSON + Klartext)
+**Änderung 2026-09-23 (Plan `004`):** Enum `content_visibility` (`owner_only`, `gm_only`, `published`) für Artikel, Quests, Pins, Quest-Kapitel; `visibility_status` bleibt für Universen und Karten. Spalte `owner_id` an Artikeln, Quests, Pins, Kapiteln. Neue Tabellen `quest_chapters`, `quest_notes`. Regeln `APP-VIS-OWNER`, `APP-CHAPTER-REL`, `APP-NOTE-VERSION`, `APP-NOTE-NO-REL`.
+**Bezug:** `.ai/architecture/datenmodell-fachlich.md` (freigegeben 2026-09-22, Plan `004` 2026-09-23), ADR-001 (PostgreSQL + Drizzle + Better Auth), ADR-003 (relative Position 0–1), ADR-004 (TipTap-JSON + Klartext)
 **Nicht Ziel:** SQL-Migrationen oder Drizzle-Dateien — die entstehen im Grundgerüst (T-007) und in den Folgeplänen. Dieses Dokument ist die verbindliche Vorlage dafür.
 
 **Leseregel:** Fachliche Namen bleiben Deutsch. Tabellen- und Spaltennamen sind Englisch/`snake_case` (Drizzle, Better Auth). Fachliche Enum-Werte werden intern als englische Schlüssel gespeichert; die Oberfläche zeigt die deutschen Bezeichnungen.
@@ -44,6 +45,8 @@ erDiagram
     characters ||--o{ character_images : has
     characters ||--o{ quest_participants : named_in
     quests ||--o{ quest_participants : involves
+    quests ||--o{ quest_chapters : has
+    quests ||--o| quest_notes : has
     files ||--o{ worlds : title_image
     files ||--o{ maps : map_image
     files ||--o{ articles : title_image
@@ -74,7 +77,8 @@ Relationen verbinden Artikel, Quests, Charaktere, Pins und Universen polymorph (
 
 | Typ | Schlüssel (DB) | Fachlich |
 |---|---|---|
-| `visibility_status` | `published`, `gm_only` | veröffentlicht, nur Spielleitung |
+| `visibility_status` | `published`, `gm_only` | veröffentlicht, nur Spielleitung — **nur** Universen und Karten (Karten-Ausnahme) |
+| `content_visibility` | `owner_only`, `gm_only`, `published` | nur ich, nur Spielleitung, veröffentlicht — Artikel, Quests, Quest-Kapitel, Pins |
 | `membership_role` | `game_master`, `master`, `player` | Game Master, Master, Player |
 | `invite_validity` | `one_day`, `seven_days`, `unlimited` | 1 Tag, 7 Tage, unbegrenzt |
 | `pin_type` | `danger`, `boss`, `house`, `city`, `treasure`, `landmark`, `fishing`, `plants`, `dungeon`, `quest`, `teleporter`, `shop` | Gefahr, Boss, Haus, Stadt, Schatz, Stern, Angeln, Pflanzen, Dungeon, Quest, Teleporter, Shop |
@@ -226,7 +230,8 @@ Bild ersetzen: `image_id` wechseln. Pins/Marker bleiben über relative `pos_x`/`
 | `description_json` | jsonb | – | darf leer sein; einziger Ort für Erwähnungen am Pin |
 | `description_plain` | text | – | |
 | `pos_x`, `pos_y` | numeric(8,7) | ✅ | 0–1 |
-| `visibility` | `visibility_status` | ✅ | Default `gm_only` |
+| `visibility` | `content_visibility` | ✅ | Default `owner_only` |
+| `owner_id` | text FK `users` | ✅ | anlegender Benutzer; Löschverhalten wie `created_by`; Index über Karte nicht nötig (Pins immer über `map_id`) |
 | `locked` | boolean | ✅ | Default `false`. Sperren/Entsperren nur Spielleitung (`requireStaff`). Ist `locked = true`, wird jede Änderung außer `locked → false` sowie das Löschen mit 409 abgelehnt (`APP-PIN-LOCK`) |
 | Protokollfelder | | ✅ | |
 
@@ -337,8 +342,11 @@ Kein Übungsgrad und kein Übungsbonus. Angezeigt wird nur abgerundet((Attributw
 | `body_json` | jsonb | – | |
 | `body_plain` | text | – | |
 | `first_edited_at` | timestamptz | – | gesetzt = keine Stub-Darstellung mehr. Erstes Speichern mit nicht-leerem `body_plain` oder mindestens einem Vorlagenfeld setzt es (`APP-STUB-EDIT`). Umbenennen, Titelbild oder Sichtbarkeit allein setzen es nicht. Einmal gesetzt, bleibt es gesetzt. |
-| `visibility` | `visibility_status` | ✅ | Default `gm_only` |
+| `visibility` | `content_visibility` | ✅ | Default `owner_only` |
+| `owner_id` | text FK `users` | ✅ | anlegender Benutzer; Löschverhalten wie `created_by` |
 | Protokollfelder | | ✅ | |
+
+Index: `(world_id, owner_id)`.
 
 Vorlagentyp ändern: Anwendung verwirft nicht passende Schlüssel nach Warnung (`APP-TEMPLATE-SWITCH`).
 
@@ -352,8 +360,41 @@ Vorlagentyp ändern: Anwendung verwirft nicht passende Schlüssel nach Warnung (
 | `description_json` | jsonb | – | |
 | `description_plain` | text | – | |
 | `status` | `quest_status` | ✅ | Default `open` |
-| `visibility` | `visibility_status` | ✅ | Default `gm_only` |
+| `visibility` | `content_visibility` | ✅ | Default `owner_only` |
+| `owner_id` | text FK `users` | ✅ | anlegender Benutzer; Löschverhalten wie `created_by` |
 | Protokollfelder | | ✅ | |
+
+Index: `(world_id, owner_id)`.
+
+### 3.13a `quest_chapters` (Quest-Kapitel)
+
+| Spalte | Typ | Pflicht | Regel |
+|---|---|:-:|---|
+| `id` | uuid PK | ✅ | |
+| `quest_id` | uuid FK `quests` ON DELETE CASCADE | ✅ | |
+| `title` | text | ✅ | 1–200 Zeichen |
+| `body_json` | jsonb | – | |
+| `body_plain` | text | – | |
+| `body_tsv` | tsvector generated | ✅ | wie bei `quests.description_tsv`, Konfiguration `german` |
+| `position` | integer | ✅ | Anzeigereihenfolge |
+| `visibility` | `content_visibility` | ✅ | Default `owner_only` |
+| `owner_id` | text FK `users` | ✅ | anlegender Benutzer |
+| Protokollfelder | | ✅ | |
+
+Index: `(quest_id, position)`; GIN auf `body_tsv`.
+
+### 3.13b `quest_notes` (Quest-Notizblock)
+
+| Spalte | Typ | Pflicht | Regel |
+|---|---|:-:|---|
+| `quest_id` | uuid PK, FK `quests` ON DELETE CASCADE | ✅ | eine Zeile pro Quest; entsteht beim ersten Speichern |
+| `body_json` | jsonb | – | |
+| `body_plain` | text | – | |
+| `version` | integer | ✅ | Default 0; bei erfolgreichem Speichern +1 (`APP-NOTE-VERSION`) |
+| `updated_at` | timestamptz | ✅ | |
+| `updated_by` | text FK `users` | ✅ | |
+
+Keine Erwähnungs-Relationen (`APP-NOTE-NO-REL`). Nicht in der Hub-Suche.
 
 ### 3.14 `quest_participants` (Beteiligte)
 
@@ -476,7 +517,9 @@ Jede Eigenschaft aus `.ai/architecture/datenmodell-fachlich.md`. Nichts ausgelas
 |---|---|
 | Inhaltsverweis Art | `content_kind` / `source_kind` / `target_kind` |
 | Inhaltsverweis Ziel | Exclusive-FK plus generated `source_id` / `target_id` |
-| Sichtbarkeitsstatus | `visibility_status` an `universes`, `maps`, `pins`, `articles`, `quests` |
+| Sichtbarkeitsstatus (zweistufig) | `visibility_status` an `universes`, `maps` |
+| Sichtbarkeitsstatus (dreistufig) | `content_visibility` an `pins`, `articles`, `quests`, `quest_chapters` |
+| Owner | `owner_id` an `pins`, `articles`, `quests`, `quest_chapters` |
 | Rich-Text | `*_json` + `*_plain` |
 | Erwähnung im Text | TipTap-Mention-Node `{ id, label, art }` in `*_json` |
 | Verknüpfte Elemente | Lesende Query über `relations` (keine Extra-Tabelle) |
@@ -553,7 +596,8 @@ Jede Eigenschaft aus `.ai/architecture/datenmodell-fachlich.md`. Nichts ausgelas
 | Titel | `pins.title` |
 | Beschreibung | `pins.description_json/plain` |
 | Position | `pins.pos_x`, `pins.pos_y` |
-| Sichtbarkeit | `pins.visibility` |
+| Sichtbarkeit | `pins.visibility` (`content_visibility`) |
+| Owner | `pins.owner_id` |
 | Gesperrt | `pins.locked` (`APP-PIN-LOCK`) |
 
 ### 3.8 Charakter
@@ -599,16 +643,31 @@ Jede Eigenschaft aus `.ai/architecture/datenmodell-fachlich.md`. Nichts ausgelas
 | Vorlagenfelder | `articles.template_fields` JSONB |
 | Titelbild | `articles.title_image_id` |
 | Inhalt | `articles.body_json/plain` |
-| Sichtbarkeit | `articles.visibility` |
+| Sichtbarkeit | `articles.visibility` (`content_visibility`) |
+| Owner | `articles.owner_id` |
 | Vorlagen-Felddefinition (Schlüssel, Bezeichnung, Feldart, erlaubte Ziele) | **kein Tabellen-Schema** — Registry im Code (Abschnitt 6) |
 
 ### 3.13 Quest
 
 | Fachlich | Schema |
 |---|---|
-| Welt / Titel / Beschreibung / Status / Sichtbarkeit | `quests.*` |
+| Welt / Titel / Beschreibung / Status / Sichtbarkeit / Owner | `quests.*` |
 | Beteiligte + Namens-Snapshot | `quest_participants.character_id`, `character_name` |
+| Kapitel | `quest_chapters` |
+| Notizblock | `quest_notes` |
 | Auftraggeber / Ort als feste Felder | bewusst nicht (OF-10) |
+
+### 3.13a Quest-Kapitel
+
+| Fachlich | Schema |
+|---|---|
+| Quest / Titel / Inhalt / Position / Sichtbarkeit / Owner | `quest_chapters.*` |
+
+### 3.13b Quest-Notizblock
+
+| Fachlich | Schema |
+|---|---|
+| Quest / Inhalt / Version / geändert | `quest_notes.*` |
 
 ### 3.14 Relation
 
@@ -646,10 +705,11 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 | R-2.1-2 | Pins nicht über `@` erwähnbar | `APP-MENTION-SEARCH` schließt `pin` aus |
 | R-2.1-3 | Universum erwähnbar, Quelle und Ziel | `content_kind` enthält `universe` |
 | R-2.1-4 | Welt kein Inhaltsverweis | keine `content_kind = world`, keine Relationen auf `worlds` |
-| R-2.2-1 | Default `nur Spielleitung` | DB-Default `gm_only` an den fünf Sichtbarkeitsspalten |
+| R-2.2-1 | Default Sichtbarkeit | Universen/Karten: DB-Default `gm_only` (`visibility_status`). Artikel/Quests/Pins/Kapitel: DB-Default `owner_only` (`content_visibility`) |
 | R-2.2-2 | Erstes Universum veröffentlicht | `APP-WORLD-CREATE` setzt erstes Universum `published` |
-| R-2.2-3 | Vererbung nach unten | `APP-VIS-INHERIT` (Abschnitt 8), keine denormalisierte Spalte |
+| R-2.2-3 | Vererbung nach unten | `APP-VIS-INHERIT` (Abschnitt 8), keine denormalisierte Spalte; gilt auch Quest → Kapitel und Quest → Notizblock |
 | R-2.2-4 | Veröffentlichen erbt nicht nach unten | jeder Datensatz behält eigene `visibility` |
+| R-2.2-5 | Owner und dreistufige Sichtbarkeit | `APP-VIS-OWNER` (Abschnitt 10) |
 | R-2.3-1 | Rich-Text + Klartext | `*_json` + `*_plain`; Plain beim Speichern aus JSON (`APP-PLAIN`) |
 | R-2.3-2 | Weltbeschreibung ohne Erwähnungen | Editor ohne Mention-Extension; `APP-WORLD-NO-MENTIONS` weist Mention-Nodes zurück |
 | R-2.4-1 | Erwähnungssuche Teilwort, case-insensitive | `pg_trgm` + `ILIKE` (Abschnitt 9) |
@@ -696,6 +756,9 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 | R-3.12-1 | Vorlagen im Code, neue ohne Schemaänderung | JSONB + Registry |
 | R-3.13-1 | Beteiligte nur mitgebrachte Charaktere | `APP-QUEST-PART` |
 | R-3.13-2 | Name bleibt nach Charakterlöschung | `ON DELETE SET NULL` + `character_name` |
+| R-3.13a-1 | Kapitel nur aus veröffentlichten Mentions in Relationen | `APP-CHAPTER-REL` |
+| R-3.13b-1 | Notizblock Versionsprüfung | `APP-NOTE-VERSION` (409 bei Abweichung) |
+| R-3.13b-2 | Notizblock ohne Relationen | `APP-NOTE-NO-REL` |
 | R-3.14-1 | Quelle ≠ Ziel | `CHK-REL-SHAPE` |
 | R-3.14-2 | Kombination Quelle/Ziel/Herkunft/Feld bzw. Bezeichnung einmal | `UQ-REL` |
 | R-3.14-3 | Automatische Relationen beim Speichern neu | `APP-REL-RECALC` (löscht outgoing `mention`/`template_field`/`participation` der Quelle, legt sie neu an; `manual` unberührt) |
@@ -853,7 +916,8 @@ Die Empfehlung bleibt A. B gewinnt bei Einfachheit, verliert bei den Löschregel
 | **Welt** | `ON DELETE CASCADE` von `worlds` auf Mitgliedschaften, Links, Universen (→ Karten → Pins/Marker), Artikel, Quests (→ Participants), Relationen, Teilnahmen, Tagebuch dieser Welt, Chat. `files` werden nicht automatisch gelöscht (kein CASCADE von Welt auf `files`). `APP-FILE-GC` entfernt verwaiste Dateien nach dem Commit. **Charaktere** haben keine Welt-FK und bleiben. |
 | **Universum** | CASCADE auf Karten → Pins/Marker. Relationen mit Universum oder seinen Pins als Ende: Pin-CASCADE plus Universum-CASCADE. `TRIG-UNIVERSE-LAST` blockiert das letzte Universum. Erwähnungen in anderen Texten bleiben Nodes; `APP-MENTION-RENDER` zeigt `label` ohne Link. |
 | **Karte** | CASCADE auf Pins und Marker. Relationen der Pins über Pin-CASCADE. |
-| **Artikel / Quest** | CASCADE auf deren Relationen-FKs. Quest zusätzlich Participants. Mentions in anderen Texten: Render ohne Link. |
+| **Artikel / Quest** | CASCADE auf deren Relationen-FKs. Quest zusätzlich Participants, Kapitel (`quest_chapters`) und Notizblock (`quest_notes`). Mentions in anderen Texten: Render ohne Link. |
+| **Quest-Kapitel** | Zeile löschen; `APP-CHAPTER-REL` / `APP-REL-RECALC` berechnet Relationen der Quest neu. |
 | **Pin** | CASCADE auf Relationen mit diesem Pin. |
 | **Mitgliedschaft** (Austritt/Entfernen) | **Kein DELETE.** `archived_at = now()` an Mitgliedschaft und an allen `world_participations` des Benutzers in dieser Welt. Marker, Tagebuch, Relationen, Quest-Beteiligungen, Chat, von ihm erstellte Inhalte bleiben. Sichtbarkeit über `APP-AUTHZ` / `APP-REL-VISIBLE`. Re-Join: `archived_at` der Mitgliedschaft leeren, Rolle `player`. Wieder-mitbringen: `archived_at` der Teilnahme leeren. |
 | **Charakter** | CASCADE auf Teilnahmen, Marker, Tagebuch, Relationen, `character_images`. `quest_participants.character_id` SET NULL, `character_name` bleibt. |
@@ -922,7 +986,7 @@ View oder Union `mention_search_targets (world_id, kind, id, name, extra, visibi
 
 `APP-MENTION-SEARCH` filtert danach mit `APP-VIS-INHERIT` und `APP-AUTHZ` (Player sehen keine `gm_only`-Ziele und nichts unter einem versteckten Universum). Pins fehlen in der View.
 
-Volltext-Spalten (generated, stored): `articles.body_tsv`, `quests.description_tsv`, `universes.description_tsv`, `pins.description_tsv`, `pins.title` über Trigram, `characters.bio_tsv`, `journal_entries.body_tsv` (nur App, **nicht** MCP — Plan `002` schließt Tagebuch aus). Weltbeschreibung kann in die App-Suche, nicht in Mentions.
+Volltext-Spalten (generated, stored): `articles.body_tsv`, `quests.description_tsv`, `quest_chapters.body_tsv`, `universes.description_tsv`, `pins.description_tsv`, `pins.title` über Trigram, `characters.bio_tsv`, `journal_entries.body_tsv` (nur App, **nicht** MCP — Plan `002` schließt Tagebuch aus). Quest-Kapiteltexte liefern Hub-Treffer auf die **Quest**, nur aus Kapiteln, die der Betrachter sieht (`APP-VIS-OWNER` + Vererbung). `quest_notes` sind **nicht** in der Suche. Weltbeschreibung kann in die App-Suche, nicht in Mentions.
 
 ---
 
@@ -940,31 +1004,53 @@ canSeePublished(user, world)    = isActiveMember
 `APP-VIS-INHERIT` — ein Datensatz ist sichtbar wenn:
 
 1. der Benutzer aktives Mitglied ist, und
-2. bei `visibility = gm_only` zusätzlich `isStaff`, und
+2. die Sichtbarkeitsstufe nach `APP-VIS-OWNER` erlaubt ist, und
 3. alle übergeordneten Ebenen sichtbar sind:
    - Pin / Marker → Karte sichtbar → Universum sichtbar
    - Karte → Universum sichtbar
+   - Quest-Kapitel / Quest-Notizblock → Quest sichtbar
    - Universum / Artikel / Quest: keine Eltern-Ebene
+
+`APP-VIS-OWNER` — dreistufige Sichtbarkeit (Plan `004`):
+
+| Stufe | Game Master | Master | Player |
+|---|---|---|---|
+| `owner_only` | nur wenn `viewer.id = owner_id` und Viewer ist Spielleitung | nur wenn Owner und Spielleitung | nie (auch nicht als Owner; herabgestufter Master: Owner-Rechte ruhen) |
+| `gm_only` | ja | ja | nein |
+| `published` | ja | ja | ja |
+
+Zweistufig (`visibility_status` an Universum/Karte): wie bisher `gm_only` → Staff, `published` → Mitglied. Kein `owner_only`.
+
+`nur ich` (`owner_only`) setzen darf nur der Owner (`APP-AUTHZ`); andere Spielleitung erhalten 403.
 
 Marker zusätzlich: Teilnahme des Charakters nicht archiviert.
 
 `APP-REL-VISIBLE`: Relation nur wenn Quelle **und** Ziel nach denselben Regeln sichtbar sind. Verstecktes Ende → Zeile wird Playern nicht geliefert (T-011).
+
+`APP-CHAPTER-REL`: Mention-Relationen einer Quest entstehen aus der Quest-Beschreibung **und** allen Kapiteln mit `visibility = published`. Neuberechnung bei jeder Kapitel-Änderung. Unveröffentlichte Kapitel erzeugen keine Relationen.
+
+`APP-NOTE-VERSION`: Speichern des Notizblocks nur wenn die gesendete `version` der gespeicherten entspricht; sonst HTTP 409 mit aktueller Version; bei Erfolg `version += 1`.
+
+`APP-NOTE-NO-REL`: Erwähnungen im Notizblock erzeugen keine Relationen.
 
 | Entität | Ansehen | Schreiben |
 |---|---|---|
 | Welt | `isActiveMember` | Update und Delete: nur `isGm` (Projektinhaber 2026-09-23, Plan 003 T-007) |
 | Mitgliedschaft | `isActiveMember` | Rolle/Entfernen: `isGm`, nie auf GM-Zeile. Austreten: jedes aktive Mitglied außer GM |
 | Einladungslink | `isGm` | `isGm` |
-| Universum, Karte, Pin | `APP-VIS-INHERIT` | `isStaff` |
+| Universum, Karte | `APP-VIS-INHERIT` (zweistufig) | `isStaff` |
+| Pin | `APP-VIS-INHERIT` + `APP-VIS-OWNER` | Anlegen: `isStaff` (setzt `owner_id`). Bearbeiten/Löschen: Owner oder `isStaff`, jeweils nur wenn sichtbar. `owner_only` setzen: nur Owner. Sperren: `isStaff` + sichtbar |
 | Charakter | Besitzer immer; sonst `isActiveMember` und nicht archivierte Teilnahme | nur Besitzer |
 | Welt-Teilnahme | `isActiveMember` und nicht archiviert | mitbringen/reaktivieren: Besitzer |
 | Charakter-Marker | Mitglied + Teilnahme aktiv + Karte sichtbar | Besitzer oder `isStaff`; Besitzer nur auf sichtbarer Karte |
-| Artikel, Quest | `published` → Mitglied; `gm_only` → Staff | `isStaff` |
+| Artikel, Quest | `APP-VIS-OWNER` | Anlegen: `isStaff` (setzt `owner_id`). Bearbeiten/Löschen: Owner oder `isStaff`, jeweils nur wenn sichtbar. `owner_only` setzen: nur Owner |
+| Quest-Kapitel | Quest sichtbar + `APP-VIS-OWNER` | wie Artikel/Quest |
+| Quest-Notizblock | Quest sichtbar | Lesen/Schreiben: wer die Quest sehen darf (`APP-NOTE-VERSION`) |
 | Relation | `APP-REL-VISIBLE` | automatisch: nie direkt; manuell: `isStaff` |
 | Tagebuch | `private` → Besitzer; `shared_with_gm` → Besitzer + Staff der Welt. Archivierte Teilnahme: niemand in der Welt | nur Besitzer |
 | Chat | `isActiveMember` | schreiben: Mitglied. update: niemand. delete: Autor (ohne Dice) oder Staff (ohne Dice) |
 
-Default neuer Inhalte: `gm_only`, außer erstes Universum (`published`).
+Default neuer Inhalte: Artikel/Quest/Kapitel/Pin → `owner_only`; Universum/Karte → `gm_only`, außer erstes Universum (`published`).
 
 ---
 
@@ -981,6 +1067,9 @@ Default neuer Inhalte: `gm_only`, außer erstes Universum (`published`).
 | `character_markers (map_id)` | |
 | `world_participations (world_id) WHERE archived_at IS NULL` | |
 | `articles (world_id)`, `quests (world_id)`, `journal_entries (world_id, character_id)` | |
+| `articles (world_id, owner_id)`, `quests (world_id, owner_id)` | Owner-Filter |
+| `quest_chapters (quest_id, position)` | Kapitelliste |
+| GIN `quest_chapters.body_tsv` | Kapitel-Volltext |
 | `relations (world_id, source_kind, source_id)` | ausgehend |
 | `relations (world_id, target_kind, target_id)` | eingehend |
 | `chat_messages (channel_id, sent_at DESC) WHERE thread_id IS NULL` | letzte 50 im Hauptstrom |
@@ -1000,7 +1089,11 @@ Default neuer Inhalte: `gm_only`, außer erstes Universum (`published`).
 | `APP-INVITE-JOIN` | gültigen Link prüfen → bestehende aktive Mitgliedschaft: no-op → archivierte: `archived_at` leeren, Rolle `player` → sonst INSERT player; `use_count++` |
 | `APP-MEMBER-ARCHIVE` | Mitgliedschaft archivieren; alle eigenen `world_participations` der Welt archivieren; Marker/Relationen/Tagebuch unverändert |
 | `APP-PART-REACTIVATE` | archivierte Teilnahme finden und leeren, sonst INSERT |
-| `APP-REL-RECALC` | beim Speichern von Artikel, Quest, Pin, Universum: outgoing auto-Relationen der Quelle löschen, aus Mentions + Vorlagenfeldern + Quest-Beteiligten neu anlegen. Die Charakter-Bio hat im MVP keine Erwähnungen (`APP-BIO-NO-MENTIONS`) |
+| `APP-REL-RECALC` | beim Speichern von Artikel, Quest, Pin, Universum, Quest-Kapitel: outgoing auto-Relationen der Quelle löschen, aus Mentions + Vorlagenfeldern + Quest-Beteiligten (+ veröffentlichten Kapiteln bei Quest, `APP-CHAPTER-REL`) neu anlegen. Die Charakter-Bio hat im MVP keine Erwähnungen (`APP-BIO-NO-MENTIONS`). Notizblock: keine Relationen (`APP-NOTE-NO-REL`) |
+| `APP-VIS-OWNER` | dreistufige Sichtbarkeit inkl. Owner und ruhender Owner-Rechte bei Rolle Player |
+| `APP-CHAPTER-REL` | nur `published`-Kapitel erzeugen Mention-Relationen der Quest |
+| `APP-NOTE-VERSION` | Notizblock-Speichern mit Versionsprüfung; bei Konflikt 409 |
+| `APP-NOTE-NO-REL` | Erwähnungen im Notizblock ohne Relationen |
 | `APP-BIO-NO-MENTIONS` | Charakter-Bio wird wie die Weltbeschreibung ohne Erwähnungen gespeichert; ein Dokument mit `mention`-Knoten wird mit 400 abgelehnt (Projektinhaber 2026-09-23) |
 | `APP-MAP-MVP-ONE` | **aufgehoben** (2026-09-23): mehrere Karten pro Universum erlaubt |
 | `APP-FILE-GC` | nach Löschen einer Welt/eines Bildes Dateien ohne verbleibende FK vom Volume nehmen |

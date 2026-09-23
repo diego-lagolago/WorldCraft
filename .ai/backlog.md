@@ -2,6 +2,12 @@
 
 Kurze, undatierte Restpunkte. Kein Ersatz für Pläne unter `.ai/feature-tasks/`.
 
+## 2026-09-23 – Owner verlässt die Welt
+
+**Quelle:** Projektinhaber beim Anlegen von Plan `004` (dreistufige Sichtbarkeit Owner / Spielleitung / veröffentlicht).
+
+Offen: Was passiert mit Datensätzen (Artikel, Quests, Kapitel, Pins), deren Owner aus der Welt austritt oder entfernt wird — besonders mit Sichtbarkeit `nur ich`, die danach niemand mehr sieht. Denkbar: Owner geht auf den Game Master über, Datensätze werden auf `nur Spielleitung` gehoben, oder sie bleiben unsichtbar bis zur Reaktivierung. Ebenso offen: Owner übertragen. Plan `004` ändert beim Austritt nichts (Mitgliedschaft wird wie bisher nur archiviert).
+
 ## 2026-09-22 – Karten-Zoom (T-009 Spike `/spike/karte`)
 
 **Quelle:** Projektinhaber nach Abnahme Pin setzen/bearbeiten (UX bleibt).

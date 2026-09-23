@@ -31,6 +31,8 @@ Kein automatisches Umwickeln schon vorhandener Wörter.
 
 **A – Stub-Flag / `first_edited_at`.** Beim Anlegen über `@` entsteht **sofort** eine Artikel-Zeile. Die Erwähnung bleibt **rot**, bis der Artikel einmal wirklich bearbeitet wurde (`first_edited_at` oder gleichwertiges Stub-Flag). **Blau** = wurde editiert / hat echten Inhalt. **Rot** = noch keine lesbare Seite (einschließlich Stubs).
 
+**B – Sichtbarkeit (Plan `004`, 2026-09-23).** Ein über `@` angelegter Stub-Artikel startet mit Sichtbarkeit `owner_only` („nur ich“). Andere sehen die Erwähnung bis zur Veröffentlichung als reinen Text (bestehende Regel für unsichtbare Ziele).
+
 ## Später (nicht MVP-jetzt)
 
 **„Auswahl zur Erwähnung machen“** — markierten Text nachträglich zur Erwähnung machen. Nur Backlog, siehe `.ai/backlog.md`.

@@ -2,7 +2,8 @@
 
 **Status:** Freigegeben durch den Projektinhaber am 2026-09-22. Alle offenen Fragen (Abschnitt 7) sind geklärt. Änderungen nur nach erneuter Abstimmung mit dem Projektinhaber.
 **Änderung 2026-09-22 (Plan-Review 001, abgestimmt mit dem Projektinhaber):** Rollen ändern und Mitglieder entfernen darf nur der Game Master, nicht mehr die gesamte Spielleitung (3.3, Abschnitt 5). Austreten und Entfernen löschen nichts mehr: Mitgliedschaft, Welt-Teilnahmen, Marker und Relationen werden archiviert und bei erneutem Beitritt wiederhergestellt (3.3, 3.4, 3.9, 3.10, Abschnitt 4). Universen werden Teil des Beziehungsnetzes: erwähnbar über `@`, Quelle (über Erwähnungen in ihrer Beschreibung) und Ziel von Relationen. Die Welt bleibt reines logisches Objekt ohne Erwähnungen und Relationen (2.1, 2.3, 2.4, 2.5, 3.2, 3.14, Abschnitt 4). Das Konzept „aktiver Charakter“ entfällt: Ein Benutzer kann mehrere mitgebrachte Charaktere gleichzeitig spielen, jeder mitgebrachte Charakter kann Marker haben (3.9, 3.10, Abschnitt 5).
-**Bezug:** Plan `001-mvp-infrastruktur.md` (F1–F10, Rechtematrix). Grundlage für T-006, das dieses Modell in ein technisches Schema übersetzt.
+**Änderung 2026-09-23 (Plan `004`, abgestimmt mit dem Projektinhaber):** Dreistufige Sichtbarkeit (`nur ich` / `nur Spielleitung` / `veröffentlicht`) mit Owner für Artikel, Quests, Quest-Kapitel und Pins; Universen und Karten bleiben zweistufig (Karten-Ausnahme). Quest-Kapitel und Quest-Notizblock neu (3.13a, 3.13b). Owner-Rechte ruhen bei herabgestufter Rolle Player; `nur ich` setzen darf nur der Owner. Erwähnungen aus veröffentlichten Kapiteln erzeugen Relationen der Quest; Notizblock ohne Relationen.
+**Bezug:** Plan `001-mvp-infrastruktur.md` (F1–F10, Rechtematrix); Plan `004-quest-kapitel-und-owner-sichtbarkeit.md`.
 
 Dieses Dokument beschreibt, **welche Dinge es gibt, welche Eigenschaften sie haben, wie sie zusammenhängen und welche Regeln gelten**, unabhängig von Datenbank und Backend. Datentypen sind fachlich gemeint (z. B. „Text, max. 120 Zeichen“), nicht technisch.
 
@@ -22,6 +23,8 @@ erDiagram
     KARTE ||--o{ CHARAKTER_MARKER : zeigt
     WELT ||--o{ ARTIKEL : enthaelt
     WELT ||--o{ QUEST : enthaelt
+    QUEST ||--o{ QUEST_KAPITEL : hat
+    QUEST ||--o| QUEST_NOTIZBLOCK : hat
     WELT ||--o{ RELATION : enthaelt
     WELT ||--o{ CHAT_NACHRICHT : enthaelt
     BENUTZER ||--o{ CHARAKTER : besitzt
@@ -59,21 +62,30 @@ Regeln:
 
 ### 2.2 Sichtbarkeitsstatus
 
-| Wert | Bedeutung |
-|---|---|
-| `veröffentlicht` | Alle Mitglieder der Welt sehen den Inhalt. |
-| `nur Spielleitung` | Nur Game Master und Master sehen den Inhalt. |
+Es gibt zwei Varianten (Plan `004`, 2026-09-23):
 
-Gilt für **Artikel, Quests, Pins, Universen und Karten** (OF-02).
+**Dreistufig** (`content_visibility`) für **Artikel, Quests, Quest-Kapitel und Pins**:
+
+| Wert (UI) | Schlüssel (DB) | Bedeutung |
+|---|---|---|
+| `veröffentlicht` | `published` | Alle Mitglieder der Welt sehen den Inhalt. |
+| `nur Spielleitung` | `gm_only` | Nur Game Master und Master sehen den Inhalt. |
+| `nur ich` | `owner_only` | Nur der **Owner** sieht den Inhalt — und nur, solange er Spielleitung ist. Der Game Master sieht fremde `nur ich`-Inhalte nicht. Ein zum Player herabgestufter früherer Master sieht auch seine eigenen `nur ich`-Inhalte nicht (Owner-Rechte ruhen komplett; nach erneuter Hochstufung wieder da; keine Datenänderung beim Rollenwechsel). |
+
+**Zweistufig** (`visibility_status`) für **Universen und Karten** (**Karten-Ausnahme**): nur `veröffentlicht` / `nur Spielleitung`. Kein Owner, kein `nur ich`.
+
+**Owner:** Jeder Artikel, jede Quest, jedes Quest-Kapitel und jeder Pin hat einen Owner (Benutzer). Beim Anlegen wird der anlegende Benutzer Owner. Owner und `erstellt von` sind getrennt, damit ein späteres Übertragen möglich bleibt. Was passiert, wenn der Owner die Welt verlässt, steht im Backlog.
 
 Regeln:
-- **Standardwert für neu angelegte Inhalte ist `nur Spielleitung`.** Die Spielleitung veröffentlicht bewusst.
-- **Vererbung nach unten:** Ein Inhalt ist nur sichtbar, wenn auch alles darüber sichtbar ist. Ist ein Universum `nur Spielleitung`, sehen Player weder seine Karten noch deren Pins und Charakter-Marker, unabhängig von deren eigenem Status. Dasselbe gilt für eine versteckte Karte und ihre Pins.
-- Das Veröffentlichen eines Universums veröffentlicht nicht automatisch seine Karten oder Pins. Jeder Inhalt behält seinen eigenen Status.
+- **Standardwert neu:** Artikel, Quest, Quest-Kapitel, Pin → `nur ich`. Universum und Karte → `nur Spielleitung` (unverändert); Ausnahme: das automatisch angelegte erste Universum ist `veröffentlicht`.
+- Bestandsdaten behalten ihren bisherigen Wert; `owner` wird aus `erstellt von` befüllt.
+- **`nur ich` setzen** darf nur der Owner. Andere Spielleiter wechseln bei fremden Datensätzen nur zwischen `nur Spielleitung` und `veröffentlicht`.
+- **Vererbung nach unten:** Ein Inhalt ist nur sichtbar, wenn auch alles darüber sichtbar ist. Ist ein Universum `nur Spielleitung`, sehen Player weder seine Karten noch deren Pins und Charakter-Marker, unabhängig von deren eigenem Status. Dasselbe gilt für eine versteckte Karte und ihre Pins. Neu: Kapitel nur sichtbar, wenn die Quest sichtbar ist; Notizblock nur, wenn die Quest sichtbar ist.
+- Das Veröffentlichen eines Universums veröffentlicht nicht automatisch seine Karten oder Pins. Dasselbe gilt für Quest und Kapitel: jedes Kapitel behält seinen eigenen Status.
 
 ### 2.3 Rich-Text
 
-Formatierter Text aus dem Artikel-Editor (TipTap) mit dem in Plan 001 festgelegten Funktionsumfang, inkl. Erwähnungen (`@Name`) als Inhaltsverweise. Wird zusätzlich als Klartext für die Suche vorgehalten. Rich-Text wird verwendet für: Weltbeschreibung (**ohne** Erwähnungen), Universumsbeschreibung, Artikelinhalt, Questbeschreibung, Pinbeschreibung, Charakter-Bio (im MVP **ohne** Erwähnungen, siehe 3.8) und Tagebucheinträge.
+Formatierter Text aus dem Artikel-Editor (TipTap) mit dem in Plan 001 festgelegten Funktionsumfang, inkl. Erwähnungen (`@Name`) als Inhaltsverweise. Wird zusätzlich als Klartext für die Suche vorgehalten. Rich-Text wird verwendet für: Weltbeschreibung (**ohne** Erwähnungen), Universumsbeschreibung, Artikelinhalt, Questbeschreibung, Quest-Kapitelinhalt, Quest-Notizblock, Pinbeschreibung, Charakter-Bio (im MVP **ohne** Erwähnungen, siehe 3.8) und Tagebucheinträge.
 
 ### 2.4 Erwähnung & Erwähnungssuche
 
@@ -212,7 +224,8 @@ Regeln:
 | Titel | Klartext, max. 120 | ✅ | enthält keine Erwähnungen |
 | Beschreibung | Rich-Text | – | darf leer sein; im Popup angezeigt; **einziger Ort** für Erwähnungen am Pin, die ihn mit beliebig vielen Artikeln, Quests und Charakteren verknüpfen (OF-09) |
 | Position | relative Position | ✅ | |
-| Sichtbarkeit | Sichtbarkeitsstatus | ✅ | Standard `nur Spielleitung` |
+| Owner | Benutzer | ✅ | anlegender Benutzer; unveränderlich im MVP |
+| Sichtbarkeit | dreistufig (2.2) | ✅ | Standard `nur ich` |
 | Gesperrt | ja/nein | ✅ | Standard `nein`. Nur die Spielleitung sperrt und entsperrt. Ein gesperrter Pin lässt sich weder verschieben noch bearbeiten noch löschen, auch nicht durch die Spielleitung. Erlaubt ist nur das Entsperren. Mitglieder sehen gesperrte Pins normal, mit Schloss-Symbol (Entscheidung Projektinhaber 2026-09-22, Code-Review Plan 001 CR-020) |
 
 ### 3.8 Charakter
@@ -281,7 +294,8 @@ Regeln (OF-04):
 | Vorlagenfelder | Werte je nach Vorlagentyp (siehe 3.12) | – | |
 | Titelbild | Bild (JPG/PNG/WebP, max. 10 MB) | – | |
 | Inhalt | Rich-Text | – | |
-| Sichtbarkeit | Sichtbarkeitsstatus | ✅ | Standard `nur Spielleitung` |
+| Owner | Benutzer | ✅ | anlegender Benutzer; unveränderlich im MVP |
+| Sichtbarkeit | dreistufig (2.2) | ✅ | Standard `nur ich` |
 
 ### 3.12 Vorlagentyp (Konfiguration, keine Benutzerdaten)
 
@@ -305,9 +319,45 @@ Konkrete Vorlagentypen und Felder legt der MVP-Funktionsplan fest. Das Modell mu
 | Beschreibung | Rich-Text | – | |
 | Status | `offen` / `aktiv` / `abgeschlossen` / `gescheitert` | ✅ | Standard: `offen` |
 | Beteiligte Charaktere | Liste von Charakteren | – | nur in diese Welt mitgebrachte Charaktere; pro Beteiligung wird zusätzlich der Charaktername als Text festgehalten (bleibt nach Löschen des Charakters sichtbar, OF-05) |
-| Sichtbarkeit | Sichtbarkeitsstatus | ✅ | Standard `nur Spielleitung` |
+| Owner | Benutzer | ✅ | anlegender Benutzer; unveränderlich im MVP |
+| Sichtbarkeit | dreistufig (2.2) | ✅ | Standard `nur ich` |
 
-Anmerkung: Ein eigenes Feld „Auftraggeber“ gibt es nicht. Auftraggeber, Orte und weitere Bezüge entstehen über Erwähnungen in der Beschreibung oder über manuelle Relationen (OF-10).
+Anmerkung: Ein eigenes Feld „Auftraggeber“ gibt es nicht. Auftraggeber, Orte und weitere Bezüge entstehen über Erwähnungen in der Beschreibung oder über manuelle Relationen (OF-10). Die Quest-Beschreibung bleibt die Einleitung; darunter folgen Kapitel (3.13a). Quests ohne Kapitel funktionieren wie bisher.
+
+### 3.13a Quest-Kapitel
+
+Abschnitt einer Quest. Kein Branching, keine erzwungene Freigabe-Reihenfolge; die Position ist nur Anzeigereihenfolge (Lücken erlaubt).
+
+| Eigenschaft | Typ | Pflicht | Regel |
+|---|---|:-:|---|
+| Quest | Quest | ✅ | |
+| Titel | Text, max. 200 | ✅ | 1–200 Zeichen |
+| Inhalt | Rich-Text | – | |
+| Position | Zahl | ✅ | Anzeigereihenfolge innerhalb der Quest |
+| Owner | Benutzer | ✅ | anlegender Benutzer; unveränderlich im MVP |
+| Sichtbarkeit | dreistufig (2.2) | ✅ | Standard `nur ich`; Freigabe = auf `veröffentlicht` setzen |
+
+Regeln:
+- Sichtbar nur, wenn auch die Quest sichtbar ist (Vererbung).
+- Erwähnungen erzeugen Relationen der **Quest** nur aus Kapiteln mit Sichtbarkeit `veröffentlicht` (siehe 3.14).
+- Player-Nummerierung zählt nur die für den Betrachter sichtbaren Kapitel fortlaufend (verrät keine versteckten).
+
+### 3.13b Quest-Notizblock
+
+Genau ein gemeinsamer Rich-Text pro Quest für alle Mitglieder, die die Quest sehen.
+
+| Eigenschaft | Typ | Pflicht | Regel |
+|---|---|:-:|---|
+| Quest | Quest | ✅ | höchstens eine Zeile pro Quest |
+| Inhalt | Rich-Text | – | |
+| Version | Zahl | ✅ | Standard 0; bei jedem Speichern um 1 erhöht |
+| Geändert am / von | Zeitpunkt / Benutzer | ✅ | |
+
+Regeln:
+- Lesen und Schreiben: alle Mitglieder, die die Quest sehen. Kein eigener Owner.
+- Speichern mit Versionsprüfung: weicht die mitgeschickte Version von der gespeicherten ab, wird nicht gespeichert (Konflikt; Hinweis „Neu laden“).
+- Erwähnungen werden verlinkt angezeigt, erzeugen **keine** Relationen (wie Tagebuch).
+- Nicht Teil der Kampagnen-Hub-Suche.
 
 ### 3.14 Relation
 
@@ -329,7 +379,7 @@ Gerichtete Verbindung zwischen zwei Inhalten. Es gibt zwei Sorten (OF-06):
 
 | Herkunft | Entsteht aus |
 |---|---|
-| `Erwähnung` | `@Name` im Rich-Text eines Artikels, einer Quest, eines Pins, eines Charakters oder eines Universums (nicht aus Tagebucheinträgen, siehe 3.15, und nicht aus der Weltbeschreibung) |
+| `Erwähnung` | `@Name` im Rich-Text eines Artikels, einer Quest (Beschreibung), eines **veröffentlichten** Quest-Kapitels (Quelle = Quest), eines Pins, eines Charakters oder eines Universums (nicht aus Tagebucheinträgen, siehe 3.15, nicht aus dem Quest-Notizblock, siehe 3.13b, und nicht aus der Weltbeschreibung) |
 | `Vorlagenfeld` | Verweis- oder Verweislisten-Feld eines Artikels |
 | `Beteiligung` | beteiligter Charakter einer Quest (Quelle = Quest) |
 | `manuell` | direkt von der Spielleitung angelegt |
@@ -378,7 +428,8 @@ Regeln (OF-03):
 | **Welt** | Alles, was zur Welt gehört, wird gelöscht (Mitgliedschaften, Einladungslinks, Universen, Karten, Pins, Marker, Artikel, Quests, Relationen, Welt-Teilnahmen, Tagebucheinträge dieser Welt, Chat). Charaktere bleiben beim Besitzer erhalten. |
 | **Universum** | Seine Karten samt Pins und Markern werden gelöscht, ebenso alle Relationen mit dem Universum (oder einem seiner Pins) als Quelle oder Ziel. Erwähnungen in anderen Texten werden als nicht verlinkter Text angezeigt. Das letzte Universum einer Welt kann nicht gelöscht werden. |
 | **Karte** | Pins und Marker der Karte werden gelöscht. |
-| **Artikel**, **Quest** | Alle Relationen (automatisch und manuell) mit dem Inhalt als Quelle oder Ziel werden gelöscht. Erwähnungen in anderen Texten werden als nicht verlinkter Text angezeigt. |
+| **Artikel**, **Quest** | Alle Relationen (automatisch und manuell) mit dem Inhalt als Quelle oder Ziel werden gelöscht. Erwähnungen in anderen Texten werden als nicht verlinkter Text angezeigt. Quest löschen löscht zusätzlich ihre Kapitel und den Notizblock. |
+| **Quest-Kapitel** | Relationen der Quest werden neu berechnet (Erwähnungen aus diesem Kapitel entfallen, sofern nicht in Beschreibung oder anderen veröffentlichten Kapiteln). |
 | **Pin** | Alle Relationen mit dem Pin als Quelle oder Ziel werden gelöscht. |
 | **Mitgliedschaft** (Benutzer tritt aus oder wird entfernt) | **Es wird nichts gelöscht.** Die Mitgliedschaft wird **archiviert**, ebenso seine Welt-Teilnahmen in dieser Welt. Seine Charakter-Marker, Tagebucheinträge und alle Relationen mit seinen Charakteren als Quelle oder Ziel bleiben gespeichert, sind aber für niemanden in der Welt sichtbar, solange die Teilnahme archiviert ist (siehe 3.9; Relationen folgen der Regel „Quelle und Ziel sichtbar“). Erwähnungen seiner Charaktere erscheinen solange als nicht verlinkter Text. Quest-Beteiligungen seiner Charaktere und seine Chat-Nachrichten bleiben unverändert. Von ihm erstellte Artikel, Quests usw. bleiben erhalten. Bei erneutem Beitritt wird die Mitgliedschaft reaktiviert (als Player). Bringt er einen Charakter wieder mit, werden dessen Teilnahme, Marker, Tagebucheinträge und Relationen unverändert wieder sichtbar (OF-05).
 | **Charakter** (durch den Besitzer) | Alle Welt-Teilnahmen, Marker und Tagebucheinträge des Charakters werden gelöscht, ebenso Relationen mit dem Charakter als Quelle oder Ziel. Quest-Beteiligungen bleiben mit dem festgehaltenen Namen als Text (ohne Verlinkung). Erwähnungen werden als nicht verlinkter Text angezeigt (OF-05). |
@@ -395,11 +446,14 @@ Umsetzung der Rechtematrix aus Plan 001. „Spielleitung“ = Game Master + Mast
 | Welt | Mitglieder | Bearbeiten (Name, Beschreibung, Titelbild) und Löschen: nur Game Master (Entscheidung Projektinhaber 2026-09-23, Plan 003 T-007) |
 | Mitgliedschaft | Mitglieder | Rolle ändern (Player ↔ Master), entfernen: nur Game Master; nie beim Game Master selbst. Austreten: jedes Mitglied außer dem Game Master |
 | Einladungslink | Game Master | nur Game Master |
-| Universum, Karte, Pin | `veröffentlicht` (inkl. aller übergeordneten Ebenen): Mitglieder; sonst: Spielleitung | Spielleitung. Pin sperren/entsperren: Spielleitung; gesperrter Pin: nur Entsperren (siehe 3.7) |
+| Universum, Karte | `veröffentlicht` (inkl. aller übergeordneten Ebenen): Mitglieder; sonst: Spielleitung (zweistufig, Karten-Ausnahme) | Spielleitung |
+| Pin | dreistufig (2.2) inkl. Vererbung Universum/Karte; `nur ich` nur Owner (solange Spielleitung) | Anlegen: Spielleitung. Bearbeiten/Löschen: Owner und Spielleitung, jeweils nur wenn sie den Pin sehen. `nur ich` setzen: nur Owner. Pin sperren/entsperren: Spielleitung (bei Sichtbarkeit); gesperrter Pin: nur Entsperren (siehe 3.7) |
 | Charakter | Besitzer; Mitglieder jeder Welt mit nicht archivierter Teilnahme | nur Besitzer |
 | Welt-Teilnahme | Mitglieder (nicht archivierte) | mitbringen: nur Besitzer des Charakters |
 | Charakter-Marker | Mitglieder, sofern Teilnahme nicht archiviert und Karte für sie sichtbar | platzieren, verschieben, entfernen: Besitzer des Charakters und Spielleitung |
-| Artikel, Quest | `veröffentlicht`: Mitglieder; `nur Spielleitung`: Spielleitung | Spielleitung |
+| Artikel, Quest | dreistufig (2.2); `nur ich` nur Owner (solange Spielleitung) | Anlegen: Spielleitung. Bearbeiten/Löschen: Owner und Spielleitung, jeweils nur wenn sie den Datensatz sehen. `nur ich` setzen: nur Owner |
+| Quest-Kapitel | dreistufig inkl. Vererbung Quest → Kapitel | wie Artikel/Quest |
+| Quest-Notizblock | wer die Quest sehen darf | Lesen und Schreiben: alle, die die Quest sehen |
 | Relation | wer Quelle **und** Ziel sehen darf | automatische: nie direkt; manuelle: Spielleitung |
 | Tagebucheintrag | `privat`: Besitzer; `geteilt`: Besitzer + Spielleitung der Welt | nur Besitzer |
 | Chat-Nachricht | Mitglieder | Schreiben: Mitglieder; Bearbeiten: niemand; Löschen: Autor (eigene) und Spielleitung (alle); Würfelwürfe nur Spielleitung |
@@ -421,7 +475,7 @@ Umsetzung der Rechtematrix aus Plan 001. „Spielleitung“ = Game Master + Mast
 | ID | Frage | Betrifft | Status |
 |---|---|---|---|
 | OF-01 | Laufen Einladungslinks ab, und/oder sind sie in der Anzahl der Nutzungen begrenzt? | 3.4 | ✅ Ablauf wählbar (1 Tag / 7 Tage / unbegrenzt), Nutzungen unbegrenzt |
-| OF-02 | Gibt es den Status `nur Spielleitung` auch für Quests, Pins, Universen/Karten (z. B. versteckter Dungeon)? Welcher Standardwert gilt für neue Artikel? | 2.2, 3.7, 3.11, 3.13 | ✅ Artikel, Quests, Pins, Universen, Karten; Standard `nur Spielleitung`; Vererbung nach unten |
+| OF-02 | Gibt es den Status `nur Spielleitung` auch für Quests, Pins, Universen/Karten (z. B. versteckter Dungeon)? Welcher Standardwert gilt für neue Artikel? | 2.2, 3.7, 3.11, 3.13 | ✅ Ursprünglich zweistufig für alle; **ersetzt durch Plan `004` (2026-09-23):** Artikel/Quests/Pins/Kapitel dreistufig, Default `nur ich`; Universen/Karten bleiben zweistufig, Default `nur Spielleitung` |
 | OF-03 | Chat: Dürfen Nachrichten bearbeitet/gelöscht werden (von wem)? Schreibt man als Benutzer oder als aktiver Charakter? | 3.16 | ✅ als Benutzer; kein Bearbeiten; Löschen eigener bzw. durch Spielleitung, Würfe nie |
 | OF-04 | Charakter-Marker: Entsteht er automatisch beim Aktivsetzen (wo?) oder setzt ihn jemand bewusst auf die Karte? Was passiert beim Deaktivieren? | 3.10 | ✅ Platzieren durch Besitzer oder Spielleitung; bei Deaktivierung ausgeblendet, nicht gelöscht (Deaktivierung überholt, siehe Änderung 2026-09-22 oben) |
 | OF-05 | Was passiert mit Welt-Teilnahmen, Markern, Tagebucheinträgen und Quest-Beteiligungen, wenn ein Charakter gelöscht wird oder sein Besitzer die Welt verlässt? | 4 | ✅ Austritt archiviert; Löschen des Charakters löscht Tagebuch, Name bleibt in Quests |
