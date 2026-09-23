@@ -10,6 +10,7 @@ let gm: TestSession;
 let master: TestSession;
 let playerA: TestSession;
 let playerB: TestSession;
+const characterId = randomUUID();
 
 beforeAll(async () => {
   [gm, master, playerA, playerB] = await Promise.all([
@@ -39,12 +40,26 @@ beforeAll(async () => {
       (${worldId}, 'Tore von Wertheim', 'place', 'published', now(), ${gm.user.id}, ${gm.user.id}),
       (${worldId}, 'Burgtor', 'place', 'published', now(), ${gm.user.id}, ${gm.user.id}),
       (${worldId}, 'Torheit der Alten', 'none', 'gm_only', now(), ${gm.user.id}, ${gm.user.id}),
-      (${worldId}, '50% Rabatt', 'none', 'published', now(), ${gm.user.id}, ${gm.user.id})
+      (${worldId}, '50% Rabatt', 'none', 'published', now(), ${gm.user.id}, ${gm.user.id}),
+      (${worldId}, 'Gottschleim', 'none', 'published', now(), ${gm.user.id}, ${gm.user.id})
+  `;
+  await sql`
+    INSERT INTO universes (world_id, name, sort_order, visibility, created_by, updated_by)
+    VALUES (${worldId}, 'Schleimtal', 1, 'published', ${gm.user.id}, ${gm.user.id})
+  `;
+  await sql`
+    INSERT INTO characters (id, owner_id, name, skills, created_by, updated_by)
+    VALUES (${characterId}, ${playerA.user.id}, 'Schleimi', '[]'::jsonb, ${playerA.user.id}, ${playerA.user.id})
+  `;
+  await sql`
+    INSERT INTO world_participations (character_id, world_id, created_by, updated_by)
+    VALUES (${characterId}, ${worldId}, ${playerA.user.id}, ${playerA.user.id})
   `;
 });
 
 afterAll(async () => {
   await sql`DELETE FROM worlds WHERE id = ${worldId}`;
+  await sql`DELETE FROM characters WHERE id = ${characterId}`;
   await sql.end();
 });
 
@@ -90,6 +105,12 @@ describe("GET /api/worlds/[worldId]/mentions", () => {
     expect((await search(gm, "tor", "keine-uuid")).status).toBe(404);
     expect((await search(null, "tor")).status).toBe(401);
     expect((await search(gm, "x".repeat(201))).status).toBe(400);
+  });
+
+  it("finds articles, universes and brought characters (T-009 (3))", async () => {
+    const res = await search(gm, "schleim");
+    expect(res.data.hits?.map((hit) => hit.title)).toEqual(["Schleimi", "Schleimtal", "Gottschleim"]);
+    expect(res.data.hits?.map((hit) => hit.kind)).toEqual(["character", "universe", "article"]);
   });
 });
 

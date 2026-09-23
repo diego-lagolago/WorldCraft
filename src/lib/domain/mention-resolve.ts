@@ -1,21 +1,15 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { articles, characters, quests, universes, worldParticipations } from "@/db/schema";
+import { contentHref } from "@/lib/content-href";
 import { canSeeVisibility, type MembershipRole } from "@/lib/authz";
 import { mentionKey, type MentionRef, type MentionState, type MentionableKind } from "@/lib/editor/mentions";
 
 /** Reader view of one mention: a link, a red stub link, or plain text when missing or hidden. */
 export type ResolvedMention = { state: MentionState; href: string; title: string } | { state: "plain" };
 
-const PATH: Record<MentionableKind, string> = {
-  article: "articles",
-  quest: "quests",
-  character: "characters",
-  universe: "universes",
-};
-
 export function mentionHref(worldId: string, ref: MentionRef): string {
-  return `/w/${worldId}/${PATH[ref.kind]}/${ref.id}`;
+  return contentHref(worldId, ref.kind, ref.id);
 }
 
 function idsOf(refs: readonly MentionRef[], kind: MentionableKind): string[] {

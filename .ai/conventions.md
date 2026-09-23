@@ -25,7 +25,7 @@ src/
     w/[worldId]/        Produktseiten im Weltkontext (Shell aus components/shell)
     invite/[code]/      Einladung annehmen (außerhalb der Welt-Shell)
     spike/              Spike-Routen /spike/karte, /spike/chat
-  components/           wiederverwendbare UI (shell/, editor/, auth/, world/, characters/ …)
+  components/           wiederverwendbare UI (shell/, editor/, auth/, world/, characters/, articles/ …)
   db/                   Drizzle-Schema, Migrationen
   lib/                  Auth, Env, Hilfen
     authz/              Rechteschicht (eine Schicht für HTTP, Loader, später MCP)
@@ -33,6 +33,7 @@ src/
     domain/             Anwendungslogik je Fachbereich (DB-Zugriffe, Transaktionen)
     editor/             reine Editor-Logik (Sanitizing, Klartext, Erwähnungen)
     client/             reine Browser-Hilfen (localStorage, fetch-Helfer `apiRequest`)
+    templates/          Vorlagen-Registry und Feldvalidierung
   test/                 gemeinsame Test-Hilfen (API-Harness)
   spike/<name>/         Spike-UI und Spike-Logik (klar als Spike gekennzeichnet)
 scripts/                Migrations-/Hilfsskripte

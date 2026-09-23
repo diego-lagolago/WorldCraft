@@ -1,21 +1,27 @@
 import Link from "next/link";
+import { ArticleList } from "@/components/articles/ArticleList";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { worldPath } from "@/components/shell/nav";
 import { GmBadge, Hero } from "@/components/world/display";
 import { ROLE_LABEL } from "@/components/world/labels";
 import { isStaff } from "@/lib/authz/types";
+import { listArticles } from "@/lib/domain/articles";
 import { listUniverses } from "@/lib/domain/universes";
 import { getWorldDetails, listMyWorlds } from "@/lib/domain/worlds";
 import { asRichDoc } from "@/lib/editor/rich-text";
 import { requireWorldPage } from "@/lib/page-context";
+import { isTemplateType } from "@/lib/templates/registry";
 
-export default async function CampaignHubPage({ params }: PageProps<"/w/[worldId]">) {
+export default async function CampaignHubPage({ params, searchParams }: PageProps<"/w/[worldId]">) {
   const { worldId } = await params;
+  const { template } = await searchParams;
   const { world, membership, user } = await requireWorldPage(worldId);
-  const [details, universes, myWorlds] = await Promise.all([
+  const filter = typeof template === "string" && isTemplateType(template) ? template : "all";
+  const [details, universes, myWorlds, articles] = await Promise.all([
     getWorldDetails(world.id),
     listUniverses(world.id, membership.role),
     listMyWorlds(user.id),
+    listArticles(world.id, membership.role, filter),
   ]);
   const staff = isStaff(membership.role);
 
@@ -68,6 +74,8 @@ export default async function CampaignHubPage({ params }: PageProps<"/w/[worldId
           </Link>
         ))}
       </div>
+
+      <ArticleList worldId={world.id} articles={articles} canCreate={staff} filter={filter} />
     </>
   );
 }

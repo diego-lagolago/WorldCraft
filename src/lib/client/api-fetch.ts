@@ -5,10 +5,11 @@ export type ApiFetchResult<T> =
 /** Fetch with a German error string. Network failures never become unhandled rejections. */
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<ApiFetchResult<T>> {
   try {
+    const isForm = typeof FormData !== "undefined" && init?.body instanceof FormData;
     const response = await fetch(path, {
       ...init,
       headers: {
-        ...(init?.body !== undefined ? { "content-type": "application/json" } : {}),
+        ...(!isForm && init?.body !== undefined ? { "content-type": "application/json" } : {}),
         ...init?.headers,
       },
     });
