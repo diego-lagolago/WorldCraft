@@ -10,10 +10,12 @@ Reihenfolge der Pläne für WorldCraft. Jeder Plan liegt unter `.ai/feature-task
 | 2 | [`003` MVP-Funktionen](feature-tasks/003-mvp-funktionen.md) | Spikes zur produktiven App ausbauen: Welten, Universen, Mitglieder, Artikel mit Vorlagen, Relationen, Quests, Charaktere, Tagebuch, Karten, Chat, Suche. Design-Referenz: [`spikes/ui-prototype/index.html`](../spikes/ui-prototype/index.html) | ✅ Kern abgeschlossen (2026-09-23); T-017 Prod-Smoke offen (Push-Freigabe) |
 | 3 | [`004` Quest-Kapitel, Notizblock, Owner-Sichtbarkeit](feature-tasks/004-quest-kapitel-und-owner-sichtbarkeit.md) | Dreistufige Sichtbarkeit mit Owner; Quest-Kapitel; gemeinsamer Quest-Notizblock | ✅ abgeschlossen (2026-09-23) |
 | 4 | [`007` Chat-Verbesserungen](feature-tasks/007-chat-verbesserungen.md) | Eigene Nachrichten rechts, statische Avatare, Bearbeiten/Kopieren/Lösch-Bestätigung, Thread umbenennen, gemerkter Aufklapp-Zustand | ✅ abgeschlossen (2026-09-23) |
-| 5 | [`008` Würfel-Sheet wie im Chat-Spike](feature-tasks/008-wuerfel-sheet-wie-spike.md) | Würfel-Sheet an den Chat-Spike angleichen (mehrere Terme, Bonus, Ergebnisfeld); Chat-Zeile unverändert | ✅ umgesetzt (2026-09-23); `/code-review 008` offen |
-| 6 | [`002` MCP-Server für Claude](feature-tasks/002-mcp-server.md) | Nur lesender Remote-MCP-Server mit OAuth, nutzt die Daten- und Rechteschicht aus `003`/`004` | ⏳ geplant, startet nach `004` |
+| 5 | [`008` Würfel-Sheet wie im Chat-Spike](feature-tasks/008-wuerfel-sheet-wie-spike.md) | Würfel-Sheet an den Chat-Spike angleichen (mehrere Terme, Bonus, Ergebnisfeld); Chat-Zeile unverändert | ✅ abgeschlossen (2026-09-23) |
+| 6 | [`005` Monster (Bestiarium)](feature-tasks/005-monster-bestiarium.md) | Monster als eigener Inhaltstyp mit vollem Charakterblatt, Monster-Feldern und einem Bild; vollwertig in Relationen, Erwähnungen und Suche; Titelbild beim Anlegen von Artikeln | ⏭ als Nächstes; Plan-Review abgeschlossen |
+| 7 | [`006` Monster-Marker, Stecknadeln, Kartenfilter](feature-tasks/006-karten-marker-und-filter.md) | Monster auf Karten, Charakter- und Monster-Marker als Stecknadel mit Spitze auf der Position, Kartenfilter für Charaktere, Monster und Pin-Typen | ⏳ geplant, startet nach `005`; Plan-Review abgeschlossen |
+| 8 | [`002` MCP-Server für Claude](feature-tasks/002-mcp-server.md) | Nur lesender Remote-MCP-Server mit OAuth, nutzt die Daten- und Rechteschicht aus `003`/`004` | ⏳ geplant, startet nach `005` (Abgleich mit Monstern) |
 
-Die Nummern der Pläne geben die Reihenfolge ihrer Entstehung an, nicht die Reihenfolge der Umsetzung: `004` vor `002` (R4); `007` und `008` können parallel zu `004`–`006` laufen; `002` hängt von der Rechteschicht ab.
+Die Nummern der Pläne geben die Reihenfolge ihrer Entstehung an, nicht die Reihenfolge der Umsetzung: `004` vor `002` (R4); `005` vor `006` (006 setzt Monster voraus); `002` nach `005`, damit der MCP-Server Monster mit abdeckt (Abgleich in `005` T-011).
 
 Offene Ideen außerhalb dieser Pläne stehen in [`backlog.md`](backlog.md).
 
@@ -23,7 +25,9 @@ Offene Ideen außerhalb dieser Pläne stehen in [`backlog.md`](backlog.md).
 - **`003`:** Plan-Review abgeschlossen, UI-Prototyp am 2026-09-22 freigegeben. Kern MVP (T-001–T-016, T-018, T-019) erledigt; T-017 wartet auf Push-Freigabe für Prod-Smoke.
 - **`004`:** ✅ abgeschlossen (2026-09-23). Dreistufige Sichtbarkeit, Quest-Kapitel, Quest-Notizblock. Plan `002` kann starten (nach T-012-Abgleich).
 - **`007`:** Abgeschlossen (2026-09-23). Chat-UX: Ausrichtung, Avatare, Bearbeiten, Lösch-Bestätigung, Thread-Umbenennen, Aufklapp-Zustand; Nachtrag N1–N3 nach Smoketest (Absätze ohne Hintergrund, Aufklapp-Zustand per Cookie, Zeilen-Hervorhebung). Code-Review `code-review-007-chat-verbesserungen-2026-09-23.md`: alle Findings behoben (CR-013 verworfen), Review-Check 2026-09-23. Smoketest C7.1–C7.12 bestanden. Deploy mit dem nächsten freigegebenen Push.
-- **`008`:** Plan-Review abgeschlossen (2026-09-23). Würfel-Sheet nach Chat-Spike (Commit `b5d28e8`); Darstellung im Chatverlauf bleibt wie in der App. Unabhängig von `004`–`007`, berührt aber dieselben Chat-Dateien wie `007`.
+- **`008`:** Abgeschlossen (2026-09-23). Würfel-Sheet nach Chat-Spike (Commit `b5d28e8`); Darstellung im Chatverlauf bleibt wie in der App; Nachtrag N1: Anzahl und Bonus inline editierbar. Smoketest WS.1–WS.7 bestanden. Code-Review `code-review-008-wuerfel-sheet-wie-spike-2026-09-23.md`: alle Findings behoben (eines verworfen), Review-Check 2026-09-23.
+- **`005`:** Plan-Review abgeschlossen (2026-09-23, Entscheidungen PR1–PR6). Start mit `/plan-run 005` bei T-001; T-002 (Prototyp) braucht die Freigabe des Projektinhabers vor der Oberfläche. T-011 gleicht Plan `002` ab.
+- **`006`:** Plan-Review abgeschlossen (2026-09-23, Entscheidungen K5–K8). Startet nach Abschluss von `005`; T-002 (Prototyp) braucht die Freigabe des Projektinhabers.
 - **`002`:** Vor dem Start mit T-012 aus `004` abgleichen (Abgleich Plan 002 nach dreistufiger Sichtbarkeit/Owner/Kapitel/Notizblock, R4) und bei Bedarf erneut `/plan-review` ausführen. Zusätzlich weiter der Abgleich aus `003` T-018 in `architecture.md`.
 
 ## Arbeitsweise
