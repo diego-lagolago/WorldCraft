@@ -120,7 +120,7 @@
 - **Beschreibung:** Verweigerte Zwischenablage (unsicherer Kontext, Berechtigung) und nicht gefundene Summe enden in einem leeren `catch` bzw. `return` ohne Rückmeldung. Der Nutzer tippt und nichts passiert. (Verhalten wie im Spike.)
 - **Empfehlung:** Im Fehlerfall zeigt das Ergebnisfeld 1,2 s lang „Kopieren nicht möglich“ (gleicher Timer und gleiche Darstellung wie „Kopiert“, ohne Akzentrahmen). Nach CR-002 entfällt der Fall „Summe nicht gefunden“.
 - **Abnahmekriterium:** Bei abgelehntem `navigator.clipboard.writeText` zeigt das Ergebnisfeld kurz einen Hinweis statt nichts.
-- **Umsetzung (2026-09-23):** Bei Clipboard-Fehler 1,2 s „Kopieren nicht möglich“ ohne `.copied`-Akzentrahmen. Commit `5a6db01`. Features.md: N/A.
+- **Umsetzung (2026-09-23):** Bei Clipboard-Fehler 1,2 s „Kopieren nicht möglich“ ohne `.copied`-Akzentrahmen. Commit `3dc75aa`. Features.md: N/A.
 
 ## CR-010 – Hartkodierte Farbe in `.dice-result.copied`
 
@@ -131,6 +131,7 @@
 - **Beschreibung:** W3 verlangt App-Variablen. Die Farbe steht bereits zweimal an anderen Stellen in `globals.css` hartkodiert; jetzt ein drittes Mal.
 - **Empfehlung:** Variable `--accent-soft: #1f1a0e;` in `:root` von `globals.css` definieren und an allen drei Stellen `var(--accent-soft)` verwenden.
 - **Abnahmekriterium:** `grep -n "#1f1a0e" src/app/globals.css` findet nur noch die Variablendefinition.
+- **Umsetzung (2026-09-23):** `--accent-soft: #1f1a0e` in `:root`; drei bisherigen Stellen auf `var(--accent-soft)`. Commit `61f5690`. Features.md: N/A.
 
 ---
 
