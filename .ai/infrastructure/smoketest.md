@@ -172,12 +172,12 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 
 | # | Kriterium | Wo | Ergebnis | Beobachtung |
 |---|---|---|---|---|
-| C7.1 | **Eigene Nachrichten rechts**, fremde links (auch in Threads) | Lokal | offen | |
-| C7.2 | **Statische Avatare:** animierte Discord-GIFs stehen still | Lokal | offen | |
-| C7.3 | **Bearbeiten:** nur eigene Textnachrichten; „(bearbeitet)“; Würfel/Eröffnung ohne ✏️; Realtime beim anderen | Lokal | offen | |
-| C7.4 | **Kopieren:** Text = Markdown-Rohtext; Würfel formatiert; Eröffnung = Thread-Titel; Toast „Kopiert“ | Lokal | offen | |
-| C7.5 | **Löschen:** Dialog mit Vorschau; Abbrechen/Esc behält; Shift+🗑 sofort | Lokal | offen | |
-| C7.6 | **Thread umbenennen:** ⋯ nur Ersteller/SL; Titel in Kanalliste, Karte und Kopf live | Lokal | offen | |
-| C7.7 | **Aufklapp merken:** Kanal auf/zu, Reload behält Zustand | Lokal | offen | |
-| C7.8 | **Desktop:** Schnellaktionen bei Hover/Fokus; **Touch:** nach Antippen | Lokal | offen | |
+| C7.1 | **Eigene Nachrichten rechts**, fremde links (auch in Threads) | Lokal | **bestanden** | Owner 2026-09-23. Anmerkung: Mehrzeilige eigene Nachrichten (Absätze) wirken durch den Hintergrund der Textfläche seltsam. |
+| C7.2 | **Statische Avatare:** animierte Discord-GIFs stehen still | Lokal | **bestanden** | Owner 2026-09-23. |
+| C7.3 | **Bearbeiten:** nur eigene Textnachrichten; „(bearbeitet)“; Würfel/Eröffnung ohne ✏️; Realtime beim anderen | Lokal | **bestanden** | Owner 2026-09-23. |
+| C7.4 | **Kopieren:** Text = Markdown-Rohtext; Würfel formatiert; Eröffnung = Thread-Titel; Toast „Kopiert“ | Lokal | **bestanden** | Owner 2026-09-23. |
+| C7.5 | **Löschen:** Dialog mit Vorschau; Abbrechen/Esc behält; Shift+🗑 sofort | Lokal | **bestanden** | Owner 2026-09-23. |
+| C7.6 | **Thread umbenennen:** ⋯ nur Ersteller/SL; Titel in Kanalliste, Karte und Kopf live | Lokal | **bestanden** | Owner 2026-09-23. |
+| C7.7 | **Aufklapp merken:** Kanal auf/zu, Reload behält Zustand | Lokal | **bestanden** | Owner 2026-09-23. Anmerkung: Beim Neuladen kurzes Flackern (zu → auf), stört bei vielen Kanälen und Threads. |
+| C7.8 | **Desktop:** Schnellaktionen bei Hover/Fokus; **Touch:** nach Antippen | Lokal | **bestanden** | Owner 2026-09-23. Anmerkung: Nachricht mit offenen Schnellaktionen (Hover/Antippen) sollte leicht heller hervorgehoben werden. |
 | C7.9 | **`/r 1d20`** würfelt wie `/roll 1d20` (Alias) | Lokal | offen | |
