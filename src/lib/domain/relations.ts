@@ -5,6 +5,7 @@ import {
   articles,
   characters,
   maps,
+  monsters,
   pins,
   questChapters,
   questParticipants,
@@ -48,6 +49,7 @@ const SOURCE_FK = {
   character: relations.sourceCharacterId,
   pin: relations.sourcePinId,
   universe: relations.sourceUniverseId,
+  monster: relations.sourceMonsterId,
 } as const;
 
 function sourceValues(kind: ContentKind, id: string) {
@@ -58,6 +60,7 @@ function sourceValues(kind: ContentKind, id: string) {
     sourceCharacterId: kind === "character" ? id : null,
     sourcePinId: kind === "pin" ? id : null,
     sourceUniverseId: kind === "universe" ? id : null,
+    sourceMonsterId: kind === "monster" ? id : null,
   };
 }
 
@@ -69,6 +72,7 @@ function targetValues(kind: ContentKind, id: string) {
     targetCharacterId: kind === "character" ? id : null,
     targetPinId: kind === "pin" ? id : null,
     targetUniverseId: kind === "universe" ? id : null,
+    targetMonsterId: kind === "monster" ? id : null,
   };
 }
 
@@ -432,9 +436,10 @@ async function loadVisibleTargets(
   const characterIds = ids("character");
   const pinIds = ids("pin");
   const universeIds = ids("universe");
+  const monsterIds = ids("monster");
   const viewer = { role, userId: viewerId };
 
-  const [articleRows, questRows, characterRows, pinRows, universeRows] = await Promise.all([
+  const [articleRows, questRows, characterRows, pinRows, universeRows, monsterRows] = await Promise.all([
     articleIds.length
       ? db
           .select({
@@ -498,6 +503,19 @@ async function loadVisibleTargets(
           .select({ id: universes.id, title: universes.name, visibility: universes.visibility })
           .from(universes)
           .where(and(eq(universes.worldId, worldId), inArray(universes.id, universeIds)))
+      : [],
+    monsterIds.length
+      ? db
+          .select({
+            id: monsters.id,
+            title: monsters.name,
+            visibility: monsters.visibility,
+            ownerId: monsters.ownerId,
+            portraitId: monsters.portraitId,
+            rarity: monsters.rarity,
+          })
+          .from(monsters)
+          .where(and(eq(monsters.worldId, worldId), inArray(monsters.id, monsterIds)))
       : [],
   ]);
 
@@ -570,6 +588,24 @@ async function loadVisibleTargets(
       id: row.id,
       title: row.title,
       href: contentHref(worldId, "universe", row.id),
+    });
+  }
+  for (const row of monsterRows) {
+    if (
+      !canSeeContent(
+        { role, userId: viewerId },
+        { visibility: row.visibility, ownerId: row.ownerId },
+      )
+    ) {
+      continue;
+    }
+    out.set(`monster:${row.id}`, {
+      kind: "monster",
+      id: row.id,
+      title: row.title,
+      href: contentHref(worldId, "monster", row.id),
+      portraitId: row.portraitId,
+      rarity: row.rarity,
     });
   }
   return out;

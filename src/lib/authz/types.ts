@@ -32,6 +32,7 @@ export const CONTENT_KINDS = [
   "character",
   "pin",
   "universe",
+  "monster",
 ] as const;
 export type ContentKind = (typeof CONTENT_KINDS)[number];
 

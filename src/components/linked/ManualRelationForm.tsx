@@ -12,6 +12,7 @@ const KIND_LABEL: Record<ContentKind, string> = {
   character: "Charakter",
   pin: "Pin",
   universe: "Universum",
+  monster: "Monster",
 };
 
 export function ManualRelationForm({

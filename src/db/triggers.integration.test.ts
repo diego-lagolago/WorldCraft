@@ -50,17 +50,17 @@ beforeAll(async () => {
     VALUES (${universeId}, ${worldId}, 'Hauptuniversum', 0, 'published', ${gmId}, ${gmId})
   `;
   await sql`
-    INSERT INTO articles (id, world_id, title, created_by, updated_by)
+    INSERT INTO articles (id, world_id, title, owner_id, created_by, updated_by)
     VALUES
-      (${articleId}, ${worldId}, 'Artikel', ${gmId}, ${gmId}),
-      (${otherArticleId}, ${otherWorldId}, 'Fremder Artikel', ${gmId}, ${gmId})
+      (${articleId}, ${worldId}, 'Artikel', ${gmId}, ${gmId}, ${gmId}),
+      (${otherArticleId}, ${otherWorldId}, 'Fremder Artikel', ${gmId}, ${gmId}, ${gmId})
   `;
   await sql`
-    INSERT INTO quests (id, world_id, title, created_by, updated_by)
+    INSERT INTO quests (id, world_id, title, owner_id, created_by, updated_by)
     VALUES
-      (${questA}, ${worldId}, 'Quest A', ${gmId}, ${gmId}),
-      (${questB}, ${worldId}, 'Quest B', ${gmId}, ${gmId}),
-      (${otherQuestId}, ${otherWorldId}, 'Fremde Quest', ${gmId}, ${gmId})
+      (${questA}, ${worldId}, 'Quest A', ${gmId}, ${gmId}, ${gmId}),
+      (${questB}, ${worldId}, 'Quest B', ${gmId}, ${gmId}, ${gmId}),
+      (${otherQuestId}, ${otherWorldId}, 'Fremde Quest', ${gmId}, ${gmId}, ${gmId})
   `;
   await sql`
     INSERT INTO characters (id, owner_id, name, skills, created_by, updated_by)
@@ -128,6 +128,63 @@ describe("TRIG-*", () => {
         'mention', ${gmId}, ${gmId}
       )
     `);
+  });
+
+  it("accepts monster relations and rejects mismatched kind/FK (Plan 005 T-004)", async () => {
+    const monsterId = randomUUID();
+    await sql`
+      INSERT INTO monsters (
+        id, world_id, name, skills, abilities, owner_id, created_by, updated_by
+      )
+      VALUES (
+        ${monsterId}, ${worldId}, 'Schattenwolf', '[]'::jsonb, '[]'::jsonb,
+        ${gmId}, ${gmId}, ${gmId}
+      )
+    `;
+    const [row] = await sql<{ source_id: string; target_id: string }>`
+      INSERT INTO relations (
+        world_id, source_kind, source_monster_id, target_kind, target_article_id,
+        origin, created_by, updated_by
+      )
+      VALUES (
+        ${worldId}, 'monster', ${monsterId}, 'article', ${articleId},
+        'mention', ${gmId}, ${gmId}
+      )
+      RETURNING source_id, target_id
+    `;
+    expect(row?.source_id).toBe(monsterId);
+    expect(row?.target_id).toBe(articleId);
+
+    await expect(sql`
+      INSERT INTO relations (
+        world_id, source_kind, source_article_id, target_kind, target_article_id,
+        origin, created_by, updated_by
+      )
+      VALUES (
+        ${worldId}, 'monster', ${articleId}, 'article', ${articleId},
+        'mention', ${gmId}, ${gmId}
+      )
+    `).rejects.toThrow();
+
+    await expect(sql`
+      INSERT INTO monsters (
+        id, world_id, name, skills, abilities, attr_str, owner_id, created_by, updated_by
+      )
+      VALUES (
+        ${randomUUID()}, ${worldId}, 'Kaputt', '[]'::jsonb, '[]'::jsonb, 31,
+        ${gmId}, ${gmId}, ${gmId}
+      )
+    `).rejects.toThrow();
+
+    await expect(sql`
+      INSERT INTO monsters (
+        id, world_id, name, skills, abilities, owner_id, created_by, updated_by
+      )
+      VALUES (
+        ${randomUUID()}, ${worldId}, 'Objekt', '{}'::jsonb, '[]'::jsonb,
+        ${gmId}, ${gmId}, ${gmId}
+      )
+    `).rejects.toThrow();
   });
 
   it("TRIG-UNIVERSE-LAST keeps the final universe and allows deleting another", async () => {

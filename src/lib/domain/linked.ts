@@ -14,6 +14,7 @@ export type LinkedItem = {
   mapName?: string;
   templateType?: string;
   portraitId?: string | null;
+  rarity?: string;
 };
 
 export const LINKED_KIND_ORDER: readonly ContentKind[] = [
@@ -22,6 +23,7 @@ export const LINKED_KIND_ORDER: readonly ContentKind[] = [
   "quest",
   "character",
   "universe",
+  "monster",
 ];
 
 export function linkedGroupLabel(kind: ContentKind, templateType?: string): string {
@@ -29,7 +31,14 @@ export function linkedGroupLabel(kind: ContentKind, templateType?: string): stri
     const template = templateOf(templateType ?? "none");
     return template.type === "none" ? "Artikel" : template.plural;
   }
-  return { pin: "Pins", quest: "Quests", character: "Charaktere", universe: "Universen", article: "Artikel" }[kind];
+  return {
+    pin: "Pins",
+    quest: "Quests",
+    character: "Charaktere",
+    universe: "Universen",
+    article: "Artikel",
+    monster: "Monster",
+  }[kind];
 }
 
 /** Fachmodell 2.5: kind groups, articles split by template; empty groups omitted. */

@@ -13,5 +13,7 @@ export function contentHref(worldId: string, kind: ContentKind, id: string): str
       return `/w/${worldId}/characters/${id}`;
     case "universe":
       return `/w/${worldId}/universes/${id}`;
+    case "monster":
+      return `/w/${worldId}/monsters/${id}`;
   }
 }

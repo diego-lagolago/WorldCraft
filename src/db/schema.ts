@@ -28,6 +28,13 @@ function plainTsv(column: string) {
   return sql.raw(`to_tsvector('german', coalesce(${column}, ''))`);
 }
 
+/** Full-text over name + bio (monsters; PR4). */
+function nameAndPlainTsv(nameColumn: string, plainColumn: string) {
+  return sql.raw(
+    `to_tsvector('german', coalesce(${nameColumn}, '') || ' ' || coalesce(${plainColumn}, ''))`,
+  );
+}
+
 /**
  * Small key-value table so the homepage can prove a live DB read (T-007).
  * Domain tables from `.ai/architecture/datenmodell.md` follow in later tasks.
@@ -147,6 +154,7 @@ export const contentKind = pgEnum("content_kind", [
   "character",
   "pin",
   "universe",
+  "monster",
 ]);
 export const relationOrigin = pgEnum("relation_origin", [
   "mention",
@@ -159,6 +167,40 @@ export const questStatus = pgEnum("quest_status", [
   "active",
   "completed",
   "failed",
+]);
+export const monsterKind = pgEnum("monster_kind", [
+  "beast",
+  "undead",
+  "demon",
+  "dragon",
+  "humanoid",
+  "construct",
+  "aberration",
+  "plant",
+  "magical",
+  "other",
+]);
+export const monsterRarity = pgEnum("monster_rarity", [
+  "common",
+  "uncommon",
+  "rare",
+  "epic",
+  "legendary",
+]);
+export const monsterDanger = pgEnum("monster_danger", [
+  "harmless",
+  "dangerous",
+  "deadly",
+  "devastating",
+  "divine",
+  "apocalyptic",
+]);
+export const monsterSize = pgEnum("monster_size", [
+  "tiny",
+  "small",
+  "medium",
+  "large",
+  "gigantic",
 ]);
 
 const protocol = {
@@ -461,6 +503,64 @@ export const articles = pgTable(
   ],
 );
 
+export const monsters = pgTable(
+  "monsters",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    worldId: uuid("world_id")
+      .notNull()
+      .references(() => worlds.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    portraitId: uuid("portrait_id").references(() => files.id, { onDelete: "set null" }),
+    class: text("class"),
+    attrStr: smallint("attr_str"),
+    attrDex: smallint("attr_dex"),
+    attrCon: smallint("attr_con"),
+    attrInt: smallint("attr_int"),
+    attrWis: smallint("attr_wis"),
+    attrCha: smallint("attr_cha"),
+    skills: jsonb("skills").default(sql`'[]'::jsonb`).notNull(),
+    proficiencyBonus: smallint("proficiency_bonus").default(2).notNull(),
+    abilities: jsonb("abilities").default(sql`'[]'::jsonb`).notNull(),
+    personality: text("personality"),
+    ideals: text("ideals"),
+    bonds: text("bonds"),
+    flaws: text("flaws"),
+    bioJson: jsonb("bio_json"),
+    bioPlain: text("bio_plain"),
+    bioTsv: tsvector("bio_tsv").generatedAlwaysAs(nameAndPlainTsv("name", "bio_plain")),
+    kind: monsterKind("kind").default("other").notNull(),
+    rarity: monsterRarity("rarity").default("common").notNull(),
+    isLegendary: boolean("is_legendary").default(false).notNull(),
+    danger: monsterDanger("danger").default("harmless").notNull(),
+    size: monsterSize("size").default("medium").notNull(),
+    habitatArticleId: uuid("habitat_article_id").references(() => articles.id, {
+      onDelete: "set null",
+    }),
+    visibility: contentVisibility("visibility").default("owner_only").notNull(),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => users.id),
+    ...protocol,
+  },
+  (t) => [
+    index("monsters_world").on(t.worldId),
+    index("monsters_world_owner").on(t.worldId, t.ownerId),
+    index("monsters_name_trgm").using("gin", sql`${t.name} gin_trgm_ops`),
+    index("monsters_bio_tsv").using("gin", t.bioTsv),
+    check("monsters_name_length", sql`char_length(${t.name}) BETWEEN 1 AND 120`),
+    check("monsters_skills_array", sql`jsonb_typeof(${t.skills}) = 'array'`),
+    check("monsters_abilities_array", sql`jsonb_typeof(${t.abilities}) = 'array'`),
+    check("monsters_proficiency_bonus", sql`${t.proficiencyBonus} BETWEEN 0 AND 10`),
+    check("monsters_attr_str", sql`${t.attrStr} IS NULL OR ${t.attrStr} BETWEEN 1 AND 30`),
+    check("monsters_attr_dex", sql`${t.attrDex} IS NULL OR ${t.attrDex} BETWEEN 1 AND 30`),
+    check("monsters_attr_con", sql`${t.attrCon} IS NULL OR ${t.attrCon} BETWEEN 1 AND 30`),
+    check("monsters_attr_int", sql`${t.attrInt} IS NULL OR ${t.attrInt} BETWEEN 1 AND 30`),
+    check("monsters_attr_wis", sql`${t.attrWis} IS NULL OR ${t.attrWis} BETWEEN 1 AND 30`),
+    check("monsters_attr_cha", sql`${t.attrCha} IS NULL OR ${t.attrCha} BETWEEN 1 AND 30`),
+  ],
+);
+
 export const quests = pgTable(
   "quests",
   {
@@ -597,8 +697,11 @@ export const relations = pgTable(
     sourceUniverseId: uuid("source_universe_id").references(() => universes.id, {
       onDelete: "cascade",
     }),
+    sourceMonsterId: uuid("source_monster_id").references(() => monsters.id, {
+      onDelete: "cascade",
+    }),
     sourceId: uuid("source_id").generatedAlwaysAs(
-      sql`coalesce(source_article_id, source_quest_id, source_character_id, source_pin_id, source_universe_id)`,
+      sql`coalesce(source_article_id, source_quest_id, source_character_id, source_pin_id, source_universe_id, source_monster_id)`,
     ),
     targetKind: contentKind("target_kind").notNull(),
     targetArticleId: uuid("target_article_id").references(() => articles.id, {
@@ -614,8 +717,11 @@ export const relations = pgTable(
     targetUniverseId: uuid("target_universe_id").references(() => universes.id, {
       onDelete: "cascade",
     }),
+    targetMonsterId: uuid("target_monster_id").references(() => monsters.id, {
+      onDelete: "cascade",
+    }),
     targetId: uuid("target_id").generatedAlwaysAs(
-      sql`coalesce(target_article_id, target_quest_id, target_character_id, target_pin_id, target_universe_id)`,
+      sql`coalesce(target_article_id, target_quest_id, target_character_id, target_pin_id, target_universe_id, target_monster_id)`,
     ),
     origin: relationOrigin("origin").notNull(),
     templateFieldKey: text("template_field_key"),
@@ -644,6 +750,7 @@ export const relations = pgTable(
         + (case when ${t.sourceCharacterId} is not null then 1 else 0 end)
         + (case when ${t.sourcePinId} is not null then 1 else 0 end)
         + (case when ${t.sourceUniverseId} is not null then 1 else 0 end)
+        + (case when ${t.sourceMonsterId} is not null then 1 else 0 end)
       ) = 1
       and (
         (${t.sourceKind} = 'article' and ${t.sourceArticleId} is not null)
@@ -651,6 +758,7 @@ export const relations = pgTable(
         or (${t.sourceKind} = 'character' and ${t.sourceCharacterId} is not null)
         or (${t.sourceKind} = 'pin' and ${t.sourcePinId} is not null)
         or (${t.sourceKind} = 'universe' and ${t.sourceUniverseId} is not null)
+        or (${t.sourceKind} = 'monster' and ${t.sourceMonsterId} is not null)
       )
       and (
         (case when ${t.targetArticleId} is not null then 1 else 0 end)
@@ -658,6 +766,7 @@ export const relations = pgTable(
         + (case when ${t.targetCharacterId} is not null then 1 else 0 end)
         + (case when ${t.targetPinId} is not null then 1 else 0 end)
         + (case when ${t.targetUniverseId} is not null then 1 else 0 end)
+        + (case when ${t.targetMonsterId} is not null then 1 else 0 end)
       ) = 1
       and (
         (${t.targetKind} = 'article' and ${t.targetArticleId} is not null)
@@ -665,6 +774,7 @@ export const relations = pgTable(
         or (${t.targetKind} = 'character' and ${t.targetCharacterId} is not null)
         or (${t.targetKind} = 'pin' and ${t.targetPinId} is not null)
         or (${t.targetKind} = 'universe' and ${t.targetUniverseId} is not null)
+        or (${t.targetKind} = 'monster' and ${t.targetMonsterId} is not null)
       )
       and not (${t.sourceKind} = ${t.targetKind} and ${t.sourceId} = ${t.targetId})
       and (
@@ -809,4 +919,5 @@ export const FILE_REFERENCE_COLUMNS = [
   maps.imageId,
   characters.portraitId,
   characterImages.fileId,
+  monsters.portraitId,
 ] as const;
