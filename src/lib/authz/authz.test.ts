@@ -202,14 +202,16 @@ describe("APP-MEMBER-ADMIN", () => {
 describe("APP-CHAT-DELETE", () => {
   const text = { authorId: "player", hasDice: false, opensThread: false };
 
-  it("lets the author and staff delete text, and nobody delete dice or thread openers", () => {
+  it("lets the author and staff delete text; only staff delete dice; nobody delete thread openers", () => {
     expect(authorizeDeleteChatMessage(row("player"), text).ok).toBe(true);
     expect(authorizeDeleteChatMessage(row("master"), { ...text, authorId: "someone" }).ok).toBe(true);
     expect(authorizeDeleteChatMessage(row("player"), { ...text, authorId: "master" })).toMatchObject({
       ok: false,
       status: 403,
     });
-    expect(authorizeDeleteChatMessage(row("game_master"), { ...text, hasDice: true })).toMatchObject({
+    expect(authorizeDeleteChatMessage(row("game_master"), { ...text, hasDice: true }).ok).toBe(true);
+    expect(authorizeDeleteChatMessage(row("master"), { ...text, hasDice: true }).ok).toBe(true);
+    expect(authorizeDeleteChatMessage(row("player"), { ...text, hasDice: true })).toMatchObject({
       ok: false,
       status: 403,
     });

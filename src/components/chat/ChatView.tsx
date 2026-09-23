@@ -6,6 +6,7 @@ import type { ChatState } from "@/lib/chat/types";
 import { ChannelList } from "./ChannelList";
 import { ChannelSheet, ComposerBar, DiceSheet, NewChannelSheet, ThreadSheet } from "./ComposerBar";
 import { MessageList } from "./MessageList";
+import { Toast } from "./Toast";
 import { useChatRealtime } from "./use-chat-realtime";
 import { useChatStream } from "./use-chat-stream";
 
@@ -86,14 +87,6 @@ export function ChatView({
             </div>
           </div>
           {stream.error ? <p className="chat-error">{stream.error}</p> : null}
-          {stream.notice ? (
-            <p className="chat-notice">
-              {stream.notice}
-              <button type="button" onClick={stream.clearNotice} aria-label="Hinweis schließen">
-                ×
-              </button>
-            </p>
-          ) : null}
           {stream.loading && !state ? <p className="empty">Chat wird geladen …</p> : null}
           {state?.channel ? (
             <MessageList
@@ -116,6 +109,7 @@ export function ChatView({
             onOpenDice={() => setDiceOpen(true)}
           />
       </section>
+      {stream.notice ? <Toast message={stream.notice} onDone={stream.clearNotice} /> : null}
       {diceOpen && state ? (
         <DiceSheet
           postToChat={state.dicePostToChat}

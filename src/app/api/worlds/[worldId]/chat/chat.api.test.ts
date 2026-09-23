@@ -122,7 +122,8 @@ describe("Produkt-Chat", () => {
     expect(dice.status).toBe(201);
     const diceId = (dice.data as { message?: ChatMessageDto }).message?.id;
     expect(diceId).toBeTruthy();
-    expect((await api(gm, "DELETE", `/api/worlds/${worldId}/chat/messages/${diceId}`)).status).toBe(403);
+    expect((await api(playerA, "DELETE", `/api/worlds/${worldId}/chat/messages/${diceId}`)).status).toBe(403);
+    expect((await api(gm, "DELETE", `/api/worlds/${worldId}/chat/messages/${diceId}`)).status).toBe(200);
 
     expect((await api(playerA, "POST", `/api/worlds/${worldId}/chat/channels`, { name: "Taverne" })).status).toBe(403);
     const created = await api<{ id: string; name: string }>(master, "POST", `/api/worlds/${worldId}/chat/channels`, {

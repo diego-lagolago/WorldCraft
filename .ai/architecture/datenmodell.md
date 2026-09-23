@@ -462,7 +462,7 @@ Threads werden im MVP nicht einzeln archiviert oder gelöscht. Archiviert der Ka
 | `dice_sum` | integer | – | |
 | `sent_at` | timestamptz | ✅ | |
 
-Kein `updated_*`. `UQ-MSG-OPENS-THREAD`: `opens_thread_id` eindeutig, wo gesetzt (mehrere `NULL` bleiben erlaubt). Würfelwurf = `dice_expression`, `dice_terms` und `dice_sum` gemeinsam gesetzt. `CHK-DICE-SHAPE`: alle drei Dice-Spalten gesetzt oder alle drei leer. Löschen: physisches DELETE; verboten wenn Dice gesetzt (`APP-CHAT-DELETE`). Eine Nachricht, die einen Thread eröffnet (`opens_thread_id` gesetzt), ist ebenfalls nicht löschbar.
+Kein `updated_*`. `UQ-MSG-OPENS-THREAD`: `opens_thread_id` eindeutig, wo gesetzt (mehrere `NULL` bleiben erlaubt). Würfelwurf = `dice_expression`, `dice_terms` und `dice_sum` gemeinsam gesetzt. `CHK-DICE-SHAPE`: alle drei Dice-Spalten gesetzt oder alle drei leer. Löschen: physisches DELETE; Würfelwürfe nur durch Spielleitung (`APP-CHAT-DELETE`). Eine Nachricht, die einen Thread eröffnet (`opens_thread_id` gesetzt), ist ebenfalls nicht löschbar.
 
 ---
 
@@ -707,7 +707,7 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 | R-3.15-3 | Nur Besitzer schreibt | `APP-AUTHZ` |
 | R-3.16-1 | Anzeige unter Benutzer | nur `author_id`, keine Charakter-FK |
 | R-3.16-2 | Nicht bearbeitbar | kein Update-Pfad |
-| R-3.16-3 | Löschen Autor/Spielleitung, Würfel nie | `APP-CHAT-DELETE` |
+| R-3.16-3 | Löschen Autor/Spielleitung; Würfel nur Spielleitung | `APP-CHAT-DELETE` |
 | R-3.16-4 | Gelöscht = weg | physisches DELETE |
 | R-3.16-5 | Würfel nur Server | `APP-DICE-SERVER` ignoriert Client-Ergebnisse |
 

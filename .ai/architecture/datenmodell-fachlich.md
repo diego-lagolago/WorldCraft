@@ -366,7 +366,7 @@ Regel: Nur der Besitzer des Charakters schreibt, bearbeitet und löscht Einträg
 Regeln (OF-03):
 - Nachrichten erscheinen immer unter dem **Benutzer** (Anzeigename und Avatar), nicht unter einem Charakter.
 - Nachrichten können nicht bearbeitet werden.
-- Der Autor kann eigene Nachrichten löschen, die Spielleitung alle. **Ausnahme:** Nachrichten mit Würfelwurf kann niemand löschen.
+- Der Autor kann eigene Nachrichten löschen, die Spielleitung alle. **Ausnahme:** Nachrichten mit Würfelwurf darf nur die Spielleitung löschen.
 - Gelöschte Nachrichten werden endgültig entfernt (kein Platzhalter).
 
 ---
@@ -402,7 +402,7 @@ Umsetzung der Rechtematrix aus Plan 001. „Spielleitung“ = Game Master + Mast
 | Artikel, Quest | `veröffentlicht`: Mitglieder; `nur Spielleitung`: Spielleitung | Spielleitung |
 | Relation | wer Quelle **und** Ziel sehen darf | automatische: nie direkt; manuelle: Spielleitung |
 | Tagebucheintrag | `privat`: Besitzer; `geteilt`: Besitzer + Spielleitung der Welt | nur Besitzer |
-| Chat-Nachricht | Mitglieder | Schreiben: Mitglieder; Bearbeiten: niemand; Löschen: Autor (eigene) und Spielleitung (alle), außer Würfelwürfe |
+| Chat-Nachricht | Mitglieder | Schreiben: Mitglieder; Bearbeiten: niemand; Löschen: Autor (eigene) und Spielleitung (alle); Würfelwürfe nur Spielleitung |
 
 ---
 

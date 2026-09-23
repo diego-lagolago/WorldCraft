@@ -5,6 +5,25 @@ import { formatDiceRoll } from "@/lib/chat/dice-format";
 import type { ChatMessageDto, ChatThreadDto } from "@/lib/chat/types";
 import { ChatMarkdown } from "./ChatMarkdown";
 
+function DiceBubble({
+  expression,
+  terms,
+  sum,
+}: {
+  expression: string;
+  terms: NonNullable<ChatMessageDto["dice"]>["terms"];
+  sum: number;
+}) {
+  const line = formatDiceRoll(expression, terms);
+  const eq = line.lastIndexOf(" = ");
+  const head = eq >= 0 ? line.slice(0, eq) : line;
+  return (
+    <div className="dice">
+      🎲 {head} = <b>{sum}</b>
+    </div>
+  );
+}
+
 type Props = {
   messages: ChatMessageDto[];
   threads: ChatThreadDto[];
@@ -51,7 +70,9 @@ export function MessageList({
       {messages.length === 0 ? <p className="empty">Noch keine Nachrichten.</p> : null}
       {messages.map((message) => {
         const canDelete =
-          !message.dice && !message.opensThreadId && (message.authorId === actorId || staff);
+          !message.opensThreadId &&
+          (message.authorId === actorId || staff) &&
+          (!message.dice || staff);
         const thread = message.opensThreadId
           ? threads.find((row) => row.id === message.opensThreadId)
           : undefined;
@@ -64,7 +85,11 @@ export function MessageList({
                 <span className="when">{timeLabel(message.sentAt)}</span>
               </div>
               {message.dice ? (
-                <div className="dice">🎲 {formatDiceRoll(message.dice.expression, message.dice.terms)}</div>
+                <DiceBubble
+                  expression={message.dice.expression}
+                  terms={message.dice.terms}
+                  sum={message.dice.sum}
+                />
               ) : (
                 <div className="txt">
                   <ChatMarkdown text={message.body} />

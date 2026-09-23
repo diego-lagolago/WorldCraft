@@ -97,6 +97,9 @@ export const RichComposer = forwardRef<RichComposerHandle, Props>(function RichC
       const el = editorRef.current;
       if (!el || composingRef.current) return;
       const md = serializeEditor(el);
+      // Live bold/italic preview only — rewriting HTML without markers
+      // collapses a trailing space and jumps the caret back onto the word.
+      if (!md.includes("*")) return;
       const html = markdownToEditorHtml(md);
       if (el.innerHTML === html) return;
       const offset = getCaretMarkdownOffset(el);
@@ -114,7 +117,7 @@ export const RichComposer = forwardRef<RichComposerHandle, Props>(function RichC
       className={`chat-editor${isEmpty ? " is-empty" : ""}`}
       contentEditable={!disabled}
       role="textbox"
-      aria-multiline="false"
+      aria-multiline="true"
       aria-label="Nachricht"
       data-placeholder={placeholder}
       suppressContentEditableWarning

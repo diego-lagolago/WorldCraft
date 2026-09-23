@@ -113,10 +113,22 @@ function syntaxSpan(marker: string): string {
   return `<span class="md-syntax">${escapeHtml(marker)}</span>`;
 }
 
+/**
+ * Encode text for contentEditable so the browser does not collapse spaces.
+ * Trailing/leading spaces and runs of 2+ become `&nbsp;` where needed.
+ */
+export function escapeEditorText(value: string): string {
+  return escapeHtml(value)
+    .replace(/\n/g, "<br>")
+    .replace(/ {2,}/g, (run) => `&nbsp;`.repeat(run.length))
+    .replace(/^ /, "&nbsp;")
+    .replace(/ $/, "&nbsp;");
+}
+
 function nodesToHtml(nodes: MdNode[]): string {
   return nodes
     .map((node) => {
-      if (node.type === "text") return escapeHtml(node.value).replace(/\n/g, "<br>");
+      if (node.type === "text") return escapeEditorText(node.value);
       if (node.type === "bold") {
         const inner = nodesToHtml(node.children);
         if (node.incomplete) return `${syntaxSpan("**")}<strong>${inner}</strong>`;
