@@ -61,10 +61,15 @@ function NumberStepper({
         autoComplete="off"
         aria-label={label}
         value={text ?? String(value)}
+        onMouseDown={(event) => {
+          // Select-all only when focusing via mouse, not when the field already has focus.
+          if (document.activeElement !== event.currentTarget) {
+            keepSelection.current = true;
+          }
+        }}
         onFocus={(event) => {
           setText(String(value));
           event.currentTarget.select();
-          keepSelection.current = true;
         }}
         onMouseUp={(event) => {
           // A click would otherwise place the caret and drop the selection made on focus.
@@ -76,7 +81,10 @@ function NumberStepper({
           const parsed = parseDraftInt(event.target.value);
           if (parsed !== null) onChange(parsed);
         }}
-        onBlur={() => setText(null)}
+        onBlur={() => {
+          keepSelection.current = false;
+          setText(null);
+        }}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
             event.preventDefault();

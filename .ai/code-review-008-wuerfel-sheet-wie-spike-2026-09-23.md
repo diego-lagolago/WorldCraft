@@ -13,7 +13,7 @@
 | CR-004 | Fehlerbehandlung & Validierung | niedrig | behoben | „Im Chat posten“: Fehler unsichtbar hinter dem Sheet, Doppelklick schaltet mit veraltetem Wert |
 | CR-005 | Duplizierung & Modularisierung | niedrig | behoben | Roll-Ein-/Ausgabetyp doppelt in `use-chat-stream.ts` und `DiceSheet.tsx` |
 | CR-006 | Lesbarkeit & Wartbarkeit | niedrig | offen | `allowNegative` steuert nur die Tastatur, nicht die Eingabe |
-| CR-007 | Runtime-Risiken | niedrig | offen | `keepSelection` bleibt nach Tastatur-Fokus gesetzt und schluckt den nächsten Klick |
+| CR-007 | Runtime-Risiken | niedrig | behoben | `keepSelection` bleibt nach Tastatur-Fokus gesetzt und schluckt den nächsten Klick |
 | CR-008 | Runtime-Risiken | niedrig | verworfen | Index als React-Key bei entfernbaren Termen mit lokalem Stepper-State |
 | CR-009 | Fehlerbehandlung & Validierung | niedrig | offen | Kopieren schlägt still fehl (kein Feedback bei verweigerter Zwischenablage) |
 | CR-010 | Bad Practices | niedrig | offen | Hartkodierte Farbe `#1f1a0e` in `.dice-result.copied` statt App-Variable (W3) |
@@ -64,7 +64,7 @@
 - **Entscheidung (Owner, 2026-09-23, Plan-Review):** Optimistisch umschalten, bei Fehler zurücksetzen.
 - **Empfehlung:** `setPostToChat(next)` in `use-chat-stream.ts` setzt `state.dicePostToChat` sofort auf `next`, sendet dann den PATCH und gibt `{ ok: true } | { ok: false; error: string }` zurück (kein `setError` mehr für diesen Pfad). Bei Fehler wird auf den Wert **vor diesem Klick** zurückgesetzt, aber nur, wenn seither kein neuerer Klick kam (Request-Zähler/Ref); die Server-Antwort überschreibt den State nicht. `DiceSheet` zeigt den Fehler im bestehenden `role="alert"`-Bereich über den Knöpfen. „Würfeln“ wartet auf einen noch laufenden PATCH (Promise im Ref), bevor der Wurf gesendet wird, weil der Server die Einstellung aus der DB liest.
 - **Abnahmekriterium:** (a) Klick schaltet sofort sichtbar um. (b) Schneller Doppelklick endet im Ausgangszustand, Server-Wert (`GET …/chat`, `dicePostToChat`) stimmt damit überein. (c) PATCH schlägt fehl (Server gestoppt): Schalter springt zurück, Meldung im Sheet, kein `.chat-error`-Banner. (d) Umschalten und sofort „Würfeln“: Der Wurf folgt der neuen Einstellung.
-- **Umsetzung (2026-09-23):** Optimistisches `setPostToChat` mit Seq-Ref-Rollback; Fehler nur im Sheet; `roll` wartet auf pending PATCH. Browser (a)/(b): Sofort-Umschalten und Doppelklick sichtbar ok. (c) Localhost-Offline greift nicht zuverlässig; Rollback-Pfad im Code. (d) `await postToChatPendingRef` vor dem Wurf. Features.md: N/A.
+- **Umsetzung (2026-09-23):** Optimistisches `setPostToChat` mit Seq-Ref-Rollback; Fehler nur im Sheet; `roll` wartet auf pending PATCH. Commit `f48823e`. Browser (a)/(b): Sofort-Umschalten und Doppelklick sichtbar ok. (c) Localhost-Offline greift nicht zuverlässig; Rollback-Pfad im Code. (d) `await postToChatPendingRef` vor dem Wurf. Features.md: N/A.
 
 ## CR-005 – Roll-Typen doppelt gepflegt
 
@@ -97,6 +97,7 @@
 - **Beschreibung:** `keepSelection` wird bei jedem Fokus gesetzt, aber nur bei `mouseup` zurückgesetzt. Kommt der Fokus per Tab, bleibt das Flag stehen; der nächste Klick ins bereits fokussierte Feld (um den Cursor zu setzen) wird per `preventDefault` geschluckt.
 - **Empfehlung:** Flag in `onBlur` zurücksetzen und/oder nur bei Maus-Fokus setzen (z. B. in `onMouseDown`, wenn das Feld noch nicht fokussiert ist).
 - **Abnahmekriterium:** Per Tab ins Anzahl-Feld, dann einmal in die Zahl klicken: Der Cursor steht an der Klickposition (Auswahl aufgehoben). Klick ins unfokussierte Feld markiert weiterhin die ganze Zahl.
+- **Umsetzung (2026-09-23):** `keepSelection` nur noch bei Maus-Fokus (`onMouseDown` wenn noch nicht fokussiert); Reset in `onBlur`. Commit `6b8c42c`. Features.md: N/A.
 
 ## CR-008 – Index als Key bei entfernbaren Termen
 
