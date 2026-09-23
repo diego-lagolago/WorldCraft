@@ -213,7 +213,7 @@ export function PlaceCharacterSheet({
 }) {
   return (
     <Sheet title="Charakter auf Karte setzen" onClose={onClose}>
-      <p className="small muted">Pro Charakter höchstens ein Marker pro Karte.</p>
+      <p className="small muted">Ein Charakter kann nur auf einer Karte gleichzeitig sein.</p>
       <div className="list">
         {characters.map((character) => (
           <button
@@ -227,7 +227,13 @@ export function PlaceCharacterSheet({
             <span className="av">{character.name.slice(0, 1)}</span>
             <div className="grow" style={{ textAlign: "left" }}>
               {character.name}
-              <div className="kind">{character.placed ? "schon auf dieser Karte" : character.ownerName}</div>
+              <div className="kind">
+                {character.placed
+                  ? "schon auf dieser Karte"
+                  : character.placedElsewhere
+                    ? "auf anderer Karte — wird verschoben"
+                    : character.ownerName}
+              </div>
             </div>
           </button>
         ))}
@@ -235,3 +241,111 @@ export function PlaceCharacterSheet({
     </Sheet>
   );
 }
+
+export function CreateMapSheet({
+  universes,
+  defaultUniverseId,
+  onClose,
+  onSave,
+}: {
+  universes: { id: string; name: string }[];
+  defaultUniverseId: string | null;
+  onClose: () => void;
+  onSave: (universeId: string, name: string) => void;
+}) {
+  const [universeId, setUniverseId] = useState(defaultUniverseId ?? universes[0]?.id ?? "");
+  const [name, setName] = useState("Weltkarte");
+  return (
+    <Sheet title="Karte hinzufügen" onClose={onClose}>
+      <label className="stack" style={{ gap: 6 }}>
+        <span className="field-label">Universum</span>
+        <select
+          value={universeId}
+          onChange={(event) => setUniverseId(event.target.value)}
+          aria-label="Universum"
+          required
+        >
+          {universes.map((universe) => (
+            <option key={universe.id} value={universe.id}>
+              {universe.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="stack" style={{ gap: 6, marginTop: 12 }}>
+        <span className="field-label">Name</span>
+        <input
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          maxLength={120}
+          required
+          aria-label="Kartenname"
+          placeholder="z. B. Weltkarte"
+        />
+      </label>
+      <p className="small muted" style={{ marginTop: 12 }}>
+        Die Karte startet ohne Bild. Das Bild lädst du danach in der Kartenansicht hoch.
+      </p>
+      <div className="row" style={{ marginTop: 16, gap: 8 }}>
+        <button type="button" className="btn grow" onClick={onClose}>
+          Abbrechen
+        </button>
+        <button
+          type="button"
+          className="btn primary grow"
+          disabled={!universeId || !name.trim()}
+          onClick={() => onSave(universeId, name.trim())}
+        >
+          Anlegen
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
+/** Checkbox confirm before replacing an existing map image (pins stay). */
+export function ReplaceImageDialog({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const [checked, setChecked] = useState(false);
+  return (
+    <div className="dialog-backdrop" onClick={onCancel}>
+      <div
+        className="card stack dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="map-replace-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h2 id="map-replace-title" style={{ margin: 0 }}>
+          Kartenbild ersetzen?
+        </h2>
+        <p className="muted">
+          Das aktuelle Kartenbild wird überschrieben. Alle Pins und Charakter-Marker bleiben an ihren Positionen.
+        </p>
+        <label className="row" style={{ alignItems: "flex-start", gap: 10 }}>
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(event) => setChecked(event.target.checked)}
+            style={{ marginTop: 3 }}
+          />
+          <span>Ich verstehe, dass das bisherige Bild ersetzt wird und die Pins bleiben.</span>
+        </label>
+        <div className="row" style={{ gap: 8 }}>
+          <button type="button" className="btn grow" onClick={onCancel}>
+            Abbrechen
+          </button>
+          <button type="button" className="btn primary grow" disabled={!checked} onClick={onConfirm}>
+            Weiter
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+

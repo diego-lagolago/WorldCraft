@@ -10,14 +10,26 @@ export type MapUniverseDto = {
   visibility: VisibilityStatus;
 };
 
+/** Entry in the map picker; label format is `<Universum>: <Karte>`. */
+export type MapOptionDto = {
+  id: string;
+  universeId: string;
+  universeName: string;
+  name: string;
+  visibility: VisibilityStatus;
+  hasImage: boolean;
+  /** Preformatted `Universum: Karte` (+ optional · SL). */
+  label: string;
+};
+
 export type MapDto = {
   id: string;
   universeId: string;
   name: string;
-  imageId: string;
-  imageUrl: string;
-  imageWidth: number;
-  imageHeight: number;
+  imageId: string | null;
+  imageUrl: string | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
   visibility: VisibilityStatus;
   updatedAt: string;
 };
@@ -52,7 +64,10 @@ export type PlaceableCharacterDto = {
   portraitId: string | null;
   ownerId: string;
   ownerName: string;
+  /** Marker already on the currently selected map. */
   placed: boolean;
+  /** Marker exists on a different map (placing moves it). */
+  placedElsewhere: boolean;
 };
 
 export type MapState = {
@@ -60,6 +75,7 @@ export type MapState = {
   role: MembershipRole;
   staff: boolean;
   universes: MapUniverseDto[];
+  maps: MapOptionDto[];
   universe: MapUniverseDto | null;
   map: MapDto | null;
   mapHidden: boolean;

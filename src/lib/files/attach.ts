@@ -182,7 +182,7 @@ async function linkStaffImage(
     .update(maps)
     .set({ imageId: fileId, updatedAt: now, updatedBy: actorId })
     .where(eq(maps.id, map.id));
-  await collectUnreferencedFiles([map.imageId]);
+  if (map.imageId) await collectUnreferencedFiles([map.imageId]);
   worldEvents.publish({ type: "map.updated", worldId, universeId: map.universeId });
   return { ok: true, data: true };
 }

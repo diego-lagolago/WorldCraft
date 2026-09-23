@@ -292,9 +292,8 @@ export const maps = pgTable(
       .notNull()
       .references(() => universes.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    imageId: uuid("image_id")
-      .notNull()
-      .references(() => files.id),
+    /** Null = empty map (no image yet); upload on the map view. */
+    imageId: uuid("image_id").references(() => files.id),
     visibility: visibilityStatus("visibility").default("gm_only").notNull(),
     ...protocol,
   },
@@ -413,7 +412,8 @@ export const characterMarkers = pgTable(
     ...protocol,
   },
   (t) => [
-    unique("uq_marker").on(t.characterId, t.mapId),
+    /** One marker per character across all maps (Owner 2026-09-23). */
+    unique("uq_marker_character").on(t.characterId),
     index("character_markers_map").on(t.mapId),
     check("character_markers_pos_x", sql`${t.posX} >= 0 AND ${t.posX} <= 1`),
     check("character_markers_pos_y", sql`${t.posY} >= 0 AND ${t.posY} <= 1`),

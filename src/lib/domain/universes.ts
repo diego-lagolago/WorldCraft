@@ -244,7 +244,7 @@ export async function deleteUniverse(input: {
       .where(and(eq(universes.id, input.universeId), eq(universes.worldId, input.worldId)))
       .returning({ id: universes.id });
     if (deleted.length === 0) return fail(404, "Dieses Universum gibt es nicht.");
-    await collectUnreferencedFiles(mapImages.map((row) => row.id));
+    await collectUnreferencedFiles(mapImages.map((row) => row.id).filter(Boolean));
     return ok({ id: input.universeId });
   } catch (error) {
     const mapped = mapDbError(error);

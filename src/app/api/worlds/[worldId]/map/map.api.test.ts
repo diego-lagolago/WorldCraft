@@ -85,12 +85,15 @@ describe("Produkt-Karte", () => {
     );
   });
 
-  it("creates one map, hides gm_only layers from the player, and publishes pins", async () => {
+  it("creates maps (multiple per universe), hides gm_only layers from the player, and publishes pins", async () => {
     const created = await uploadMap(gm, universeId);
     expect(created.status).toBe(201);
     const mapId = created.data.map?.id as string;
     expect(mapId).toBeTruthy();
-    expect((await uploadMap(gm, universeId)).status).toBe(409);
+    const second = await uploadMap(gm, universeId);
+    expect(second.status).toBe(201);
+    expect(second.data.map?.id).toBeTruthy();
+    expect(second.data.map?.id).not.toBe(mapId);
 
     const replace = new FormData();
     replace.set("kind", "map");
@@ -169,7 +172,8 @@ describe("Produkt-Karte", () => {
 
   it("locks pins, rejects player lock, and keeps dice-like 409 until unlock", async () => {
     const state = await mapApi(master);
-    const mapId = state.data.map?.id as string;
+    const mapId =
+      state.data.maps.find((row) => row.visibility === "published")?.id ?? (state.data.map?.id as string);
     const created = await mapApi(master, "/pins", "POST", {
       mapId,
       pinType: "danger",
@@ -192,7 +196,7 @@ describe("Produkt-Karte", () => {
     );
   });
 
-  it("lets player A move only their marker and rejects a second marker", async () => {
+  it("lets player A move only their marker and moves a character across maps", async () => {
     await sql`
       INSERT INTO memberships (world_id, user_id, role, created_by, updated_by)
       VALUES (${worldId}, ${playerB.user.id}, 'player', ${gm.user.id}, ${gm.user.id})
@@ -208,7 +212,10 @@ describe("Produkt-Karte", () => {
     expect(
       (await api(playerB, "POST", `/api/worlds/${worldId}/characters`, { characterId: charB.data.id })).status,
     ).toBe(200);
-    const mapId = (await mapApi(master)).data.map?.id as string;
+    const masterState = await mapApi(master);
+    const mapId =
+      masterState.data.maps.find((row) => row.visibility === "published")?.id ??
+      (masterState.data.map?.id as string);
     const placedA = await mapApi(playerA, "/markers", "POST", {
       mapId,
       characterId: charA.data.id,
@@ -241,9 +248,41 @@ describe("Produkt-Karte", () => {
         posY: 0.6,
       })).status,
     ).toBe(200);
+
+    const other = await api<{ map?: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/map`, {
+      universeId,
+      name: "Zweite Karte",
+    });
+    expect(other.status).toBe(201);
+    const otherMapId = other.data.map?.id as string;
+    const form = new FormData();
+    form.set("kind", "map");
+    form.set("worldId", worldId);
+    form.set("targetId", otherMapId);
+    form.set("image", new Blob([PNG], { type: "image/png" }), "map3.png");
     expect(
-      (await mapApi(playerA, "/markers", "POST", { mapId, characterId: charA.data.id, posX: 0.3, posY: 0.3 })).status,
-    ).toBe(409);
+      (
+        await fetch(`${BASE}/api/files`, {
+          method: "POST",
+          headers: { cookie: gm.cookie, origin: BASE },
+          body: form,
+        })
+      ).status,
+    ).toBe(201);
+    expect((await mapApi(master, "", "PATCH", { mapId: otherMapId, visibility: "published" })).status).toBe(200);
+
+    const moved = await mapApi(playerA, "/markers", "POST", {
+      mapId: otherMapId,
+      characterId: charA.data.id,
+      posX: 0.3,
+      posY: 0.3,
+    });
+    expect(moved.status).toBe(201);
+    expect(moved.data.marker?.mapId).toBe(otherMapId);
+    const onFirst = await api<MapState>(gm, "GET", `/api/worlds/${worldId}/map?map=${mapId}`);
+    expect(onFirst.data.markers?.some((row) => row.characterId === charA.data.id)).toBe(false);
+    const onSecond = await api<MapState>(gm, "GET", `/api/worlds/${worldId}/map?map=${otherMapId}`);
+    expect(onSecond.data.markers?.some((row) => row.characterId === charA.data.id)).toBe(true);
   });
 
   it("creates mention relations from the pin description", async () => {
@@ -252,7 +291,9 @@ describe("Produkt-Karte", () => {
       VALUES (${worldId}, 'Gottschleim', 'published', ${gm.user.id}, ${gm.user.id})
       RETURNING id
     `;
-    const mapId = (await mapApi(master)).data.map?.id as string;
+    const mapId =
+      (await mapApi(master)).data.maps.find((row) => row.visibility === "published")?.id ??
+      ((await mapApi(master)).data.map?.id as string);
     const pin = await mapApi(master, "/pins", "POST", {
       mapId,
       pinType: "landmark",

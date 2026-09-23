@@ -128,7 +128,7 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 |---|---|---|---|---|
 | N.1 | **Discord-Allowlist:** nicht erlaubte Discord-ID → klare Fehlermeldung auf Login (kein stiller Fail) | Prod | | |
 | N.2 | **@-Erwähnung:** Bestätigen mit **Tab** (neben Enter/Klick) | Prod/Lokal | | |
-| N.3 | **Karten-Leerzustand:** Prompt mittig; Chips überlappen Text nicht | Prod/Lokal | | |
+| N.3 | **Karten-Leerzustand:** Prompt mittig bei fehlendem Bild; Dropdown überlappt Text nicht | Prod/Lokal | | |
 | N.4 | **Chat:** Leerzeichen ohne Cursor-Sprung; Absätze (Shift+Enter) in Nachrichten sichtbar | Prod/Lokal | | |
 | N.5 | **Würfel:** Spielleitung kann Würfel-Nachricht löschen; Player nicht | Prod/Lokal | | |
 | N.6 | **Würfel-UI** am ui-prototype (Grid, fette Summe, Toast) — stichprobenartig | Prod/Lokal | | |
@@ -137,3 +137,6 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 | N.9 | **Karten-Sichtbarkeit:** Auge-Icon in Toolbar (offen = sichtbar, durchgestrichen = SL-only) | Prod/Lokal | | |
 | N.10 | **Pins:** Mentions als blaue Links im Beschreibungstext; kein „Verknüpft“-Panel im Pin-Sheet | Prod/Lokal | | |
 | N.11 | **Versionsbadge** unten links, hellgrau lesbar; Version **0.1.1+** sichtbar | Prod/Lokal | | |
+| N.12 | **Karten-Dropdown:** Label `Universum: Karte`; mehrere Karten pro Universum anlegen/löschen (SL) | Prod/Lokal | | |
+| N.13 | **Kartenbild ersetzen:** Upload-Icon in Toolbar; bei bestehendem Bild Checkbox-Bestätigung (Pins bleiben) | Prod/Lokal | | |
+| N.14 | **Charakter-Marker:** Charakter höchstens auf einer Karte; Platzieren auf anderer Karte entfernt den alten Marker | Prod/Lokal | | |

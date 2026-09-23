@@ -8,6 +8,13 @@ import { pinMarkerHtml } from "@/lib/map/pin-types";
 import type { MapDto, MarkerDto, PinDto } from "@/lib/map/types";
 import "leaflet/dist/leaflet.css";
 
+type MapWithImage = MapDto & {
+  imageId: string;
+  imageUrl: string;
+  imageWidth: number;
+  imageHeight: number;
+};
+
 type Handlers = {
   placing: boolean;
   staff: boolean;
@@ -22,7 +29,7 @@ type Handlers = {
 
 export function useLeafletMap(
   containerRef: RefObject<HTMLDivElement | null>,
-  mapData: MapDto | null,
+  mapData: MapWithImage | null,
   pins: PinDto[],
   markers: MarkerDto[],
   handlers: Handlers,

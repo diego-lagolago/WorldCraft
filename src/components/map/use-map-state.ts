@@ -9,6 +9,12 @@ import type { VisibilityStatus } from "@/lib/authz";
 import { applyMapEvent } from "./use-map-realtime";
 import type { WorldRealtimeEvent } from "@/lib/realtime/events";
 
+function mapQuery(state: MapState) {
+  if (state.map?.id) return `?map=${state.map.id}`;
+  if (state.universe?.id) return `?universe=${state.universe.id}`;
+  return "";
+}
+
 export function useMapState(worldId: string, initial: MapState) {
   const [state, setState] = useState(initial);
   const [error, setError] = useState<string | null>(null);
@@ -20,8 +26,7 @@ export function useMapState(worldId: string, initial: MapState) {
   const failAndReload = useCallback(
     async (message: string) => {
       setError(message);
-      const universeId = stateRef.current.universe?.id;
-      const path = `/api/worlds/${worldId}/map${universeId ? `?universe=${universeId}` : ""}`;
+      const path = `/api/worlds/${worldId}/map${mapQuery(stateRef.current)}`;
       const result = await apiFetch<MapState>(path);
       if (result.ok) setState(result.data);
     },
@@ -29,8 +34,7 @@ export function useMapState(worldId: string, initial: MapState) {
   );
 
   const reload = useCallback(async () => {
-    const universeId = stateRef.current.universe?.id;
-    const path = `/api/worlds/${worldId}/map${universeId ? `?universe=${universeId}` : ""}`;
+    const path = `/api/worlds/${worldId}/map${mapQuery(stateRef.current)}`;
     const result = await apiFetch<MapState>(path);
     if (!result.ok) {
       setError(result.error);
@@ -38,6 +42,25 @@ export function useMapState(worldId: string, initial: MapState) {
     }
     setState(result.data);
   }, [worldId]);
+
+  const selectMap = useCallback(
+    async (mapId: string) => {
+      const result = await apiFetch<MapState>(`/api/worlds/${worldId}/map?map=${mapId}`);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setState(result.data);
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("pin");
+        url.searchParams.delete("universe");
+        url.searchParams.set("map", mapId);
+        window.history.replaceState(null, "", url.pathname + url.search);
+      }
+    },
+    [worldId],
+  );
 
   const loadPin = useCallback(
     async (pinId: string) => {
@@ -51,19 +74,45 @@ export function useMapState(worldId: string, initial: MapState) {
     [worldId],
   );
 
-  async function uploadMap(universeId: string, file: File) {
-    const form = new FormData();
-    form.set("universeId", universeId);
-    form.set("image", file);
-    const result = await apiFetch<{ map: MapState["map"] }>(`/api/worlds/${worldId}/map`, {
+  async function createMap(universeId: string, name: string) {
+    const result = await apiFetch<{ map: { id: string } }>(`/api/worlds/${worldId}/map`, {
       method: "POST",
-      body: form,
+      body: JSON.stringify({ universeId, name }),
     });
     if (!result.ok) {
       await failAndReload(result.error);
-      return;
+      return null;
     }
-    await reload();
+    await selectMap(result.data.map.id);
+    return result.data.map.id;
+  }
+
+  async function deleteMap(mapId: string) {
+    const result = await apiFetch(`/api/worlds/${worldId}/map`, {
+      method: "DELETE",
+      body: JSON.stringify({ mapId }),
+    });
+    if (!result.ok) {
+      await failAndReload(result.error);
+      return false;
+    }
+    const path = `/api/worlds/${worldId}/map`;
+    const next = await apiFetch<MapState>(path);
+    if (next.ok) {
+      setState(next.data);
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("pin");
+        if (next.data.map?.id) {
+          url.searchParams.set("map", next.data.map.id);
+          url.searchParams.delete("universe");
+        } else {
+          url.searchParams.delete("map");
+        }
+        window.history.replaceState(null, "", url.pathname + url.search);
+      }
+    }
+    return true;
   }
 
   async function replaceImage(mapId: string, file: File) {
@@ -158,9 +207,11 @@ export function useMapState(worldId: string, initial: MapState) {
     }
     setState((current) => ({
       ...current,
-      markers: [...current.markers.filter((row) => row.id !== result.data.marker.id), result.data.marker],
+      markers: [...current.markers.filter((row) => row.characterId !== characterId), result.data.marker],
       characters: current.characters.map((row) =>
-        row.id === characterId ? { ...row, placed: true } : row,
+        row.id === characterId
+          ? { ...row, placed: true, placedElsewhere: false }
+          : row,
       ),
     }));
   }
@@ -178,20 +229,21 @@ export function useMapState(worldId: string, initial: MapState) {
   }
 
   async function removeMarker(markerId: string) {
-    const result = await apiFetch(`/api/worlds/${worldId}/map/markers/${markerId}`, { method: "DELETE" });
-    if (!result.ok) {
-      await failAndReload(result.error);
+    const deleted = await apiFetch(`/api/worlds/${worldId}/map/markers/${markerId}`, { method: "DELETE" });
+    if (!deleted.ok) {
+      await failAndReload(deleted.error);
       return;
     }
-    setState((current) => ({
-      ...current,
-      markers: current.markers.filter((row) => row.id !== markerId),
-      characters: current.characters.map((row) =>
-        current.markers.find((marker) => marker.id === markerId)?.characterId === row.id
-          ? { ...row, placed: false }
-          : row,
-      ),
-    }));
+    setState((current) => {
+      const removed = current.markers.find((marker) => marker.id === markerId);
+      return {
+        ...current,
+        markers: current.markers.filter((row) => row.id !== markerId),
+        characters: current.characters.map((row) =>
+          removed?.characterId === row.id ? { ...row, placed: false, placedElsewhere: false } : row,
+        ),
+      };
+    });
   }
 
   function applyEvent(event: WorldRealtimeEvent, dragging: Set<string>) {
@@ -208,8 +260,10 @@ export function useMapState(worldId: string, initial: MapState) {
     setError,
     applyEvent,
     reload,
+    selectMap,
     loadPin,
-    uploadMap,
+    createMap,
+    deleteMap,
     replaceImage,
     setMapVisibility,
     createPin,

@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import {
@@ -33,6 +33,7 @@ import { asRichDoc, extractMentions } from "@/lib/editor/rich-text";
 import { mapDbError } from "@/lib/domain/db-errors";
 import { listUniverses } from "@/lib/domain/universes";
 import { richFieldFromInput } from "@/lib/domain/rich-field";
+import { collectUnreferencedFiles } from "@/lib/files/gc";
 import { MAP_IMAGE_MAX_BYTES } from "@/lib/files/inspect";
 import { persistImage, removeStoredFile } from "@/lib/files/store";
 import { worldEvents } from "@/lib/realtime/events";
@@ -40,6 +41,7 @@ import { positionSql, roundPosition } from "./coords";
 import { PIN_TYPES, type PinType } from "./pin-types";
 import type {
   MapDto,
+  MapOptionDto,
   MapState,
   MarkerDto,
   PinDetails,
@@ -57,7 +59,7 @@ export const visibilitySchema = z.enum(VISIBILITY_STATUSES);
 export const pinTypeSchema = z.enum(PIN_TYPES);
 export const positionSchema = z.number().min(0).max(1);
 
-const MAP_EXISTS = "In diesem Universum gibt es schon eine Karte.";
+const MARKER_ONE_MAP = "Ein Charakter kann nur auf einer Karte sein.";
 
 function toNumber(value: string | number): number {
   return roundPosition(Number(value));
@@ -67,19 +69,24 @@ function fileUrl(fileId: string): string {
   return `/api/files/${fileId}`;
 }
 
+function mapLabel(universeName: string, mapName: string, mapVisibility: VisibilityStatus): string {
+  const base = `${universeName}: ${mapName}`;
+  return mapVisibility === "gm_only" ? `${base} · SL` : base;
+}
+
 function serializeMap(
   row: typeof maps.$inferSelect,
-  image: { widthPx: number | null; heightPx: number | null },
-): MapDto | null {
-  if (!image.widthPx || !image.heightPx) return null;
+  image: { widthPx: number | null; heightPx: number | null } | null,
+): MapDto {
+  const hasDims = Boolean(row.imageId && image?.widthPx && image?.heightPx);
   return {
     id: row.id,
     universeId: row.universeId,
     name: row.name,
-    imageId: row.imageId,
-    imageUrl: fileUrl(row.imageId),
-    imageWidth: image.widthPx,
-    imageHeight: image.heightPx,
+    imageId: hasDims ? row.imageId : null,
+    imageUrl: hasDims && row.imageId ? fileUrl(row.imageId) : null,
+    imageWidth: hasDims ? image!.widthPx : null,
+    imageHeight: hasDims ? image!.heightPx : null,
     visibility: row.visibility,
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -134,7 +141,7 @@ async function loadMapRow(mapId: string, worldId: string) {
     })
     .from(maps)
     .innerJoin(universes, eq(universes.id, maps.universeId))
-    .innerJoin(files, eq(files.id, maps.imageId))
+    .leftJoin(files, eq(files.id, maps.imageId))
     .where(and(eq(maps.id, mapId), eq(universes.worldId, worldId)))
     .limit(1);
   return row ?? null;
@@ -149,18 +156,23 @@ export async function loadMapState(input: {
   actorId: string;
   role: MembershipRole;
   universeId: string | null;
+  mapId: string | null;
   pinId: string | null;
 }): Promise<AuthzResult<MapState>> {
   const universesVisible = await listUniverses(input.worldId, input.role);
+  const universeIds = universesVisible.map((row) => row.id);
   let highlightPinId: string | null = null;
-  let universeId = input.universeId && universesVisible.some((row) => row.id === input.universeId)
-    ? input.universeId
-    : (universesVisible[0]?.id ?? null);
+  let preferredMapId = input.mapId;
+  let preferredUniverseId =
+    input.universeId && universesVisible.some((row) => row.id === input.universeId)
+      ? input.universeId
+      : null;
 
   if (input.pinId) {
     const [pinRow] = await db
       .select({
         pinId: pins.id,
+        mapId: maps.id,
         universeId: universes.id,
         universeVisibility: universes.visibility,
         mapVisibility: maps.visibility,
@@ -175,18 +187,19 @@ export async function loadMapState(input: {
       pinRow &&
       canSeePublishedLayer(input.role, [pinRow.universeVisibility, pinRow.mapVisibility, pinRow.pinVisibility])
     ) {
-      universeId = pinRow.universeId;
+      preferredUniverseId = pinRow.universeId;
+      preferredMapId = pinRow.mapId;
       highlightPinId = pinRow.pinId;
     }
   }
 
-  const universe = universesVisible.find((row) => row.id === universeId) ?? null;
-  if (!universe) {
-    return ok({
+  const emptyState = (partial?: Partial<MapState>): AuthzResult<MapState> =>
+    ok({
       actorId: input.actorId,
       role: input.role,
       staff: isStaff(input.role),
       universes: universesVisible,
+      maps: [],
       universe: null,
       map: null,
       mapHidden: false,
@@ -194,64 +207,118 @@ export async function loadMapState(input: {
       markers: [],
       characters: [],
       highlightPinId: null,
+      ...partial,
     });
-  }
 
-  const [mapRow] = await db
+  if (universeIds.length === 0) return emptyState();
+
+  const mapRows = await db
     .select({
       map: maps,
+      universeId: universes.id,
+      universeName: universes.name,
       universeVisibility: universes.visibility,
       widthPx: files.widthPx,
       heightPx: files.heightPx,
     })
     .from(maps)
     .innerJoin(universes, eq(universes.id, maps.universeId))
-    .innerJoin(files, eq(files.id, maps.imageId))
-    .where(eq(maps.universeId, universe.id))
-    .limit(1);
+    .leftJoin(files, eq(files.id, maps.imageId))
+    .where(inArray(maps.universeId, universeIds))
+    .orderBy(asc(universes.sortOrder), asc(maps.name));
 
-  const dto = mapRow ? serializeMap(mapRow.map, mapRow) : null;
-  const hidden = Boolean(mapRow && !mapVisible(input.role, mapRow.universeVisibility, mapRow.map.visibility));
-  if (!dto || hidden) {
-    return ok({
-      actorId: input.actorId,
-      role: input.role,
-      staff: isStaff(input.role),
-      universes: universesVisible,
-      universe,
-      map: null,
-      mapHidden: hidden,
-      pins: [],
-      markers: [],
-      characters: [],
-      highlightPinId: hidden ? null : highlightPinId,
+  const options: MapOptionDto[] = [];
+  for (const row of mapRows) {
+    if (!mapVisible(input.role, row.universeVisibility, row.map.visibility)) continue;
+    options.push({
+      id: row.map.id,
+      universeId: row.universeId,
+      universeName: row.universeName,
+      name: row.map.name,
+      visibility: row.map.visibility,
+      hasImage: Boolean(row.map.imageId && row.widthPx && row.heightPx),
+      label: mapLabel(row.universeName, row.map.name, row.map.visibility),
     });
   }
 
-  const [pinRows, markerRows, characterRows] = await Promise.all([
-    db.select().from(pins).where(eq(pins.mapId, dto.id)),
-    db
-      .select({
-        id: characterMarkers.id,
-        mapId: characterMarkers.mapId,
-        characterId: characterMarkers.characterId,
-        posX: characterMarkers.posX,
-        posY: characterMarkers.posY,
-        name: characters.name,
-        portraitId: characters.portraitId,
-        ownerId: characters.ownerId,
-      })
-      .from(characterMarkers)
-      .innerJoin(characters, eq(characters.id, characterMarkers.characterId))
-      .innerJoin(
-        worldParticipations,
-        and(
-          eq(worldParticipations.characterId, characters.id),
-          eq(worldParticipations.worldId, input.worldId),
-          isNull(worldParticipations.archivedAt),
-        ),
-      )
-      .where(eq(characterMarkers.mapId, dto.id)),
+  const hiddenRequested =
+    preferredMapId &&
+    mapRows.some((row) => {
+      if (row.map.id !== preferredMapId) return false;
+      return !mapVisible(input.role, row.universeVisibility, row.map.visibility);
+    });
+
+  let selected =
+    (preferredMapId ? options.find((row) => row.id === preferredMapId) : undefined) ??
+    (preferredUniverseId ? options.find((row) => row.universeId === preferredUniverseId) : undefined) ??
+    options[0] ??
+    null;
+
+  const universe =
+    (selected ? universesVisible.find((row) => row.id === selected!.universeId) : null) ??
+    (preferredUniverseId ? universesVisible.find((row) => row.id === preferredUniverseId) : null) ??
+    universesVisible[0] ??
+    null;
+
+  if (hiddenRequested) {
+    return emptyState({
+      maps: options,
+      universe,
+      mapHidden: true,
+      highlightPinId: null,
+    });
+  }
+
+  if (!selected || !universe) {
+    const focusUniverse =
+      universe ??
+      (preferredUniverseId ? universesVisible.find((row) => row.id === preferredUniverseId) : null) ??
+      universesVisible[0] ??
+      null;
+    const mapsInFocus = focusUniverse
+      ? mapRows.filter((row) => row.universeId === focusUniverse.id)
+      : [];
+    const allHiddenInFocus =
+      mapsInFocus.length > 0 &&
+      mapsInFocus.every((row) => !mapVisible(input.role, row.universeVisibility, row.map.visibility));
+    return emptyState({
+      maps: options,
+      universe: focusUniverse,
+      mapHidden: allHiddenInFocus,
+    });
+  }
+
+  const loaded = mapRows.find((row) => row.map.id === selected!.id)!;
+  const dto = serializeMap(loaded.map, loaded);
+
+  const [pinRows, markerRows, characterRows, placedRows] = await Promise.all([
+    dto.imageId
+      ? db.select().from(pins).where(eq(pins.mapId, dto.id))
+      : Promise.resolve([] as (typeof pins.$inferSelect)[]),
+    dto.imageId
+      ? db
+          .select({
+            id: characterMarkers.id,
+            mapId: characterMarkers.mapId,
+            characterId: characterMarkers.characterId,
+            posX: characterMarkers.posX,
+            posY: characterMarkers.posY,
+            name: characters.name,
+            portraitId: characters.portraitId,
+            ownerId: characters.ownerId,
+          })
+          .from(characterMarkers)
+          .innerJoin(characters, eq(characters.id, characterMarkers.characterId))
+          .innerJoin(
+            worldParticipations,
+            and(
+              eq(worldParticipations.characterId, characters.id),
+              eq(worldParticipations.worldId, input.worldId),
+              isNull(worldParticipations.archivedAt),
+            ),
+          )
+          .where(eq(characterMarkers.mapId, dto.id))
+      : Promise.resolve([]),
     db
       .select({
         id: characters.id,
@@ -264,18 +331,35 @@ export async function loadMapState(input: {
       .innerJoin(characters, eq(characters.id, worldParticipations.characterId))
       .innerJoin(users, eq(users.id, characters.ownerId))
       .where(and(eq(worldParticipations.worldId, input.worldId), isNull(worldParticipations.archivedAt))),
+    db
+      .select({
+        characterId: characterMarkers.characterId,
+        mapId: characterMarkers.mapId,
+      })
+      .from(characterMarkers)
+      .innerJoin(maps, eq(maps.id, characterMarkers.mapId))
+      .innerJoin(universes, eq(universes.id, maps.universeId))
+      .where(eq(universes.worldId, input.worldId)),
   ]);
 
-  const placed = new Set(markerRows.map((row) => row.characterId));
+  const placedByCharacter = new Map(placedRows.map((row) => [row.characterId, row.mapId]));
   const charactersOnMap: PlaceableCharacterDto[] = characterRows
     .filter((row) => isStaff(input.role) || row.ownerId === input.actorId)
-    .map((row) => ({ ...row, placed: placed.has(row.id) }));
+    .map((row) => {
+      const placedMapId = placedByCharacter.get(row.id) ?? null;
+      return {
+        ...row,
+        placed: placedMapId === dto.id,
+        placedElsewhere: placedMapId !== null && placedMapId !== dto.id,
+      };
+    });
 
   return ok({
     actorId: input.actorId,
     role: input.role,
     staff: isStaff(input.role),
     universes: universesVisible,
+    maps: options,
     universe,
     map: dto,
     mapHidden: false,
@@ -286,6 +370,45 @@ export async function loadMapState(input: {
   });
 }
 
+/** Create an empty map (no image). Image upload happens later on the map view. */
+export async function createMap(input: {
+  membership: MembershipRow | null;
+  actorId: string;
+  worldId: string;
+  universeId: string;
+  name: string;
+}): Promise<AuthzResult<{ map: MapDto }>> {
+  const staff = requireStaff(input.membership);
+  if (!staff.ok) return staff;
+  const [universe] = await db
+    .select()
+    .from(universes)
+    .where(and(eq(universes.id, input.universeId), eq(universes.worldId, input.worldId)))
+    .limit(1);
+  if (!universe) return fail(404, "Dieses Universum gibt es nicht.");
+
+  try {
+    const [row] = await db
+      .insert(maps)
+      .values({
+        universeId: input.universeId,
+        name: input.name,
+        imageId: null,
+        createdBy: input.actorId,
+        updatedBy: input.actorId,
+      })
+      .returning();
+    const dto = serializeMap(row, null);
+    worldEvents.publish({ type: "map.updated", worldId: input.worldId, universeId: input.universeId });
+    return ok({ map: dto });
+  } catch (error) {
+    const mapped = mapDbError(error);
+    if (mapped) return mapped;
+    throw error;
+  }
+}
+
+/** @deprecated Prefer createMap + file attach; kept for API tests that upload on create. */
 export async function createMapWithImage(input: {
   membership: MembershipRow | null;
   actorId: string;
@@ -311,36 +434,40 @@ export async function createMapWithImage(input: {
   }
 
   try {
-    const created = await db.transaction(async (tx) => {
-      await tx.execute(sql`SELECT 1 FROM ${universes} WHERE ${universes.id} = ${input.universeId} FOR UPDATE`);
-      const [existing] = await tx.select({ id: maps.id }).from(maps).where(eq(maps.universeId, input.universeId)).limit(1);
-      if (existing) return null;
-      const [row] = await tx
-        .insert(maps)
-        .values({
-          universeId: input.universeId,
-          name: input.name,
-          imageId: saved.id,
-          createdBy: input.actorId,
-          updatedBy: input.actorId,
-        })
-        .returning();
-      return row;
-    });
-    if (!created) {
-      await removeStoredFile(saved.id);
-      return fail(409, MAP_EXISTS);
-    }
-    const dto = serializeMap(created, { widthPx: saved.image.width, heightPx: saved.image.height });
-    if (!dto) return fail(409, "Die Karte konnte nicht angelegt werden.");
+    const [row] = await db
+      .insert(maps)
+      .values({
+        universeId: input.universeId,
+        name: input.name,
+        imageId: saved.id,
+        createdBy: input.actorId,
+        updatedBy: input.actorId,
+      })
+      .returning();
+    const dto = serializeMap(row, { widthPx: saved.image.width, heightPx: saved.image.height });
     worldEvents.publish({ type: "map.updated", worldId: input.worldId, universeId: input.universeId });
     return ok({ map: dto });
   } catch (error) {
     await removeStoredFile(saved.id);
-    const mapped = mapDbError(error, { unique: MAP_EXISTS });
+    const mapped = mapDbError(error);
     if (mapped) return mapped;
     throw error;
   }
+}
+
+export async function deleteMap(input: {
+  membership: MembershipRow | null;
+  worldId: string;
+  mapId: string;
+}): Promise<AuthzResult<{ id: string }>> {
+  const staff = requireStaff(input.membership);
+  if (!staff.ok) return staff;
+  const loaded = await loadMapRow(input.mapId, input.worldId);
+  if (!loaded) return fail(404, "Diese Karte gibt es nicht.");
+  await db.delete(maps).where(eq(maps.id, input.mapId));
+  await collectUnreferencedFiles([loaded.map.imageId]);
+  worldEvents.publish({ type: "map.updated", worldId: input.worldId, universeId: loaded.universeId });
+  return ok({ id: input.mapId });
 }
 
 export async function updateMap(input: {
@@ -362,8 +489,8 @@ export async function updateMap(input: {
   if (input.name !== undefined) patch.name = input.name;
   if (input.visibility !== undefined) patch.visibility = input.visibility;
   const [row] = await db.update(maps).set(patch).where(eq(maps.id, input.mapId)).returning();
-  const dto = row ? serializeMap(row, loaded) : null;
-  if (!dto) return fail(404, "Diese Karte gibt es nicht.");
+  if (!row) return fail(404, "Diese Karte gibt es nicht.");
+  const dto = serializeMap(row, loaded);
   worldEvents.publish({ type: "map.updated", worldId: input.worldId, universeId: loaded.universeId });
   return ok({ map: dto });
 }
@@ -410,6 +537,7 @@ export async function createPin(input: {
   if (!allowed.ok) return allowed;
   const loaded = await loadMapRow(input.mapId, input.worldId);
   if (!loaded) return fail(404, "Diese Karte gibt es nicht.");
+  if (!loaded.map.imageId) return fail(400, "Diese Karte hat noch kein Bild.");
   const description = richFieldFromInput(input.description ?? null, { mentions: true });
   if (!description.ok) return description;
   try {
@@ -572,6 +700,7 @@ export async function placeMarker(input: {
 }): Promise<AuthzResult<{ marker: MarkerDto }>> {
   const loaded = await loadMapRow(input.mapId, input.worldId);
   if (!loaded) return fail(404, "Diese Karte gibt es nicht.");
+  if (!loaded.map.imageId) return fail(400, "Diese Karte hat noch kein Bild.");
   const visible = mapVisible(input.membership?.role ?? "player", loaded.universeVisibility, loaded.map.visibility);
   const [character] = await db
     .select({
@@ -597,27 +726,42 @@ export async function placeMarker(input: {
   if (!character || character.archivedAt) return fail(400, "Der Charakter ist nicht in diese Welt mitgebracht.");
 
   try {
-    const [row] = await db
-      .insert(characterMarkers)
-      .values({
-        characterId: input.characterId,
-        mapId: input.mapId,
-        posX: positionSql(input.posX),
-        posY: positionSql(input.posY),
-        createdBy: input.actorId,
-        updatedBy: input.actorId,
-      })
-      .returning();
-    const marker = serializeMarker({
-      ...row,
-      name: character.name,
-      portraitId: character.portraitId,
-      ownerId: character.ownerId,
+    const marker = await db.transaction(async (tx) => {
+      const previous = await tx
+        .select({ id: characterMarkers.id, mapId: characterMarkers.mapId })
+        .from(characterMarkers)
+        .where(eq(characterMarkers.characterId, input.characterId));
+      for (const old of previous) {
+        await tx.delete(characterMarkers).where(eq(characterMarkers.id, old.id));
+        worldEvents.publish({
+          type: "map.marker.deleted",
+          worldId: input.worldId,
+          markerId: old.id,
+          mapId: old.mapId,
+        });
+      }
+      const [row] = await tx
+        .insert(characterMarkers)
+        .values({
+          characterId: input.characterId,
+          mapId: input.mapId,
+          posX: positionSql(input.posX),
+          posY: positionSql(input.posY),
+          createdBy: input.actorId,
+          updatedBy: input.actorId,
+        })
+        .returning();
+      return serializeMarker({
+        ...row,
+        name: character.name,
+        portraitId: character.portraitId,
+        ownerId: character.ownerId,
+      });
     });
     worldEvents.publish({ type: "map.marker", worldId: input.worldId, marker });
     return ok({ marker });
   } catch (error) {
-    const mapped = mapDbError(error, { unique: "Ein Charakter darf auf einer Karte nur einen Marker haben." });
+    const mapped = mapDbError(error, { unique: MARKER_ONE_MAP });
     if (mapped) return mapped;
     throw error;
   }

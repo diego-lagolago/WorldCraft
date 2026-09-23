@@ -200,7 +200,7 @@ Regeln:
 | Sichtbarkeit | Sichtbarkeitsstatus | ✅ | Standard `nur Spielleitung` |
 
 Regeln:
-- **MVP:** höchstens eine Karte pro Universum (in der Anwendungslogik geprüft; das Modell erlaubt mehrere).
+- **Produkt (2026-09-23):** mehrere Karten pro Universum; Pins pro Karte; Charakter-Marker höchstens eine Karte weltweit.
 - Wird das Kartenbild ersetzt, bleiben Pins und Marker an ihrer relativen Position.
 
 ### 3.7 Pin

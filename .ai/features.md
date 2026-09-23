@@ -32,7 +32,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 | Feature | Was es tut | Status |
 |---|---|---|
 | Welten | Anlegen, bearbeiten, löschen (nur GM); Name, Beschreibung ohne `@`, optionales Titelbild | MVP F1 / shipped |
-| Universen | Mehrere pro Welt; Name, Beschreibung mit `@`, Reihenfolge, Sichtbarkeit; MVP je Universum eine Karte | MVP F1 / shipped |
+| Universen | Mehrere pro Welt; Name, Beschreibung mit `@`, Reihenfolge, Sichtbarkeit; mehrere Karten pro Universum | MVP F1 / shipped |
 | Mitglieder & Rollen | GM / Master / Player; Rollen ändern und entfernen nur GM; Austreten archiviert | MVP F6 / shipped |
 | Einladungslinks | GM erzeugt Links (1 Tag / 7 Tage / unbegrenzt), widerrufbar; Beitritt inkl. Reaktivierung | MVP F6 / shipped |
 
@@ -80,15 +80,20 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 
 | Feature | Was es tut | Status |
 |---|---|---|
-| Kartenbild | Upload als Whiteboard-Hintergrund (Leaflet `CRS.Simple`); Zoom/Pan | MVP F4 / shipped |
-| Pins | 12 Typen; Titel + Rich-Text-Beschreibung; Drag, Sync nach Drop | MVP F5 / shipped |
+| Mehrere Karten / Universum | Pro Universum beliebig viele Karten; Anlegen leer (ohne Bild), Löschen inkl. Pins/Marker (Kaskade) | shipped (Owner 2026-09-23) |
+| Karten-Auswahl | Dropdown oben links: Label `Universum: Karte` (bei SL-only zusätzlich `· SL`); Spielleitung: ＋ anlegen / Papierkorb löschen | shipped |
+| Kartenbild | Upload als Whiteboard-Hintergrund (Leaflet `CRS.Simple`); Zoom/Pan; Upload-Icon in der Toolbar (Spielleitung) | MVP F4 / shipped |
+| Bild ersetzen | Vor Upload bei bestehendem Bild: Checkbox-Dialog (Bild wird ersetzt, Pins bleiben); erstes Upload ohne Warnung | shipped |
+| Pins | 12 Typen; Titel + Rich-Text-Beschreibung; Drag, Sync nach Drop; **pro Karte** (kein Verschieben zwischen Karten) | MVP F5 / shipped |
 | Pin-Mentions | Erwähnungen in der Pin-Beschreibung als blaue Links; kein „Verknüpft“-Panel im Pin-Sheet | shipped |
-| Charakter-Marker | Profilbild/Name auf der Karte; Besitzer oder Spielleitung platziert | MVP F5 / shipped |
+| Charakter-Marker | Profilbild/Name auf der Karte; Besitzer oder Spielleitung platziert; **höchstens eine Karte weltweit pro Charakter** (Platzieren auf Karte B entfernt Marker von A) | MVP F5 / shipped |
 | Pin-Sperre | Sperren/Entsperren nur Spielleitung | shipped |
 | Karten-Sichtbarkeit | Auge-Icon in Toolbar (offen = sichtbar, durchgestrichen = nur Spielleitung) | shipped |
-| Deep-Link | `/map?pin=` zentriert und hebt den Pin hervor | MVP F5 / shipped |
-| Leerzustand | Mittiger Prompt zum Upload; Chips überlappen den Text nicht | shipped |
+| Deep-Link | `/map?pin=` bzw. `/map?map=` zentriert / wählt Karte | MVP F5 / shipped |
+| Leerzustand | Ohne Bild: mittiger Prompt + Upload (Spielleitung); Upload-Icon in Toolbar konsistent | shipped |
 | Zoom/Scroll | Weiches Zoomen näher am UI-Prototyp (kein extremes Nachziehen) | shipped |
+
+**Entscheidung 2026-09-23 (Owner):** Mehrere Karten pro Universum (APP-MAP-MVP-ONE aufgehoben). Pins bleiben kartenspezifisch (`map_id`). Charakter-Marker: `UNIQUE (character_id)` — max. eine aktive Karte pro Charakter.
 
 ## Chat & Würfel
 

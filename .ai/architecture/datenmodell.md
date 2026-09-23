@@ -53,7 +53,7 @@ erDiagram
 
 Relationen verbinden Artikel, Quests, Charaktere, Pins und Universen polymorph (Abschnitt 7). Sie sind im Diagramm nur als Zugehörigkeit zur Welt dargestellt.
 
-**Mehrere Karten pro Universum:** `maps.universe_id` hat **keinen** Unique-Constraint. Das MVP begrenzt auf eine Karte in der Anwendungslogik (`APP-MAP-MVP-ONE`). Eine zweite Karte braucht keine Migration.
+**Mehrere Karten pro Universum:** `maps.universe_id` hat **keinen** Unique-Constraint. Mehrere Karten sind Produktregel (Owner 2026-09-23; früher `APP-MAP-MVP-ONE` aufgehoben). `maps.image_id` ist optional (leere Karte).
 
 ---
 
@@ -322,7 +322,7 @@ Kein Übungsgrad und kein Übungsbonus. Angezeigt wird nur abgerundet((Attributw
 | `pos_x`, `pos_y` | numeric(8,7) | ✅ | 0–1 |
 | Protokollfelder | | ✅ | |
 
-`UNIQUE (character_id, map_id)` (`UQ-MARKER`). Entstehen nicht automatisch (`APP-MARKER-MANUAL`). Entfernen = Zeile löschen.
+`UNIQUE (character_id)` (`UQ-MARKER-CHARACTER`, Owner 2026-09-23). Früher `UNIQUE (character_id, map_id)`. Entstehen nicht automatisch (`APP-MARKER-MANUAL`). Entfernen = Zeile löschen. Platzieren auf einer anderen Karte löscht den bisherigen Marker.
 
 ### 3.12 `articles` (Artikel)
 
@@ -674,7 +674,7 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 | R-3.4-3 | Gültig = nicht widerrufen, nicht abgelaufen | `APP-INVITE-VALID` |
 | R-3.4-4 | Beitritt / Reaktivierung als Player | `APP-INVITE-JOIN` |
 | R-3.5-1 | Name eindeutig in der Welt | `UQ-UNIVERSE-NAME` |
-| R-3.6-1 | MVP höchstens eine Karte / Universum | `APP-MAP-MVP-ONE` — **kein** Unique auf `universe_id` |
+| R-3.6-1 | Mehrere Karten / Universum | kein Unique auf `universe_id`; APP-MAP-MVP-ONE aufgehoben (2026-09-23) |
 | R-3.6-2 | Bild ersetzen hält Positionen | relative Koordinaten, nur `image_id` wechselt |
 | R-3.7-1 | Titel ohne Erwähnungen | `APP-PIN-TITLE-PLAIN` |
 | R-3.7-2 | Erwähnungen nur in der Beschreibung | Editor nur dort mit Mentions |
@@ -689,7 +689,7 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 | R-3.9-3 | Mehrere Charaktere gleichzeitig, kein Aktiv-Schalter | keine `is_active`-Spalte |
 | R-3.9-4 | Archivierte Teilnahme versteckt Charakter inkl. Tagebuch | `APP-AUTHZ` |
 | R-3.9-5 | Wieder-mitbringen reaktiviert | `APP-PART-REACTIVATE` |
-| R-3.10-1 | Höchstens ein Marker pro Charakter und Karte | `UQ-MARKER` |
+| R-3.10-1 | Höchstens ein Marker pro Charakter (alle Karten) | `UQ-MARKER-CHARACTER` |
 | R-3.10-2 | Marker nicht automatisch | `APP-MARKER-MANUAL` |
 | R-3.10-3 | Platzieren nur auf sichtbarer Karte (Besitzer) | `APP-AUTHZ` + `APP-VIS-INHERIT` |
 | R-3.11-1 | Vorlagentyp änderbar, Felder verwerfen | `APP-TEMPLATE-SWITCH` |
@@ -717,7 +717,7 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 |---|---|
 | Genau ein Game Master = Ersteller | `UQ-ONE-GM` + `TRIG-GM-IS-CREATOR` + `TRIG-WORLD-CREATOR-IMMUTABLE` |
 | Höchstens eine Teilnahme pro Charakter und Welt | `UQ-PARTICIPATION` |
-| Höchstens ein Charakter-Marker pro Charakter und Karte | `UQ-MARKER` |
+| Höchstens ein Charakter-Marker pro Charakter (weltweit) | `UQ-MARKER-CHARACTER` |
 
 ---
 
@@ -1002,7 +1002,7 @@ Default neuer Inhalte: `gm_only`, außer erstes Universum (`published`).
 | `APP-PART-REACTIVATE` | archivierte Teilnahme finden und leeren, sonst INSERT |
 | `APP-REL-RECALC` | beim Speichern von Artikel, Quest, Pin, Universum: outgoing auto-Relationen der Quelle löschen, aus Mentions + Vorlagenfeldern + Quest-Beteiligten neu anlegen. Die Charakter-Bio hat im MVP keine Erwähnungen (`APP-BIO-NO-MENTIONS`) |
 | `APP-BIO-NO-MENTIONS` | Charakter-Bio wird wie die Weltbeschreibung ohne Erwähnungen gespeichert; ein Dokument mit `mention`-Knoten wird mit 400 abgelehnt (Projektinhaber 2026-09-23) |
-| `APP-MAP-MVP-ONE` | zweites `maps`-INSERT für dasselbe Universum im MVP ablehnen (HTTP-Fehler). Constraint absichtlich nicht gesetzt |
+| `APP-MAP-MVP-ONE` | **aufgehoben** (2026-09-23): mehrere Karten pro Universum erlaubt |
 | `APP-FILE-GC` | nach Löschen einer Welt/eines Bildes Dateien ohne verbleibende FK vom Volume nehmen |
 | `APP-USER-SYNC` | bei jedem Discord-Login `name`, `image` und `email` aus dem Discord-Profil schreiben |
 | `APP-LOGIN-REQUIRE-EMAIL` | Discord-Login ohne zurückgegebene E-Mail ablehnen (verständliche Fehlermeldung). Kein synthetischer Platzhalter für echte Discord-Benutzer |
