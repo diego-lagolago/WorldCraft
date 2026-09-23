@@ -11,7 +11,6 @@ import {
   type MembershipRole,
   type MembershipRow,
 } from "@/lib/authz";
-import { FIRST_CHANNEL_NAME } from "@/lib/domain/worlds";
 import { mapDbError } from "@/lib/domain/db-errors";
 import { parseStoredDiceTerms, type StoredDiceTerm } from "@/lib/chat/dice-format";
 import type { RolledDice } from "@/lib/chat/dice";
@@ -123,29 +122,6 @@ async function firstActive(worldId: string): Promise<ChannelRow | null> {
   return row ?? null;
 }
 
-/** Fills the default channel when world creation did not (APP-WORLD-CREATE). */
-export async function ensureDefaultChannel(worldId: string, actorId: string): Promise<ChannelRow> {
-  const existing = await firstActive(worldId);
-  if (existing) return existing;
-  try {
-    const [created] = await db
-      .insert(chatChannels)
-      .values({
-        worldId,
-        name: FIRST_CHANNEL_NAME,
-        sortOrder: 0,
-        createdBy: actorId,
-        updatedBy: actorId,
-      })
-      .returning();
-    return created;
-  } catch (error) {
-    const again = await firstActive(worldId);
-    if (again) return again;
-    throw error;
-  }
-}
-
 async function activeNameTaken(worldId: string, name: string, exceptId?: string): Promise<boolean> {
   const rows = await db
     .select({ id: chatChannels.id })
@@ -176,7 +152,36 @@ export async function loadChatState(input: {
   channelId: string | null;
   threadId: string | null;
 }): Promise<AuthzResult<ChatState>> {
-  await ensureDefaultChannel(input.worldId, input.actorId);
+  if (!input.channelId && !input.threadId) {
+    const active = await firstActive(input.worldId);
+    if (!active) {
+      const staff = isStaff(input.role);
+      const [archivedRows, dicePostToChat] = await Promise.all([
+        staff
+          ? db
+              .select()
+              .from(chatChannels)
+              .where(and(eq(chatChannels.worldId, input.worldId), isNotNull(chatChannels.archivedAt)))
+              .orderBy(asc(chatChannels.name))
+          : Promise.resolve([] as ChannelRow[]),
+        getDicePostToChat(input.actorId),
+      ]);
+      return ok({
+        actorId: input.actorId,
+        role: input.role,
+        staff,
+        channel: null,
+        thread: null,
+        channels: [],
+        archivedChannels: archivedRows.map(toChannel),
+        threads: [],
+        messages: [],
+        hasMore: false,
+        dicePostToChat,
+      });
+    }
+  }
+
   const scope = await resolveScope(input.worldId, input.channelId, input.threadId);
   if (!scope.ok) return scope;
 
@@ -530,16 +535,30 @@ export async function updateChannel(input: {
 
   if (input.action === "archive") {
     if (channel.archivedAt) return fail(404, "Dieser Kanal ist archiviert.");
-    const [countRow] = await db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(chatChannels)
-      .where(and(eq(chatChannels.worldId, input.worldId), isNull(chatChannels.archivedAt)));
-    if (Number(countRow?.n ?? 0) <= 1) return fail(409, LAST_CHANNEL);
-    const [row] = await db
-      .update(chatChannels)
-      .set({ archivedAt: new Date(), updatedAt: new Date(), updatedBy: input.actorId })
-      .where(eq(chatChannels.id, channel.id))
-      .returning();
+    const row = await db.transaction(async (tx) => {
+      await tx.execute(sql`
+        SELECT id FROM ${chatChannels}
+        WHERE ${chatChannels.worldId} = ${input.worldId} AND ${chatChannels.archivedAt} IS NULL
+        FOR UPDATE
+      `);
+      const [countRow] = await tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(chatChannels)
+        .where(and(eq(chatChannels.worldId, input.worldId), isNull(chatChannels.archivedAt)));
+      if (Number(countRow?.n ?? 0) <= 1) return null;
+      const now = new Date();
+      const [updated] = await tx
+        .update(chatChannels)
+        .set({ archivedAt: now, updatedAt: now, updatedBy: input.actorId })
+        .where(and(eq(chatChannels.id, channel.id), isNull(chatChannels.archivedAt)))
+        .returning();
+      return updated ?? null;
+    });
+    if (!row) {
+      const current = await channelInWorld(input.worldId, input.channelId);
+      if (!current || current.archivedAt) return fail(404, "Dieser Kanal ist archiviert.");
+      return fail(409, LAST_CHANNEL);
+    }
     worldEvents.publish({ type: "chat.channels", worldId: input.worldId });
     return ok(toChannel(row));
   }

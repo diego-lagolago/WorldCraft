@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { authorizeImageWrite } from "./authorize";
-import { inspectImage, isImageError } from "./inspect";
+import { inspectImage, isImageError, maxBytesFor, OTHER_IMAGE_MAX_BYTES, MAP_IMAGE_MAX_BYTES } from "./inspect";
 
 const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
@@ -14,6 +14,15 @@ const membership = {
   role: "player" as const,
   archivedAt: null,
 };
+
+describe("maxBytesFor", () => {
+  it("uses 20 MB for map images and 10 MB for every other kind", () => {
+    expect(maxBytesFor("map")).toBe(MAP_IMAGE_MAX_BYTES);
+    expect(maxBytesFor("article_title")).toBe(OTHER_IMAGE_MAX_BYTES);
+    expect(maxBytesFor("world_title")).toBe(OTHER_IMAGE_MAX_BYTES);
+    expect(maxBytesFor("character_portrait")).toBe(OTHER_IMAGE_MAX_BYTES);
+  });
+});
 
 describe("inspectImage", () => {
   it("accepts a real PNG and rejects a file that only claims to be one", () => {

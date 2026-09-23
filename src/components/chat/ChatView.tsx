@@ -89,25 +89,33 @@ export function ChatView({
           {stream.error ? <p className="chat-error">{stream.error}</p> : null}
           {stream.loading && !state ? <p className="empty">Chat wird geladen …</p> : null}
           {state?.channel ? (
-            <MessageList
-              messages={state.messages}
-              threads={state.threads}
-              actorId={state.actorId}
-              staff={state.staff}
-              hasMore={state.hasMore}
-              onDelete={(id) => void stream.deleteMessage(id)}
-              onOpenThread={(id) => openChannel(state.channel!.id, id)}
-              onOlder={() => void stream.loadOlder()}
-            />
+            <>
+              <MessageList
+                messages={state.messages}
+                threads={state.threads}
+                actorId={state.actorId}
+                staff={state.staff}
+                hasMore={state.hasMore}
+                onDelete={(id) => void stream.deleteMessage(id)}
+                onOpenThread={(id) => openChannel(state.channel!.id, id)}
+                onOlder={() => void stream.loadOlder()}
+              />
+              <ComposerBar
+                disabled={false}
+                inThread={Boolean(state.thread)}
+                placeholder={state.thread ? `Nachricht an 🧵 ${state.thread.title}` : `Nachricht an ${heading}`}
+                onSend={stream.sendText}
+                onStartThread={() => setThreadOpen(true)}
+                onOpenDice={() => setDiceOpen(true)}
+              />
+            </>
+          ) : state && !stream.loading ? (
+            <p className="empty">
+              {state.staff
+                ? "Noch kein aktiver Kanal. Lege einen an oder stelle einen archivierten wieder her."
+                : "Noch kein aktiver Kanal. Die Spielleitung kann einen anlegen."}
+            </p>
           ) : null}
-          <ComposerBar
-            disabled={!state?.channel}
-            inThread={Boolean(state?.thread)}
-            placeholder={state?.thread ? `Nachricht an 🧵 ${state.thread.title}` : `Nachricht an ${heading}`}
-            onSend={stream.sendText}
-            onStartThread={() => setThreadOpen(true)}
-            onOpenDice={() => setDiceOpen(true)}
-          />
       </section>
       {stream.notice ? <Toast message={stream.notice} onDone={stream.clearNotice} /> : null}
       {diceOpen && state ? (

@@ -14,7 +14,7 @@ import { mapDbError } from "@/lib/domain/db-errors";
 import { worldEvents } from "@/lib/realtime/events";
 import { authorizeImageWrite, type ImageKind } from "./authorize";
 import { collectUnreferencedFiles } from "./gc";
-import { MAP_IMAGE_MAX_BYTES, OTHER_IMAGE_MAX_BYTES } from "./inspect";
+import { maxBytesFor } from "./inspect";
 import { persistImage, removeStoredFile } from "./store";
 
 export async function attachImage(input: {
@@ -24,7 +24,7 @@ export async function attachImage(input: {
   worldId?: string | null;
   targetId?: string | null;
 }): Promise<AuthzResult<{ fileId: string }>> {
-  const maxBytes = input.kind === "map" ? MAP_IMAGE_MAX_BYTES : OTHER_IMAGE_MAX_BYTES;
+  const maxBytes = maxBytesFor(input.kind);
 
   if (input.kind === "world_title" || input.kind === "map" || input.kind === "article_title") {
     if (!input.worldId || !input.targetId) {

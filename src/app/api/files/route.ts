@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { attachImage } from "@/lib/files/attach";
 import { IMAGE_KINDS, type ImageKind } from "@/lib/files/authorize";
+import { maxBytesFor } from "@/lib/files/inspect";
 import { parseUuid } from "@/lib/http";
 import { requireProductSession } from "@/lib/session";
 
@@ -24,6 +25,15 @@ export async function POST(request: Request) {
   if (!(file instanceof File) || typeof kindRaw !== "string" || !isImageKind(kindRaw)) {
     return NextResponse.json(
       { error: "Bitte ein Bild und eine gültige Bildart senden." },
+      { status: 400 },
+    );
+  }
+
+  const maxBytes = maxBytesFor(kindRaw);
+  if (file.size > maxBytes) {
+    const limitMb = Math.round(maxBytes / (1024 * 1024));
+    return NextResponse.json(
+      { error: `Das Bild darf höchstens ${limitMb} MB groß sein.` },
       { status: 400 },
     );
   }

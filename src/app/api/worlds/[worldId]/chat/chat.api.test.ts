@@ -190,3 +190,81 @@ describe("Produkt-Chat", () => {
     expect(reply.status).toBe(201);
   });
 });
+
+
+describe("CR-013 / CR-014 chat channel edge cases", () => {
+  let edgeWorldId = "";
+  let edgeGm: TestSession;
+  let edgePlayer: TestSession;
+
+  beforeAll(async () => {
+    edgeGm = gm;
+    edgePlayer = playerA;
+    const created = await api<{ id: string }>(edgeGm, "POST", "/api/worlds", {
+      name: `Chat-Edge ${Date.now()}`,
+    });
+    expect(created.status).toBe(201);
+    edgeWorldId = created.data.id;
+    await sql`
+      INSERT INTO memberships (world_id, user_id, role, created_by, updated_by)
+      VALUES (${edgeWorldId}, ${edgePlayer.user.id}, 'player', ${edgeGm.user.id}, ${edgeGm.user.id})
+    `;
+  });
+
+  afterAll(async () => {
+    if (edgeWorldId) await sql`DELETE FROM worlds WHERE id = ${edgeWorldId}`;
+  });
+
+  it("CR-013: parallel archives leave exactly one active channel", async () => {
+    const second = await api<{ id: string }>(edgeGm, "POST", `/api/worlds/${edgeWorldId}/chat/channels`, {
+      name: "Zweiter",
+    });
+    expect(second.status).toBe(201);
+    const state = await api<ChatState>(edgeGm, "GET", `/api/worlds/${edgeWorldId}/chat`);
+    expect(state.status).toBe(200);
+    expect(state.data.channels).toHaveLength(2);
+    const [a, b] = state.data.channels;
+    const results = await Promise.all([
+      api(edgeGm, "PATCH", `/api/worlds/${edgeWorldId}/chat/channels/${a!.id}`, { action: "archive" }),
+      api(edgeGm, "PATCH", `/api/worlds/${edgeWorldId}/chat/channels/${b!.id}`, { action: "archive" }),
+    ]);
+    const statuses = results.map((row) => row.status).sort();
+    expect(statuses).toEqual([200, 409]);
+    const [{ n }] = await sql<{ n: number }[]>`
+      SELECT count(*)::int AS n FROM chat_channels
+      WHERE world_id = ${edgeWorldId} AND archived_at IS NULL
+    `;
+    expect(Number(n)).toBe(1);
+  });
+
+  it("CR-014: GET chat with no active channel returns empty state without insert", async () => {
+    await sql`
+      UPDATE chat_channels SET archived_at = now()
+      WHERE world_id = ${edgeWorldId} AND archived_at IS NULL
+    `;
+    const before = await sql<{ n: number }[]>`
+      SELECT count(*)::int AS n FROM chat_channels
+      WHERE world_id = ${edgeWorldId} AND archived_at IS NULL
+    `;
+    expect(Number(before[0]!.n)).toBe(0);
+
+    const staffView = await api<ChatState>(edgeGm, "GET", `/api/worlds/${edgeWorldId}/chat`);
+    expect(staffView.status).toBe(200);
+    expect(staffView.data.channel).toBeNull();
+    expect(staffView.data.channels).toEqual([]);
+    expect(staffView.data.messages).toEqual([]);
+    expect(staffView.data.archivedChannels.length).toBeGreaterThan(0);
+
+    const playerView = await api<ChatState>(edgePlayer, "GET", `/api/worlds/${edgeWorldId}/chat`);
+    expect(playerView.status).toBe(200);
+    expect(playerView.data.channel).toBeNull();
+    expect(playerView.data.channels).toEqual([]);
+    expect(playerView.data.archivedChannels).toEqual([]);
+
+    const after = await sql<{ n: number }[]>`
+      SELECT count(*)::int AS n FROM chat_channels
+      WHERE world_id = ${edgeWorldId} AND archived_at IS NULL
+    `;
+    expect(Number(after[0]!.n)).toBe(0);
+  });
+});
