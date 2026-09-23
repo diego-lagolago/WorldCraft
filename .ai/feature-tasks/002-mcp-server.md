@@ -53,7 +53,7 @@ Alle Werkzeuge sind nur lesend, erfordern den Scope `worlds:read` und liefern au
 ## Relevante Normen
 
 Zum Zeitpunkt der Planerstellung existieren sie noch nicht. Sie werden durch Plan `001` (T-013) und den MVP-Funktionsplan angelegt und sind vor Beginn zu lesen:
-- `.ai/tech-stack.md`
+- `.ai/architecture.md`
 - `.ai/conventions.md`
 - `.ai/architecture/README.md`
 - `.ai/architecture/datenmodell-fachlich.md` (fachliches Datenmodell, liegt bereits vor)
@@ -62,7 +62,7 @@ Zum Zeitpunkt der Planerstellung existieren sie noch nicht. Sie werden durch Pla
 
 ## Globale Abhängigkeiten
 
-- **Plan `001` abgeschlossen** mit Ergebnis „Go“ (`.ai/tech-stack.md`).
+- **Plan `001` abgeschlossen** mit Ergebnis „Go“ (`.ai/architecture.md`).
 - **MVP-Funktionsplan abgeschlossen**: Welten, Artikel mit Vorlagen und Relationen, Karten mit Pins, Quests, Charaktere und die Rechteschicht sind produktiv vorhanden. Falls sich die Planreihenfolge ändert, muss dieser Plan überarbeitet werden, bevor er umgesetzt wird.
 - Produktiv- und Staging-Umgebung auf Coolify mit HTTPS (aus Plan `001`, T-007).
 - Discord-Login (aus Plan `001`, T-008).

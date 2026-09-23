@@ -1,4 +1,4 @@
-# Tech-Stack (verbindlich)
+# Architecture (verbindlich)
 
 **Status:** Festgehalten durch Plan `001` T-013 (2026-09-22).  
 **Grundlage:** ADRs unter `.ai/decisions/`, Spikes T-005 / T-008–T-011 (historisch), Smoketest, `package.json`. TipTap lebt in der Next-App (`src/components/editor/`, `src/lib/editor/`).

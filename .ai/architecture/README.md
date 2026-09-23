@@ -1,7 +1,7 @@
 # Architektur — Überblick
 
 **Status:** Festgehalten durch Plan `001` T-013 (2026-09-22).  
-**Details:** [datenmodell-fachlich.md](datenmodell-fachlich.md) · [datenmodell.md](datenmodell.md) · ADRs · [tech-stack.md](../tech-stack.md)
+**Details:** [datenmodell-fachlich.md](datenmodell-fachlich.md) · [datenmodell.md](datenmodell.md) · ADRs · [architecture.md](../architecture.md)
 
 ## Komponenten
 

@@ -69,7 +69,7 @@ Die Begriffe aus Plan `001` und dem fachlichen Datenmodell gelten unverändert (
 
 - `.ai/architecture/datenmodell-fachlich.md` — fachliche Entitäten, Regeln, Löschregeln, Rechte; bei Abweichung hat dieses Dokument Vorrang.
 - `.ai/architecture/datenmodell.md` — technisches Schema (Tabellen, Constraints, APP-*-Regeln, Suche, Relationen).
-- `.ai/tech-stack.md` — Next.js, Drizzle, Better Auth, Leaflet, TipTap, SSE, Coolify/GHCR.
+- `.ai/architecture.md` — Next.js, Drizzle, Better Auth, Leaflet, TipTap, SSE, Coolify/GHCR.
 - `.ai/conventions.md` — Sprache UI Deutsch / Code Englisch, Secrets, Test-Login nie in Produktion.
 - `.ai/architecture/README.md` — Komponenten und Datenfluss.
 - `.ai/standards/mobile-first.md` — Handy ~390 px zuerst.
@@ -380,7 +380,7 @@ Regeln:
 - Umsetzung (Plan 003 T-015, 2026-09-23): `vitest.rechte.config.ts` nur noch `*.api.test.ts`. Matrix in `rechte-matrix.api.test.ts` gegen Produkt-APIs. Persistenz `GET /api/worlds/[worldId]/persistence` ohne Klartext privater Tagebücher (CR-019a). Spike-`run-rechte-tests.ts` entfernt.
 
 ### T-016: Spike-Abbau und Normen
-- [x] Beschreibung: Routen `/spike/*` und `/api/spike/*` entfernen. Tabellen `spike_*` und Enum `spike_pin_type` per Migration droppen. Code unter `src/spike/` und `spikes/editor/` entfernen (der Editor lebt ab T-005 in der App; die Historie bleibt in Git). `spikes/ui-prototype/` bleibt als Design-Referenz erhalten und wird nicht entfernt. `conventions.md`, `architecture/README.md`, `tech-stack.md` (Spike-Zeilen) aktualisieren. Test-Includes in `vitest.config.ts` an die neuen Pfade anpassen. Zusätzlich CR-001 Teile 2 und 3: Spike-Code entfernen und Spike-Daten aus den Produktivtabellen per `scripts/cleanup-spike-data.sql` bereinigen (Welten `Rechte-Spike*` samt Kaskade, `files` mit `storage_key LIKE 'spike/%'`). Vor der Ausführung auf Produktion zeigt ein Dry-Run die betroffenen Zeilen, und der Projektinhaber bestätigt im Chat.
+- [x] Beschreibung: Routen `/spike/*` und `/api/spike/*` entfernen. Tabellen `spike_*` und Enum `spike_pin_type` per Migration droppen. Code unter `src/spike/` und `spikes/editor/` entfernen (der Editor lebt ab T-005 in der App; die Historie bleibt in Git). `spikes/ui-prototype/` bleibt als Design-Referenz erhalten und wird nicht entfernt. `conventions.md`, `architecture/README.md`, `architecture.md` (Spike-Zeilen) aktualisieren. Test-Includes in `vitest.config.ts` an die neuen Pfade anpassen. Zusätzlich CR-001 Teile 2 und 3: Spike-Code entfernen und Spike-Daten aus den Produktivtabellen per `scripts/cleanup-spike-data.sql` bereinigen (Welten `Rechte-Spike*` samt Kaskade, `files` mit `storage_key LIKE 'spike/%'`). Vor der Ausführung auf Produktion zeigt ein Dry-Run die betroffenen Zeilen, und der Projektinhaber bestätigt im Chat.
 - Code-Review: CR-001 (Teile 2 und 3), Endprüfung CR-012 und CR-013 für ganz `src/`. Deren Abnahmekriterien gehören zur Abnahme dieser Aufgabe (siehe *Code-Review zu Plan 001*).
 - Abhängigkeiten: T-015
 - Abnahmekriterium: (1) `GET /spike/karte` und `GET /spike/chat` sind 404. (2) `npm test` und `npm run test:rechte` grün. (3) `conventions.md` beschreibt die Produkt-Ordnerstruktur ohne Spike als Normalfall. (4) Keine toten Imports auf gelöschte Spike-Module. (5) Abnahmekriterium von CR-001 Teile 2 und 3 erfüllt: `git ls-files src | grep -i spike` ist leer; in Produktion gibt es keine `spike_*`-Tabellen, keine Welten `Rechte-Spike*` und keine `files`-Zeilen mit `storage_key LIKE 'spike/%'`.
@@ -398,10 +398,10 @@ Regeln:
 - Abnahmekriterium: Protokollabschnitt existiert. Auf Prod per HTTPS: Login, Welt öffnen, Artikel mit Erwähnung speichern, Karte mit Pin, Chat-Nachricht. Rechte-Skript lokal bestanden. `ENABLE_TEST_LOGIN` in Coolify weiterhin unset.
 
 ### T-018: Abgleich Plan 002
-- [x] Beschreibung: Plan `.ai/feature-tasks/002-mcp-server.md` gegen den **tatsächlichen** Stand nach T-016 lesen (Rechteschicht-Pfad, Routen, Tabellennamen, Chat-/Staging-Formulierungen, MCP-Parameternamen). Abweichungen als Liste in `.ai/tech-stack.md` unter einem neuen Unterabschnitt *Abgleich Plan 002 nach MVP* festhalten. Plan `002` nicht eigenmächtig ändern.
+- [x] Beschreibung: Plan `.ai/feature-tasks/002-mcp-server.md` gegen den **tatsächlichen** Stand nach T-016 lesen (Rechteschicht-Pfad, Routen, Tabellennamen, Chat-/Staging-Formulierungen, MCP-Parameternamen). Abweichungen als Liste in `.ai/architecture.md` unter einem neuen Unterabschnitt *Abgleich Plan 002 nach MVP* festhalten. Plan `002` nicht eigenmächtig ändern.
 - Abhängigkeiten: T-016
 - Abnahmekriterium: Der Abschnitt existiert und listet jede Abweichung mit Fundstelle in Plan `002` oder vermerkt „keine neuen Abweichungen gegenüber dem Abgleich aus Plan 001 T-013“. Offene Fragen aus Plan 001 (Staging-Texte, deutsche vs. englische MCP-Parameter) werden wiederholt, falls noch unbeantwortet.
-- Umsetzung (Plan 003 T-018, 2026-09-23): Abschnitt *Abgleich Plan 002 nach MVP* in `.ai/tech-stack.md` (M1–M7). Keine neuen Kernabweichungen; Staging- und Parameter-Rückfragen wiederholt; TipTap→Markdown noch fehlend.
+- Umsetzung (Plan 003 T-018, 2026-09-23): Abschnitt *Abgleich Plan 002 nach MVP* in `.ai/architecture.md` (M1–M7). Keine neuen Kernabweichungen; Staging- und Parameter-Rückfragen wiederholt; TipTap→Markdown noch fehlend.
 
 ### T-019: Verschobene Browser-Abnahmen
 - [x] Beschreibung: Abnahmekriterien, die der Projektinhaber auf die Zeit nach der Umsetzung aller Aufgaben verschoben hat, lokal im Browser (Test-Login, Testwelt, ~390 px und Desktop) prüfen und das Ergebnis je Kriterium (bestanden / nicht bestanden) in dieser Aufgabe festhalten. Nicht bestandene Punkte werden behoben oder als neue Aufgabe gemeldet. Verschoben (Entscheidung Projektinhaber 2026-09-23):

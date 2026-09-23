@@ -261,15 +261,15 @@ Weitere Normen legt dieser Plan an: ADRs unter `.ai/decisions/`, Projektnormen d
 - Vom Projektinhaber am 2026-09-22 aus diesem Plan gestrichen, siehe *Abgrenzung → Backlog*. Die ID T-012 bleibt reserviert und wird nicht neu vergeben.
 
 ### T-013: Projektnormen festhalten & Go/No-Go
-**Nachweis (2026-09-22):** `.ai/tech-stack.md` (inkl. Go + Abgleich Plan 002), `.ai/conventions.md`, `.ai/architecture/README.md`. Einschätzung **Go**.
+**Nachweis (2026-09-22):** `.ai/architecture.md` (inkl. Go + Abgleich Plan 002), `.ai/conventions.md`, `.ai/architecture/README.md`. Einschätzung **Go**.
 - [x] Beschreibung: Die Ergebnisse als verbindliche Normen für die Folgepläne festhalten:
-  - `.ai/tech-stack.md`: gewählte Technologien mit Version und Verweis auf die ADRs.
+  - `.ai/architecture.md`: gewählte Technologien mit Version und Verweis auf die ADRs.
   - `.ai/conventions.md`: Ordnerstruktur, Namenskonventionen, Sprache von Code und Oberfläche, Umgang mit Secrets, Teststrategie (inkl. Regel: Test-Login nur auf Staging und lokal, nie in Produktion).
   - `.ai/architecture/README.md`: Überblick über die Komponenten und den Datenfluss.
 
-  Danach eine Go/No-Go-Einschätzung am Ende von `.ai/tech-stack.md` ergänzen: Sind die Spikes T-005 und T-008 bis T-011 (lokal und im Smoketest T-014) bestanden?
+  Danach eine Go/No-Go-Einschätzung am Ende von `.ai/architecture.md` ergänzen: Sind die Spikes T-005 und T-008 bis T-011 (lokal und im Smoketest T-014) bestanden?
 
-  Abschließend Plan `.ai/feature-tasks/002-mcp-server.md` gegen die ADRs, das technische Datenmodell (`.ai/architecture/datenmodell.md`), das fachliche Datenmodell und die Projektnormen abgleichen. Veraltete Annahmen (z. B. zu Backend, Relationsarten, Rollen, Charakteren) werden als Liste mit Fundstelle in `.ai/tech-stack.md` unter *Abgleich Plan 002* festgehalten und dem Projektinhaber als Rückfrage vorgelegt. Plan `002` wird dabei nicht eigenmächtig geändert.
+  Abschließend Plan `.ai/feature-tasks/002-mcp-server.md` gegen die ADRs, das technische Datenmodell (`.ai/architecture/datenmodell.md`), das fachliche Datenmodell und die Projektnormen abgleichen. Veraltete Annahmen (z. B. zu Backend, Relationsarten, Rollen, Charakteren) werden als Liste mit Fundstelle in `.ai/architecture.md` unter *Abgleich Plan 002* festgehalten und dem Projektinhaber als Rückfrage vorgelegt. Plan `002` wird dabei nicht eigenmächtig geändert.
 - Abhängigkeiten: T-002, T-003, T-004, T-005, T-006, T-008, T-009, T-010, T-011, T-014
 - **Stopp bei No-Go (Rückfrage erforderlich):** Lautet die Einschätzung „No-Go“, pausiert `/plan-run` und legt dem Projektinhaber vor: die nicht bestandenen Spikes mit Ursache und einen Vorschlag, welche Aufgaben wiederholt werden sollen (z. B. „ADR-003 neu bewerten, danach T-009 und T-014 wiederholen“). Wiederholt werden nur die Aufgaben, die der Projektinhaber im Chat freigibt. Betrifft die Wiederholung ein ADR, gelten dessen Stopp und das *Vorgehen bei Architekturentscheidungen* erneut. Danach wird T-013 erneut durchgeführt.
-- Abnahmekriterium: Alle drei Dateien existieren. Jede Technologie in `tech-stack.md` verweist auf ein ADR. `conventions.md` legt die Sprache der Oberfläche und des Codes ausdrücklich fest. Die Go/No-Go-Einschätzung nennt für jeden Spike „bestanden“ oder „nicht bestanden“ mit Begründung und endet mit „Go“ oder „No-Go“. Der Abschnitt *Abgleich Plan 002* existiert und listet jede gefundene Abweichung mit Fundstelle in Plan `002` und Bezug auf das betroffene ADR bzw. den Abschnitt des Datenmodells, oder vermerkt ausdrücklich „keine Abweichungen“.
+- Abnahmekriterium: Alle drei Dateien existieren. Jede Technologie in `architecture.md` verweist auf ein ADR. `conventions.md` legt die Sprache der Oberfläche und des Codes ausdrücklich fest. Die Go/No-Go-Einschätzung nennt für jeden Spike „bestanden“ oder „nicht bestanden“ mit Begründung und endet mit „Go“ oder „No-Go“. Der Abschnitt *Abgleich Plan 002* existiert und listet jede gefundene Abweichung mit Fundstelle in Plan `002` und Bezug auf das betroffene ADR bzw. den Abschnitt des Datenmodells, oder vermerkt ausdrücklich „keine Abweichungen“.

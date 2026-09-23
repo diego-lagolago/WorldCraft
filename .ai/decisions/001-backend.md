@@ -152,7 +152,7 @@ Die Empfehlung bleibt C. Die Gegenprüfung ändert die Rangfolge nicht: das stä
 
 ## Konsequenzen
 
-- **Stack:** TypeScript-Backend (Node.js), PostgreSQL, Drizzle, Better Auth mit Discord, Realtime über WebSockets, Dateien auf Volume. Konkrete Versionen hält T-013 in `.ai/tech-stack.md` fest, sobald das Grundgerüst (T-007) steht.
+- **Stack:** TypeScript-Backend (Node.js), PostgreSQL, Drizzle, Better Auth mit Discord, Realtime über WebSockets, Dateien auf Volume. Konkrete Versionen hält T-013 in `.ai/architecture.md` fest, sobald das Grundgerüst (T-007) steht.
 - **Auth jetzt:** Discord-OAuth als Client (T-008) plus Test-Login. **Auth später:** dieselbe Better-Auth-Instanz als OAuth-2.1-AS für MCP (Plan `002`); DCR trotz CIMD-Empfehlung der Bibliothek einschalten, solange Plan `002` DCR fordert.
 - **Rechte:** Eine serverseitige Schicht, von HTTP, WebSockets und MCP genutzt. Postgres sichert Uniqueness/Archive-Regeln; die Matrix selbst bleibt Anwendungslogik mit Tests (T-011).
 - **Betrieb:** Coolify-App plus Postgres-Dienst, HTTPS, persistente Volumes für DB und Uploads, Proxy-Limits für 20 MB und WebSockets. Lokale Dev: Postgres per Docker Compose, App per Dev-Server.
