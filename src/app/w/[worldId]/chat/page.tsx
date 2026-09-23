@@ -1,4 +1,6 @@
+import { cookies } from "next/headers";
 import { ChatView } from "@/components/chat/ChatView";
+import { EXPANDED_COOKIE, parseExpanded } from "@/lib/chat/expanded-state";
 import { loadChatState } from "@/lib/chat/repository";
 import { optionalUuid } from "@/lib/chat/query";
 import { requireWorldPage } from "@/lib/page-context";
@@ -26,11 +28,13 @@ export default async function ChatPage({
     return <p className="empty">{state.error}</p>;
   }
   const focusStream = Boolean(query.channel || query.thread);
+  const initialExpanded = parseExpanded((await cookies()).get(EXPANDED_COOKIE)?.value);
   return (
     <ChatView
       key={`${state.data.channel?.id ?? ""}:${state.data.thread?.id ?? ""}`}
       worldId={world.id}
       initial={state.data}
+      initialExpanded={initialExpanded}
       focusStream={focusStream}
     />
   );

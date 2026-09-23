@@ -111,7 +111,8 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 | Nachrichten bearbeiten | Nur Autor, Textnachrichten; „(bearbeitet)“; kein Würfelbefehl nachträglich; SSE `chat.message.edited` | Plan 007 / shipped |
 | Nachrichten kopieren | Zwischenablage + Toast; Würfel formatiert, Eröffnung = Thread-Titel | Plan 007 / shipped |
 | Thread umbenennen | ⋯ in Kanalliste; Ersteller oder Spielleitung; Titel nur in `chat_threads.title` | Plan 007 / shipped |
-| Kanal-Aufklapp merken | `localStorage` `worldcraft:chat-expanded` | Plan 007 / shipped |
+| Kanal-Aufklapp merken | Cookie `chat-expanded` je Welt, vom Server gerendert (kein Flackern) | Plan 007 / shipped |
+| Nachricht hervorheben | Ganze Zeile heller bei Hover/Fokus bzw. Antippen (Schnellaktionen) | Plan 007 / shipped |
 
 ## Rechte & Sichtbarkeit
 

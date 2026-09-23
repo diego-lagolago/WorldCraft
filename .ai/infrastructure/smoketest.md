@@ -180,4 +180,7 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 | C7.6 | **Thread umbenennen:** ⋯ nur Ersteller/SL; Titel in Kanalliste, Karte und Kopf live | Lokal | **bestanden** | Owner 2026-09-23. |
 | C7.7 | **Aufklapp merken:** Kanal auf/zu, Reload behält Zustand | Lokal | **bestanden** | Owner 2026-09-23. Anmerkung: Beim Neuladen kurzes Flackern (zu → auf), stört bei vielen Kanälen und Threads. |
 | C7.8 | **Desktop:** Schnellaktionen bei Hover/Fokus; **Touch:** nach Antippen | Lokal | **bestanden** | Owner 2026-09-23. Anmerkung: Nachricht mit offenen Schnellaktionen (Hover/Antippen) sollte leicht heller hervorgehoben werden. |
-| C7.9 | **`/r 1d20`** würfelt wie `/roll 1d20` (Alias) | Lokal | offen | |
+| C7.9 | **`/r 1d20`** würfelt wie `/roll 1d20` (Alias) | Lokal | **bestanden** | Claude im Browser 2026-09-23 (Test-GM): `/r 1d20` → Würfelergebnis im Kanal. |
+| C7.10 | **Absätze ohne Hintergrund:** eigene mehrzeilige Nachricht ohne Farbfläche (Nachtrag N1) | Lokal | **bestanden** | Claude im Browser 2026-09-23. |
+| C7.11 | **Aufklapp ohne Flackern:** Kanal auf → Neuladen → sofort auf; zu → Neuladen → sofort zu (Nachtrag N2) | Lokal | **bestanden** | Claude im Browser 2026-09-23: Server-HTML enthält den gespeicherten Zustand, keine Hydration-Fehler. |
+| C7.12 | **Hervorhebung:** ganze Zeile inkl. Aktionsknöpfe heller bei Hover (Desktop) bzw. Antippen (375 px) (Nachtrag N3) | Lokal | **bestanden** | Claude im Browser 2026-09-23. |

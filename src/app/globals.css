@@ -919,7 +919,8 @@ textarea {
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  /* 14px spacing between messages minus the 2 × 4px row padding of .msg */
+  gap: 6px;
 }
 
 .chat .msg {
@@ -927,6 +928,11 @@ textarea {
   display: flex;
   gap: 10px;
   align-items: flex-start;
+  /* Padding offset by negative margin: the highlight spans the full row without shifting the layout. */
+  margin: 0 -8px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  transition: background 0.12s;
 }
 
 .chat .msg.mine {
@@ -984,13 +990,6 @@ textarea {
   line-height: 1.45;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
-  border-radius: 10px;
-}
-
-.chat .msg.mine .txt,
-.chat .msg.mine .dice,
-.chat .msg.mine .thread-card {
-  background: rgb(245 184 61 / 7%);
 }
 
 .chat .dice {
@@ -1073,6 +1072,11 @@ textarea {
 }
 
 @media (hover: hover) {
+  .chat .msg:hover,
+  .chat .msg:focus-within {
+    background: rgb(255 255 255 / 5%);
+  }
+
   .chat .msg:hover .msg-actions,
   .chat .msg:focus-within .msg-actions {
     opacity: 1;
@@ -1081,6 +1085,10 @@ textarea {
 }
 
 @media (hover: none) {
+  .chat .msg.selected {
+    background: rgb(255 255 255 / 5%);
+  }
+
   .chat .msg.selected .msg-actions {
     opacity: 1;
     pointer-events: auto;

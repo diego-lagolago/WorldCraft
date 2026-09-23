@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ChatChannelDto, ChatThreadDto } from "@/lib/chat/types";
-import { readExpanded, writeExpanded } from "@/lib/client/chat-expanded";
+import { writeExpanded } from "@/lib/client/chat-expanded";
 
 type Props = {
+  worldId: string;
+  /** Saved expand state, read from the cookie on the server (Plan 007 C9). */
+  initialExpanded: Record<string, boolean>;
   channels: ChatChannelDto[];
   threads: ChatThreadDto[];
   archived: ChatChannelDto[];
@@ -21,6 +24,8 @@ type Props = {
 };
 
 export function ChannelList({
+  worldId,
+  initialExpanded,
   channels,
   threads,
   archived,
@@ -35,23 +40,18 @@ export function ChannelList({
   onCreate,
   onRestore,
 }: Props) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const hydrated = useRef(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(initialExpanded);
+  const mounted = useRef(false);
   const threadChannelId = threads.find((row) => row.id === currentThreadId)?.channelId ?? null;
 
   useEffect(() => {
-    // localStorage exists only after mount (CR-003).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setExpanded(readExpanded());
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated.current) {
-      hydrated.current = true;
+    // Skip the initial state: it came from the cookie, nothing changed yet (CR-016).
+    if (!mounted.current) {
+      mounted.current = true;
       return;
     }
-    writeExpanded(expanded);
-  }, [expanded]);
+    writeExpanded(worldId, expanded);
+  }, [worldId, expanded]);
 
   function toggleExpanded(channelId: string, currentlyOpen: boolean) {
     setExpanded((prev) => ({ ...prev, [channelId]: !currentlyOpen }));

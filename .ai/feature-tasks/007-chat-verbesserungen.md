@@ -39,7 +39,7 @@ Zusätzlich im Plan-Review präzisiert (ohne Produktwirkung): Dateiorte für Rec
 | C6 | Threads umbenennen | **Über das ⋯-Menü am Thread in der Kanalliste**, analog zum Umbenennen von Kanälen. Die Eröffnungsnachricht im Hauptstrom hat **kein** ✏️. Titel 1–80 Zeichen (`THREAD_TITLE_MAX`). |
 | C7 | Wer darf Threads umbenennen? | **Ersteller des Threads (`chat_threads.created_by`) und Spielleitung.** ⋯ am Thread erscheint nur für diese. Neue Regel `APP-THREAD-RENAME`. |
 | C8 | Ein Feld für Thread-Titel | **`chat_threads.title` ist die einzige Quelle.** Die Eröffnungsnachricht (`opens_thread_id` gesetzt) hat `body = NULL`; `chat_messages.body` wird nullable mit `CHK-OPENER-BODY` (`body IS NULL` genau dann, wenn `opens_thread_id IS NOT NULL`). Migration leert `body` bestehender Eröffnungsnachrichten. Die Eröffnungsnachricht zeigt nur Kopfzeile + Thread-Karte, keinen Text. Umbenennen = ein `UPDATE chat_threads` (+ `updated_at/by`) und ein `chat.thread`-Ereignis. 📋 an der Eröffnungsnachricht kopiert den Thread-Titel. |
-| C9 | Aufklapp-Zustand der Kanäle | **Global in `localStorage`**, ein Schlüssel für alle Welten, Zuordnung Kanal-ID → auf/zu. Kein gespeicherter Wert → heutiges Verhalten (Kanal des offenen Threads aufgeklappt, sonst zu). Nur pro Gerät/Browser. |
+| C9 | Aufklapp-Zustand der Kanäle | ~~Global in `localStorage`~~ → **Cookie je Welt** (Nachtrag N2, 2026-09-23), Zuordnung Kanal-ID → auf/zu. Kein gespeicherter Wert → heutiges Verhalten (Kanal des offenen Threads aufgeklappt, sonst zu). Nur pro Gerät/Browser. |
 | C10 | Bearbeiten zu einem Würfelbefehl (`isRollCommand`, z. B. `/r 1d20`) | **Ablehnen mit 422** und Hinweis „Würfelbefehle können nicht nachträglich eingefügt werden. Sende sie als neue Nachricht.“ Es wird nie gewürfelt, der Text wird nicht gespeichert. |
 | C11 | Tests für den Lösch-Dialog | **Nur Logik testen, kein Render-Test.** Entscheidungen als reine Funktionen (z. B. `deleteAction(event)` → `"immediate" | "confirm"`, Tastenbehandlung Esc/Enter) in einer `.test.ts`; Dialog-Verhalten (Fokus, kein `onConfirm` bei Abbrechen) nur manuell. Keine neue Abhängigkeit, keine Änderung an `vitest.config.ts`. Umstellung auf `@testing-library/react` + `.test.tsx` gesammelt später, siehe `.ai/backlog.md` (2026-09-23 – Komponenten-Tests). |
 
@@ -54,7 +54,7 @@ Begriffe aus Plan `003` und `.ai/architecture/datenmodell.md` 3.17 gelten (Kanal
 - **Lösch-Bestätigung**: Modaler Dialog (kein `window.confirm`) „Nachricht löschen?“ mit Textvorschau (max. 120 Zeichen), Knöpfen „Abbrechen“ / „Löschen“ und dem Hinweis „Tipp: Mit gedrückter Umschalttaste ohne Nachfrage löschen.“ Esc/Abbrechen schließt ohne Löschen.
 - **Eröffnungsnachricht**: Nachricht im Hauptstrom mit gesetztem `opens_thread_id`, die beim Anlegen eines Threads entsteht (`createThreadWithOpening` in `src/lib/chat/repository.ts`). Hat ab diesem Plan `body = NULL` und zeigt nur die Thread-Karte (C8). Im Thread selbst liegt sie nicht.
 - **Thread-⋯-Menü**: ⋯-Knopf rechts neben einem Thread in der Kanalliste (`ChannelList.tsx`), gleiche Optik und Bedienung wie das ⋯-Menü am Kanal. Einziger Eintrag in diesem Plan: „Umbenennen“ (öffnet ein Sheet mit Titelfeld wie beim Umbenennen eines Kanals).
-- **Aufklapp-Speicher**: `localStorage`-Schlüssel `worldcraft:chat-expanded` mit JSON-Objekt `{ [channelId]: boolean }`, gelesen/geschrieben über ein Modul analog `src/lib/client/last-context.ts` (Zugriffe in try/catch; bei Fehler oder kaputtem JSON gilt „nichts gespeichert“).
+- **Aufklapp-Speicher** (seit Nachtrag N2): Cookie `chat-expanded` mit `Path=/w/<worldId>/chat`, Wert `<channelId>.<1|0>` getrennt durch `~`, höchstens 3500 Zeichen (älteste Einträge fallen weg). Der Server liest es in `src/app/w/[worldId]/chat/page.tsx` (`src/lib/chat/expanded-state.ts`), der Client schreibt es (`src/lib/client/chat-expanded.ts`). Kaputte oder fremde Einträge gelten als „nichts gespeichert“.
 - **Statisches Profilbild**: Discord liefert animierte Avatare als `https://cdn.discordapp.com/avatars/<id>/a_<hash>.gif`. Dieselbe URL mit Endung `.png` liefert ein statisches Bild. Umschreiben durch eine reine Funktion `staticDiscordAvatar(url)` in `src/lib/discord-profile.ts`.
 
 ## Relevante Normen
@@ -115,6 +115,16 @@ Begriffe aus Plan `003` und `.ai/architecture/datenmodell.md` 3.17 gelten (Kanal
 - Abnahmekriterium: Unit-Test mit `// @vitest-environment happy-dom` für das Speichermodul (lesen, schreiben, kaputtes JSON → leer); manuell: Kanal aufklappen, neu laden → bleibt auf; zuklappen, neu laden → bleibt zu; in einer anderen Welt unbeeinflusst von fremden Kanal-IDs.
 
 ### T-007: Smoketest und Abschlussprüfung
-- [ ] Beschreibung: `.ai/infrastructure/smoketest.md` um Punkte für Ausrichtung, statische Avatare, Bearbeiten, Kopieren, Lösch-Bestätigung, Thread-Umbenennen und gemerkten Aufklapp-Zustand ergänzen; vollständige Testsuite laufen lassen.
+- [x] Beschreibung: `.ai/infrastructure/smoketest.md` um Punkte für Ausrichtung, statische Avatare, Bearbeiten, Kopieren, Lösch-Bestätigung, Thread-Umbenennen und gemerkten Aufklapp-Zustand ergänzen; vollständige Testsuite laufen lassen.
 - Abhängigkeiten: T-003, T-005, T-006, T-008, T-009
 - Abnahmekriterium: Neue Smoketest-Punkte lokal durchlaufen und abgehakt; `npm test`, `npm run lint`, `npm run build` grün.
+- Umsetzungsvermerk (2026-09-23): C7.1–C7.8 vom Projektinhaber bestanden; C7.9–C7.12 im Browser geprüft (Test-GM, Welt „Smoke“). Anmerkungen aus dem Smoketest als Nachtrag N1–N3 umgesetzt. `npm test`, `npm run lint`, `npm run typecheck`, `npm run build` grün.
+
+## Nachtrag nach Smoketest (Projektinhaber, 2026-09-23)
+
+| # | Anmerkung | Entscheidung | Umsetzung |
+|---|---|---|---|
+| N1 | Eigene Nachrichten mit Absätzen wirken durch den Hintergrund der Textfläche seltsam | **Hintergrund komplett entfernen** (Text, Würfel und Thread-Karte eigener Nachrichten ohne Farbton) | `globals.css`: Regel `.chat .msg.mine .txt, .dice, .thread-card` entfernt |
+| N2 | Aufklapp-Zustand flackert beim Neuladen (zu → auf) | **Cookie statt `localStorage`**, damit der Server den gespeicherten Zustand direkt rendert. Je Welt ein Cookie mit Pfad `/w/<worldId>/chat` (ein globales Cookie ginge mit jedem Request mit und stößt an die 4-KB-Grenze). Ersetzt C9 „global in `localStorage`“ und die Umsetzung von CR-003 (Lesen im `useEffect`). Bisher gespeicherte `localStorage`-Werte werden nicht übernommen. | `src/lib/chat/expanded-state.ts`, `src/lib/client/chat-expanded.ts`, `ChannelList.tsx`, `ChatView.tsx`, Chat-Seite |
+| N3 | Nachricht mit offenen Schnellaktionen soll hervorgehoben werden | **Ganze Zeile leicht heller**, von Avatar bis zu den Aktionsknöpfen; Desktop bei Hover/Fokus, Touch bei ausgewählter Nachricht | `globals.css`: `.chat .msg` mit Innenabstand und negativem Rand, Hintergrund bei `:hover`/`:focus-within` bzw. `.selected`; Abstand zwischen Nachrichten unverändert |
+

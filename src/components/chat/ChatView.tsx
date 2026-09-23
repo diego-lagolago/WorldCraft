@@ -23,10 +23,12 @@ import { useChatStream } from "./use-chat-stream";
 export function ChatView({
   worldId,
   initial,
+  initialExpanded,
   focusStream,
 }: {
   worldId: string;
   initial: ChatState;
+  initialExpanded: Record<string, boolean>;
   focusStream: boolean;
 }) {
   const router = useRouter();
@@ -80,6 +82,8 @@ export function ChatView({
   return (
     <div className={focusStream ? "chat open" : "chat"}>
       <ChannelList
+        worldId={worldId}
+        initialExpanded={initialExpanded}
         channels={state?.channels ?? []}
         threads={state?.threads ?? []}
         archived={state?.archivedChannels ?? []}

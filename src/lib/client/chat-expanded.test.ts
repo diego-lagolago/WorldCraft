@@ -1,25 +1,25 @@
 // @vitest-environment happy-dom
-import { beforeEach, describe, expect, it } from "vitest";
-import { readExpanded, writeExpanded } from "./chat-expanded";
+import { describe, expect, it } from "vitest";
+import { writeExpanded } from "./chat-expanded";
+import { parseExpanded } from "@/lib/chat/expanded-state";
 
-beforeEach(() => localStorage.clear());
+const WORLD = "11111111-1111-4111-8111-111111111111";
+const CH = "22222222-2222-4222-8222-222222222222";
+
+function readCookie(): string | undefined {
+  return document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("chat-expanded="))
+    ?.slice("chat-expanded=".length);
+}
 
 describe("chat-expanded", () => {
-  it("reads and writes the expand map", () => {
-    expect(readExpanded()).toEqual({});
-    writeExpanded({ "ch-1": true, "ch-2": false });
-    expect(readExpanded()).toEqual({ "ch-1": true, "ch-2": false });
-  });
+  it("writes the expand map as a cookie visible only on the world's chat page", () => {
+    history.pushState({}, "", `/w/${WORLD}/chat`);
+    writeExpanded(WORLD, { [CH]: true });
+    expect(parseExpanded(readCookie())).toEqual({ [CH]: true });
 
-  it("returns empty object for bad JSON", () => {
-    localStorage.setItem("worldcraft:chat-expanded", "{not-json");
-    expect(readExpanded()).toEqual({});
-  });
-
-  it("returns empty object for non-object JSON", () => {
-    localStorage.setItem("worldcraft:chat-expanded", "[]");
-    expect(readExpanded()).toEqual({});
-    localStorage.setItem("worldcraft:chat-expanded", '"yes"');
-    expect(readExpanded()).toEqual({});
+    history.pushState({}, "", "/w/other/chat");
+    expect(readCookie()).toBeUndefined();
   });
 });

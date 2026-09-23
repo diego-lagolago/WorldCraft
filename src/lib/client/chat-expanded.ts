@@ -1,37 +1,17 @@
-/** Channel expand/collapse per device (Plan 007 C9).
- * No size cap: a few bytes per channel, intentional (Plan-Review 2026-09-23, CR-016).
+/** Channel expand/collapse per device and world (Plan 007 C9, Nachtrag 2026-09-23).
+ * Stored as a cookie so the server can render the saved state; see `src/lib/chat/expanded-state.ts`.
  */
 
-const EXPANDED_KEY = "worldcraft:chat-expanded";
+import { EXPANDED_COOKIE, expandedCookiePath, serializeExpanded } from "@/lib/chat/expanded-state";
 
-function storage(): Storage | null {
-  try {
-    return typeof window === "undefined" ? null : window.localStorage;
-  } catch {
-    return null;
-  }
-}
+const ONE_YEAR = 60 * 60 * 24 * 365;
 
-export function readExpanded(): Record<string, boolean> {
+export function writeExpanded(worldId: string, map: Record<string, boolean>): void {
   try {
-    const raw = storage()?.getItem(EXPANDED_KEY);
-    if (!raw) return {};
-    const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    const out: Record<string, boolean> = {};
-    for (const [key, value] of Object.entries(parsed)) {
-      if (typeof value === "boolean") out[key] = value;
-    }
-    return out;
+    document.cookie =
+      `${EXPANDED_COOKIE}=${serializeExpanded(map)}; Path=${expandedCookiePath(worldId)}; ` +
+      `Max-Age=${ONE_YEAR}; SameSite=Lax`;
   } catch {
-    return {};
-  }
-}
-
-export function writeExpanded(map: Record<string, boolean>): void {
-  try {
-    storage()?.setItem(EXPANDED_KEY, JSON.stringify(map));
-  } catch {
-    /* ignore quota / private mode */
+    /* cookies disabled */
   }
 }
