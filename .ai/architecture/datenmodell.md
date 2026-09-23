@@ -336,6 +336,7 @@ Kein Übungsgrad und kein Übungsbonus. Angezeigt wird nur abgerundet((Attributw
 | `title_image_id` | uuid FK `files` ON DELETE SET NULL | – | max. 10 MB |
 | `body_json` | jsonb | – | |
 | `body_plain` | text | – | |
+| `first_edited_at` | timestamptz | – | gesetzt = keine Stub-Darstellung mehr. Erstes Speichern mit nicht-leerem `body_plain` oder mindestens einem Vorlagenfeld setzt es (`APP-STUB-EDIT`). Umbenennen, Titelbild oder Sichtbarkeit allein setzen es nicht. Einmal gesetzt, bleibt es gesetzt. |
 | `visibility` | `visibility_status` | ✅ | Default `gm_only` |
 | Protokollfelder | | ✅ | |
 
@@ -457,11 +458,11 @@ Threads werden im MVP nicht einzeln archiviert oder gelöscht. Archiviert der Ka
 | `author_id` | text FK `users` | ✅ | Anzeige immer als Benutzer |
 | `body` | text | ✅ | Klartext, max. 2000 |
 | `dice_expression` | text | – | nur Server (`APP-DICE-SERVER`) |
-| `dice_values` | integer[] | – | Einzelwürfe |
+| `dice_terms` | jsonb | – | Würfe **pro Term**, z. B. `[{ "sides": 20, "sign": 1, "values": [15] }, { "modifier": -1 }]`. Ersetzt eine flache Werteliste |
 | `dice_sum` | integer | – | |
 | `sent_at` | timestamptz | ✅ | |
 
-Kein `updated_*`. `UQ-MSG-OPENS-THREAD`: `opens_thread_id` eindeutig, wo gesetzt. Würfelwurf = mindestens `dice_expression` gesetzt. `CHK-DICE-SHAPE`: alle drei Dice-Spalten gesetzt oder alle drei leer. Löschen: physisches DELETE; verboten wenn Dice gesetzt (`APP-CHAT-DELETE`). Eine Nachricht, die einen Thread eröffnet (`opens_thread_id` gesetzt), ist ebenfalls nicht löschbar.
+Kein `updated_*`. `UQ-MSG-OPENS-THREAD`: `opens_thread_id` eindeutig, wo gesetzt (mehrere `NULL` bleiben erlaubt). Würfelwurf = `dice_expression`, `dice_terms` und `dice_sum` gemeinsam gesetzt. `CHK-DICE-SHAPE`: alle drei Dice-Spalten gesetzt oder alle drei leer. Löschen: physisches DELETE; verboten wenn Dice gesetzt (`APP-CHAT-DELETE`). Eine Nachricht, die einen Thread eröffnet (`opens_thread_id` gesetzt), ist ebenfalls nicht löschbar.
 
 ---
 
@@ -630,7 +631,7 @@ Jede Eigenschaft aus `.ai/architecture/datenmodell-fachlich.md`. Nichts ausgelas
 | Fachlich | Schema |
 |---|---|
 | Welt / Autor / Text / Gesendet am | `chat_messages.world_id`, `author_id`, `body`, `sent_at` |
-| Würfelwurf Ausdruck / Einzelwerte / Summe | `dice_expression`, `dice_values`, `dice_sum` |
+| Würfelwurf Ausdruck / Terme / Summe | `dice_expression`, `dice_terms`, `dice_sum` |
 | Kanal, Thread | Abweichung, siehe Abschnitt 13 B und 3.17 (`chat_channels`, `chat_threads`, `channel_id`, `thread_id`) |
 
 ---

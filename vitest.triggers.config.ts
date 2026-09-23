@@ -1,11 +1,12 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
+/** Trigger checks against local Postgres. Not part of `npm test`. */
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
-    exclude: ["src/**/*.integration.test.ts"],
+    include: ["src/db/**/*.integration.test.ts"],
+    fileParallelism: false,
   },
   resolve: {
     alias: {

@@ -273,7 +273,7 @@ Regeln:
 - Abnahmekriterium: Die vier genannten Nachträge existieren. `datenmodell.md` enthält keine Aussage mehr, die Kanäle für den MVP ausschließt, ohne auf die Abweichung in Abschnitt 13 zu verweisen. Die Abnahmekriterien von CR-001 (Teil 1: Allowlist), CR-002, CR-009 und CR-010 aus dem Review-Dokument sind erfüllt, und `npx eslint .` meldet 0 Fehler. `npx tsc --noEmit` meldet ebenfalls 0 Fehler.
 
 ### T-002: Produktschema vervollständigen
-- [ ] Beschreibung: Drizzle-Schema und Migration(en) an `.ai/architecture/datenmodell.md` angleichen, inklusive T-001-Nachtrag. Mindestens:
+- [x] Beschreibung: Drizzle-Schema und Migration(en) an `.ai/architecture/datenmodell.md` angleichen, inklusive T-001-Nachtrag. Mindestens:
   - `quests`, `quest_participants`, `character_images`;
   - `attr_str` … `attr_cha` an `characters`;
   - Relationen: Quest-FKs, `CHK-REL-SHAPE` (genau eine Source-/Target-FK passend zum Kind), generated `source_id`/`target_id`, `UQ-REL`;
