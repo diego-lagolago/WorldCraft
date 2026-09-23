@@ -28,7 +28,7 @@ export type MentionSource = {
 
 /**
  * `@` suggestion list (erwaehnungen.md): query runs from `@` to the caret,
- * spaces allowed, confirm only with Enter or a tap. Without hits the
+ * spaces allowed, confirm with Enter, Tab, or a tap. Without hits the
  * Spielleitung gets „Neuen Artikel anlegen“ with exactly the typed name.
  */
 export function createMentionSuggestion(
@@ -113,9 +113,10 @@ export function createMentionSuggestion(
             draw();
             return true;
           }
-          if (event.key === "Enter") {
+          if (event.key === "Enter" || event.key === "Tab") {
             const item = current.items[selected];
             if (!item) return false;
+            event.preventDefault();
             void pick(item);
             return true;
           }

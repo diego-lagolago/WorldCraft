@@ -8,7 +8,7 @@
 
 `@` sucht weiter nach bestehenden Artikeln, Quests, Charakteren und Universen (2.4). Titel dürfen Leerzeichen enthalten.
 
-Technik: TipTap-Suggestion mit `allowSpaces: true`. Bestätigen nur per **Enter** oder **Klick**, nicht per Leertaste.
+Technik: TipTap-Suggestion mit `allowSpaces: true`. Bestätigen per **Enter**, **Tab** oder **Klick**, nicht per Leertaste.
 
 Ablauf:
 

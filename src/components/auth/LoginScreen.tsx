@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "@/lib/auth-client";
+import { DISCORD_NOT_ALLOWED_MESSAGE } from "@/lib/env";
 import { TEST_USERS, type TestUserId } from "@/lib/test-users";
 
 type Props = {
@@ -10,12 +11,31 @@ type Props = {
   testLoginEnabled: boolean;
   /** Validated in-app path to open after login, e.g. an invite link. */
   next?: string | null;
+  /** OAuth error code from the callback URL, e.g. discord_not_allowed. */
+  authError?: string | null;
+  authErrorDescription?: string | null;
 };
 
-export function LoginScreen({ discordConfigured, testLoginEnabled, next = null }: Props) {
+function messageForAuthError(code: string | null | undefined, description: string | null | undefined): string | null {
+  if (!code) return null;
+  if (code === "discord_not_allowed") return description?.trim() || DISCORD_NOT_ALLOWED_MESSAGE;
+  return description?.trim() || "Die Anmeldung ist fehlgeschlagen.";
+}
+
+export function LoginScreen({
+  discordConfigured,
+  testLoginEnabled,
+  next = null,
+  authError = null,
+  authErrorDescription = null,
+}: Props) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => messageForAuthError(authError, authErrorDescription));
+
+  useEffect(() => {
+    setError(messageForAuthError(authError, authErrorDescription));
+  }, [authError, authErrorDescription]);
 
   async function onDiscord() {
     setError(null);

@@ -14,11 +14,20 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const next = safeNextPath(params.next);
   const session = await getOptionalSession();
   if (!session?.user) {
+    const authError = typeof params.error === "string" ? params.error : null;
+    const authErrorDescription =
+      typeof params.error_description === "string"
+        ? params.error_description
+        : typeof params.errorDescription === "string"
+          ? params.errorDescription
+          : null;
     return (
       <LoginScreen
         discordConfigured={isDiscordConfigured()}
         testLoginEnabled={isTestLoginEnabled()}
         next={next}
+        authError={authError}
+        authErrorDescription={authErrorDescription}
       />
     );
   }
