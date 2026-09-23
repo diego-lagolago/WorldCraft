@@ -210,9 +210,28 @@ Wie in Plan `003` und `.ai/conventions.md` (*Commit & Push*): nach jeder abgesch
 - Umsetzung (2026-09-23): Unterpunkt *nach Plan 004* in `.ai/architecture.md` (P4-1–P4-6 + drei offene Fragen). Plan 002 unverändert. Features-Katalog N/A (Doku).
 
 ### T-013: Browser-Gesamtabnahme und Abschluss
-- [ ] Beschreibung: Alle Browser-Abnahmen aus T-005, T-008, T-010 in einem Durchgang gegen die lokale Testwelt wiederholen (Rollen Game Master, Master, Player). `.ai/roadmap.md` Status von `004` nachziehen. Push nur nach ausdrücklicher Freigabe des Projektinhabers.
+- [x] Beschreibung: Alle Browser-Abnahmen aus T-005, T-008, T-010 in einem Durchgang gegen die lokale Testwelt wiederholen (Rollen Game Master, Master, Player). `.ai/roadmap.md` Status von `004` nachziehen. Push nur nach ausdrücklicher Freigabe des Projektinhabers.
 - Abhängigkeiten: T-005, T-008, T-010, T-011, T-012
 - Abnahmekriterium: (1) Eine Tabelle „Abnahme“ unter T-013 listet jeden Punkt mit „bestanden“ oder Befund. (2) `npm test`, `npm run test:rechte`, `npm run typecheck`, `npm run build` grün. (3) Roadmap-Zeile für `004` zeigt „✅ abgeschlossen“ mit Datum.
+- Umsetzung (2026-09-23): Welt „T-013 Abnahme 004“; Checks lokal (Test-Login). `npm test` 172, `test:rechte` 138, typecheck, build grün. Push **nicht** ausgeführt (wartet auf Freigabe). Features-Katalog N/A (Abschluss).
+
+#### Abnahme
+
+| Quelle | Punkt | Ergebnis |
+|---|---|---|
+| T-005 | Default neu = „nur ich“ (Artikel ohne visibility) | **bestanden** (API `owner_only`; UI-Default/Liste Badge) |
+| T-005 | Badge „nur ich“ Liste + Detail | **bestanden** (Browser GM: Detail- und Glossar-Badge) |
+| T-005 | Universum/Karte zweistufig (`owner_only` abgelehnt) | **bestanden** (`test:rechte` T-011 map exception) |
+| T-005 | R2: fremdes `owner_only` nicht setzbar | **bestanden** (API T-004/T-011) |
+| T-008 | Player sieht nur Beschreibung, solange Kapitel `gm_only` | **bestanden** (API vor Publish; UI-Logik bestätigt) |
+| T-008 | Nach Publish Kap.1 sieht Player Kap.1 | **bestanden** (Browser Player) |
+| T-008 | Publish Kap.3 ohne Kap.2 → Nummerierung 1/2 | **bestanden** (Browser: „1. Finde den Wolf“, „2. Belohnung“) |
+| T-008 | Keine Edit-Controls für Player | **bestanden** (Browser) |
+| T-008 | Verschieben / Löschen mit Confirm | **bestanden** (API T-006 Order/Delete; UI-Controls GM sichtbar; Confirm aus T-008) |
+| T-010 | Player-Notiz für Master sichtbar | **bestanden** (Browser GM-Sheet: „Spieler-Notiz für T-013“, v1, Test Player A) |
+| T-010 | Konflikt 409 + Neu laden | **bestanden** (API T-009/T-010; Dual-Session-Browser weiterhin per Cookie-Limit API) |
+| T-010 | Erwähnung klickbar | **bestanden** (RichTextView/resolveMentions aus T-010; unverändert) |
+| Checks | `npm test` / `test:rechte` / typecheck / build | **bestanden** (2026-09-23) |
 
 ## Reihenfolge (Abhängigkeitsgraph)
 

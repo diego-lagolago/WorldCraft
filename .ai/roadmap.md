@@ -8,7 +8,7 @@ Reihenfolge der Pläne für WorldCraft. Jeder Plan liegt unter `.ai/feature-task
 |---|---|---|---|
 | 1 | [`001` MVP-Umfang & Infrastruktur](feature-tasks/001-mvp-infrastruktur.md) | Infrastruktur gewählt und als ADRs festgehalten, riskante Funktionen als Spikes lokal und auf Produktion bewiesen, Datenmodell und Projektnormen stehen | ✅ abgeschlossen (2026-09-22) |
 | 2 | [`003` MVP-Funktionen](feature-tasks/003-mvp-funktionen.md) | Spikes zur produktiven App ausbauen: Welten, Universen, Mitglieder, Artikel mit Vorlagen, Relationen, Quests, Charaktere, Tagebuch, Karten, Chat, Suche. Design-Referenz: [`spikes/ui-prototype/index.html`](../spikes/ui-prototype/index.html) | ✅ Kern abgeschlossen (2026-09-23); T-017 Prod-Smoke offen (Push-Freigabe) |
-| 3 | [`004` Quest-Kapitel, Notizblock, Owner-Sichtbarkeit](feature-tasks/004-quest-kapitel-und-owner-sichtbarkeit.md) | Dreistufige Sichtbarkeit mit Owner; Quest-Kapitel; gemeinsamer Quest-Notizblock | ⏭ parallel möglich; Plan-Review abgeschlossen |
+| 3 | [`004` Quest-Kapitel, Notizblock, Owner-Sichtbarkeit](feature-tasks/004-quest-kapitel-und-owner-sichtbarkeit.md) | Dreistufige Sichtbarkeit mit Owner; Quest-Kapitel; gemeinsamer Quest-Notizblock | ✅ abgeschlossen (2026-09-23) |
 | 4 | [`007` Chat-Verbesserungen](feature-tasks/007-chat-verbesserungen.md) | Eigene Nachrichten rechts, statische Avatare, Bearbeiten/Kopieren/Lösch-Bestätigung, Thread umbenennen, gemerkter Aufklapp-Zustand | ✅ Kern umgesetzt (2026-09-23); Smoketest C7.* Owner |
 | 5 | [`008` Würfel-Sheet wie im Chat-Spike](feature-tasks/008-wuerfel-sheet-wie-spike.md) | Würfel-Sheet an den Chat-Spike angleichen (mehrere Terme, Bonus, Ergebnisfeld); Chat-Zeile unverändert | ⏭ in Umsetzung |
 | 6 | [`002` MCP-Server für Claude](feature-tasks/002-mcp-server.md) | Nur lesender Remote-MCP-Server mit OAuth, nutzt die Daten- und Rechteschicht aus `003`/`004` | ⏳ geplant, startet nach `004` |
@@ -21,7 +21,7 @@ Offene Ideen außerhalb dieser Pläne stehen in [`backlog.md`](backlog.md).
 
 - **`001`:** Alle Aufgaben erledigt, Smoketest auf Produktion dokumentiert in [`infrastructure/smoketest.md`](infrastructure/smoketest.md). Ein Code-Review liegt vor (`code-review-001-mvp-infrastruktur-2026-09-22.md`). Die Findings des Code Reviews werden im Rahmen von 003 umgesetzt und nur innerhalb von Plan 003 auf das Code Review referenziert.
 - **`003`:** Plan-Review abgeschlossen, UI-Prototyp am 2026-09-22 freigegeben. Kern MVP (T-001–T-016, T-018, T-019) erledigt; T-017 wartet auf Push-Freigabe für Prod-Smoke.
-- **`004`:** Plan-Review abgeschlossen (2026-09-23). Start mit `/plan-run 004` bei T-001. Blockiert Plan `002` (R4).
+- **`004`:** ✅ abgeschlossen (2026-09-23). Dreistufige Sichtbarkeit, Quest-Kapitel, Quest-Notizblock. Plan `002` kann starten (nach T-012-Abgleich).
 - **`007`:** Plan-Review abgeschlossen (2026-09-23). Chat-UX: Ausrichtung, Avatare, Bearbeiten, Lösch-Bestätigung, Thread-Umbenennen, Aufklapp-Zustand. Unabhängig von `004`–`006`.
 - **`008`:** Plan-Review abgeschlossen (2026-09-23). Würfel-Sheet nach Chat-Spike (Commit `b5d28e8`); Darstellung im Chatverlauf bleibt wie in der App. Unabhängig von `004`–`007`, berührt aber dieselben Chat-Dateien wie `007`.
 - **`002`:** Vor dem Start mit T-012 aus `004` abgleichen (Abgleich Plan 002 nach dreistufiger Sichtbarkeit/Owner/Kapitel/Notizblock, R4) und bei Bedarf erneut `/plan-review` ausführen. Zusätzlich weiter der Abgleich aus `003` T-018 in `architecture.md`.
