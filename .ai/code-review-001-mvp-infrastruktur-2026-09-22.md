@@ -21,7 +21,7 @@
 | CR-002 | Testabdeckung | kritisch | behoben | `npm test` ist rot: `dice.test.ts` und `authz.test.ts` scheitern an `ERR_MODULE_NOT_FOUND` |
 | CR-003 | Sicherheit | mittel | offen | `discordId` ist als `input: true` über `/api/auth/update-user` vom Benutzer änderbar |
 | CR-004 | Sicherheit | mittel | offen | Manuelle Relationen prüfen nicht, ob Quelle und Ziel zur Welt gehören (weltübergreifend, 500 bei fremder ID) |
-| CR-005 | Runtime-Risiken | mittel | offen | Ungültige UUID bzw. ungültiges JSON führen in Karten- und Chat-Routen zu HTTP 500 |
+| CR-005 | Runtime-Risiken | mittel | offen | Ungültige UUID bzw. ungültiges JSON führen in Karten- und Chat-Routen zu HTTP 500. Helfer in T-003; Anwendung folgt in T-007 bis T-014 |
 | CR-006 | Runtime-Risiken | mittel | offen | SSE-Reconnect lädt den Stand nicht neu, Ereignisse während der Trennung gehen verloren |
 | CR-007 | Runtime-Risiken | mittel | offen | Realtime-Bus ohne Fehlerisolation pro Listener: Fehler landet nach dem DB-Write im POST-Handler |
 | CR-008 | Runtime-Risiken | mittel | offen | Mehrstufige Schreibvorgänge ohne Transaktion, Lost Update bei `use_count`, Get-or-create-Races |
@@ -29,7 +29,7 @@
 | CR-010 | Testabdeckung | mittel | behoben | CI baut nur das Image, ohne `npm test`, `tsc` oder `eslint` |
 | CR-011 | Performance | mittel | offen | N+1-Queries in `listRelations`, `archiveMembershipAndParticipations` und `listWorldGeography` |
 | CR-012 | Duplizierung & Modularisierung | mittel | offen | Realtime-Bus, SSE-Route, `escapeHtml`, Pin-Typen und Positionsrundung sind mehrfach implementiert |
-| CR-013 | Duplizierung & Modularisierung | mittel | offen | Rechte-Repository: Marker-Autorisierung dreimal kopiert, Patches als `Record<string, unknown>` |
+| CR-013 | Duplizierung & Modularisierung | mittel | offen | Rechte-Repository: Marker-Autorisierung dreimal kopiert, Patches als `Record<string, unknown>`. Schicht und `ColumnPatch` in T-003; Marker-Funktion folgt in T-013 |
 | CR-014 | Fehlerbehandlung & Validierung | niedrig | offen | Frontend-`fetch` ohne `try/catch`, `persistMarkerMove` ignoriert die Antwort, `JSON.parse` ungeschützt |
 | CR-015 | Bad Practices | niedrig | offen | ESLint-Fehler (Ref-Zuweisung beim Rendern), Komponenten mit 700 bis 1000 Zeilen. ESLint-Fehler in T-001 behoben; Struktur folgt in T-012/T-013 |
 | CR-016 | Sicherheit | niedrig | offen | Endung beim Upload kommt aus dem Client-MIME, `nosniff` fehlt, Kartenbild wird pro Abruf komplett gelesen |
@@ -95,6 +95,7 @@
 - **Beschreibung:** Pfad- und Query-Parameter (`id`, `channelId`, `threadId`, `before`) gehen ungeprüft in `eq(uuid-Spalte, …)`. PostgreSQL wirft dann `22P02 invalid input syntax for type uuid`, und die Antwort ist HTTP 500. Beispiel: `/spike/chat?channel=abc` lässt die ganze Seite abstürzen. Die Karten-Routen rufen `await request.json()` ohne `try/catch` auf, ein leerer oder kaputter Body ergibt ebenfalls 500. Die Chat-Routen machen das richtig (`try/catch` → 400), die Karten-Routen nicht. Die Behandlung ist also uneinheitlich.
 - **Empfehlung:** Einen gemeinsamen Helfer einführen (z. B. `parseJsonBody(request, schema)` und `parseUuid(value)`), der 400 bzw. 404 liefert, und ihn in allen Route-Handlern verwenden. Seiten-Parameter vor dem DB-Zugriff mit `z.string().uuid().safeParse` prüfen und bei Fehler auf den Default-Kanal zurückfallen.
 - **Abnahmekriterium:** `PATCH /api/spike/karte/pins/not-a-uuid`, `PATCH …/pins/<uuid>` mit Body `{` und `GET /api/spike/chat?channelId=abc&before=xyz` liefern 400 oder 404, nie 500. `/spike/chat?channel=abc` rendert den Default-Kanal.
+- **Teilfortschritt T-003 (2026-09-23):** `parseUuid` und `parseJsonBody` liegen in `src/lib/http.ts`. Die Produkt-APIs ab T-007 wenden sie an. Status bleibt `offen`.
 
 ### CR-006 – SSE-Reconnect ohne Neusynchronisierung
 - **Fundstelle:** `src/spike/karte/KarteBoard.tsx:167-196`, `src/spike/chat/ChatSpikePage.tsx:159-179`, Server: `src/app/api/spike/*/events/route.ts` (`send({ type: "hello" })`)
@@ -179,6 +180,7 @@
 - **Beschreibung:** Die Folge „Marker laden → Kartenkontext laden → Mitgliedschaft laden → Charakter laden → `canSeePublishedLayer` → `canEditMarker` → Positionsprüfung“ ist dreimal fast wörtlich kopiert. Dasselbe gilt für „Entität laden → Welt ermitteln → `requireStaff`“. Die 1485 Zeilen lange Datei ist die Vorlage für die MVP-`APP-AUTHZ`-Schicht (Norm: „Neue Rechtefälle zuerst in der gemeinsamen Authz-Schicht“). Kopierte Prüfungen laufen erfahrungsgemäß auseinander. Die `Record<string, unknown>`-Patches umgehen außerdem die Drizzle-Typprüfung: Tippfehler in Spaltennamen fallen erst zur Laufzeit auf.
 - **Empfehlung:** Helfer wie `loadMarkerForEdit(actor, markerId)` bzw. `withStaffOnWorldOf(entity)` extrahieren, die Kontext und Gate liefern. Positionsprüfung ins Zod-Schema verschieben (`z.number().min(0).max(1)`). Patches als `Partial<typeof articles.$inferInsert>` typisieren. Die Datei nach Aggregaten aufteilen (`membership.ts`, `content.ts`, `geography.ts`, `relations.ts`).
 - **Abnahmekriterium:** (Bis Plan 003 T-016 gilt es für den Produktcode ohne `src/spike/`, danach für ganz `src/`.) Die Marker-Autorisierung steht in genau einer Funktion, die die drei Marker-Operationen nutzen. Kein `Record<string, unknown>` mehr in `repository.ts` bzw. im Nachfolgemodul. `npm run test:rechte` bleibt 15/15 grün.
+- **Teilfortschritt T-003 (2026-09-23):** Authz liegt in `src/lib/authz`, Patches als `ColumnPatch<T>`. Die eine Marker-Funktion folgt in T-013. Status bleibt `offen`.
 
 ### CR-014 – Fehlerbehandlung im Frontend
 - **Fundstelle:** `src/spike/karte/KarteBoard.tsx:198-216` (`persistPinMove`, `persistMarkerMove`), `:224-253` (`createPin`), `:168-170` und `ChatSpikePage.tsx:161-162` (`JSON.parse` im `onmessage`)

@@ -70,7 +70,7 @@ Es gibt **kein** separates Staging. Formulierungen „Staging“ in älteren Doc
 5. **Manuell / Smoketest:** Prod per Discord; Protokoll [infrastructure/smoketest.md](infrastructure/smoketest.md).
 6. **CI:** Job `verify` (Node 22: `npm test`, `tsc --noEmit`, `eslint`, Editor-Spike-Tests) **vor** dem Image-Build (GHCR). Ein fehlschlagender Test bricht den Workflow vor dem Image ab. Rechte-Skript und Trigger-Tests laufen nicht gegen Prod.
 
-Neue Rechtefälle: zuerst in der gemeinsamen Authz-Schicht + Test, nicht nur in der UI.
+Neue Rechtefälle: zuerst in `src/lib/authz` plus Test, nicht nur in der UI und nicht in einem zweiten Pfad unter `src/spike/`. Ungültige UUIDs und ungültiges JSON in Produkt-APIs über `parseUuid` / `parseJsonBody` (`src/lib/http.ts`) als 400 oder 404, nie als 500. Patches an Entitäten als `ColumnPatch<T>`, nicht als `Record<string, unknown>`.
 
 ## UI-Normen (Querverweise)
 

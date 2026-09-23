@@ -4,9 +4,11 @@ import {
   canSeeCharacterInWorld,
   canSeeJournal,
   canSeePublishedLayer,
+  canSeeVisibility,
+  isGm,
+  isStaff,
   relationVisible,
-} from "./authz";
-import { canSeeVisibility, isGm, isStaff } from "./types";
+} from "@/lib/authz";
 
 describe("APP-AUTHZ Sichtbarkeit", () => {
   it("staff sees gm_only, players do not", () => {
