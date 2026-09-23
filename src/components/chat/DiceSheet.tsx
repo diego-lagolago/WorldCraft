@@ -12,18 +12,15 @@ import {
   setTermSides,
   toRollPayload,
   type DiceDraft,
+  type RollPayload,
+  type RollResult,
 } from "@/lib/chat/dice-draft";
 import { Sheet } from "./ChannelList";
-
-export type RollResult =
-  | { ok: true; posted: true }
-  | { ok: true; posted: false; text: string }
-  | { ok: false; error: string };
 
 type Props = {
   postToChat: boolean;
   onPostToChat: (next: boolean) => void;
-  onRoll: (input: { terms: { n: number; m: number }[]; modifier: number }) => Promise<RollResult>;
+  onRoll: (input: RollPayload) => Promise<RollResult>;
   onClose: () => void;
 };
 
@@ -96,7 +93,7 @@ function NumberStepper({
 
 export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) {
   const [draft, setDraft] = useState<DiceDraft>(DEFAULT_DICE_DRAFT);
-  const [resultText, setResultText] = useState<string | null>(null);
+  const [result, setResult] = useState<{ text: string; sum: number } | null>(null);
   const [copiedHint, setCopiedHint] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,11 +109,9 @@ export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) 
   }, []);
 
   async function copyResult() {
-    if (!resultText) return;
-    const match = /=\s*(-?\d+)\s*$/.exec(resultText);
-    if (!match?.[1]) return;
+    if (!result) return;
     try {
-      await navigator.clipboard.writeText(match[1]);
+      await navigator.clipboard.writeText(String(result.sum));
       setCopiedHint(true);
       if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
       copiedTimerRef.current = setTimeout(() => setCopiedHint(false), 1200);
@@ -130,18 +125,18 @@ export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) 
     setSending(true);
     setError(null);
     try {
-      const result = await onRoll(toRollPayload(draft));
+      const rollResult = await onRoll(toRollPayload(draft));
       // W6: cancel unmounts this instance; a late response must not close a newly opened sheet.
       if (!mountedRef.current) return;
-      if (!result.ok) {
-        setError(result.error);
+      if (!rollResult.ok) {
+        setError(rollResult.error);
         return;
       }
-      if (result.posted) {
+      if (rollResult.posted) {
         onClose();
         return;
       }
-      setResultText(result.text);
+      setResult({ text: rollResult.text, sum: rollResult.sum });
     } finally {
       if (mountedRef.current) setSending(false);
     }
@@ -211,9 +206,9 @@ export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) 
               <p className="dice-preview">{preview}</p>
             </div>
             <div
-              className={`dice-result${resultText ? "" : " empty"}${copiedHint ? " copied" : ""}`}
-              role={resultText ? "button" : undefined}
-              tabIndex={resultText ? 0 : undefined}
+              className={`dice-result${result ? "" : " empty"}${copiedHint ? " copied" : ""}`}
+              role={result ? "button" : undefined}
+              tabIndex={result ? 0 : undefined}
               aria-live="polite"
               aria-label={copiedHint ? "Kopiert" : "Wurfergebnis"}
               onClick={() => void copyResult()}
@@ -224,7 +219,7 @@ export function DiceSheet({ postToChat, onPostToChat, onRoll, onClose }: Props) 
                 }
               }}
             >
-              <p>{copiedHint ? "Kopiert" : (resultText ?? "—")}</p>
+              <p>{copiedHint ? "Kopiert" : (result?.text ?? "—")}</p>
             </div>
           </div>
           <div className="row step-row">

@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { withEditedMessage, withMessage, withThread } from "@/lib/chat/stream-state";
+import type { RollPayload, RollResult } from "@/lib/chat/dice-draft";
 import type { ChatMessageDto, ChatState, ChatThreadDto } from "@/lib/chat/types";
 import type { WorldRealtimeEvent } from "@/lib/realtime/events";
 
 type PostResponse =
   | { message: ChatMessageDto }
   | { posted: true; message: ChatMessageDto }
-  | { posted: false; dice: { text: string } };
+  | { posted: false; dice: { text: string; sum: number } };
 
 export function useChatStream(worldId: string, initial: ChatState) {
   const [state, setState] = useState<ChatState>(initial);
@@ -85,14 +86,7 @@ export function useChatStream(worldId: string, initial: ChatState) {
     return true;
   }
 
-  async function roll(input: {
-    terms: { n: number; m: number }[];
-    modifier: number;
-  }): Promise<
-    | { ok: true; posted: true }
-    | { ok: true; posted: false; text: string }
-    | { ok: false; error: string }
-  > {
+  async function roll(input: RollPayload): Promise<RollResult> {
     if (!state?.channel) {
       return { ok: false, error: "Kein Kanal geladen." };
     }
@@ -113,7 +107,7 @@ export function useChatStream(worldId: string, initial: ChatState) {
     }
     setError(null);
     if ("posted" in res.data && res.data.posted === false) {
-      return { ok: true, posted: false, text: res.data.dice.text };
+      return { ok: true, posted: false, text: res.data.dice.text, sum: res.data.dice.sum };
     }
     if ("message" in res.data) {
       const message = res.data.message;

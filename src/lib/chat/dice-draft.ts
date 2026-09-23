@@ -67,9 +67,16 @@ export function parseDraftInt(text: string): number | null {
   return match[1] && value !== 0 ? -value : value;
 }
 
-export function toRollPayload(draft: DiceDraft): {
+export type RollPayload = {
   terms: StructuredDiceTerm[];
   modifier: number;
-} {
+};
+
+export type RollResult =
+  | { ok: true; posted: true }
+  | { ok: true; posted: false; text: string; sum: number }
+  | { ok: false; error: string };
+
+export function toRollPayload(draft: DiceDraft): RollPayload {
   return { terms: draft.terms, modifier: draft.modifier };
 }
