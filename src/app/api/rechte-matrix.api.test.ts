@@ -457,6 +457,37 @@ describe("T-015 Rechte-Matrix (Produkt-APIs, Plan 001 T-011)", () => {
     );
     expect(playerHidden.data.monsterMarkers.some((row) => row.id === hiddenPlace.data.marker.id)).toBe(false);
 
+    const ownerOnlyMonster = await api<{ monster: { id: string } }>(gm, "POST", w("/monsters"), {
+      name: "Geheimer Begleiter",
+      visibility: "owner_only",
+      kind: "beast",
+    });
+    expect(ownerOnlyMonster.status).toBe(201);
+    const ownerOnlyMarker = await api<{ marker: { id: string; posX: number } }>(
+      gm,
+      "POST",
+      w("/map/monster-markers"),
+      { mapId: publicMap, monsterId: ownerOnlyMonster.data.monster.id, posX: 0.73, posY: 0.74 },
+    );
+    expect(ownerOnlyMarker.status).toBe(201);
+    expect(
+      (
+        await api(gm, "PATCH", w(`/map/monster-markers/${ownerOnlyMarker.data.marker.id}`), {
+          visibility: "gm_only",
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await api(master, "PATCH", w(`/map/monster-markers/${ownerOnlyMarker.data.marker.id}`), { posX: 0.8 })).status,
+    ).toBe(404);
+    expect((await api(master, "DELETE", w(`/map/monster-markers/${ownerOnlyMarker.data.marker.id}`))).status).toBe(404);
+    const ownerState = await api<{ monsterMarkers: { id: string; posX: number }[] }>(
+      gm,
+      "GET",
+      w(`/map?map=${publicMap}`),
+    );
+    expect(ownerState.data.monsterMarkers.find((row) => row.id === ownerOnlyMarker.data.marker.id)?.posX).toBeCloseTo(0.73);
+
     expect((await api(gm, "DELETE", w(`/map/monster-markers/${markerId}`))).status).toBe(200);
   });
 

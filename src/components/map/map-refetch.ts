@@ -26,8 +26,8 @@ export function interpretRefetchResult(
   return "keep_and_reload";
 }
 
-/** CR-006: skip pin refetch when no map is open or the event targets another map. */
-export function shouldFetchPinForMap(eventMapId: string, openMapId: string | undefined): boolean {
+/** Skip a refetch when no map is open or the event targets another map. */
+export function isEventForCurrentMap(eventMapId: string, openMapId: string | undefined): boolean {
   if (!openMapId) return false;
   return eventMapId === openMapId;
 }

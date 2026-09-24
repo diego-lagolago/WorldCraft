@@ -2,7 +2,7 @@
 
 import L from "leaflet";
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { markerPinHtml } from "@/lib/map/character-marker";
+import { markerPinHtml } from "@/lib/map/marker-pin";
 import { imageOverlayBounds, latLngToRelative, relativeToLatLng } from "@/lib/map/coords";
 import { PIN_ICON } from "@/lib/map/pin-icon";
 import { pinMarkerHtml } from "@/lib/map/pin-types";
@@ -29,6 +29,75 @@ type Handlers = {
   onMarkerDrop: (marker: MarkerDto) => void;
   onMonsterMarkerDrop: (marker: MonsterMarkerDto) => void;
 };
+
+type PositionedMarker = { id: string; posX: number; posY: number };
+
+function syncMarkerPinLayer<T extends PositionedMarker>(input: {
+  map: L.Map;
+  currentMap: MapWithImage;
+  rows: T[];
+  rowsRef: Readonly<{ current: T[] }>;
+  mapDataRef: Readonly<{ current: MapWithImage | null }>;
+  layerRef: Readonly<{ current: Map<string, L.Marker> }>;
+  dragging: Set<string>;
+  iconFor: (row: T) => L.DivIcon;
+  canDrag: (row: T) => boolean;
+  onClick: (row: T) => void;
+  onDrop: (row: T) => void;
+}) {
+  const seen = new Set<string>();
+  for (const row of input.rows) {
+    seen.add(row.id);
+    const latlng = relativeToLatLng(
+      row.posX,
+      row.posY,
+      input.currentMap.imageWidth,
+      input.currentMap.imageHeight,
+    );
+    const icon = input.iconFor(row);
+    const draggable = input.canDrag(row);
+    let marker = input.layerRef.current.get(row.id);
+    if (!marker) {
+      marker = L.marker([latlng.lat, latlng.lng], {
+        draggable,
+        icon,
+        autoPan: true,
+        keyboard: false,
+      }).addTo(input.map);
+      marker.on("click", () => {
+        const live = input.rowsRef.current.find((item) => item.id === row.id);
+        if (live) input.onClick(live);
+      });
+      marker.on("dragstart", () => input.dragging.add(row.id));
+      marker.on("dragend", () => {
+        const liveMap = input.mapDataRef.current;
+        const live = input.rowsRef.current.find((item) => item.id === row.id);
+        const layer = input.layerRef.current.get(row.id);
+        input.dragging.delete(row.id);
+        if (!liveMap || !layer || !live) return;
+        const next = latLngToRelative(
+          layer.getLatLng().lat,
+          layer.getLatLng().lng,
+          liveMap.imageWidth,
+          liveMap.imageHeight,
+        );
+        input.onDrop({ ...live, posX: next.x, posY: next.y });
+      });
+      input.layerRef.current.set(row.id, marker);
+    } else if (!input.dragging.has(row.id)) {
+      marker.setLatLng([latlng.lat, latlng.lng]);
+      marker.setIcon(icon);
+      if (draggable) marker.dragging?.enable();
+      else marker.dragging?.disable();
+    }
+  }
+  for (const [id, layer] of input.layerRef.current) {
+    if (!seen.has(id)) {
+      layer.remove();
+      input.layerRef.current.delete(id);
+    }
+  }
+}
 
 export function useLeafletMap(
   containerRef: RefObject<HTMLDivElement | null>,
@@ -161,7 +230,6 @@ export function useLeafletMap(
           keyboard: false,
         }).addTo(map);
         marker.on("click", () => {
-          if (handlersRef.current.placing) return;
           const live = pinsRef.current.find((row) => row.id === pin.id);
           if (live) handlersRef.current.onPinClick(live);
         });
@@ -200,12 +268,15 @@ export function useLeafletMap(
     const map = mapRef.current;
     const currentMap = mapDataRef.current;
     if (!map || !currentMap) return;
-    const seen = new Set<string>();
-    for (const row of markers) {
-      seen.add(row.id);
-      const latlng = relativeToLatLng(row.posX, row.posY, currentMap.imageWidth, currentMap.imageHeight);
-      const canDrag = handlers.staff || handlers.actorId === row.ownerId;
-      const icon = L.divIcon({
+    syncMarkerPinLayer({
+      map,
+      currentMap,
+      rows: markers,
+      rowsRef: markersRef,
+      mapDataRef,
+      layerRef: markerLayer,
+      dragging,
+      iconFor: (row) => L.divIcon({
         className: "map-marker-leaflet",
         html: markerPinHtml({
           name: row.name,
@@ -214,59 +285,26 @@ export function useLeafletMap(
         }),
         iconSize: [...PIN_ICON.size],
         iconAnchor: [...PIN_ICON.anchor],
-      });
-      let marker = markerLayer.current.get(row.id);
-      if (!marker) {
-        marker = L.marker([latlng.lat, latlng.lng], {
-          draggable: canDrag,
-          icon,
-          autoPan: true,
-          keyboard: false,
-        }).addTo(map);
-        marker.on("click", () => {
-          const live = markersRef.current.find((item) => item.id === row.id);
-          if (live) handlersRef.current.onMarkerClick(live);
-        });
-        marker.on("dragstart", () => dragging.add(row.id));
-        marker.on("dragend", () => {
-          const liveMap = mapDataRef.current;
-          const live = markersRef.current.find((item) => item.id === row.id);
-          const layer = markerLayer.current.get(row.id);
-          dragging.delete(row.id);
-          if (!liveMap || !layer || !live) return;
-          const next = latLngToRelative(
-            layer.getLatLng().lat,
-            layer.getLatLng().lng,
-            liveMap.imageWidth,
-            liveMap.imageHeight,
-          );
-          handlersRef.current.onMarkerDrop({ ...live, posX: next.x, posY: next.y });
-        });
-        markerLayer.current.set(row.id, marker);
-      } else if (!dragging.has(row.id)) {
-        marker.setLatLng([latlng.lat, latlng.lng]);
-        marker.setIcon(icon);
-        if (canDrag) marker.dragging?.enable();
-        else marker.dragging?.disable();
-      }
-    }
-    for (const [id, layer] of markerLayer.current) {
-      if (!seen.has(id)) {
-        layer.remove();
-        markerLayer.current.delete(id);
-      }
-    }
+      }),
+      canDrag: (row) => handlers.staff || handlers.actorId === row.ownerId,
+      onClick: (row) => handlersRef.current.onMarkerClick(row),
+      onDrop: (row) => handlersRef.current.onMarkerDrop(row),
+    });
   }, [markers, handlers.staff, handlers.actorId, dragging]);
 
   useEffect(() => {
     const map = mapRef.current;
     const currentMap = mapDataRef.current;
     if (!map || !currentMap) return;
-    const seen = new Set<string>();
-    for (const row of monsterMarkers) {
-      seen.add(row.id);
-      const latlng = relativeToLatLng(row.posX, row.posY, currentMap.imageWidth, currentMap.imageHeight);
-      const icon = L.divIcon({
+    syncMarkerPinLayer({
+      map,
+      currentMap,
+      rows: monsterMarkers,
+      rowsRef: monsterMarkersRef,
+      mapDataRef,
+      layerRef: monsterLayer,
+      dragging,
+      iconFor: (row) => L.divIcon({
         className: "map-marker-leaflet",
         html: markerPinHtml({
           name: row.name,
@@ -275,48 +313,11 @@ export function useLeafletMap(
         }),
         iconSize: [...PIN_ICON.size],
         iconAnchor: [...PIN_ICON.anchor],
-      });
-      let marker = monsterLayer.current.get(row.id);
-      if (!marker) {
-        marker = L.marker([latlng.lat, latlng.lng], {
-          draggable: handlers.staff,
-          icon,
-          autoPan: true,
-          keyboard: false,
-        }).addTo(map);
-        marker.on("click", () => {
-          const live = monsterMarkersRef.current.find((item) => item.id === row.id);
-          if (live) handlersRef.current.onMonsterMarkerClick(live);
-        });
-        marker.on("dragstart", () => dragging.add(row.id));
-        marker.on("dragend", () => {
-          const liveMap = mapDataRef.current;
-          const live = monsterMarkersRef.current.find((item) => item.id === row.id);
-          const layer = monsterLayer.current.get(row.id);
-          dragging.delete(row.id);
-          if (!liveMap || !layer || !live) return;
-          const next = latLngToRelative(
-            layer.getLatLng().lat,
-            layer.getLatLng().lng,
-            liveMap.imageWidth,
-            liveMap.imageHeight,
-          );
-          handlersRef.current.onMonsterMarkerDrop({ ...live, posX: next.x, posY: next.y });
-        });
-        monsterLayer.current.set(row.id, marker);
-      } else if (!dragging.has(row.id)) {
-        marker.setLatLng([latlng.lat, latlng.lng]);
-        marker.setIcon(icon);
-        if (handlers.staff) marker.dragging?.enable();
-        else marker.dragging?.disable();
-      }
-    }
-    for (const [id, layer] of monsterLayer.current) {
-      if (!seen.has(id)) {
-        layer.remove();
-        monsterLayer.current.delete(id);
-      }
-    }
+      }),
+      canDrag: () => handlers.staff,
+      onClick: (row) => handlersRef.current.onMonsterMarkerClick(row),
+      onDrop: (row) => handlersRef.current.onMonsterMarkerDrop(row),
+    });
   }, [monsterMarkers, handlers.staff, dragging]);
 
   function zoomBy(factor: number) {

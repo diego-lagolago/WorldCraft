@@ -212,9 +212,9 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 
 | ID | Check | Ort | Status | Notiz |
 |----|-------|-----|--------|-------|
-| M6.1 | **Stecknadel:** Charakter- und Monster-Marker als Nadel; Spitze trifft gespeicherte Position (Zoom min/max) | Lokal | offen | T-005 |
-| M6.2 | **Monster platzieren:** SL 👹 → Fadenkreuz → Klick → Picker → Marker „nur ich“; Player sieht nichts bis veröffentlicht | Lokal | offen | T-006 |
-| M6.3 | **Monster-Sheet:** Name, Seltenheit, „Zum Monster“, Sichtbarkeit/Entfernen nur SL; Player nur Lesen | Lokal | offen | T-006 |
-| M6.4 | **Kartenfilter:** Filter-Button; Chip aus → ausgeblendet nach Reload; „Alle an“; Punkt am Button wenn etwas aus | Lokal | offen | T-007 |
-| M6.5 | **Hotkeys:** Desktop `P`/`M`/`Esc` für Spielleitung; kein Auslösen in Inputs oder als Player | Lokal | offen | T-010 |
-| M6.6 | **Kopieren:** „Kopieren“ im Sheet → Tippen setzt Kopien mit gleicher Sichtbarkeit; × beendet; Klick auf Marker setzt Kopie dort | Lokal | offen | T-011 |
+| M6.1 | **Stecknadel:** Charakter- und Monster-Marker als Nadel; Spitze trifft gespeicherte Position (Zoom min/max) | Lokal | bestanden | Projektinhaber 2026-09-24 |
+| M6.2 | **Monster platzieren:** SL 👹 → Fadenkreuz → Klick → Picker → Marker „nur ich“; Player sieht nichts bis veröffentlicht | Lokal | bestanden | Projektinhaber 2026-09-24 |
+| M6.3 | **Monster-Sheet:** Name, Seltenheit, „Zum Monster“, Sichtbarkeit/Entfernen nur SL; Player nur Lesen | Lokal | bestanden | Projektinhaber 2026-09-24; Details später Backlog. |
+| M6.4 | **Kartenfilter:** Filter-Button; Chip aus → ausgeblendet nach Reload; „Alle an“; Punkt am Button wenn etwas aus | Lokal | bestanden | Projektinhaber 2026-09-24; zusätzlich „Alle aus“ und Icon-Raster abgenommen. |
+| M6.5 | **Hotkeys:** Desktop `P`/`M`/`Esc` für Spielleitung; kein Auslösen in Inputs oder als Player | Lokal | bestanden | Projektinhaber 2026-09-24 |
+| M6.6 | **Kopieren:** „Kopieren“ im Sheet → Tippen setzt Kopien mit gleicher Sichtbarkeit; × beendet; Klick auf Marker setzt Kopie dort | Lokal | bestanden | Projektinhaber 2026-09-24 |

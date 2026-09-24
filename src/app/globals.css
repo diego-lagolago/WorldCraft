@@ -21,8 +21,10 @@
   --composer-h: 60px;
   /* Plan 006 T-002 / T-005: Stecknadel-Marker (Charakter gold, Monster schwarz) */
   --marker-character: #c9a227;
+  --marker-character-outline: #3d2e08;
   --marker-monster: #141414;
   --marker-monster-outline: #e8e4dc;
+  --marker-head-bg: #fff7ed;
   color-scheme: dark;
 }
 
@@ -1586,7 +1588,7 @@ textarea {
   font-size: 9px;
   font-weight: 800;
   color: #111;
-  background: #fff7ed;
+  background: var(--marker-head-bg);
 }
 
 .map-marker-pin .head img,
@@ -1615,8 +1617,22 @@ textarea {
   box-shadow: 0 0 0 2px var(--marker-character);
 }
 
+.map-marker-pin.character .pin-body path {
+  fill: var(--marker-character);
+  stroke: var(--marker-character-outline);
+}
+
 .map-marker-pin.monster .head {
   box-shadow: 0 0 0 2px var(--marker-monster-outline);
+}
+
+.map-marker-pin.monster .pin-body path {
+  fill: var(--marker-monster);
+  stroke: var(--marker-monster-outline);
+}
+
+.map-marker-pin .pin-body circle {
+  fill: var(--marker-head-bg);
 }
 
 .map-marker-leaflet {
@@ -1734,16 +1750,31 @@ textarea {
   border: 1px solid var(--accent-ink);
 }
 
-.filter-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
   margin: 12px 0;
 }
 
-.filter-chips .chip.off {
-  opacity: 0.45;
-  text-decoration: line-through;
+.filter-icon {
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel2);
+  color: var(--text);
+  font-size: 24px;
+}
+
+.filter-icon img {
+  display: block;
+}
+
+.filter-icon.off {
+  opacity: 0.42;
+  filter: grayscale(1);
 }
 
 .map-ctrl {
@@ -1753,6 +1784,16 @@ textarea {
   z-index: 5;
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+
+.map-context-ctrl {
+  position: absolute;
+  left: 16px;
+  top: 68px;
+  z-index: 5;
+  display: flex;
+  flex-direction: row;
   gap: 8px;
 }
 

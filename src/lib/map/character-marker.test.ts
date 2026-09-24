@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { characterMarkerHtml, markerPinHtml } from "./character-marker";
+import { markerPinHtml } from "./marker-pin";
 import { PIN_ICON } from "./pin-icon";
 
 describe("PIN_ICON", () => {
@@ -33,9 +33,9 @@ describe("markerPinHtml", () => {
     expect(html).toContain(">Schattenwolf</span>");
   });
 
-  it("characterMarkerHtml delegates to the character variant", () => {
-    const a = characterMarkerHtml("Elara", null);
-    const b = markerPinHtml({ name: "Elara", imageUrl: null, variant: "character" });
-    expect(a).toBe(b);
+  it("uses the first word as the marker label", () => {
+    const html = markerPinHtml({ name: "Alter Schattenwolf", imageUrl: null, variant: "monster" });
+    expect(html).toContain(">Alter</span>");
+    expect(html).not.toContain("Schattenwolf</span>");
   });
 });

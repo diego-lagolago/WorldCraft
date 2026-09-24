@@ -428,6 +428,9 @@ describe("Monster-Marker (Plan 006 T-004)", () => {
         (row) => row.id === place1.data.marker.id,
       ),
     ).toBe(false);
+    expect(
+      (await api(playerA, "GET", `/api/worlds/${worldId}/map/monster-markers/${place1.data.marker.id}`)).status,
+    ).toBe(404);
 
     const onHiddenMonster = await api<{ marker: { id: string } }>(
       gm,
@@ -448,6 +451,20 @@ describe("Monster-Marker (Plan 006 T-004)", () => {
         (row) => row.id === onHiddenMonster.data.marker.id,
       ),
     ).toBe(false);
+    expect(
+      (await api(playerA, "GET", `/api/worlds/${worldId}/map/monster-markers/${onHiddenMonster.data.marker.id}`)).status,
+    ).toBe(404);
+
+    expect(
+      (
+        await api(gm, "PATCH", `/api/worlds/${worldId}/map/monster-markers/${place2.data.marker.id}`, {
+          visibility: "published",
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await api(playerA, "GET", `/api/worlds/${worldId}/map/monster-markers/${place2.data.marker.id}`)).status,
+    ).toBe(200);
 
     expect(
       (
@@ -536,6 +553,8 @@ describe("Monster-Marker (Plan 006 T-004)", () => {
     expect((await api(gm, "DELETE", `/api/worlds/${worldId}/monsters/${hiddenMonsterId}`)).status).toBe(200);
     await collectDelete;
     expect(collected).toContain("map.updated");
+    const stateAfterDelete = await api<MapState>(gm, "GET", `/api/worlds/${worldId}/map?map=${mapId}`);
+    expect(stateAfterDelete.data.monsterMarkers.some((row) => row.monsterId === hiddenMonsterId)).toBe(false);
     controller.abort();
   });
 

@@ -41,6 +41,7 @@ import { setMapImage } from "@/lib/files/attach";
 import { collectUnreferencedFiles } from "@/lib/files/gc";
 import { worldEvents } from "@/lib/realtime/events";
 import { positionSql, roundPosition } from "./coords";
+import { mapEventLayers, monsterMarkerEventLayers } from "./event-layers";
 import { PIN_TYPES, type PinType } from "./pin-types";
 import type {
   MapDto,
@@ -190,13 +191,6 @@ function mapVisible(
   ]);
 }
 
-function mapEventLayers(
-  universeVisibility: VisibilityStatus,
-  mapVisibility: VisibilityStatus,
-): VisibilityLayer[] {
-  return [{ visibility: universeVisibility }, { visibility: mapVisibility }];
-}
-
 function pinEventLayers(
   universeVisibility: VisibilityStatus,
   mapVisibility: VisibilityStatus,
@@ -207,22 +201,6 @@ function pinEventLayers(
     { visibility: universeVisibility },
     { visibility: mapVisibility },
     { visibility: pinVisibility, ownerId },
-  ];
-}
-
-function monsterMarkerEventLayers(
-  universeVisibility: VisibilityStatus,
-  mapVisibility: VisibilityStatus,
-  monsterVisibility: ContentVisibility,
-  monsterOwnerId: string,
-  markerVisibility: ContentVisibility,
-  markerOwnerId: string,
-): VisibilityLayer[] {
-  return [
-    { visibility: universeVisibility },
-    { visibility: mapVisibility },
-    { visibility: monsterVisibility, ownerId: monsterOwnerId },
-    { visibility: markerVisibility, ownerId: markerOwnerId },
   ];
 }
 
@@ -1090,10 +1068,28 @@ export async function deleteMarker(input: {
   return ok({ id: input.markerId });
 }
 
-/** K5: reload maps that show this monster when name/image/visibility changes or it is deleted. */
-export { publishMapsForMonster } from "./monster-marker-events";
+type MonsterMarkerContext = {
+  universeVisibility: VisibilityStatus;
+  mapVisibility: VisibilityStatus;
+  monster: {
+    id: string;
+    name: string;
+    portraitId: string | null;
+    rarity: MonsterRarity;
+    isBoss: boolean;
+    visibility: ContentVisibility;
+    ownerId: string;
+  };
+};
 
-async function loadMonsterMarkerContext(worldId: string, markerId: string) {
+type LoadedMonsterMarkerContext = MonsterMarkerContext & {
+  marker: typeof monsterMarkers.$inferSelect;
+};
+
+async function loadMonsterMarkerContext(
+  worldId: string,
+  markerId: string,
+): Promise<LoadedMonsterMarkerContext | null> {
   const [row] = await db
     .select({
       marker: monsterMarkers,
@@ -1120,6 +1116,80 @@ async function loadMonsterMarkerContext(worldId: string, markerId: string) {
   return row ?? null;
 }
 
+function monsterMarkerLayers(
+  context: MonsterMarkerContext,
+  marker: typeof monsterMarkers.$inferSelect,
+): VisibilityLayer[] {
+  return monsterMarkerEventLayers(
+    context.universeVisibility,
+    context.mapVisibility,
+    context.monster.visibility,
+    context.monster.ownerId,
+    marker.visibility,
+    marker.ownerId,
+  );
+}
+
+function canSeeMonsterMarker(
+  viewer: { role: MembershipRole; userId: string },
+  context: MonsterMarkerContext,
+  marker: typeof monsterMarkers.$inferSelect,
+): boolean {
+  return canSeePublishedLayer(viewer, monsterMarkerLayers(context, marker));
+}
+
+function toMonsterMarkerDto(
+  marker: typeof monsterMarkers.$inferSelect,
+  context: MonsterMarkerContext,
+): MonsterMarkerDto {
+  return serializeMonsterMarker({
+    ...marker,
+    name: context.monster.name,
+    portraitId: context.monster.portraitId,
+    rarity: context.monster.rarity,
+    isBoss: context.monster.isBoss,
+  });
+}
+
+function publishMonsterMarker(
+  type: "map.monsterMarker" | "map.monsterMarker.deleted",
+  worldId: string,
+  context: MonsterMarkerContext,
+  marker: typeof monsterMarkers.$inferSelect,
+) {
+  worldEvents.publish({
+    type,
+    worldId,
+    markerId: marker.id,
+    mapId: marker.mapId,
+    layers: monsterMarkerLayers(context, marker),
+  });
+}
+
+async function insertMonsterMarker(input: {
+  monsterId: string;
+  mapId: string;
+  posX: number;
+  posY: number;
+  visibility: ContentVisibility;
+  actorId: string;
+}) {
+  const [marker] = await db
+    .insert(monsterMarkers)
+    .values({
+      monsterId: input.monsterId,
+      mapId: input.mapId,
+      posX: positionSql(input.posX),
+      posY: positionSql(input.posY),
+      visibility: input.visibility,
+      ownerId: input.actorId,
+      createdBy: input.actorId,
+      updatedBy: input.actorId,
+    })
+    .returning();
+  return marker;
+}
+
 export async function getMonsterMarkerDetails(input: {
   worldId: string;
   role: MembershipRole;
@@ -1128,30 +1198,10 @@ export async function getMonsterMarkerDetails(input: {
 }): Promise<AuthzResult<MonsterMarkerDto>> {
   const loaded = await loadMonsterMarkerContext(input.worldId, input.markerId);
   if (!loaded) return fail(404, "Diesen Monster-Marker gibt es nicht.");
-  if (
-    !canSeePublishedLayer(
-      { role: input.role, userId: input.actorId },
-      monsterMarkerEventLayers(
-        loaded.universeVisibility,
-        loaded.mapVisibility,
-        loaded.monster.visibility,
-        loaded.monster.ownerId,
-        loaded.marker.visibility,
-        loaded.marker.ownerId,
-      ),
-    )
-  ) {
+  if (!canSeeMonsterMarker({ role: input.role, userId: input.actorId }, loaded, loaded.marker)) {
     return fail(404, "Diesen Monster-Marker gibt es nicht.");
   }
-  return ok(
-    serializeMonsterMarker({
-      ...loaded.marker,
-      name: loaded.monster.name,
-      portraitId: loaded.monster.portraitId,
-      rarity: loaded.monster.rarity,
-      isBoss: loaded.monster.isBoss,
-    }),
-  );
+  return ok(toMonsterMarkerDto(loaded.marker, loaded));
 }
 
 export async function placeMonsterMarker(input: {
@@ -1203,41 +1253,21 @@ export async function placeMonsterMarker(input: {
   }
 
   try {
-    const [row] = await db
-      .insert(monsterMarkers)
-      .values({
-        monsterId: input.monsterId,
-        mapId: input.mapId,
-        posX: positionSql(input.posX),
-        posY: positionSql(input.posY),
-        visibility: "owner_only",
-        ownerId: input.actorId,
-        createdBy: input.actorId,
-        updatedBy: input.actorId,
-      })
-      .returning();
-    const marker = serializeMonsterMarker({
-      ...row,
-      name: monster.name,
-      portraitId: monster.portraitId,
-      rarity: monster.rarity,
-      isBoss: monster.isBoss,
+    const context: MonsterMarkerContext = {
+      universeVisibility: loaded.universeVisibility,
+      mapVisibility: loaded.map.visibility,
+      monster,
+    };
+    const row = await insertMonsterMarker({
+      monsterId: input.monsterId,
+      mapId: input.mapId,
+      posX: input.posX,
+      posY: input.posY,
+      visibility: "owner_only",
+      actorId: input.actorId,
     });
-    worldEvents.publish({
-      type: "map.monsterMarker",
-      worldId: input.worldId,
-      markerId: marker.id,
-      mapId: marker.mapId,
-      layers: monsterMarkerEventLayers(
-        loaded.universeVisibility,
-        loaded.map.visibility,
-        monster.visibility,
-        monster.ownerId,
-        marker.visibility,
-        marker.ownerId,
-      ),
-    });
-    return ok({ marker });
+    publishMonsterMarker("map.monsterMarker", input.worldId, context, row);
+    return ok({ marker: toMonsterMarkerDto(row, context) });
   } catch (error) {
     const mapped = mapDbError(error);
     if (mapped) return mapped;
@@ -1258,58 +1288,21 @@ export async function copyMonsterMarker(input: {
   if (!staff.ok) return staff;
   const loaded = await loadMonsterMarkerContext(input.worldId, input.sourceMarkerId);
   if (!loaded) return fail(404, "Diesen Monster-Marker gibt es nicht.");
-  if (
-    !canSeePublishedLayer(
-      { role: staff.data.role, userId: staff.data.userId },
-      monsterMarkerEventLayers(
-        loaded.universeVisibility,
-        loaded.mapVisibility,
-        loaded.monster.visibility,
-        loaded.monster.ownerId,
-        loaded.marker.visibility,
-        loaded.marker.ownerId,
-      ),
-    )
-  ) {
+  if (!canSeeMonsterMarker({ role: staff.data.role, userId: staff.data.userId }, loaded, loaded.marker)) {
     return fail(404, "Diesen Monster-Marker gibt es nicht.");
   }
 
   try {
-    const [row] = await db
-      .insert(monsterMarkers)
-      .values({
-        monsterId: loaded.marker.monsterId,
-        mapId: loaded.marker.mapId,
-        posX: positionSql(input.posX),
-        posY: positionSql(input.posY),
-        visibility: loaded.marker.visibility,
-        ownerId: input.actorId,
-        createdBy: input.actorId,
-        updatedBy: input.actorId,
-      })
-      .returning();
-    const marker = serializeMonsterMarker({
-      ...row,
-      name: loaded.monster.name,
-      portraitId: loaded.monster.portraitId,
-      rarity: loaded.monster.rarity,
-      isBoss: loaded.monster.isBoss,
+    const row = await insertMonsterMarker({
+      monsterId: loaded.marker.monsterId,
+      mapId: loaded.marker.mapId,
+      posX: input.posX,
+      posY: input.posY,
+      visibility: loaded.marker.visibility,
+      actorId: input.actorId,
     });
-    worldEvents.publish({
-      type: "map.monsterMarker",
-      worldId: input.worldId,
-      markerId: marker.id,
-      mapId: marker.mapId,
-      layers: monsterMarkerEventLayers(
-        loaded.universeVisibility,
-        loaded.mapVisibility,
-        loaded.monster.visibility,
-        loaded.monster.ownerId,
-        marker.visibility,
-        marker.ownerId,
-      ),
-    });
-    return ok({ marker });
+    publishMonsterMarker("map.monsterMarker", input.worldId, loaded, row);
+    return ok({ marker: toMonsterMarkerDto(row, loaded) });
   } catch (error) {
     const mapped = mapDbError(error);
     if (mapped) return mapped;
@@ -1337,6 +1330,10 @@ export async function updateMonsterMarker(input: {
   });
   if (!allowed.ok) return allowed;
   if (!loaded) return fail(404, "Diesen Monster-Marker gibt es nicht.");
+  if (!input.membership) return fail(404, "Diesen Monster-Marker gibt es nicht.");
+  if (!canSeeMonsterMarker(input.membership, loaded, loaded.marker)) {
+    return fail(404, "Diesen Monster-Marker gibt es nicht.");
+  }
 
   const dbPatch: ColumnPatch<typeof monsterMarkers.$inferInsert> = {
     updatedBy: input.actorId,
@@ -1351,28 +1348,8 @@ export async function updateMonsterMarker(input: {
     .set(dbPatch)
     .where(eq(monsterMarkers.id, input.markerId))
     .returning();
-  const marker = serializeMonsterMarker({
-    ...row,
-    name: loaded.monster.name,
-    portraitId: loaded.monster.portraitId,
-    rarity: loaded.monster.rarity,
-    isBoss: loaded.monster.isBoss,
-  });
-  worldEvents.publish({
-    type: "map.monsterMarker",
-    worldId: input.worldId,
-    markerId: marker.id,
-    mapId: marker.mapId,
-    layers: monsterMarkerEventLayers(
-      loaded.universeVisibility,
-      loaded.mapVisibility,
-      loaded.monster.visibility,
-      loaded.monster.ownerId,
-      marker.visibility,
-      marker.ownerId,
-    ),
-  });
-  return ok({ marker });
+  publishMonsterMarker("map.monsterMarker", input.worldId, loaded, row);
+  return ok({ marker: toMonsterMarkerDto(row, loaded) });
 }
 
 export async function deleteMonsterMarker(input: {
@@ -1390,20 +1367,11 @@ export async function deleteMonsterMarker(input: {
   });
   if (!allowed.ok) return allowed;
   if (!loaded) return fail(404, "Diesen Monster-Marker gibt es nicht.");
+  if (!input.membership) return fail(404, "Diesen Monster-Marker gibt es nicht.");
+  if (!canSeeMonsterMarker(input.membership, loaded, loaded.marker)) {
+    return fail(404, "Diesen Monster-Marker gibt es nicht.");
+  }
   await db.delete(monsterMarkers).where(eq(monsterMarkers.id, input.markerId));
-  worldEvents.publish({
-    type: "map.monsterMarker.deleted",
-    worldId: input.worldId,
-    markerId: input.markerId,
-    mapId: loaded.marker.mapId,
-    layers: monsterMarkerEventLayers(
-      loaded.universeVisibility,
-      loaded.mapVisibility,
-      loaded.monster.visibility,
-      loaded.monster.ownerId,
-      loaded.marker.visibility,
-      loaded.marker.ownerId,
-    ),
-  });
+  publishMonsterMarker("map.monsterMarker.deleted", input.worldId, loaded, loaded.marker);
   return ok({ id: input.markerId });
 }

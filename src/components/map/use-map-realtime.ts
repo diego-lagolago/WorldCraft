@@ -40,7 +40,7 @@ export function applyMapEvent(
   if (event.type === "map.monsterMarker.deleted") {
     return {
       ...current,
-      monsterMarkers: (current.monsterMarkers ?? []).filter((row) => row.id !== event.markerId),
+      monsterMarkers: current.monsterMarkers.filter((row) => row.id !== event.markerId),
     };
   }
   return current;

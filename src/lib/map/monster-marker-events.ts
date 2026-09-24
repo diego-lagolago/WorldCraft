@@ -1,18 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { maps, monsterMarkers, universes } from "@/db/schema";
-import type { VisibilityStatus } from "@/lib/authz";
 import { worldEvents } from "@/lib/realtime/events";
+import { mapEventLayers } from "./event-layers";
 
-function mapEventLayers(
-  universeVisibility: VisibilityStatus,
-  mapVisibility: VisibilityStatus,
-) {
-  return [{ visibility: universeVisibility }, { visibility: mapVisibility }];
-}
-
-/** K5: reload maps that show this monster when name/image/visibility changes or it is deleted. */
-export async function publishMapsForMonster(worldId: string, monsterId: string): Promise<void> {
+export async function mapsForMonster(worldId: string, monsterId: string) {
   const rows = await db
     .select({
       mapId: maps.id,
@@ -25,6 +17,13 @@ export async function publishMapsForMonster(worldId: string, monsterId: string):
     .innerJoin(universes, eq(universes.id, maps.universeId))
     .where(and(eq(monsterMarkers.monsterId, monsterId), eq(universes.worldId, worldId)));
 
+  return rows;
+}
+
+export function publishMapUpdates(
+  worldId: string,
+  rows: Awaited<ReturnType<typeof mapsForMonster>>,
+): void {
   const seen = new Set<string>();
   for (const row of rows) {
     if (seen.has(row.mapId)) continue;
@@ -36,4 +35,9 @@ export async function publishMapsForMonster(worldId: string, monsterId: string):
       layers: mapEventLayers(row.universeVisibility, row.mapVisibility),
     });
   }
+}
+
+/** K5: reload maps that show this monster when name/image/visibility changes or it is deleted. */
+export async function publishMapsForMonster(worldId: string, monsterId: string): Promise<void> {
+  publishMapUpdates(worldId, await mapsForMonster(worldId, monsterId));
 }

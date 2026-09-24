@@ -1,9 +1,8 @@
 "use client";
 
-import { Eye, EyeOff, ImageUp, Plus, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Ellipsis, Filter } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ImageUploadField } from "@/components/files/ImageUploadField";
-import { CONTENT_VISIBILITY_LABEL } from "@/lib/authz/types";
 import { rememberUniverse } from "@/lib/client/last-context";
 import type { MapDto, MapState, MarkerDto, MonsterMarkerDto, PinDetails } from "@/lib/map/types";
 import { useMapRealtime } from "./use-map-realtime";
@@ -12,6 +11,7 @@ import { useMapState } from "./use-map-state";
 import {
   CreateMapSheet,
   MapFilterSheet,
+  MapToolsSheet,
   MarkerSheet,
   MonsterMarkerSheet,
   PinFormSheet,
@@ -22,9 +22,8 @@ import {
 } from "./MapSheets";
 import { useMapFilter } from "./use-map-filter";
 import { useMapHotkeys } from "./use-map-hotkeys";
-import { isMapFilterVisible, type MapFilterCategory } from "@/lib/map/map-filter";
-
-type PlaceMode = "none" | "pin" | "monster" | "copy";
+import { isMapFilterVisible } from "@/lib/map/map-filter";
+import { nextMapMode, tapOnItemPosition, type MapMode } from "@/lib/map/map-mode";
 
 type Sheet =
   | { kind: "none" }
@@ -34,8 +33,9 @@ type Sheet =
   | { kind: "marker"; marker: MarkerDto }
   | { kind: "monster-marker"; marker: MonsterMarkerDto }
   | { kind: "monster-pick"; posX: number; posY: number }
-  | { kind: "place" }
+  | { kind: "place"; posX: number; posY: number }
   | { kind: "filter" }
+  | { kind: "tools" }
   | { kind: "create-map" };
 
 function mapHasImage(map: MapDto | null): map is MapDto & {
@@ -51,23 +51,12 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
   const stream = useMapState(worldId, initial);
   const state = stream.state;
   const filter = useMapFilter(worldId);
-  const [placeMode, setPlaceMode] = useState<PlaceMode>("none");
+  const [mode, setMode] = useState<MapMode>({ kind: "none" });
   const [sheet, setSheet] = useState<Sheet>({ kind: "none" });
   const [replaceConfirm, setReplaceConfirm] = useState(false);
-  const [copySource, setCopySource] = useState<MonsterMarkerDto | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const placing = placeMode !== "none";
-
-  const setMode = useCallback((next: PlaceMode | ((current: PlaceMode) => PlaceMode)) => {
-    setPlaceMode((current) => {
-      const resolved = typeof next === "function" ? next(current) : next;
-      if (resolved !== "copy") {
-        queueMicrotask(() => setCopySource(null));
-      }
-      return resolved;
-    });
-  }, []);
+  const placing = mode.kind !== "none";
 
   useEffect(() => {
     if (state.universe) rememberUniverse(worldId, state.universe.id);
@@ -76,8 +65,8 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
   // K12: changing maps ends place/copy mode.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset tool mode when the selected map changes
-    setMode("none");
-  }, [state.map?.id, setMode]);
+    setMode({ kind: "none" });
+  }, [state.map?.id]);
 
   const onResync = useCallback(() => {
     stream.onResync();
@@ -85,21 +74,43 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
 
   const leafletMap = mapHasImage(state.map) ? state.map : null;
 
-  const visiblePins = state.pins.filter((pin) =>
-    isMapFilterVisible(
-      {
-        kind: "pin",
-        pinType: pin.pinType,
-        highlighted: state.highlightPinId === pin.id,
-      },
-      filter.hidden,
-    ),
+  const visiblePins = useMemo(
+    () =>
+      state.pins.filter((pin) =>
+        isMapFilterVisible(
+          { kind: "pin", pinType: pin.pinType, highlighted: state.highlightPinId === pin.id },
+          filter.hidden,
+        ),
+      ),
+    [state.pins, state.highlightPinId, filter.hidden],
   );
-  const visibleMarkers = state.markers.filter(() =>
-    isMapFilterVisible({ kind: "character" }, filter.hidden),
+  const visibleMarkers = useMemo(
+    () => (isMapFilterVisible({ kind: "character" }, filter.hidden) ? state.markers : []),
+    [state.markers, filter.hidden],
   );
-  const visibleMonsterMarkers = (state.monsterMarkers ?? []).filter(() =>
-    isMapFilterVisible({ kind: "monster" }, filter.hidden),
+  const visibleMonsterMarkers = useMemo(
+    () => (isMapFilterVisible({ kind: "monster" }, filter.hidden) ? state.monsterMarkers : []),
+    [state.monsterMarkers, filter.hidden],
+  );
+
+  const placeAt = useCallback(
+    (x: number, y: number) => {
+      if (mode.kind === "copy") {
+        void stream.copyMonsterMarker(mode.source.id, x, y);
+        return;
+      }
+      setMode({ kind: "none" });
+      if (mode.kind === "monster") {
+        setSheet({ kind: "monster-pick", posX: x, posY: y });
+        return;
+      }
+      if (mode.kind === "character") {
+        setSheet({ kind: "place", posX: x, posY: y });
+        return;
+      }
+      setSheet({ kind: "create", posX: x, posY: y });
+    },
+    [mode, stream],
   );
 
   const leaflet = useLeafletMap(
@@ -113,31 +124,31 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
       staff: state.staff,
       actorId: state.actorId,
       highlightPinId: state.highlightPinId,
-      onMapClick: (x, y) => {
-        const mode = placeMode;
-        if (mode === "copy" && copySource) {
-          void stream.copyMonsterMarker(copySource.id, x, y);
-          return;
-        }
-        setMode("none");
-        if (mode === "monster") {
-          setSheet({ kind: "monster-pick", posX: x, posY: y });
-          return;
-        }
-        setSheet({ kind: "create", posX: x, posY: y });
-      },
+      onMapClick: placeAt,
       onPinClick: (pin) => {
+        if (mode.kind !== "none") {
+          const position = tapOnItemPosition(pin.posX, pin.posY);
+          placeAt(position.x, position.y);
+          return;
+        }
         void stream.loadPin(pin.id).then((details) => {
           if (details) setSheet({ kind: "view", pin: details });
         });
       },
-      onMarkerClick: (marker) => setSheet({ kind: "marker", marker }),
-      onMonsterMarkerClick: (marker) => {
-        if (placeMode === "copy" && copySource) {
-          void stream.copyMonsterMarker(copySource.id, marker.posX, marker.posY);
+      onMarkerClick: (marker) => {
+        if (mode.kind !== "none") {
+          const position = tapOnItemPosition(marker.posX, marker.posY);
+          placeAt(position.x, position.y);
           return;
         }
-        if (placing) return;
+        setSheet({ kind: "marker", marker });
+      },
+      onMonsterMarkerClick: (marker) => {
+        if (mode.kind !== "none") {
+          const position = tapOnItemPosition(marker.posX, marker.posY);
+          placeAt(position.x, position.y);
+          return;
+        }
         setSheet({ kind: "monster-marker", marker });
       },
       onPinDrop: (pin) => void stream.dropPin(pin),
@@ -151,9 +162,8 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
   useMapHotkeys({
     enabled: Boolean(leafletMap),
     staff: state.staff,
-    sheetOpen: sheet.kind !== "none",
-    placeMode,
-    setPlaceMode: setMode,
+    sheetOpen: sheet.kind !== "none" || replaceConfirm,
+    setMode,
   });
 
   const mapPublished = state.map?.visibility === "published";
@@ -200,42 +210,21 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
           ) : (
             <span className="map-select map-select-empty">{selectedLabel || "Keine Karte"}</span>
           )}
-          {state.staff ? (
-            <>
-              <button
-                type="button"
-                className="zbtn map-top-btn"
-                aria-label="Karte hinzufügen"
-                title="Karte hinzufügen"
-                onClick={() => setSheet({ kind: "create-map" })}
-              >
-                <Plus size={18} aria-hidden />
-              </button>
-              {state.map ? (
-                <button
-                  type="button"
-                  className="zbtn map-top-btn"
-                  aria-label="Karte löschen"
-                  title="Karte löschen"
-                  onClick={onDeleteMap}
-                >
-                  <Trash2 size={18} aria-hidden />
-                </button>
-              ) : null}
-            </>
-          ) : null}
         </div>
-        {mapHasImage(state.map) ? (
-          <button
-            type="button"
-            className={filter.hasOff ? "chip map-filter-btn has-off" : "chip map-filter-btn"}
-            aria-label="Kartenfilter"
-            onClick={() => setSheet({ kind: "filter" })}
-          >
-            Filter
-          </button>
-        ) : null}
       </div>
+
+      {mapHasImage(state.map) ? (
+        <div className="map-context-ctrl">
+          {state.staff ? (
+            <button type="button" className="zbtn" aria-label="Kartenverwaltung" title="Kartenverwaltung" onClick={() => setSheet({ kind: "tools" })}>
+              <Ellipsis size={20} aria-hidden />
+            </button>
+          ) : null}
+          <button type="button" className="zbtn" aria-label="Hineinzoomen" title="Hineinzoomen" onClick={() => leaflet.zoomBy(1.4)}>＋</button>
+          <button type="button" className="zbtn" aria-label="Herauszoomen" title="Herauszoomen" onClick={() => leaflet.zoomBy(0.7)}>－</button>
+          <button type="button" className="zbtn" aria-label="Ganze Karte" title="Ganze Karte" onClick={() => leaflet.fit()}>⤢</button>
+        </div>
+      ) : null}
 
       {state.map ? (
         <ImageUploadField
@@ -294,92 +283,66 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
 
       {state.map ? (
         <div className="map-ctrl">
-          {state.staff ? (
-            <button
-              type="button"
-              className="zbtn"
-              aria-label="Kartenbild hochladen"
-              title={mapHasImage(state.map) ? "Kartenbild ersetzen" : "Kartenbild hochladen"}
-              onClick={startUpload}
-            >
-              <ImageUp size={20} aria-hidden />
-            </button>
-          ) : null}
-          {state.staff ? (
-            <button
-              type="button"
-              className="zbtn"
-              aria-label={mapPublished ? "Karte freigegeben" : "Karte versteckt"}
-              title={
-                mapPublished
-                  ? "Karte freigegeben (für alle sichtbar)"
-                  : `Karte versteckt (${CONTENT_VISIBILITY_LABEL.gm_only})`
-              }
-              onClick={() =>
-                void stream.setMapVisibility(state.map!.id, mapPublished ? "gm_only" : "published")
-              }
-            >
-              {mapPublished ? <Eye size={20} aria-hidden /> : <EyeOff size={20} aria-hidden />}
-            </button>
-          ) : null}
           {mapHasImage(state.map) ? (
             <>
-              <button type="button" className="zbtn" aria-label="Hineinzoomen" onClick={() => leaflet.zoomBy(1.4)}>
-                ＋
-              </button>
-              <button type="button" className="zbtn" aria-label="Herauszoomen" onClick={() => leaflet.zoomBy(0.7)}>
-                －
-              </button>
-              <button type="button" className="zbtn" aria-label="Ganze Karte" onClick={() => leaflet.fit()}>
-                ⤢
-              </button>
-              <button type="button" className="zbtn" aria-label="Charakter platzieren" onClick={() => setSheet({ kind: "place" })}>
-                🧝
+              <button
+                type="button"
+                className={mode.kind === "character" ? "zbtn on" : "zbtn"}
+                aria-label={mode.kind === "character" ? "Charaktermodus abbrechen" : "Charakter platzieren"}
+                onClick={() => setMode((current) => nextMapMode(current, "character"))}
+              >
+                {mode.kind === "character" ? "❌" : "🧝"}
               </button>
               {state.staff ? (
                 <>
                   <button
                     type="button"
-                    className={placeMode === "monster" ? "zbtn on" : "zbtn"}
-                    aria-label="Monster platzieren (M)"
+                    className={mode.kind === "monster" ? "zbtn on" : "zbtn"}
+                    aria-label={mode.kind === "monster" ? "Monstermodus abbrechen" : "Monster platzieren (M)"}
                     aria-keyshortcuts="M"
                     title="Monster platzieren (M)"
-                    onClick={() => setMode((current) => (current === "monster" ? "none" : "monster"))}
+                    onClick={() => setMode((current) => nextMapMode(current, "monster"))}
                   >
-                    👹
+                    {mode.kind === "monster" ? "❌" : "👹"}
                   </button>
                   <button
                     type="button"
-                    className="fab"
-                    aria-label={placing ? "Abbrechen" : "Pin setzen (P)"}
+                    className={mode.kind === "pin" ? "zbtn on" : "zbtn"}
+                    aria-label={mode.kind === "pin" ? "Pinmodus abbrechen" : "Pin setzen (P)"}
                     aria-keyshortcuts="P"
-                    title={placing ? "Abbrechen (Esc)" : "Pin setzen (P)"}
+                    title={mode.kind === "pin" ? "Abbrechen (Esc)" : "Pin setzen (P)"}
                     onClick={() => {
-                      if (placing) {
-                        setMode("none");
-                        return;
-                      }
-                      setMode("pin");
+                      setMode((current) => nextMapMode(current, "pin"));
                     }}
                   >
-                    {placing ? "×" : "+"}
+                    {mode.kind === "pin" ? "❌" : "📍"}
                   </button>
                 </>
               ) : null}
+              <button
+                type="button"
+                className={filter.hasOff ? "zbtn map-filter-btn has-off" : "zbtn map-filter-btn"}
+                aria-label="Kartenfilter"
+                title="Kartenfilter"
+                onClick={() => setSheet({ kind: "filter" })}
+              >
+                <Filter size={20} aria-hidden />
+              </button>
             </>
           ) : null}
         </div>
       ) : null}
 
-      {placeMode === "pin" ? <p className="map-hint">Tippe auf die Karte, um den Pin zu setzen.</p> : null}
-      {placeMode === "monster" ? (
+      {mode.kind === "pin" ? <p className="map-hint">Tippe auf die Karte, um den Pin zu setzen.</p> : null}
+      {mode.kind === "monster" ? (
         <p className="map-hint">
           Tippe auf die Karte — danach Monster wählen. Startet als „nur ich“. × / Esc = Abbrechen.
         </p>
       ) : null}
-      {placeMode === "copy" && copySource ? (
+      {mode.kind === "character" ? <p className="map-hint">Tippe auf die Karte — danach Charakter wählen. ❌ = Abbrechen.</p> : null}
+      {mode.kind === "copy" ? (
         <p className="map-hint">
-          Tippe, um Kopien von „{copySource.name}“ zu setzen. × / Esc = Abbrechen.
+          Tippe, um Kopien von „{mode.source.name}“ zu setzen. × / Esc = Abbrechen.
         </p>
       ) : null}
 
@@ -482,8 +445,7 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
             setSheet({ kind: "none" });
           }}
           onCopy={() => {
-            setCopySource(sheet.marker);
-            setPlaceMode("copy");
+            setMode({ kind: "copy", source: sheet.marker });
             setSheet({ kind: "none" });
           }}
           onVisibility={(visibility) => {
@@ -519,7 +481,7 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
           onClose={() => setSheet({ kind: "none" })}
           onPick={(characterId) => {
             if (!state.map) return;
-            void stream.placeCharacter(state.map.id, characterId);
+            void stream.placeCharacter(state.map.id, characterId, sheet.posX, sheet.posY);
             setSheet({ kind: "none" });
           }}
         />
@@ -529,11 +491,27 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
         <MapFilterSheet
           cats={filter.cats}
           hidden={filter.hidden}
-          onToggle={(key) => filter.toggle(key as MapFilterCategory)}
+          onToggle={filter.toggle}
           onClear={filter.clear}
+          onHideAll={filter.hideAll}
           onClose={() => setSheet({ kind: "none" })}
         />
       ) : null}
+
+      {sheet.kind === "tools" && state.map ? (
+        <MapToolsSheet
+          mapPublished={mapPublished}
+          onClose={() => setSheet({ kind: "none" })}
+          onCreate={() => { setSheet({ kind: "create-map" }); }}
+          onDelete={() => { setSheet({ kind: "none" }); onDeleteMap(); }}
+          onUpload={() => { setSheet({ kind: "none" }); startUpload(); }}
+          onToggleVisibility={() => {
+            void stream.setMapVisibility(state.map!.id, mapPublished ? "gm_only" : "published");
+            setSheet({ kind: "none" });
+          }}
+        />
+      ) : null}
+
 
       {sheet.kind === "create-map" ? (
         <CreateMapSheet

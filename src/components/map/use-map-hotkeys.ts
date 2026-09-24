@@ -1,18 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
+import { nextMapMode, type MapMode } from "@/lib/map/map-mode";
 import { mapHotkeyAction } from "./map-hotkeys";
-
-type PlaceMode = "none" | "pin" | "monster" | "copy";
 
 export function useMapHotkeys(opts: {
   enabled: boolean;
   staff: boolean;
   sheetOpen: boolean;
-  placeMode: PlaceMode;
-  setPlaceMode: (mode: PlaceMode | ((current: PlaceMode) => PlaceMode)) => void;
+  setMode: (mode: MapMode | ((current: MapMode) => MapMode)) => void;
 }) {
-  const { enabled, staff, sheetOpen, setPlaceMode } = opts;
+  const { enabled, staff, sheetOpen, setMode } = opts;
 
   useEffect(() => {
     if (!enabled) return;
@@ -30,13 +28,9 @@ export function useMapHotkeys(opts: {
       });
       if (!action) return;
       event.preventDefault();
-      if (action === "cancel") {
-        setPlaceMode("none");
-        return;
-      }
-      setPlaceMode((current) => (current === action ? "none" : action));
+      setMode((current) => nextMapMode(current, action));
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [enabled, staff, sheetOpen, setPlaceMode]);
+  }, [enabled, staff, sheetOpen, setMode]);
 }

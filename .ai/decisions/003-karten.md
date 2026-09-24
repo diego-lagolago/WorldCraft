@@ -163,7 +163,7 @@ Die Empfehlung bleibt A. Lizenz und Passung zu F4/F5 schließen C aus; B bleibt 
 Pins, Charakter-Marker und Monster-Marker teilen dieselbe Nadelgrafik-Größe und denselben Anker an der **Spitze** (Plan-Review K8):
 
 - Grafik 48 × 58 px, Spitze bei (24, 56); Leaflet `iconSize` / `iconAnchor` entsprechen diesen Werten (gemeinsame Konstante, z. B. `PIN_ICON`).
-- Charakter- und Monster-Marker: Stecknadel mit Bild (oder Initialen) im Nadelkopf; Rahmen/Nadel **Gold** bei Charakteren, **Schwarz** bei Monstern (CSS-Variablen `--marker-character` / `--marker-monster`). Name als Beschriftung **unter** der Nadel, außerhalb des Icon-Rahmens.
+- Charakter- und Monster-Marker: Stecknadel mit Bild (oder Initialen) im Nadelkopf; Rahmen/Nadel **Gold** bei Charakteren, **Schwarz** bei Monstern (CSS-Variablen `--marker-character` / `--marker-monster`). Beschriftung = erstes Wort des Namens (Leerzeichen-getrennt), gilt für Charakter- und Monster-Marker; Entscheidung Projektinhaber 2026-09-24. Die Beschriftung liegt unter der Nadel, außerhalb des Icon-Rahmens.
 - Gespeichert bleibt der Ankerpunkt (`pos_x`/`pos_y`); keine Datenmigration. Bestehende Pins rutschen einmalig optisch auf die gespeicherte Stelle.
 
 ### Kartenfilter

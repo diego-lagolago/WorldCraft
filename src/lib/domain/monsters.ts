@@ -32,7 +32,7 @@ import {
 import { parseUuid, parseWithUserMessage } from "@/lib/http";
 import { collectUnreferencedFiles } from "@/lib/files/gc";
 import { swapSingleImage } from "@/lib/files/single-image";
-import { publishMapsForMonster } from "@/lib/map/monster-marker-events";
+import { mapsForMonster, publishMapUpdates, publishMapsForMonster } from "@/lib/map/monster-marker-events";
 export { MONSTER_NOT_FOUND } from "@/lib/monsters/messages";
 import { MONSTER_NOT_FOUND } from "@/lib/monsters/messages";
 import {
@@ -517,8 +517,9 @@ export async function deleteMonster(input: {
   });
   if (!allowed.ok) return allowed;
   if (!current) return fail(404, MONSTER_NOT_FOUND);
-  await publishMapsForMonster(input.worldId, current.id);
+  const affectedMaps = await mapsForMonster(input.worldId, current.id);
   await db.delete(monsters).where(eq(monsters.id, current.id));
+  publishMapUpdates(input.worldId, affectedMaps);
   await collectUnreferencedFiles([current.portraitId]);
   return ok({ id: current.id });
 }

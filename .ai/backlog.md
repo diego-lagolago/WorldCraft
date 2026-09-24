@@ -2,6 +2,34 @@
 
 Kurze, undatierte Restpunkte. Kein Ersatz für Pläne unter `.ai/feature-tasks/`.
 
+## 2026-09-24 – Monster-Marker-Sheet vertiefen
+
+**Quelle:** Projektinhaber beim lokalen Smoketest von Plan `006`.
+
+Das bestehende Monster-Marker-Sheet genügt vorerst mit Name, Seltenheit und Link „Zum Monster“. Später prüfen, welche zusätzlichen Details aus dem Monsterblatt direkt auf der Karte wirklich hilfreich sind, ohne das Sheet zu überladen. Erst als eigene UX-Entscheidung bzw. Plan bearbeiten.
+
+## 2026-09-24 – Versteckte Verweise kryptisch darstellen
+
+**Quelle:** Projektinhaber im Plan-Review des Code-Reviews zu Plan `005` (CR-012, `.ai/code-review-005-monster-bestiarium-2026-09-24.md`).
+
+Verweise auf Inhalte, die der Betrachter nicht sehen darf (unsichtbar oder unbekannt), sollen nicht einfach verschwinden, sondern in einer **kryptischen Schrift / Platzhalter-Glyphen** erscheinen – verschleiert, aber mit dem Gefühl „da ist etwas“. Betrifft einheitlich: `@`-Erwähnungen im Lesemodus (heute Zustand `plain` = gespeichertes Label als Klartext, `RichTextView.tsx`), Lebensraum am Monster (heute „–“), Artikel-Vorlagenfelder mit Verweisen, ggf. „Verknüpft“.
+
+Offen für den eigenen Plan: Der echte Name darf den Client nicht erreichen (Server ersetzt Label/Titel durch Platzhalter; Länge fix oder echt?), Umgang mit dem in `body_json`/`bio_json` gespeicherten Label, Schrift/Glyphen im Prototyp festlegen, Verhältnis zu Stub-Erwähnungen. Erst Prototyp, dann Plan.
+
+## 2026-09-24 – Fähigkeiten mit Angriffs-/Wirkungsart taggen
+
+**Quelle:** Projektinhaber beim Prototyp-Review Plan `006` (2026-09-24).
+
+Fähigkeiten (Charakterblatt und Monsterblatt) sollen **getagged** werden nach Art der Wirkung. Erste grobe Kategorien (Beispiel):
+
+- physischer Schaden
+- Magie-Schaden
+- Debuff
+- Buff
+- Heilung
+
+Später feinere Unterscheidungen denkbar (scharfer Schaden, stumpfer Schaden / blunt, Pfeile, Speere, …). **Granularität** und genaue Tag-Liste werden im Backlog bzw. einem eigenen Plan geklärt — nicht im laufenden Plan `006`. Gilt für Charaktere und Monster gleichermaßen (gemeinsames Blatt).
+
 ## 2026-09-23 – Owner verlässt die Welt
 
 **Quelle:** Projektinhaber beim Anlegen von Plan `004` (dreistufige Sichtbarkeit Owner / Spielleitung / veröffentlicht).

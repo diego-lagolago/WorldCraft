@@ -13,7 +13,7 @@ import {
   nextRefetchSeq,
   rememberDeleted,
   resolveRefetchResponse,
-  shouldFetchPinForMap,
+  isEventForCurrentMap,
   shouldScheduleReload,
 } from "./map-refetch";
 import { applyMapEvent } from "./use-map-realtime";
@@ -234,10 +234,10 @@ export function useMapState(worldId: string, initial: MapState) {
     if (!result.ok) await failAndReload(result.error);
   }
 
-  async function placeCharacter(mapId: string, characterId: string) {
+  async function placeCharacter(mapId: string, characterId: string, posX: number, posY: number) {
     const result = await apiFetch<{ marker: MarkerDto }>(`/api/worlds/${worldId}/map/markers`, {
       method: "POST",
-      body: JSON.stringify({ mapId, characterId, posX: 0.5, posY: 0.5 }),
+      body: JSON.stringify({ mapId, characterId, posX, posY }),
     });
     if (!result.ok) {
       await failAndReload(result.error);
@@ -285,33 +285,21 @@ export function useMapState(worldId: string, initial: MapState) {
   }
 
   async function placeMonsterMarker(mapId: string, monsterId: string, posX: number, posY: number) {
-    const result = await apiFetch<{ marker: MonsterMarkerDto }>(
-      `/api/worlds/${worldId}/map/monster-markers`,
-      {
-        method: "POST",
-        body: JSON.stringify({ mapId, monsterId, posX, posY }),
-      },
-    );
-    if (!result.ok) {
-      await failAndReload(result.error);
-      return false;
-    }
-    setState((current) => ({
-      ...current,
-      monsterMarkers: [
-        ...(current.monsterMarkers ?? []).filter((row) => row.id !== result.data.marker.id),
-        result.data.marker,
-      ],
-    }));
-    return true;
+    return postMonsterMarker({ mapId, monsterId, posX, posY });
   }
 
   async function copyMonsterMarker(sourceMarkerId: string, posX: number, posY: number) {
+    return postMonsterMarker({ sourceMarkerId, posX, posY });
+  }
+
+  async function postMonsterMarker(
+    body: { mapId: string; monsterId: string; posX: number; posY: number } | { sourceMarkerId: string; posX: number; posY: number },
+  ) {
     const result = await apiFetch<{ marker: MonsterMarkerDto }>(
       `/api/worlds/${worldId}/map/monster-markers`,
       {
         method: "POST",
-        body: JSON.stringify({ sourceMarkerId, posX, posY }),
+        body: JSON.stringify(body),
       },
     );
     if (!result.ok) {
@@ -321,7 +309,7 @@ export function useMapState(worldId: string, initial: MapState) {
     setState((current) => ({
       ...current,
       monsterMarkers: [
-        ...(current.monsterMarkers ?? []).filter((row) => row.id !== result.data.marker.id),
+        ...current.monsterMarkers.filter((row) => row.id !== result.data.marker.id),
         result.data.marker,
       ],
     }));
@@ -331,7 +319,7 @@ export function useMapState(worldId: string, initial: MapState) {
   async function dropMonsterMarker(marker: MonsterMarkerDto) {
     setState((current) => ({
       ...current,
-      monsterMarkers: (current.monsterMarkers ?? []).map((row) =>
+      monsterMarkers: current.monsterMarkers.map((row) =>
         row.id === marker.id ? marker : row,
       ),
     }));
@@ -355,7 +343,7 @@ export function useMapState(worldId: string, initial: MapState) {
     }
     setState((current) => ({
       ...current,
-      monsterMarkers: (current.monsterMarkers ?? []).filter((row) => row.id !== markerId),
+      monsterMarkers: current.monsterMarkers.filter((row) => row.id !== markerId),
     }));
   }
 
@@ -376,7 +364,7 @@ export function useMapState(worldId: string, initial: MapState) {
     }
     setState((current) => ({
       ...current,
-      monsterMarkers: (current.monsterMarkers ?? []).map((row) =>
+      monsterMarkers: current.monsterMarkers.map((row) =>
         row.id === markerId ? result.data.marker : row,
       ),
     }));
@@ -389,27 +377,28 @@ export function useMapState(worldId: string, initial: MapState) {
     return seq;
   }
 
-  function applyPinRefetchOutcome(
-    pinId: string,
-    seq: number,
-    status: number,
-    data: PinDetails | undefined,
-  ) {
+  function applyRefetchOutcome<T>(input: {
+    id: string;
+    seq: number;
+    status: number;
+    data: T | undefined;
+    seqRef: { current: Map<string, number> };
+    deletedRef: { current: Set<string> };
+    onRemove: () => void;
+    onUpsert: (data: T) => void;
+  }) {
     const outcome = resolveRefetchResponse({
-      seq,
-      latestSeq: pinSeqRef.current.get(pinId) ?? 0,
-      status,
-      data,
-      deleted: pinDeletedRef.current,
-      id: pinId,
+      seq: input.seq,
+      latestSeq: input.seqRef.current.get(input.id) ?? 0,
+      status: input.status,
+      data: input.data,
+      deleted: input.deletedRef.current,
+      id: input.id,
     });
     if (outcome.action === "ignore") return;
     if (outcome.action === "remove") {
-      pinDeletedRef.current = rememberDeleted(pinDeletedRef.current, pinId);
-      setState((current) => ({
-        ...current,
-        pins: current.pins.filter((pin) => pin.id !== pinId),
-      }));
+      input.deletedRef.current = rememberDeleted(input.deletedRef.current, input.id);
+      input.onRemove();
       return;
     }
     if (outcome.action === "keep_and_reload") {
@@ -420,14 +409,30 @@ export function useMapState(worldId: string, initial: MapState) {
       waitResyncRef.current = true;
       return;
     }
-    if (outcome.action !== "upsert") return;
-    const pin = outcome.data;
-    setState((current) => {
-      if (current.map && pin.mapId !== current.map.id) return current;
-      return {
+    if (outcome.action === "upsert") input.onUpsert(outcome.data);
+  }
+
+  function applyPinRefetchOutcome(
+    pinId: string,
+    seq: number,
+    status: number,
+    data: PinDetails | undefined,
+  ) {
+    applyRefetchOutcome({
+      id: pinId,
+      seq,
+      status,
+      data,
+      seqRef: pinSeqRef,
+      deletedRef: pinDeletedRef,
+      onRemove: () => setState((current) => ({
         ...current,
-        pins: [...current.pins.filter((row) => row.id !== pin.id), pin],
-      };
+        pins: current.pins.filter((pin) => pin.id !== pinId),
+      })),
+      onUpsert: (pin) => setState((current) => {
+        if (current.map && pin.mapId !== current.map.id) return current;
+        return { ...current, pins: [...current.pins.filter((row) => row.id !== pin.id), pin] };
+      }),
     });
   }
 
@@ -437,18 +442,14 @@ export function useMapState(worldId: string, initial: MapState) {
     status: number,
     data: MarkerDto | undefined,
   ) {
-    const outcome = resolveRefetchResponse({
+    applyRefetchOutcome({
+      id: markerId,
       seq,
-      latestSeq: markerSeqRef.current.get(markerId) ?? 0,
       status,
       data,
-      deleted: markerDeletedRef.current,
-      id: markerId,
-    });
-    if (outcome.action === "ignore") return;
-    if (outcome.action === "remove") {
-      markerDeletedRef.current = rememberDeleted(markerDeletedRef.current, markerId);
-      setState((current) => {
+      seqRef: markerSeqRef,
+      deletedRef: markerDeletedRef,
+      onRemove: () => setState((current) => {
         const removed = current.markers.find((row) => row.id === markerId);
         return {
           ...current,
@@ -457,20 +458,8 @@ export function useMapState(worldId: string, initial: MapState) {
             removed?.characterId === row.id ? { ...row, placed: false, placedElsewhere: false } : row,
           ),
         };
-      });
-      return;
-    }
-    if (outcome.action === "keep_and_reload") {
-      scheduleRefetchReload();
-      return;
-    }
-    if (outcome.action === "keep_and_wait_resync") {
-      waitResyncRef.current = true;
-      return;
-    }
-    if (outcome.action !== "upsert") return;
-    const marker = outcome.data;
-    setState((current) => {
+      }),
+      onUpsert: (marker) => setState((current) => {
       if (current.map && marker.mapId !== current.map.id) {
         return {
           ...current,
@@ -492,55 +481,11 @@ export function useMapState(worldId: string, initial: MapState) {
         ],
         characters: current.characters.map((row) =>
           row.id === marker.characterId
-            ? { ...row, placed: true, placedElsewhere: false }
-            : row,
-        ),
-      };
-    });
-  }
-
-  function applyMonsterMarkerRefetchOutcome(
-    markerId: string,
-    seq: number,
-    status: number,
-    data: MonsterMarkerDto | undefined,
-  ) {
-    const outcome = resolveRefetchResponse({
-      seq,
-      latestSeq: monsterMarkerSeqRef.current.get(markerId) ?? 0,
-      status,
-      data,
-      deleted: monsterMarkerDeletedRef.current,
-      id: markerId,
-    });
-    if (outcome.action === "ignore") return;
-    if (outcome.action === "remove") {
-      monsterMarkerDeletedRef.current = rememberDeleted(monsterMarkerDeletedRef.current, markerId);
-      setState((current) => ({
-        ...current,
-        monsterMarkers: (current.monsterMarkers ?? []).filter((row) => row.id !== markerId),
-      }));
-      return;
-    }
-    if (outcome.action === "keep_and_reload") {
-      scheduleRefetchReload();
-      return;
-    }
-    if (outcome.action === "keep_and_wait_resync") {
-      waitResyncRef.current = true;
-      return;
-    }
-    if (outcome.action !== "upsert") return;
-    const marker = outcome.data;
-    setState((current) => {
-      if (current.map && marker.mapId !== current.map.id) return current;
-      return {
-        ...current,
-        monsterMarkers: [
-          ...(current.monsterMarkers ?? []).filter((row) => row.id !== marker.id),
-          marker,
-        ],
-      };
+          ? { ...row, placed: true, placedElsewhere: false }
+          : row,
+      ),
+        };
+      }),
     });
   }
 
@@ -572,7 +517,7 @@ export function useMapState(worldId: string, initial: MapState) {
     }
     if (event.type === "map.pin") {
       if (dragging.has(event.pinId)) return;
-      if (!shouldFetchPinForMap(event.mapId, stateRef.current.map?.id)) return;
+      if (!isEventForCurrentMap(event.mapId, stateRef.current.map?.id)) return;
       // New upsert signal (e.g. published after gm_only) must clear a prior delete marker.
       pinDeletedRef.current = forgetDeleted(pinDeletedRef.current, event.pinId);
       const seq = bumpSeq(pinSeqRef, event.pinId);
@@ -595,7 +540,7 @@ export function useMapState(worldId: string, initial: MapState) {
     }
     if (event.type === "map.monsterMarker") {
       if (dragging.has(event.markerId)) return;
-      if (!shouldFetchPinForMap(event.mapId, stateRef.current.map?.id)) return;
+      if (!isEventForCurrentMap(event.mapId, stateRef.current.map?.id)) return;
       monsterMarkerDeletedRef.current = forgetDeleted(
         monsterMarkerDeletedRef.current,
         event.markerId,
@@ -604,12 +549,25 @@ export function useMapState(worldId: string, initial: MapState) {
       const result = await apiFetch<MonsterMarkerDto>(
         `/api/worlds/${worldId}/map/monster-markers/${event.markerId}`,
       );
-      applyMonsterMarkerRefetchOutcome(
-        event.markerId,
+      applyRefetchOutcome({
+        id: event.markerId,
         seq,
-        result.status,
-        result.ok ? result.data : undefined,
-      );
+        status: result.status,
+        data: result.ok ? result.data : undefined,
+        seqRef: monsterMarkerSeqRef,
+        deletedRef: monsterMarkerDeletedRef,
+        onRemove: () => setState((current) => ({
+          ...current,
+          monsterMarkers: current.monsterMarkers.filter((row) => row.id !== event.markerId),
+        })),
+        onUpsert: (marker) => setState((current) => {
+          if (current.map && marker.mapId !== current.map.id) return current;
+          return {
+            ...current,
+            monsterMarkers: [...current.monsterMarkers.filter((row) => row.id !== marker.id), marker],
+          };
+        }),
+      });
     }
   }
 

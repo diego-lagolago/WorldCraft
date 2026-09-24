@@ -13,6 +13,7 @@ import type { ContentVisibility } from "@/lib/authz";
 import type { MonsterSummary } from "@/lib/domain/monsters";
 import { MONSTER_KIND_LABEL } from "@/lib/monsters/labels";
 import { MonsterBossMark, MonsterRarityPill } from "@/components/monsters/MonsterRarityPill";
+import type { MapFilterCategory, MapFilterCategoryInfo } from "@/lib/map/map-filter";
 
 export function Sheet({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   return (
@@ -387,28 +388,33 @@ export function MapFilterSheet({
   hidden,
   onToggle,
   onClear,
+  onHideAll,
   onClose,
 }: {
-  cats: ReadonlyArray<{ key: string; label: string }>;
-  hidden: readonly string[];
-  onToggle: (key: string) => void;
+  cats: ReadonlyArray<MapFilterCategoryInfo>;
+  hidden: readonly MapFilterCategory[];
+  onToggle: (key: MapFilterCategory) => void;
   onClear: () => void;
+  onHideAll: () => void;
   onClose: () => void;
 }) {
   return (
     <Sheet title="Kartenfilter" onClose={onClose}>
       <p className="small muted">Ausgeblendete Kategorien bleiben nach Neuladen aus (dieses Gerät).</p>
-      <div className="filter-chips">
+      <div className="filter-grid">
         {cats.map((cat) => {
           const on = !hidden.includes(cat.key);
           return (
             <button
               key={cat.key}
               type="button"
-              className={on ? "chip on" : "chip off"}
+              className={on ? "filter-icon on" : "filter-icon off"}
+              aria-pressed={on}
+              aria-label={`${cat.label}: ${on ? "sichtbar" : "ausgeblendet"}`}
+              title={cat.label}
               onClick={() => onToggle(cat.key)}
             >
-              {cat.label}
+              {cat.pinType ? <img src={pinTypeIconUrl(cat.pinType)} alt="" width="32" height="39" /> : cat.icon}
             </button>
           );
         })}
@@ -417,8 +423,40 @@ export function MapFilterSheet({
         <button type="button" className="btn grow" onClick={onClear} disabled={hidden.length === 0}>
           Alle an
         </button>
+        <button type="button" className="btn grow" onClick={onHideAll} disabled={hidden.length === cats.length}>
+          Alle aus
+        </button>
         <button type="button" className="btn grow" onClick={onClose}>
           Schließen
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
+export function MapToolsSheet({
+  mapPublished,
+  onClose,
+  onCreate,
+  onDelete,
+  onUpload,
+  onToggleVisibility,
+}: {
+  mapPublished: boolean;
+  onClose: () => void;
+  onCreate: () => void;
+  onDelete: () => void;
+  onUpload: () => void;
+  onToggleVisibility: () => void;
+}) {
+  return (
+    <Sheet title="Kartenwerkzeuge" onClose={onClose}>
+      <div className="stack" style={{ gap: 8 }}>
+        <button type="button" className="btn" onClick={onCreate}>Karte hinzufügen</button>
+        <button type="button" className="btn" onClick={onDelete}>Karte löschen</button>
+        <button type="button" className="btn" onClick={onUpload}>Kartenbild ersetzen</button>
+        <button type="button" className="btn" onClick={onToggleVisibility}>
+          {mapPublished ? "Karte verstecken" : "Karte freigeben"}
         </button>
       </div>
     </Sheet>
@@ -530,4 +568,3 @@ export function ReplaceImageDialog({
     </div>
   );
 }
-

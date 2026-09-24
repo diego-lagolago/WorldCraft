@@ -9,34 +9,59 @@ import {
 
 const STORAGE_PREFIX = "worldcraft.mapFilter.";
 const listeners = new Map<string, Set<() => void>>();
+const NONE: MapFilterCategory[] = [];
+const hiddenCache = new Map<string, { raw: string | null; value: MapFilterCategory[] }>();
 
 function storageKey(worldId: string): string {
   return `${STORAGE_PREFIX}${worldId}`;
 }
 
-function loadHidden(worldId: string): MapFilterCategory[] {
-  if (typeof window === "undefined") return [];
+export function getMapFilterSnapshot(worldId: string): MapFilterCategory[] {
+  if (typeof window === "undefined") return NONE;
+
+  let raw: string | null;
   try {
-    const raw = localStorage.getItem(storageKey(worldId));
-    if (!raw) return [];
+    raw = localStorage.getItem(storageKey(worldId));
+  } catch {
+    return hiddenCache.get(worldId)?.value ?? NONE;
+  }
+
+  const cached = hiddenCache.get(worldId);
+  if (cached?.raw === raw) return cached.value;
+
+  let value = NONE;
+  try {
+    if (!raw) {
+      hiddenCache.set(worldId, { raw, value });
+      return value;
+    }
     const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) {
+      hiddenCache.set(worldId, { raw, value });
+      return value;
+    }
     const allowed = new Set(MAP_FILTER_CATS.map((row) => row.key));
-    return parsed.filter(
+    const parsedValue = parsed.filter(
       (row): row is MapFilterCategory =>
         typeof row === "string" && allowed.has(row as MapFilterCategory),
     );
+    value = parsedValue.length > 0 ? parsedValue : NONE;
   } catch {
-    return [];
+    value = NONE;
   }
+  hiddenCache.set(worldId, { raw, value });
+  return value;
 }
 
 function saveHidden(worldId: string, hidden: readonly MapFilterCategory[]) {
+  const value = hidden.length > 0 ? [...hidden] : NONE;
+  const raw = JSON.stringify(value);
   try {
-    localStorage.setItem(storageKey(worldId), JSON.stringify(hidden));
+    localStorage.setItem(storageKey(worldId), raw);
   } catch {
     /* private window / quota — session-only */
   }
+  hiddenCache.set(worldId, { raw, value });
   for (const listener of listeners.get(worldId) ?? []) listener();
 }
 
@@ -55,13 +80,13 @@ function subscribe(worldId: string, onStoreChange: () => void) {
 export function useMapFilter(worldId: string) {
   const hidden = useSyncExternalStore(
     (onStoreChange) => subscribe(worldId, onStoreChange),
-    () => loadHidden(worldId),
-    () => [] as MapFilterCategory[],
+    () => getMapFilterSnapshot(worldId),
+    () => NONE,
   );
 
   const toggle = useCallback(
     (category: MapFilterCategory) => {
-      saveHidden(worldId, toggleMapFilterHidden(loadHidden(worldId), category));
+      saveHidden(worldId, toggleMapFilterHidden(getMapFilterSnapshot(worldId), category));
     },
     [worldId],
   );
@@ -70,11 +95,16 @@ export function useMapFilter(worldId: string) {
     saveHidden(worldId, []);
   }, [worldId]);
 
+  const hideAll = useCallback(() => {
+    saveHidden(worldId, MAP_FILTER_CATS.map((category) => category.key));
+  }, [worldId]);
+
   return {
     hidden,
     hasOff: hidden.length > 0,
     cats: MAP_FILTER_CATS,
     toggle,
     clear,
+    hideAll,
   };
 }

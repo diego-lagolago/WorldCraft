@@ -8,10 +8,22 @@ export type MapFilterItem =
   | { kind: "monster" }
   | { kind: "pin"; pinType: PinType; highlighted?: boolean };
 
-export const MAP_FILTER_CATS: ReadonlyArray<{ key: MapFilterCategory; label: string }> = [
-  { key: "characters", label: "Charaktere" },
-  { key: "monsters", label: "Monster" },
-  ...PIN_TYPE_META.map((meta) => ({ key: `pin:${meta.id}` as MapFilterCategory, label: meta.label })),
+export type MapFilterCategoryInfo = {
+  key: MapFilterCategory;
+  label: string;
+  icon: string;
+  pinType?: PinType;
+};
+
+export const MAP_FILTER_CATS: ReadonlyArray<MapFilterCategoryInfo> = [
+  { key: "characters", label: "Charaktere", icon: "🧝" },
+  { key: "monsters", label: "Monster", icon: "👹" },
+  ...PIN_TYPE_META.map((meta) => ({
+    key: `pin:${meta.id}` as MapFilterCategory,
+    label: meta.label,
+    icon: meta.label,
+    pinType: meta.id,
+  })),
 ];
 
 export function categoryForItem(item: MapFilterItem): MapFilterCategory {

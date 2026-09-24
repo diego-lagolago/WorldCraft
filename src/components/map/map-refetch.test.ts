@@ -8,7 +8,7 @@ import {
   rememberDeleted,
   resolveRefetchResponse,
   shouldApplyRefetch,
-  shouldFetchPinForMap,
+  isEventForCurrentMap,
   shouldScheduleReload,
 } from "./map-refetch";
 
@@ -33,17 +33,17 @@ describe("interpretRefetchResult", () => {
   });
 });
 
-describe("shouldFetchPinForMap (CR-006)", () => {
+describe("isEventForCurrentMap", () => {
   it("skips when no map is open", () => {
-    expect(shouldFetchPinForMap("map-a", undefined)).toBe(false);
+    expect(isEventForCurrentMap("map-a", undefined)).toBe(false);
   });
 
   it("skips when the event targets another map", () => {
-    expect(shouldFetchPinForMap("map-b", "map-a")).toBe(false);
+    expect(isEventForCurrentMap("map-b", "map-a")).toBe(false);
   });
 
   it("fetches when the event matches the open map", () => {
-    expect(shouldFetchPinForMap("map-a", "map-a")).toBe(true);
+    expect(isEventForCurrentMap("map-a", "map-a")).toBe(true);
   });
 });
 

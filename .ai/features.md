@@ -92,14 +92,16 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 | Feature | Was es tut | Status |
 |---|---|---|
 | Mehrere Karten / Universum | Pro Universum beliebig viele Karten; Anlegen leer (ohne Bild), Löschen inkl. Pins/Marker (Kaskade) | shipped (Owner 2026-09-23) |
-| Karten-Auswahl | Dropdown oben links: Label `Universum: Karte` (bei SL-only zusätzlich `· SL`); Spielleitung: ＋ anlegen / Papierkorb löschen | shipped |
-| Kartenbild | Upload als Whiteboard-Hintergrund (Leaflet `CRS.Simple`); Zoom/Pan; Upload-Icon in der Toolbar (Spielleitung) | MVP F4 / shipped |
+| Karten-Auswahl | Dropdown oben links: Label `Universum: Karte` (bei SL-only zusätzlich `· SL`); Spielleitung verwaltet Karte, Bild und Sichtbarkeit über `…` unter dem Titel | shipped |
+| Kartenbild | Upload als Whiteboard-Hintergrund (Leaflet `CRS.Simple`); Zoom/Pan und Aktionen im Kontextbereich unter dem Titel (Spielleitung) | MVP F4 / shipped |
 | Bild ersetzen | Vor Upload bei bestehendem Bild: Checkbox-Dialog (Bild wird ersetzt, Pins bleiben); erstes Upload ohne Warnung | shipped |
 | Pins | 12 Typen; Titel + Rich-Text-Beschreibung; dreistufige Sichtbarkeit (Default `nur ich`); Drag, Sync nach Drop; **pro Karte** (kein Verschieben zwischen Karten) | MVP F5 / Plan 004 / shipped |
 | Pin-Mentions | Erwähnungen in der Pin-Beschreibung als blaue Links; kein „Verknüpft“-Panel im Pin-Sheet | shipped |
 | Charakter-Marker | Profilbild/Name auf der Karte; Besitzer oder Spielleitung platziert; **höchstens eine Karte weltweit pro Charakter** (Platzieren auf Karte B entfernt Marker von A) | MVP F5 / shipped |
 | Pin-Sperre | Sperren/Entsperren nur Spielleitung | shipped |
-| Karten-Sichtbarkeit | Auge-Icon in Toolbar (offen = sichtbar, durchgestrichen = nur Spielleitung) | shipped |
+| Karten-Sichtbarkeit | Kontextaktion unter dem Titel: „Karte verstecken“ bzw. „Karte freigeben“ | shipped |
+| Monster-Marker | Spielleitung platziert Monster mit 👹, öffnet ein Sheet und kann Sichtbarkeit/Position verwalten; Link führt zum Bestiarium | Plan 006 / shipped |
+| Kartenfilter & Modi | Untere Werkzeugleiste: Charakter 🧝, Monster 👹, Pin 📍 und Filter; gewählte Platzieraktion zeigt ❌ zum Abbrechen. Filter als Icon-Raster mit „Alle an/aus“ und persistiertem Zustand | Plan 006 / shipped |
 | Deep-Link | `/map?pin=` bzw. `/map?map=` zentriert / wählt Karte | MVP F5 / shipped |
 | Leerzustand | Ohne Bild: mittiger Prompt + Upload (Spielleitung); Upload-Icon in Toolbar konsistent | shipped |
 | Zoom/Scroll | Weiches Zoomen näher am UI-Prototyp (kein extremes Nachziehen) | shipped |
