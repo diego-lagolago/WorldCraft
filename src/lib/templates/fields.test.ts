@@ -36,6 +36,22 @@ describe("parseTemplateFields (APP-TEMPLATE-VALIDATE)", () => {
     });
   });
 
+  it("accepts the new select values and rejects values outside their template", () => {
+    expect(parseTemplateFields("person", { status: "sealed" })).toMatchObject({
+      ok: true,
+      data: { status: "sealed" },
+    });
+    expect(
+      parseTemplateFields("place", { kind: "continent", danger: "deadly", reputation: "beloved" }),
+    ).toMatchObject({ ok: true });
+    expect(parseTemplateFields("organization", { size: "over_100", danger: "apocalyptic" })).toMatchObject({
+      ok: true,
+    });
+    expect(parseTemplateFields("item", { kind: "fish", rarity: "legendary" })).toMatchObject({ ok: true });
+    expect(parseTemplateFields("place", { danger: "apocalyptic" })).toMatchObject({ ok: false, status: 400 });
+    expect(parseTemplateFields("item", { rarity: "mythic" })).toMatchObject({ ok: false, status: 400 });
+  });
+
   it("none has no fields, so any payload becomes empty", () => {
     const parsed = parseTemplateFields("none", { kind: "city" });
     expect(parsed).toEqual({ ok: true, data: {} });

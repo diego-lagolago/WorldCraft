@@ -4,6 +4,12 @@
  */
 
 import type { ContentKind } from "@/lib/authz/types";
+import {
+  MONSTER_DANGERS,
+  MONSTER_DANGER_LABEL,
+  MONSTER_RARITIES,
+  MONSTER_RARITY_LABEL,
+} from "@/lib/monsters/labels";
 
 export const TEMPLATE_TYPES = ["none", "person", "place", "organization", "item"] as const;
 export type TemplateType = (typeof TEMPLATE_TYPES)[number];
@@ -14,7 +20,13 @@ export type TemplateRefTarget =
 
 export type TemplateField =
   | { key: string; label: string; type: "text" }
-  | { key: string; label: string; type: "select"; options: readonly { value: string; label: string }[] }
+  | {
+      key: string;
+      label: string;
+      type: "select";
+      options: readonly { value: string; label: string }[];
+      display?: "rarity";
+    }
   | { key: string; label: string; type: "ref"; targets: readonly TemplateRefTarget[] };
 
 export type TemplateDefinition = {
@@ -25,6 +37,16 @@ export type TemplateDefinition = {
 };
 
 export const TEMPLATE_TEXT_MAX = 200;
+
+const monsterDangerOptions = MONSTER_DANGERS.map((value) => ({
+  value,
+  label: MONSTER_DANGER_LABEL[value],
+}));
+
+const monsterRarityOptions = MONSTER_RARITIES.map((value) => ({
+  value,
+  label: MONSTER_RARITY_LABEL[value],
+}));
 
 export const TEMPLATES: Record<TemplateType, TemplateDefinition> = {
   none: { type: "none", label: "Ohne Vorlage", plural: "Ohne Vorlage", fields: [] },
@@ -41,6 +63,8 @@ export const TEMPLATES: Record<TemplateType, TemplateDefinition> = {
         type: "select",
         options: [
           { value: "alive", label: "lebendig" },
+          { value: "incapacitated", label: "kampfunfähig" },
+          { value: "sealed", label: "versiegelt" },
           { value: "dead", label: "tot" },
           { value: "missing", label: "verschollen" },
           { value: "unknown", label: "unbekannt" },
@@ -73,11 +97,30 @@ export const TEMPLATES: Record<TemplateType, TemplateDefinition> = {
           { value: "city", label: "Stadt" },
           { value: "village", label: "Dorf" },
           { value: "building", label: "Gebäude" },
+          { value: "continent", label: "Kontinent" },
           { value: "region", label: "Region" },
           { value: "dungeon", label: "Dungeon" },
           { value: "wilderness", label: "Wildnis" },
           { value: "plane", label: "Ebene" },
           { value: "other", label: "sonstiges" },
+        ],
+      },
+      {
+        key: "danger",
+        label: "Gefahrenstufe",
+        type: "select",
+        options: monsterDangerOptions.slice(0, 3),
+      },
+      {
+        key: "reputation",
+        label: "Ruf",
+        type: "select",
+        options: [
+          { value: "hated", label: "Gehasst" },
+          { value: "disreputable", label: "Verrufen" },
+          { value: "neutral", label: "Neutral" },
+          { value: "accepted", label: "Akzeptiert" },
+          { value: "beloved", label: "Geliebt" },
         ],
       },
       {
@@ -114,6 +157,23 @@ export const TEMPLATES: Record<TemplateType, TemplateDefinition> = {
         ],
       },
       {
+        key: "size",
+        label: "Größe",
+        type: "select",
+        options: [
+          { value: "up_to_10", label: "1–10" },
+          { value: "up_to_50", label: "11–50" },
+          { value: "up_to_100", label: "51–100" },
+          { value: "over_100", label: "101+" },
+        ],
+      },
+      {
+        key: "danger",
+        label: "Gefahrenstufe",
+        type: "select",
+        options: monsterDangerOptions,
+      },
+      {
         key: "leader",
         label: "Anführer",
         type: "ref",
@@ -142,8 +202,17 @@ export const TEMPLATES: Record<TemplateType, TemplateDefinition> = {
           { value: "artifact", label: "Artefakt" },
           { value: "relic", label: "Relikt" },
           { value: "mundane", label: "alltäglich" },
+          { value: "fish", label: "Fisch" },
+          { value: "plant", label: "Pflanze" },
           { value: "other", label: "sonstiges" },
         ],
+      },
+      {
+        key: "rarity",
+        label: "Seltenheit",
+        type: "select",
+        options: monsterRarityOptions,
+        display: "rarity",
       },
       {
         key: "owner",
