@@ -166,3 +166,21 @@ Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `006` (Mons
 4. Wird die Testwelt aus T-002 um Monster und Monster-Marker in den drei Sichtbarkeitsfällen aus P6-5 erweitert, und wird T-007 Abnahme (4) entsprechend ergänzt?
 
 Die Frage nach Monster in `suchen` und `inhalt_lesen` (P6-3) ist Frage 1 aus dem Abgleich nach Plan 005 und wird hier nicht doppelt gezählt.
+
+### nach Plan 009 (2026-09-24)
+
+Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `009` (neue Vorlagenfelder und Vorlage „Rasse“) gelesen. Plan `002` wird nicht geändert; dieser Abgleich hält die offenen Entscheidungen für sein späteres Plan-Review fest.
+
+| # | Änderung aus Plan 009 | Betroffene MCP-Werkzeuge / Abgleich |
+|---|---|---|
+| P9-1 | Neuer Vorlagentyp `race` („Rasse“, keine Felder) | `suchen` gibt den Vorlagentyp im Treffer aus und darf `race` nicht aus einer festen Liste ausschließen. `inhalt_lesen` muss Rasse-Artikel wie Artikel ohne Felder ausgeben (Titel, Vorlagentyp, Text). `welten_auflisten`, `quests_auflisten` und `karte_lesen` sind nicht betroffen. Die Vorlagentypen werden im Produkt aus der Registry gelesen; der MCP-Plan nennt sie bisher nicht einzeln. |
+| P9-2 | Neues Verweisfeld `person.race` | Es erzeugt eine Relation Person → Rasse mit Herkunft `template_field` und Feldname `race`. `relationen_abrufen` muss diesen Feldnamen wie jedes andere Vorlagenfeld ausgeben; keine neue Relation-Art ist nötig. Die anderen Werkzeuge sind nur indirekt betroffen, wenn sie den vollständigen Artikelinhalt darstellen. |
+| P9-3 | Neue Auswahlwerte in bestehenden Feldern: `person.status` (`incapacitated`, `sealed`), `place.kind` (`continent`), `item.kind` (`fish`, `plant`) | `inhalt_lesen` muss Werte aus `template_fields` vollständig ausgeben. `suchen` bleibt betroffen, weil es den Vorlagentyp, nicht aber die Feldwerte, liefert; die übrigen Werkzeuge brauchen keine Anpassung. Die Werte werden in der Registry definiert, nicht in DB-Enums. |
+| P9-4 | Neue Auswahlfelder: `place.danger`, `place.reputation`, `organization.size`, `organization.danger`, `item.rarity` | `inhalt_lesen` muss die neuen Felder bei Artikeln ausgeben. `suchen`, `relationen_abrufen`, `welten_auflisten`, `quests_auflisten` und `karte_lesen` brauchen keine Felderweiterung. `item.rarity` ist eine reine UI-Pill; als MCP-Inhalt genügt ein textueller Feldwert. |
+
+**Testwelt (Plan 002 T-002):** Die dort geforderten fünf Artikel mit verschiedenen Vorlagentypen müssen den neuen Typ `race` berücksichtigen. Für die Relation Person → Rasse braucht die Testwelt außerdem eine Person mit `race`-Verweis, damit `relationen_abrufen` die Herkunft `template_field` und den Feldnamen `race` abnimmt.
+
+**Offene Fragen für das Plan-Review von Plan 002:**
+
+1. Gibt `inhalt_lesen` Auswahlwerte als deutsche Labels (empfohlen, analog zur UI) oder als gespeicherte englische Schlüssel aus? Diese Entscheidung gilt für alle bestehenden und neuen Vorlagenfelder.
+2. Soll die Testwelt in T-002 mit weiterhin genau fünf Artikeln arbeiten und `race` einen bisherigen Vorlagentyp ersetzen, oder soll sie auf sechs Artikel erweitert werden, damit alle fünf Vorlagentypen plus ein Artikel ohne Vorlage vorkommen?

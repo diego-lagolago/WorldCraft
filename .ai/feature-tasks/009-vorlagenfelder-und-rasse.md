@@ -99,7 +99,7 @@ Alle neuen Felder sind optional. Bestehende Artikel bleiben gültig; ohne Wert z
 - Abnahmekriterium: Ein Gegenstand mit `rarity: "legendary"` zeigt im Feldblock und in der Glossarliste die orange Pill „Legendär“, mit `rarity: "common"` die graue Pill „Gewöhnlich“. Ein Gegenstand ohne Seltenheit zeigt im Feldblock „–“ und in der Liste keine Pill. Artikel anderer Vorlagen sind unverändert. Die Liste lädt weiterhin nicht das vollständige `template_fields`; `ArticleSummary` und die Antworten von Artikel-Detail und Anlegen enthalten kein `rarity`. `npm test` und `npm run lint` grün.
 
 ### T-005: Abgleich Plan 002 (MCP)
-- [ ] Beschreibung: Reiner Doku-Abgleich, kein Code (K7: Plan `002` ist noch nicht umgesetzt). In `.ai/architecture.md` unter *Abgleich Plan 002* einen Unterpunkt „nach Plan 009“ ergänzen. Er führt **jede** Änderung dieses Plans einzeln auf (Wünsche 1–10, Tabelle *Neue Schlüssel und Werte*):
+- [x] Beschreibung: Reiner Doku-Abgleich, kein Code (K7: Plan `002` ist noch nicht umgesetzt). In `.ai/architecture.md` unter *Abgleich Plan 002* einen Unterpunkt „nach Plan 009“ ergänzen. Er führt **jede** Änderung dieses Plans einzeln auf (Wünsche 1–10, Tabelle *Neue Schlüssel und Werte*):
   - neuer Vorlagentyp `race` („Rasse“, keine Felder);
   - neues Verweisfeld `person.race` → Relation Person → Rasse (Herkunft `template_field`, Feldname `race`), relevant für `relationen_abrufen`;
   - neue Auswahlwerte in bestehenden Feldern: `person.status` (`incapacitated`, `sealed`), `place.kind` (`continent`), `item.kind` (`fish`, `plant`);
