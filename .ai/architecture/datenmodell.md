@@ -885,7 +885,7 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 
 ## 6. Vorlagenfelder ohne Schemaänderung
 
-Vorlagentypen leben in einer **Code-Registry** (TypeScript-Modul), nicht in der Datenbank. `articles.template_type` speichert den Schlüssel (`none` oder einer der vier Typen unten). `articles.template_fields` speichert nur Werte:
+Vorlagentypen leben in einer **Code-Registry** (TypeScript-Modul), nicht in der Datenbank. `articles.template_type` speichert den Schlüssel (`none` oder einer der fünf Typen unten). `articles.template_fields` speichert nur Werte:
 
 ```json
 {
@@ -906,7 +906,7 @@ Vorlagentypen leben in einer **Code-Registry** (TypeScript-Modul), nicht in der 
 
 Verweis / Verweisliste erzeugen Relationen `origin = template_field` mit `template_field_key` = Schlüssel (`APP-REL-RECALC`).
 
-**Festgelegt (Entscheidung Projektinhaber 2026-09-22, Plan `003`).** Vier Typen plus `none` / „ohne Vorlage“ (keine Felder). Schlüssel englisch, Bezeichnungen deutsch. Keine weiteren Typen im MVP; Ergänzung nur als neuer Registry-Eintrag.
+**Festgelegt (Entscheidung Projektinhaber 2026-09-22, Plan `003`; ergänzt 2026-09-24, Plan `009`).** Fünf Typen plus `none` / „ohne Vorlage“ (keine Felder). Schlüssel englisch, Bezeichnungen deutsch. Keine weiteren Typen im MVP; Ergänzung nur als neuer Registry-Eintrag.
 
 ### `person` — Person
 
@@ -914,7 +914,8 @@ Verweis / Verweisliste erzeugen Relationen `origin = template_field` mit `templa
 |---|---|---|---|
 | `aliases` | Andere Namen | Text | — |
 | `occupation` | Beruf / Rolle | Text | — |
-| `status` | Status | Auswahl: `alive` lebendig, `dead` tot, `missing` verschollen, `unknown` unbekannt | — |
+| `status` | Status | Auswahl: `alive` lebendig, `incapacitated` kampfunfähig, `sealed` versiegelt, `dead` tot, `missing` verschollen, `unknown` unbekannt | — |
+| `race` | Rasse | Verweis | Artikel `race` |
 | `location` | Aufenthaltsort | Verweis | Artikel `place` |
 | `organization` | Organisation | Verweis | Artikel `organization` |
 
@@ -922,7 +923,9 @@ Verweis / Verweisliste erzeugen Relationen `origin = template_field` mit `templa
 
 | Schlüssel | Bezeichnung | Feldart | Erlaubte Ziele |
 |---|---|---|---|
-| `kind` | Art | Auswahl: `city` Stadt, `village` Dorf, `building` Gebäude, `region` Region, `dungeon` Dungeon, `wilderness` Wildnis, `plane` Ebene, `other` sonstiges | — |
+| `kind` | Art | Auswahl: `city` Stadt, `village` Dorf, `building` Gebäude, `continent` Kontinent, `region` Region, `dungeon` Dungeon, `wilderness` Wildnis, `plane` Ebene, `other` sonstiges | — |
+| `danger` | Gefahrenstufe | Auswahl: `harmless` Harmlos, `dangerous` Gefährlich, `deadly` Tödlich | — |
+| `reputation` | Ruf | Auswahl: `hated` Gehasst, `disreputable` Verrufen, `neutral` Neutral, `accepted` Akzeptiert, `beloved` Geliebt | — |
 | `ruler` | Herrscher | Verweis | Artikel `person` |
 | `parent` | Übergeordneter Ort | Verweis | Artikel `place` |
 
@@ -931,6 +934,8 @@ Verweis / Verweisliste erzeugen Relationen `origin = template_field` mit `templa
 | Schlüssel | Bezeichnung | Feldart | Erlaubte Ziele |
 |---|---|---|---|
 | `kind` | Art | Auswahl: `guild` Gilde, `religion` Religion, `house` Adelshaus, `company` Freie Kompanie, `state` Staat, `cult` Kult, `other` sonstiges | — |
+| `size` | Größe | Auswahl: `up_to_10` 1–10, `up_to_50` 11–50, `up_to_100` 51–100, `over_100` 101+ | — |
+| `danger` | Gefahrenstufe | Auswahl: `harmless` Harmlos, `dangerous` Gefährlich, `deadly` Tödlich, `devastating` Verheerend, `divine` Göttlich, `apocalyptic` Apokalyptisch | — |
 | `leader` | Anführer | Verweis | Artikel `person` |
 | `seat` | Sitz | Verweis | Artikel `place` |
 
@@ -938,8 +943,13 @@ Verweis / Verweisliste erzeugen Relationen `origin = template_field` mit `templa
 
 | Schlüssel | Bezeichnung | Feldart | Erlaubte Ziele |
 |---|---|---|---|
-| `kind` | Art | Auswahl: `weapon` Waffe, `armor` Rüstung, `artifact` Artefakt, `relic` Relikt, `mundane` alltäglich, `other` sonstiges | — |
+| `kind` | Art | Auswahl: `weapon` Waffe, `armor` Rüstung, `artifact` Artefakt, `relic` Relikt, `mundane` alltäglich, `fish` Fisch, `plant` Pflanze, `other` sonstiges | — |
+| `rarity` | Seltenheit | Auswahl: `common` Gewöhnlich, `uncommon` Ungewöhnlich, `rare` Selten, `epic` Episch, `legendary` Legendär; Anzeige als Seltenheits-Pill | — |
 | `owner` | Besitzer | Verweis | Artikel `person` oder Charakter |
+
+### `race` — Rasse
+
+Keine Vorlagenfelder. Eine Rasse besteht aus Titel, Titelbild und Text wie ein Artikel ohne Vorlage, trägt aber den Vorlagentyp `race`.
 
 ---
 
