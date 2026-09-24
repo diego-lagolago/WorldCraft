@@ -3,6 +3,7 @@
 **Status:** Freigegeben durch den Projektinhaber am 2026-09-22. Alle offenen Fragen (Abschnitt 7) sind geklärt. Änderungen nur nach erneuter Abstimmung mit dem Projektinhaber.
 **Änderung 2026-09-22 (Plan-Review 001, abgestimmt mit dem Projektinhaber):** Rollen ändern und Mitglieder entfernen darf nur der Game Master, nicht mehr die gesamte Spielleitung (3.3, Abschnitt 5). Austreten und Entfernen löschen nichts mehr: Mitgliedschaft, Welt-Teilnahmen, Marker und Relationen werden archiviert und bei erneutem Beitritt wiederhergestellt (3.3, 3.4, 3.9, 3.10, Abschnitt 4). Universen werden Teil des Beziehungsnetzes: erwähnbar über `@`, Quelle (über Erwähnungen in ihrer Beschreibung) und Ziel von Relationen. Die Welt bleibt reines logisches Objekt ohne Erwähnungen und Relationen (2.1, 2.3, 2.4, 2.5, 3.2, 3.14, Abschnitt 4). Das Konzept „aktiver Charakter“ entfällt: Ein Benutzer kann mehrere mitgebrachte Charaktere gleichzeitig spielen, jeder mitgebrachte Charakter kann Marker haben (3.9, 3.10, Abschnitt 5).
 **Änderung 2026-09-23 (Plan `004`, abgestimmt mit dem Projektinhaber):** Dreistufige Sichtbarkeit (`nur ich` / `nur Spielleitung` / `veröffentlicht`) mit Owner für Artikel, Quests, Quest-Kapitel und Pins; Universen und Karten bleiben zweistufig (Karten-Ausnahme). Quest-Kapitel und Quest-Notizblock neu (3.13a, 3.13b). Owner-Rechte ruhen bei herabgestufter Rolle Player; `nur ich` setzen darf nur der Owner. Erwähnungen aus veröffentlichten Kapiteln erzeugen Relationen der Quest; Notizblock ohne Relationen.
+**Änderung 2026-09-24 (Plan `010`, abgestimmt mit dem Projektinhaber):** Quest-Kapitel haben den Status `offen` / `aktiv` / `abgeschlossen` / `gescheitert` mit Standard `offen`. Er ist vom Quest-Status unabhängig und beeinflusst keine Relationen.
 **Änderung 2026-09-23 (Plan `005`, Entscheidungen M1–M7):** Monster als eigener Inhaltstyp (Bestiarium), kein Artikel. Volles Charakterblatt wie 3.8 plus Art, Seltenheit, Boss, Gefahrenstufe, Größe, Lebensraum; genau ein Profilbild; dreistufige Sichtbarkeit und Owner wie Artikel; vollwertig in Relationen, Erwähnungen und Suche (Bio mit `@` erlaubt, anders als Charakter). Siehe 3.8a.
 **Änderung 2026-09-24 (Owner):** Bool „Legendär“ umbenannt in **Boss**; Anzeige als Totenschädel statt Pill (unabhängig von der Seltenheit `legendary`). Seltenheits-Pills auf Deutsch (Gewöhnlich … Legendär).
 **Änderung 2026-09-23 (Plan `006`, Entscheidungen K1–K4):** Monster-Marker auf Karten (beliebig viele pro Monster); Charakter- und Monster-Marker als Stecknadel mit Spitze auf der Position; Kartenfilter clientseitig pro Gerät. Siehe 3.10a.
@@ -400,6 +401,7 @@ Abschnitt einer Quest. Kein Branching, keine erzwungene Freigabe-Reihenfolge; di
 | Titel | Text, max. 200 | ✅ | 1–200 Zeichen |
 | Inhalt | Rich-Text | – | |
 | Position | Zahl | ✅ | Anzeigereihenfolge innerhalb der Quest |
+| Status | `offen` / `aktiv` / `abgeschlossen` / `gescheitert` | ✅ | Standard: `offen`; unabhängig vom Quest-Status |
 | Owner | Benutzer | ✅ | anlegender Benutzer; unveränderlich im MVP |
 | Sichtbarkeit | dreistufig (2.2) | ✅ | Standard `nur ich`; Freigabe = auf `veröffentlicht` setzen |
 
@@ -407,6 +409,7 @@ Regeln:
 - Sichtbar nur, wenn auch die Quest sichtbar ist (Vererbung).
 - Erwähnungen erzeugen Relationen der **Quest** nur aus Kapiteln mit Sichtbarkeit `veröffentlicht` (siehe 3.14).
 - Player-Nummerierung zählt nur die für den Betrachter sichtbaren Kapitel fortlaufend (verrät keine versteckten).
+- Eine Statusänderung beeinflusst keine Relationen; dafür bleibt ausschließlich die Sichtbarkeit maßgeblich.
 
 ### 3.13b Quest-Notizblock
 

@@ -76,7 +76,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 |---|---|---|
 | Quests | Titel, Beschreibung mit `@`, Status offen/aktiv/abgeschlossen/gescheitert, dreistufige Sichtbarkeit; Default `nur ich` | MVP F7 / Plan 004 / shipped |
 | Quest-Beteiligte | Mitgebrachte Charaktere zuordnen; erzeugt `participation`-Relationen | MVP F7 / shipped |
-| Quest-Kapitel | Geordnete Abschnitte unter der Beschreibung; eigene Sichtbarkeit; Spielleitung legt an/bearbeitet/löscht/verschiebt/schaltet frei; Player sieht nur freigegebene, nummeriert 1…n über Sichtbare | Plan 004 T-008 / shipped |
+| Quest-Kapitel | Geordnete Abschnitte unter der Beschreibung; eigener Status offen/aktiv/abgeschlossen/gescheitert und eigene Sichtbarkeit. Die Spielleitung ändert den Status inline; die Sichtbarkeit nur im Bearbeiten-Dialog. Player sehen bei freigegebenen Kapiteln den Status, nummeriert 1…n über Sichtbare | Plan 004 T-008 / Plan 010 / shipped |
 | Quest-Notizblock | Gemeinsamer Rich-Text pro Quest (alle, die die Quest sehen); bei Versionskonflikt „Speichern“ gesperrt bis „Neu laden“ (eigener Entwurf bleibt sichtbar, ersetzt den Serverstand erst nach Neuladen); Erwähnungen klickbar, keine Relationen | Plan 004 T-010 / Review 004 CR-001 / shipped |
 
 ## Charaktere & Tagebuch

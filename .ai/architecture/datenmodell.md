@@ -6,6 +6,7 @@
 **Änderung 2026-09-23 (Plan `005`, M1–M7 / PR1–PR6):** Tabelle `monsters`; Enums `monster_kind`, `monster_rarity`, `monster_danger`, `monster_size`; `content_kind` um `monster`; `relations` um `source_monster_id` / `target_monster_id` (COALESCE, CHECK, Unique). Owner und dreistufige Sichtbarkeit wie Artikel.
 **Änderung 2026-09-24 (Owner):** `monsters.is_legendary` → `is_boss`; UI „Boss“ mit Totenschädel statt Pill. Seltenheits-Labels deutsch.
 **Änderung 2026-09-23 (Plan `006`, K1–K4):** Tabelle `monster_markers` (beliebig viele pro Monster); Stecknadel-Darstellung und Kartenfilter in ADR-003.
+**Änderung 2026-09-24 (Plan `010`):** `quest_chapters.status` nutzt `quest_status`, ist `NOT NULL` und hat den Standardwert `open`. Der Kapitel-Status ist vom Quest-Status unabhängig und beeinflusst keine Relationen.
 **Bezug:** `.ai/architecture/datenmodell-fachlich.md` (freigegeben 2026-09-22, Plan `004`/`005`/`006` 2026-09-23), ADR-001 (PostgreSQL + Drizzle + Better Auth), ADR-003 (relative Position 0–1), ADR-004 (TipTap-JSON + Klartext)
 **Nicht Ziel:** SQL-Migrationen oder Drizzle-Dateien — die entstehen im Grundgerüst (T-007) und in den Folgeplänen. Dieses Dokument ist die verbindliche Vorlage dafür.
 
@@ -439,6 +440,7 @@ Index: `(world_id, owner_id)`.
 | `body_plain` | text | – | |
 | `body_tsv` | tsvector generated | ✅ | wie bei `quests.description_tsv`, Konfiguration `german` |
 | `position` | integer | ✅ | Anzeigereihenfolge |
+| `status` | `quest_status` | ✅ | Default `open` |
 | `visibility` | `content_visibility` | ✅ | Default `owner_only` |
 | `owner_id` | text FK `users` | ✅ | anlegender Benutzer |
 | Protokollfelder | | ✅ | |
