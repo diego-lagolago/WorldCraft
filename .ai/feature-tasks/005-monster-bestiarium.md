@@ -7,7 +7,7 @@ Die Spielleitung will neben Charakteren auch Monster auf Karten setzen (Phase 2,
 **Ziel dieses Plans** (Wünsche des Projektinhabers, 2026-09-23):
 
 1. **Monster** als eigener Bereich („Bestiarium“) im Kampagnen-Hub, **keine** Artikel.
-2. Monster haben das **vollständige Charakterblatt** (wie Charakter, Fachmodell 3.8) plus Art, Seltenheit, Legendär, Gefahrenstufe, Größe, Lebensraum.
+2. Monster haben das **vollständige Charakterblatt** (wie Charakter, Fachmodell 3.8) plus Art, Seltenheit, Boss (früher Legendär), Gefahrenstufe, Größe, Lebensraum.
 3. **Genau ein Bild pro Monster** (Profilbild), hochladbar schon beim Anlegen. Es dient in Phase 2 als Marker-Bild.
 4. Monster sind **vollwertig im Relationen-System**: `@`-Erwähnungen in der Bio erzeugen Relationen, Monster sind selbst per `@` erwähnbar und erscheinen in Suche und „Verknüpft“.
 5. **Artikel-Titelbild beim Anlegen:** Das Titelbild eines Artikels lässt sich schon im Anlege-Formular wählen, nicht erst nach dem Anlegen.
@@ -26,7 +26,7 @@ Die Spielleitung will neben Charakteren auch Monster auf Karten setzen (Phase 2,
 |---|---|---|
 | M1 | Sind Monster Artikel mit Vorlage „Monster“? | **Nein.** Eigener Bereich/Inhaltstyp mit eigenem Charakterblatt. |
 | M2 | Welche Teile des Charakterblatts? | **Komplett wie Charakter** (Fachmodell 3.8): Klasse, Attribute, Übungsbonus, Fertigkeiten, Fähigkeiten, Persönlichkeitsmerkmale, Ideale, Bindungen, Makel, Bio. Statt Bildanhängen genau ein Profilbild. |
-| M3 | Zusätzliche Felder | Art, Seltenheit, Legendär, Gefahrenstufe, Größe, Lebensraum (Werte siehe *Begriffe*). |
+| M3 | Zusätzliche Felder | Art, Seltenheit, Boss (Anzeige Totenschädel; zuvor „Legendär“), Gefahrenstufe, Größe, Lebensraum (Werte siehe *Begriffe*). |
 | M4 | Wer legt an, wer sieht? | **Wie Artikel:** Nur die Spielleitung legt an; Owner = anlegender Benutzer; dreistufige Sichtbarkeit nach Plan `004` (Standard `nur ich`); Bearbeiten und Löschen durch Owner und Spielleitung, sofern sie das Monster sehen (E10, R1, R2 aus Plan `004` gelten sinngemäß). |
 | M5 | Einbindung in Relationen | **Vollwertig:** Bio-Erwähnungen erzeugen Relationen (Monster sind an eine Welt gebunden, anders als Charaktere); Monster sind per `@` erwähnbar, in Suche und „Verknüpft“ sichtbar; der Lebensraum erzeugt eine Relation zum Ort. |
 | M6 | Ort in der Navigation | Kampagnen-Hub, eigene Sektion **„Bestiarium“** **über** dem Glossar, Filter-Chips nach Art. *(Bei Prototyp-Freigabe 2026-09-23 geändert: zuvor „unter dem Glossar“.)* |
@@ -51,8 +51,8 @@ Die Begriffe aus Plan `003`, Plan `004` und `.ai/architecture/datenmodell-fachli
 - **Bestiarium**: Die Liste aller für den Betrachter sichtbaren Monster einer Welt im Kampagnen-Hub, Route `/w/[worldId]/monsters`. Die Detailansicht liegt unter `/w/[worldId]/monsters/[monsterId]`, das Formular unter `…/new` bzw. `…/[monsterId]/edit`.
 - **Charakterblatt**: Die Felder aus Fachmodell 3.8 ohne Besitzer, Bildanhänge und Welt-Teilnahme; Rechenregeln in `src/lib/characters/sheet.ts`.
 - **Art** (`monster_kind`): Auswahl `beast` Bestie, `undead` Untoter, `demon` Dämon, `dragon` Drache, `humanoid` Humanoid, `construct` Konstrukt, `aberration` Aberration, `plant` Pflanze, `magical` Magisch, `other` sonstiges. Pflicht, Standard `other`.
-- **Seltenheit** (`monster_rarity`): `common` Common (grau), `uncommon` Uncommon (grün), `rare` Rare (blau), `epic` Epic (lila), `legendary` Legendary (orange). Pflicht, Standard `common`. Anzeige als farbige **Pill** (Labels englisch, wie vom Projektinhaber vorgegeben).
-- **Legendär** (Abschnitt „Besonderheiten“): Checkbox, Spalte `is_legendary boolean`, Standard `false`. Unabhängig von der Seltenheit.
+- **Boss** (Abschnitt „Besonderheiten“): Checkbox, Spalte `is_boss boolean`, Standard `false`. Unabhängig von der Seltenheit. Anzeige als Totenschädel (💀), keine Pill. *(Owner 2026-09-24: umbenannt von „Legendär“ / `is_legendary`.)*
+- **Seltenheit** (`monster_rarity`): `common` Gewöhnlich (grau), `uncommon` Ungewöhnlich (grün), `rare` Selten (blau), `epic` Episch (lila), `legendary` Legendär (orange). Pflicht, Standard `common`. Anzeige als farbige **Pill** (Labels deutsch, Owner 2026-09-24; zuvor englisch).
 - **Gefahrenstufe** (`monster_danger`): `harmless` Harmlos, `dangerous` Gefährlich, `deadly` Tödlich, `devastating` Verheerend, `divine` Göttlich, `apocalyptic` Apokalyptisch. Pflicht, Standard `harmless`.
 - **Größe** (`monster_size`): `tiny` Winzig, `small` Klein, `medium` Durchschnitt (Hinweistext „ca. 1,50 m Schulterhöhe“), `large` Groß, `gigantic` Gigantisch. Pflicht, Standard `medium`.
 - **Lebensraum**: Optionaler Verweis auf einen Artikel derselben Welt mit Vorlage `place` (Ort). Spalte `habitat_article_id` FK `articles` ON DELETE SET NULL. Erzeugt eine Relation Monster → Ort mit `origin = template_field`, `template_field_key = 'habitat'`.

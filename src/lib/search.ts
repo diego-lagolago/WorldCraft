@@ -22,7 +22,6 @@ export type SearchHit = {
   title: string;
   href: string;
   templateType?: string;
-  kindLabel: string;
   snippet: string;
 };
 

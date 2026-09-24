@@ -32,6 +32,7 @@ import {
 import { parseUuid, parseWithUserMessage } from "@/lib/http";
 import { collectUnreferencedFiles } from "@/lib/files/gc";
 import { swapSingleImage } from "@/lib/files/single-image";
+import { publishMapsForMonster } from "@/lib/map/monster-marker-events";
 export { MONSTER_NOT_FOUND } from "@/lib/monsters/messages";
 import { MONSTER_NOT_FOUND } from "@/lib/monsters/messages";
 import {
@@ -89,7 +90,7 @@ const monsterFields = {
   bio: z.unknown(),
   kind: monsterKindSchema,
   rarity: monsterRaritySchema,
-  isLegendary: z.boolean(),
+  isBoss: z.boolean(),
   danger: monsterDangerSchema,
   size: monsterSizeSchema,
   habitatArticleId: z.uuid().nullable(),
@@ -111,7 +112,7 @@ export const monsterCreateSchema = z.object({
   bio: monsterFields.bio.optional(),
   kind: monsterFields.kind.optional(),
   rarity: monsterFields.rarity.optional(),
-  isLegendary: monsterFields.isLegendary.optional(),
+  isBoss: monsterFields.isBoss.optional(),
   danger: monsterFields.danger.optional(),
   size: monsterFields.size.optional(),
   habitatArticleId: monsterFields.habitatArticleId.optional(),
@@ -133,7 +134,7 @@ export const monsterUpdateSchema = z
     bio: monsterFields.bio.optional(),
     kind: monsterFields.kind.optional(),
     rarity: monsterFields.rarity.optional(),
-    isLegendary: monsterFields.isLegendary.optional(),
+    isBoss: monsterFields.isBoss.optional(),
     danger: monsterFields.danger.optional(),
     size: monsterFields.size.optional(),
     habitatArticleId: monsterFields.habitatArticleId.optional(),
@@ -151,7 +152,7 @@ export type MonsterSummary = {
   class: string | null;
   kind: MonsterKind;
   rarity: MonsterRarity;
-  isLegendary: boolean;
+  isBoss: boolean;
   danger: MonsterDanger;
   size: MonsterSize;
   visibility: ContentVisibility;
@@ -179,7 +180,7 @@ const summaryColumns = {
   class: monsters.class,
   kind: monsters.kind,
   rarity: monsters.rarity,
-  isLegendary: monsters.isLegendary,
+  isBoss: monsters.isBoss,
   danger: monsters.danger,
   size: monsters.size,
   visibility: monsters.visibility,
@@ -197,7 +198,7 @@ function toSummary(row: MonsterSummaryRow): MonsterSummary {
     class: row.class,
     kind: row.kind,
     rarity: row.rarity,
-    isLegendary: row.isLegendary,
+    isBoss: row.isBoss,
     danger: row.danger,
     size: row.size,
     visibility: row.visibility,
@@ -298,7 +299,7 @@ async function toPatch(
   if (input.flaws !== undefined) patch.flaws = input.flaws;
   if (input.kind !== undefined) patch.kind = input.kind;
   if (input.rarity !== undefined) patch.rarity = input.rarity;
-  if (input.isLegendary !== undefined) patch.isLegendary = input.isLegendary;
+  if (input.isBoss !== undefined) patch.isBoss = input.isBoss;
   if (input.danger !== undefined) patch.danger = input.danger;
   if (input.size !== undefined) patch.size = input.size;
   if (input.visibility !== undefined) patch.visibility = input.visibility;
@@ -487,6 +488,9 @@ export async function updateMonster(input: {
     });
     await collectUnreferencedFiles([previousImage]);
   }
+  if (input.name !== undefined || input.visibility !== undefined || input.removePortrait) {
+    await publishMapsForMonster(input.worldId, current.id);
+  }
   return ok({ id: current.id });
 }
 
@@ -513,6 +517,7 @@ export async function deleteMonster(input: {
   });
   if (!allowed.ok) return allowed;
   if (!current) return fail(404, MONSTER_NOT_FOUND);
+  await publishMapsForMonster(input.worldId, current.id);
   await db.delete(monsters).where(eq(monsters.id, current.id));
   await collectUnreferencedFiles([current.portraitId]);
   return ok({ id: current.id });

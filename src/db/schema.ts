@@ -502,7 +502,7 @@ export const monsters = pgTable(
     bioTsv: tsvector("bio_tsv").generatedAlwaysAs(nameAndPlainTsv("name", "bio_plain")),
     kind: monsterKind("kind").default("other").notNull(),
     rarity: monsterRarity("rarity").default("common").notNull(),
-    isLegendary: boolean("is_legendary").default(false).notNull(),
+    isBoss: boolean("is_boss").default(false).notNull(),
     danger: monsterDanger("danger").default("harmless").notNull(),
     size: monsterSize("size").default("medium").notNull(),
     habitatArticleId: uuid("habitat_article_id").references(() => articles.id, {
@@ -529,6 +529,32 @@ export const monsters = pgTable(
     check("monsters_attr_int", sql`${t.attrInt} IS NULL OR ${t.attrInt} BETWEEN 1 AND 30`),
     check("monsters_attr_wis", sql`${t.attrWis} IS NULL OR ${t.attrWis} BETWEEN 1 AND 30`),
     check("monsters_attr_cha", sql`${t.attrCha} IS NULL OR ${t.attrCha} BETWEEN 1 AND 30`),
+  ],
+);
+
+/** Plan 006: placement of a monster on a map; many per monster (K1). */
+export const monsterMarkers = pgTable(
+  "monster_markers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    monsterId: uuid("monster_id")
+      .notNull()
+      .references(() => monsters.id, { onDelete: "cascade" }),
+    mapId: uuid("map_id")
+      .notNull()
+      .references(() => maps.id, { onDelete: "cascade" }),
+    posX: numeric("pos_x", { precision: 8, scale: 7 }).notNull(),
+    posY: numeric("pos_y", { precision: 8, scale: 7 }).notNull(),
+    visibility: contentVisibility("visibility").default("owner_only").notNull(),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => users.id),
+    ...protocol,
+  },
+  (t) => [
+    index("monster_markers_map").on(t.mapId),
+    check("monster_markers_pos_x", sql`${t.posX} >= 0 AND ${t.posX} <= 1`),
+    check("monster_markers_pos_y", sql`${t.posY} >= 0 AND ${t.posY} <= 1`),
   ],
 );
 

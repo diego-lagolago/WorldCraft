@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/client/api-fetch";
-import type { MapState, MarkerDto, PinDetails, PinDto } from "@/lib/map/types";
+import { uploadImage } from "@/lib/client/api";
+import type { MapState, MarkerDto, MonsterMarkerDto, PinDetails, PinDto } from "@/lib/map/types";
 import type { PinType } from "@/lib/map/pin-types";
 import type { RichDoc } from "@/lib/editor/rich-text";
 import type { ContentVisibility, VisibilityStatus } from "@/lib/authz";
@@ -30,8 +31,10 @@ export function useMapState(worldId: string, initial: MapState) {
   const stateRef = useRef(state);
   const pinSeqRef = useRef(new Map<string, number>());
   const markerSeqRef = useRef(new Map<string, number>());
+  const monsterMarkerSeqRef = useRef(new Map<string, number>());
   const pinDeletedRef = useRef(new Set<string>());
   const markerDeletedRef = useRef(new Set<string>());
+  const monsterMarkerDeletedRef = useRef(new Set<string>());
   const reloadPendingRef = useRef(false);
   const waitResyncRef = useRef(false);
   useEffect(() => {
@@ -41,8 +44,10 @@ export function useMapState(worldId: string, initial: MapState) {
   const clearRefetchTracking = useCallback(() => {
     pinDeletedRef.current = clearDeletedOnSync();
     markerDeletedRef.current = clearDeletedOnSync();
+    monsterMarkerDeletedRef.current = clearDeletedOnSync();
     pinSeqRef.current.clear();
     markerSeqRef.current.clear();
+    monsterMarkerSeqRef.current.clear();
   }, []);
 
   const failAndReload = useCallback(
@@ -154,12 +159,7 @@ export function useMapState(worldId: string, initial: MapState) {
   }
 
   async function replaceImage(mapId: string, file: File) {
-    const form = new FormData();
-    form.set("kind", "map");
-    form.set("worldId", worldId);
-    form.set("targetId", mapId);
-    form.set("image", file);
-    const result = await apiFetch<{ fileId: string }>("/api/files", { method: "POST", body: form });
+    const result = await uploadImage({ file, kind: "map", worldId, targetId: mapId });
     if (!result.ok) {
       await failAndReload(result.error);
       return;
@@ -284,6 +284,105 @@ export function useMapState(worldId: string, initial: MapState) {
     });
   }
 
+  async function placeMonsterMarker(mapId: string, monsterId: string, posX: number, posY: number) {
+    const result = await apiFetch<{ marker: MonsterMarkerDto }>(
+      `/api/worlds/${worldId}/map/monster-markers`,
+      {
+        method: "POST",
+        body: JSON.stringify({ mapId, monsterId, posX, posY }),
+      },
+    );
+    if (!result.ok) {
+      await failAndReload(result.error);
+      return false;
+    }
+    setState((current) => ({
+      ...current,
+      monsterMarkers: [
+        ...(current.monsterMarkers ?? []).filter((row) => row.id !== result.data.marker.id),
+        result.data.marker,
+      ],
+    }));
+    return true;
+  }
+
+  async function copyMonsterMarker(sourceMarkerId: string, posX: number, posY: number) {
+    const result = await apiFetch<{ marker: MonsterMarkerDto }>(
+      `/api/worlds/${worldId}/map/monster-markers`,
+      {
+        method: "POST",
+        body: JSON.stringify({ sourceMarkerId, posX, posY }),
+      },
+    );
+    if (!result.ok) {
+      await failAndReload(result.error);
+      return false;
+    }
+    setState((current) => ({
+      ...current,
+      monsterMarkers: [
+        ...(current.monsterMarkers ?? []).filter((row) => row.id !== result.data.marker.id),
+        result.data.marker,
+      ],
+    }));
+    return true;
+  }
+
+  async function dropMonsterMarker(marker: MonsterMarkerDto) {
+    setState((current) => ({
+      ...current,
+      monsterMarkers: (current.monsterMarkers ?? []).map((row) =>
+        row.id === marker.id ? marker : row,
+      ),
+    }));
+    const result = await apiFetch<{ marker: MonsterMarkerDto }>(
+      `/api/worlds/${worldId}/map/monster-markers/${marker.id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ posX: marker.posX, posY: marker.posY }),
+      },
+    );
+    if (!result.ok) await failAndReload(result.error);
+  }
+
+  async function removeMonsterMarker(markerId: string) {
+    const deleted = await apiFetch(`/api/worlds/${worldId}/map/monster-markers/${markerId}`, {
+      method: "DELETE",
+    });
+    if (!deleted.ok) {
+      await failAndReload(deleted.error);
+      return;
+    }
+    setState((current) => ({
+      ...current,
+      monsterMarkers: (current.monsterMarkers ?? []).filter((row) => row.id !== markerId),
+    }));
+  }
+
+  async function patchMonsterMarker(
+    markerId: string,
+    patch: { visibility?: ContentVisibility; posX?: number; posY?: number },
+  ) {
+    const result = await apiFetch<{ marker: MonsterMarkerDto }>(
+      `/api/worlds/${worldId}/map/monster-markers/${markerId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      },
+    );
+    if (!result.ok) {
+      await failAndReload(result.error);
+      return false;
+    }
+    setState((current) => ({
+      ...current,
+      monsterMarkers: (current.monsterMarkers ?? []).map((row) =>
+        row.id === markerId ? result.data.marker : row,
+      ),
+    }));
+    return true;
+  }
+
   function bumpSeq(ref: { current: Map<string, number> }, id: string): number {
     const seq = nextRefetchSeq(ref.current.get(id) ?? 0);
     ref.current.set(id, seq);
@@ -400,6 +499,51 @@ export function useMapState(worldId: string, initial: MapState) {
     });
   }
 
+  function applyMonsterMarkerRefetchOutcome(
+    markerId: string,
+    seq: number,
+    status: number,
+    data: MonsterMarkerDto | undefined,
+  ) {
+    const outcome = resolveRefetchResponse({
+      seq,
+      latestSeq: monsterMarkerSeqRef.current.get(markerId) ?? 0,
+      status,
+      data,
+      deleted: monsterMarkerDeletedRef.current,
+      id: markerId,
+    });
+    if (outcome.action === "ignore") return;
+    if (outcome.action === "remove") {
+      monsterMarkerDeletedRef.current = rememberDeleted(monsterMarkerDeletedRef.current, markerId);
+      setState((current) => ({
+        ...current,
+        monsterMarkers: (current.monsterMarkers ?? []).filter((row) => row.id !== markerId),
+      }));
+      return;
+    }
+    if (outcome.action === "keep_and_reload") {
+      scheduleRefetchReload();
+      return;
+    }
+    if (outcome.action === "keep_and_wait_resync") {
+      waitResyncRef.current = true;
+      return;
+    }
+    if (outcome.action !== "upsert") return;
+    const marker = outcome.data;
+    setState((current) => {
+      if (current.map && marker.mapId !== current.map.id) return current;
+      return {
+        ...current,
+        monsterMarkers: [
+          ...(current.monsterMarkers ?? []).filter((row) => row.id !== marker.id),
+          marker,
+        ],
+      };
+    });
+  }
+
   async function applyEvent(event: WorldRealtimeEvent, dragging: Set<string>) {
     if (event.type === "map.updated") {
       void reload();
@@ -414,6 +558,15 @@ export function useMapState(worldId: string, initial: MapState) {
     if (event.type === "map.marker.deleted") {
       markerDeletedRef.current = rememberDeleted(markerDeletedRef.current, event.markerId);
       bumpSeq(markerSeqRef, event.markerId);
+      setState((current) => applyMapEvent(current, event));
+      return;
+    }
+    if (event.type === "map.monsterMarker.deleted") {
+      monsterMarkerDeletedRef.current = rememberDeleted(
+        monsterMarkerDeletedRef.current,
+        event.markerId,
+      );
+      bumpSeq(monsterMarkerSeqRef, event.markerId);
       setState((current) => applyMapEvent(current, event));
       return;
     }
@@ -433,6 +586,25 @@ export function useMapState(worldId: string, initial: MapState) {
       const seq = bumpSeq(markerSeqRef, event.markerId);
       const result = await apiFetch<MarkerDto>(`/api/worlds/${worldId}/map/markers/${event.markerId}`);
       applyMarkerRefetchOutcome(
+        event.markerId,
+        seq,
+        result.status,
+        result.ok ? result.data : undefined,
+      );
+      return;
+    }
+    if (event.type === "map.monsterMarker") {
+      if (dragging.has(event.markerId)) return;
+      if (!shouldFetchPinForMap(event.mapId, stateRef.current.map?.id)) return;
+      monsterMarkerDeletedRef.current = forgetDeleted(
+        monsterMarkerDeletedRef.current,
+        event.markerId,
+      );
+      const seq = bumpSeq(monsterMarkerSeqRef, event.markerId);
+      const result = await apiFetch<MonsterMarkerDto>(
+        `/api/worlds/${worldId}/map/monster-markers/${event.markerId}`,
+      );
+      applyMonsterMarkerRefetchOutcome(
         event.markerId,
         seq,
         result.status,
@@ -461,5 +633,10 @@ export function useMapState(worldId: string, initial: MapState) {
     placeCharacter,
     dropMarker,
     removeMarker,
+    placeMonsterMarker,
+    copyMonsterMarker,
+    dropMonsterMarker,
+    removeMonsterMarker,
+    patchMonsterMarker,
   };
 }

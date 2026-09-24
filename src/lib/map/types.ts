@@ -1,6 +1,7 @@
 import type { ContentVisibility, MembershipRole, VisibilityStatus } from "@/lib/authz";
 import type { ResolvedMention } from "@/lib/domain/mention-resolve";
 import type { RichDoc } from "@/lib/editor/rich-text";
+import type { MonsterRarity } from "@/lib/monsters/labels";
 import type { LinkedItem } from "./linked";
 import type { PinType } from "./pin-types";
 
@@ -59,6 +60,22 @@ export type MarkerDto = {
   posY: number;
 };
 
+/** Monster placed on a map (Plan 006). Visibility is the marker's own layer. */
+export type MonsterMarkerDto = {
+  id: string;
+  mapId: string;
+  monsterId: string;
+  name: string;
+  /** Absolute app path `/api/files/…`, or null when the monster has no portrait. */
+  imageUrl: string | null;
+  rarity: MonsterRarity;
+  isBoss: boolean;
+  visibility: ContentVisibility;
+  ownerId: string;
+  posX: number;
+  posY: number;
+};
+
 export type PlaceableCharacterDto = {
   id: string;
   name: string;
@@ -82,6 +99,7 @@ export type MapState = {
   mapHidden: boolean;
   pins: PinDto[];
   markers: MarkerDto[];
+  monsterMarkers: MonsterMarkerDto[];
   characters: PlaceableCharacterDto[];
   highlightPinId: string | null;
 };

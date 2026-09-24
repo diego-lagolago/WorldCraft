@@ -204,3 +204,17 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 | B5.5 | **Löschen:** Monster löschen entfernt Relationen; Profilbild wird GC-fähig | Lokal | **bestanden** | Relations-Cascade + GC-Tests T-006/T-007. |
 | B5.6 | **Artikel-Titelbild beim Anlegen:** Bild im Anlege-Formular → Detail zeigt Bild; Upload-Fehler → Bearbeiten + Meldung | Lokal | **bestanden** | T-009 (`ArticleForm` + `?titleImageError=1`). |
 | B5.7 | **Player:** kein „+ Monster“ / Bearbeiten; nur veröffentlichte Monster in Liste | Lokal | **bestanden** | Hub `canCreate={staff}`; API 403 für Player-Schreiben. |
+
+## Plan 006 – Monster-Marker, Stecknadel, Filter, Hotkeys, Kopieren
+
+**Zweck:** Lokale Abnahme für Plan `006` (T-008).
+**Umgebung:** Dev-Server + Test-Login.
+
+| ID | Check | Ort | Status | Notiz |
+|----|-------|-----|--------|-------|
+| M6.1 | **Stecknadel:** Charakter- und Monster-Marker als Nadel; Spitze trifft gespeicherte Position (Zoom min/max) | Lokal | offen | T-005 |
+| M6.2 | **Monster platzieren:** SL 👹 → Fadenkreuz → Klick → Picker → Marker „nur ich“; Player sieht nichts bis veröffentlicht | Lokal | offen | T-006 |
+| M6.3 | **Monster-Sheet:** Name, Seltenheit, „Zum Monster“, Sichtbarkeit/Entfernen nur SL; Player nur Lesen | Lokal | offen | T-006 |
+| M6.4 | **Kartenfilter:** Filter-Button; Chip aus → ausgeblendet nach Reload; „Alle an“; Punkt am Button wenn etwas aus | Lokal | offen | T-007 |
+| M6.5 | **Hotkeys:** Desktop `P`/`M`/`Esc` für Spielleitung; kein Auslösen in Inputs oder als Player | Lokal | offen | T-010 |
+| M6.6 | **Kopieren:** „Kopieren“ im Sheet → Tippen setzt Kopien mit gleicher Sichtbarkeit; × beendet; Klick auf Marker setzt Kopie dort | Lokal | offen | T-011 |

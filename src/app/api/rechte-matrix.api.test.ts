@@ -393,6 +393,16 @@ describe("T-015 Rechte-Matrix (Produkt-APIs, Plan 001 T-011)", () => {
     expect((await api(playerA, "DELETE", w(`/map/pins/${publicPin}`))).status).toBe(403);
     expect(
       (
+        await api(playerA, "POST", w("/map/monster-markers"), {
+          mapId: publicMap,
+          monsterId: monsterPublished,
+          posX: 0.1,
+          posY: 0.1,
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
         await api(playerA, "POST", w("/relations"), {
           sourceKind: "article",
           sourceId: articlePublished,
@@ -402,6 +412,52 @@ describe("T-015 Rechte-Matrix (Produkt-APIs, Plan 001 T-011)", () => {
         })
       ).status,
     ).toBe(403);
+  });
+
+  it("Monster-Marker: nur Spielleitung schreibt; Sichtbarkeit erbt Monster+Marker", async () => {
+    const placed = await api<{ marker: { id: string; visibility: string } }>(
+      gm,
+      "POST",
+      w("/map/monster-markers"),
+      { mapId: publicMap, monsterId: monsterPublished, posX: 0.61, posY: 0.62 },
+    );
+    expect(placed.status).toBe(201);
+    expect(placed.data.marker.visibility).toBe("owner_only");
+    const markerId = placed.data.marker.id;
+
+    expect((await api(playerA, "PATCH", w(`/map/monster-markers/${markerId}`), { posX: 0.7, posY: 0.7 })).status).toBe(
+      403,
+    );
+    expect((await api(playerA, "DELETE", w(`/map/monster-markers/${markerId}`))).status).toBe(403);
+
+    expect(
+      (await api(gm, "PATCH", w(`/map/monster-markers/${markerId}`), { visibility: "published" })).status,
+    ).toBe(200);
+    const playerMap = await api<{ monsterMarkers: { id: string }[] }>(playerA, "GET", w(`/map?map=${publicMap}`));
+    expect(playerMap.data.monsterMarkers.some((row) => row.id === markerId)).toBe(true);
+
+    const hiddenPlace = await api<{ marker: { id: string } }>(gm, "POST", w("/map/monster-markers"), {
+      mapId: publicMap,
+      monsterId: monsterHidden,
+      posX: 0.71,
+      posY: 0.72,
+    });
+    expect(hiddenPlace.status).toBe(201);
+    expect(
+      (
+        await api(gm, "PATCH", w(`/map/monster-markers/${hiddenPlace.data.marker.id}`), {
+          visibility: "published",
+        })
+      ).status,
+    ).toBe(200);
+    const playerHidden = await api<{ monsterMarkers: { id: string }[] }>(
+      playerA,
+      "GET",
+      w(`/map?map=${publicMap}`),
+    );
+    expect(playerHidden.data.monsterMarkers.some((row) => row.id === hiddenPlace.data.marker.id)).toBe(false);
+
+    expect((await api(gm, "DELETE", w(`/map/monster-markers/${markerId}`))).status).toBe(200);
   });
 
   it("Marker: Player A nur eigene; Master beide; kein zweiter Marker", async () => {

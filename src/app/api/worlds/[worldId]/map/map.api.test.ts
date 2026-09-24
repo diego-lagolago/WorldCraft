@@ -344,3 +344,294 @@ describe("Produkt-Karte", () => {
     expect(details.data.linked?.find((item) => item.id === article.id)?.href).toContain("/articles/");
   });
 });
+
+describe("Monster-Marker (Plan 006 T-004)", () => {
+  it("staff places markers; player cannot; visibility inherits; create forces owner_only", async () => {
+    const map = await createMapWithFile(gm, universeId, "Monster-Karte");
+    expect(map.status).toBe(201);
+    const mapId = map.data.map?.id as string;
+    expect((await mapApi(gm, "", "PATCH", { mapId, visibility: "published" })).status).toBe(200);
+
+    const published = await api<{ monster: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/monsters`, {
+      name: "Schattenwolf",
+      visibility: "published",
+      kind: "beast",
+      rarity: "uncommon",
+    });
+    expect(published.status).toBe(201);
+    const monsterId = published.data.monster.id;
+
+    const gmOnlyMonster = await api<{ monster: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/monsters`, {
+      name: "SL-Biest",
+      visibility: "gm_only",
+      kind: "demon",
+    });
+    expect(gmOnlyMonster.status).toBe(201);
+    const hiddenMonsterId = gmOnlyMonster.data.monster.id;
+
+    expect(
+      (
+        await api(playerA, "POST", `/api/worlds/${worldId}/map/monster-markers`, {
+          mapId,
+          monsterId,
+          posX: 0.2,
+          posY: 0.2,
+        })
+      ).status,
+    ).toBe(403);
+
+    const place1 = await api<{ marker: { id: string; visibility: string; rarity: string } }>(
+      gm,
+      "POST",
+      `/api/worlds/${worldId}/map/monster-markers`,
+      { mapId, monsterId, posX: 0.25, posY: 0.26, visibility: "published" },
+    );
+    expect(place1.status).toBe(201);
+    expect(place1.data.marker.visibility).toBe("owner_only");
+    expect(place1.data.marker.rarity).toBe("uncommon");
+
+    const place2 = await api<{ marker: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/map/monster-markers`, {
+      mapId,
+      monsterId,
+      posX: 0.3,
+      posY: 0.31,
+    });
+    const place3 = await api<{ marker: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/map/monster-markers`, {
+      mapId,
+      monsterId,
+      posX: 0.4,
+      posY: 0.41,
+    });
+    expect(place2.status).toBe(201);
+    expect(place3.status).toBe(201);
+
+    const gmState = await api<MapState>(gm, "GET", `/api/worlds/${worldId}/map?map=${mapId}`);
+    expect(gmState.data.monsterMarkers.filter((row) => row.monsterId === monsterId)).toHaveLength(3);
+
+    const playerState = await api<MapState>(playerA, "GET", `/api/worlds/${worldId}/map?map=${mapId}`);
+    expect(playerState.data.monsterMarkers.some((row) => row.monsterId === monsterId)).toBe(false);
+
+    expect(
+      (
+        await api(gm, "PATCH", `/api/worlds/${worldId}/map/monster-markers/${place1.data.marker.id}`, {
+          visibility: "gm_only",
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await api<MapState>(gm, "GET", `/api/worlds/${worldId}/map?map=${mapId}`)).data.monsterMarkers.some(
+        (row) => row.id === place1.data.marker.id,
+      ),
+    ).toBe(true);
+    expect(
+      (await api<MapState>(playerA, "GET", `/api/worlds/${worldId}/map?map=${mapId}`)).data.monsterMarkers.some(
+        (row) => row.id === place1.data.marker.id,
+      ),
+    ).toBe(false);
+
+    const onHiddenMonster = await api<{ marker: { id: string } }>(
+      gm,
+      "POST",
+      `/api/worlds/${worldId}/map/monster-markers`,
+      { mapId, monsterId: hiddenMonsterId, posX: 0.5, posY: 0.5 },
+    );
+    expect(onHiddenMonster.status).toBe(201);
+    expect(
+      (
+        await api(gm, "PATCH", `/api/worlds/${worldId}/map/monster-markers/${onHiddenMonster.data.marker.id}`, {
+          visibility: "published",
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await api<MapState>(playerA, "GET", `/api/worlds/${worldId}/map?map=${mapId}`)).data.monsterMarkers.some(
+        (row) => row.id === onHiddenMonster.data.marker.id,
+      ),
+    ).toBe(false);
+
+    expect(
+      (
+        await api(gm, "PATCH", `/api/worlds/${worldId}/map/monster-markers/${place1.data.marker.id}`, {
+          monsterId,
+        })
+      ).status,
+    ).toBe(400);
+
+    const controller = new AbortController();
+    const sse = await fetch(`${BASE}/api/worlds/${worldId}/events`, {
+      headers: { cookie: gm.cookie, origin: BASE, accept: "text/event-stream" },
+      signal: controller.signal,
+    });
+    expect(sse.ok).toBe(true);
+    const reader = sse.body!.getReader();
+    const decoder = new TextDecoder();
+    // Drain hello
+    await Promise.race([
+      reader.read(),
+      new Promise((r) => setTimeout(r, 500)),
+    ]);
+
+    const collected: string[] = [];
+    const collect = (async () => {
+      let buffer = "";
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline && collected.filter((t) => t === "map.updated").length < 1) {
+        const result = await Promise.race([
+          reader.read(),
+          new Promise<{ done: true; value: undefined }>((resolve) =>
+            setTimeout(() => resolve({ done: true, value: undefined }), 200),
+          ),
+        ]);
+        if (result.done && !result.value) continue;
+        if (!result.value) continue;
+        buffer += decoder.decode(result.value, { stream: true });
+        for (const chunk of buffer.split("\n\n")) {
+          for (const line of chunk.split("\n")) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const parsed = JSON.parse(line.slice(6)) as { type?: string };
+              if (parsed.type) collected.push(parsed.type);
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+        buffer = buffer.includes("\n\n") ? buffer.split("\n\n").pop() ?? "" : buffer;
+      }
+    })();
+
+    expect(
+      (await api(gm, "PATCH", `/api/worlds/${worldId}/monsters/${monsterId}`, { visibility: "owner_only" }))
+        .status,
+    ).toBe(200);
+    await collect;
+    expect(collected).toContain("map.updated");
+
+    collected.length = 0;
+    const collectDelete = (async () => {
+      let buffer = "";
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline && !collected.includes("map.updated")) {
+        const result = await Promise.race([
+          reader.read(),
+          new Promise<{ done: true; value: undefined }>((resolve) =>
+            setTimeout(() => resolve({ done: true, value: undefined }), 200),
+          ),
+        ]);
+        if (!result.value) continue;
+        buffer += decoder.decode(result.value, { stream: true });
+        for (const chunk of buffer.split("\n\n")) {
+          for (const line of chunk.split("\n")) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const parsed = JSON.parse(line.slice(6)) as { type?: string };
+              if (parsed.type) collected.push(parsed.type);
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+      }
+    })();
+    expect((await api(gm, "DELETE", `/api/worlds/${worldId}/monsters/${hiddenMonsterId}`)).status).toBe(200);
+    await collectDelete;
+    expect(collected).toContain("map.updated");
+    controller.abort();
+  });
+
+  it("copies monster markers with source visibility (K11)", async () => {
+    const map = await createMapWithFile(gm, universeId, "Kopie-Karte");
+    expect(map.status).toBe(201);
+    const mapId = map.data.map?.id as string;
+    expect((await mapApi(gm, "", "PATCH", { mapId, visibility: "published" })).status).toBe(200);
+
+    const monster = await api<{ monster: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/monsters`, {
+      name: "Kopierwolf",
+      visibility: "published",
+      kind: "beast",
+    });
+    expect(monster.status).toBe(201);
+
+    const original = await api<{ marker: { id: string; visibility: string; ownerId: string } }>(
+      gm,
+      "POST",
+      `/api/worlds/${worldId}/map/monster-markers`,
+      { mapId, monsterId: monster.data.monster.id, posX: 0.1, posY: 0.1 },
+    );
+    expect(original.status).toBe(201);
+    expect(
+      (
+        await api(gm, "PATCH", `/api/worlds/${worldId}/map/monster-markers/${original.data.marker.id}`, {
+          visibility: "published",
+        })
+      ).status,
+    ).toBe(200);
+
+    expect(
+      (
+        await api(playerA, "POST", `/api/worlds/${worldId}/map/monster-markers`, {
+          sourceMarkerId: original.data.marker.id,
+          posX: 0.2,
+          posY: 0.2,
+        })
+      ).status,
+    ).toBe(403);
+
+    const copy = await api<{ marker: { id: string; visibility: string; ownerId: string; monsterId: string } }>(
+      master,
+      "POST",
+      `/api/worlds/${worldId}/map/monster-markers`,
+      { sourceMarkerId: original.data.marker.id, posX: 0.33, posY: 0.34 },
+    );
+    expect(copy.status).toBe(201);
+    expect(copy.data.marker.visibility).toBe("published");
+    expect(copy.data.marker.ownerId).toBe(master.user.id);
+    expect(copy.data.marker.monsterId).toBe(monster.data.monster.id);
+    expect(
+      (await api<MapState>(playerA, "GET", `/api/worlds/${worldId}/map?map=${mapId}`)).data.monsterMarkers.some(
+        (row) => row.id === copy.data.marker.id,
+      ),
+    ).toBe(true);
+
+    const gmOnly = await api<{ marker: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/map/monster-markers`, {
+      mapId,
+      monsterId: monster.data.monster.id,
+      posX: 0.4,
+      posY: 0.4,
+    });
+    expect(gmOnly.status).toBe(201);
+    expect(
+      (
+        await api(gm, "PATCH", `/api/worlds/${worldId}/map/monster-markers/${gmOnly.data.marker.id}`, {
+          visibility: "gm_only",
+        })
+      ).status,
+    ).toBe(200);
+    const gmCopy = await api<{ marker: { visibility: string } }>(
+      gm,
+      "POST",
+      `/api/worlds/${worldId}/map/monster-markers`,
+      { sourceMarkerId: gmOnly.data.marker.id, posX: 0.45, posY: 0.45 },
+    );
+    expect(gmCopy.status).toBe(201);
+    expect(gmCopy.data.marker.visibility).toBe("gm_only");
+
+    const foreign = await api<{ marker: { id: string } }>(gm, "POST", `/api/worlds/${worldId}/map/monster-markers`, {
+      mapId,
+      monsterId: monster.data.monster.id,
+      posX: 0.55,
+      posY: 0.55,
+    });
+    expect(foreign.status).toBe(201);
+    // master cannot see gm's owner_only → 404
+    expect(
+      (
+        await api(master, "POST", `/api/worlds/${worldId}/map/monster-markers`, {
+          sourceMarkerId: foreign.data.marker.id,
+          posX: 0.56,
+          posY: 0.56,
+        })
+      ).status,
+    ).toBe(404);
+  });
+});

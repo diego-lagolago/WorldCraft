@@ -2,10 +2,11 @@
 
 import L from "leaflet";
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { characterMarkerHtml } from "@/lib/map/character-marker";
+import { markerPinHtml } from "@/lib/map/character-marker";
 import { imageOverlayBounds, latLngToRelative, relativeToLatLng } from "@/lib/map/coords";
+import { PIN_ICON } from "@/lib/map/pin-icon";
 import { pinMarkerHtml } from "@/lib/map/pin-types";
-import type { MapDto, MarkerDto, PinDto } from "@/lib/map/types";
+import type { MapDto, MarkerDto, MonsterMarkerDto, PinDto } from "@/lib/map/types";
 import "leaflet/dist/leaflet.css";
 
 type MapWithImage = MapDto & {
@@ -23,8 +24,10 @@ type Handlers = {
   onMapClick: (x: number, y: number) => void;
   onPinClick: (pin: PinDto) => void;
   onMarkerClick: (marker: MarkerDto) => void;
+  onMonsterMarkerClick: (marker: MonsterMarkerDto) => void;
   onPinDrop: (pin: PinDto) => void;
   onMarkerDrop: (marker: MarkerDto) => void;
+  onMonsterMarkerDrop: (marker: MonsterMarkerDto) => void;
 };
 
 export function useLeafletMap(
@@ -32,24 +35,28 @@ export function useLeafletMap(
   mapData: MapWithImage | null,
   pins: PinDto[],
   markers: MarkerDto[],
+  monsterMarkers: MonsterMarkerDto[],
   handlers: Handlers,
 ) {
   const mapRef = useRef<L.Map | null>(null);
   const overlayRef = useRef<L.ImageOverlay | null>(null);
   const pinMarkers = useRef(new Map<string, L.Marker>());
   const markerLayer = useRef(new Map<string, L.Marker>());
+  const monsterLayer = useRef(new Map<string, L.Marker>());
   const [dragging] = useState(() => new Set<string>());
   const fittedKey = useRef<string | null>(null);
   const pinsRef = useRef(pins);
   const markersRef = useRef(markers);
+  const monsterMarkersRef = useRef(monsterMarkers);
   const mapDataRef = useRef(mapData);
   const handlersRef = useRef(handlers);
 
   useEffect(() => {
     pinsRef.current = pins;
     markersRef.current = markers;
+    monsterMarkersRef.current = monsterMarkers;
     mapDataRef.current = mapData;
-  }, [pins, markers, mapData]);
+  }, [pins, markers, monsterMarkers, mapData]);
 
   useEffect(() => {
     handlersRef.current = handlers;
@@ -63,6 +70,7 @@ export function useLeafletMap(
       overlayRef.current = null;
       pinMarkers.current.clear();
       markerLayer.current.clear();
+      monsterLayer.current.clear();
       fittedKey.current = null;
       return;
     }
@@ -141,8 +149,8 @@ export function useLeafletMap(
       const icon = L.divIcon({
         className: highlight ? "map-pin map-pin-hl" : "map-pin",
         html: pinMarkerHtml(pin.pinType, pin.locked),
-        iconSize: [56, 72],
-        iconAnchor: [28, 70],
+        iconSize: [...PIN_ICON.size],
+        iconAnchor: [...PIN_ICON.anchor],
       });
       let marker = pinMarkers.current.get(pin.id);
       if (!marker) {
@@ -198,10 +206,14 @@ export function useLeafletMap(
       const latlng = relativeToLatLng(row.posX, row.posY, currentMap.imageWidth, currentMap.imageHeight);
       const canDrag = handlers.staff || handlers.actorId === row.ownerId;
       const icon = L.divIcon({
-        className: "map-character-marker",
-        html: characterMarkerHtml(row.name, row.portraitId ? `/api/files/${row.portraitId}` : null),
-        iconSize: [96, 88],
-        iconAnchor: [48, 88],
+        className: "map-marker-leaflet",
+        html: markerPinHtml({
+          name: row.name,
+          imageUrl: row.portraitId ? `/api/files/${row.portraitId}` : null,
+          variant: "character",
+        }),
+        iconSize: [...PIN_ICON.size],
+        iconAnchor: [...PIN_ICON.anchor],
       });
       let marker = markerLayer.current.get(row.id);
       if (!marker) {
@@ -245,6 +257,67 @@ export function useLeafletMap(
       }
     }
   }, [markers, handlers.staff, handlers.actorId, dragging]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const currentMap = mapDataRef.current;
+    if (!map || !currentMap) return;
+    const seen = new Set<string>();
+    for (const row of monsterMarkers) {
+      seen.add(row.id);
+      const latlng = relativeToLatLng(row.posX, row.posY, currentMap.imageWidth, currentMap.imageHeight);
+      const icon = L.divIcon({
+        className: "map-marker-leaflet",
+        html: markerPinHtml({
+          name: row.name,
+          imageUrl: row.imageUrl,
+          variant: "monster",
+        }),
+        iconSize: [...PIN_ICON.size],
+        iconAnchor: [...PIN_ICON.anchor],
+      });
+      let marker = monsterLayer.current.get(row.id);
+      if (!marker) {
+        marker = L.marker([latlng.lat, latlng.lng], {
+          draggable: handlers.staff,
+          icon,
+          autoPan: true,
+          keyboard: false,
+        }).addTo(map);
+        marker.on("click", () => {
+          const live = monsterMarkersRef.current.find((item) => item.id === row.id);
+          if (live) handlersRef.current.onMonsterMarkerClick(live);
+        });
+        marker.on("dragstart", () => dragging.add(row.id));
+        marker.on("dragend", () => {
+          const liveMap = mapDataRef.current;
+          const live = monsterMarkersRef.current.find((item) => item.id === row.id);
+          const layer = monsterLayer.current.get(row.id);
+          dragging.delete(row.id);
+          if (!liveMap || !layer || !live) return;
+          const next = latLngToRelative(
+            layer.getLatLng().lat,
+            layer.getLatLng().lng,
+            liveMap.imageWidth,
+            liveMap.imageHeight,
+          );
+          handlersRef.current.onMonsterMarkerDrop({ ...live, posX: next.x, posY: next.y });
+        });
+        monsterLayer.current.set(row.id, marker);
+      } else if (!dragging.has(row.id)) {
+        marker.setLatLng([latlng.lat, latlng.lng]);
+        marker.setIcon(icon);
+        if (handlers.staff) marker.dragging?.enable();
+        else marker.dragging?.disable();
+      }
+    }
+    for (const [id, layer] of monsterLayer.current) {
+      if (!seen.has(id)) {
+        layer.remove();
+        monsterLayer.current.delete(id);
+      }
+    }
+  }, [monsterMarkers, handlers.staff, dragging]);
 
   function zoomBy(factor: number) {
     const map = mapRef.current;

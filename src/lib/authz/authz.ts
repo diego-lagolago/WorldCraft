@@ -127,6 +127,15 @@ export function eventForViewer(
       layers: event.layers,
     };
   }
+  if (event.type === "map.monsterMarker") {
+    return {
+      type: "map.monsterMarker.deleted",
+      worldId: event.worldId,
+      markerId: event.markerId,
+      mapId: event.mapId,
+      layers: event.layers,
+    };
+  }
   return null;
 }
 

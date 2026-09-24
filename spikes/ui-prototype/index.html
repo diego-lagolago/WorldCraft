@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>WorldCraft – UI-Prototyp (Plan 005)</title>
+<title>WorldCraft – UI-Prototyp (Plan 006)</title>
 <style>
 :root{
   --bg:#0b0b0f; --panel:#15151c; --panel2:#1c1c25; --line:#2a2a36; --text:#ece9e4; --muted:#9d9aa6;
   --accent:#f5b83d; --accent-ink:#1a1204; --blue:#6aa8ff; --red:#ff7a7a; --gm:#b69cff; --ok:#6ee7a8;
+  /* Marker-Farben (Plan 006 K4): Gold ≠ Akzent-Gelb; Schwarz mit hellem Kontur-Rand */
+  --marker-character:#c9a227; --marker-monster:#141414; --marker-monster-outline:#e8e4dc;
   --nav-h:64px; --rail-w:232px; --radius:14px;
   font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
 }
@@ -96,7 +98,7 @@ h1,h2,h3{margin:0}
 .badge.rarity-rare{color:#6aa8ff;border-color:#2a4a7a;background:#121c30}
 .badge.rarity-epic{color:#c4a0ff;border-color:#5a3c8a;background:#1c1530}
 .badge.rarity-legendary{color:#f5a05a;border-color:#7a4a1a;background:#2a1c10}
-.badge.legendary-flag{color:#f5b83d;border-color:#6a4e1a;background:#2a2210}
+.monster-boss-mark{display:inline-flex;align-items:center;font-size:16px;line-height:1}
 .av{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;font-weight:700;font-size:14px;color:#111}
 .av.lg{width:84px;height:84px;font-size:28px}
 .av.sm{width:30px;height:30px;font-size:12px}
@@ -145,18 +147,26 @@ h1,h2,h3{margin:0}
 .map-vp.placing{cursor:crosshair}
 .map-cv{position:absolute;left:0;top:0;width:1600px;height:1200px;transform-origin:0 0;--inv:1}
 .map-cv svg.bg{position:absolute;inset:0;width:100%;height:100%}
-.pin{position:absolute;width:44px;height:54px;transform:translate(-50%,-100%) scale(var(--inv));transform-origin:50% 100%;touch-action:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5))}
-.pin img{width:44px;height:54px;display:block;pointer-events:none}
+.pin{position:absolute;width:48px;height:58px;transform:translate(-50%,-100%) scale(var(--inv));transform-origin:50% 100%;touch-action:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5))}
+.pin img{width:48px;height:58px;display:block;pointer-events:none}
 .pin.hidden-gm{opacity:.75}
 .pin.hidden-gm::after{content:"SL";position:absolute;top:-6px;right:-8px;font-size:10px;font-weight:800;background:var(--gm);color:#140d2b;border-radius:6px;padding:1px 4px}
 .pin.hl{animation:pulse 1.2s ease-out 3}
 @keyframes pulse{0%{filter:drop-shadow(0 0 0 rgba(245,184,61,.9))}100%{filter:drop-shadow(0 0 22px rgba(245,184,61,0))}}
 .pin.hl img{outline:3px solid var(--accent);outline-offset:3px;border-radius:50%}
-.marker{position:absolute;transform:translate(-50%,-50%) scale(var(--inv));display:flex;flex-direction:column;align-items:center;gap:2px;touch-action:none}
-.marker .av{width:42px;height:42px;border:3px solid var(--accent);box-shadow:0 3px 8px rgba(0,0,0,.6)}
-.marker .nm{font-size:11px;font-weight:700;background:rgba(0,0,0,.7);padding:1px 6px;border-radius:6px;white-space:nowrap}
-.map-top{position:absolute;left:12px;right:12px;top:12px;z-index:5;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+/* Stecknadel-Marker: Spitze = Anker (wie Pin), Name außerhalb unter der Spitze */
+.marker{position:absolute;width:48px;height:58px;transform:translate(-50%,-100%) scale(var(--inv));transform-origin:50% 100%;touch-action:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5))}
+.marker .pin-body{display:block;width:48px;height:58px;pointer-events:none}
+.marker .head{position:absolute;left:50%;top:10px;transform:translateX(-50%);width:22px;height:22px;border-radius:50%;overflow:hidden;pointer-events:none;display:grid;place-items:center;font-size:9px;font-weight:800;color:#111}
+.marker .nm{position:absolute;left:50%;top:calc(100% + 2px);transform:translateX(-50%);font-size:11px;font-weight:700;background:rgba(0,0,0,.75);padding:1px 6px;border-radius:6px;white-space:nowrap;pointer-events:none}
+.marker.character .head{box-shadow:0 0 0 2px var(--marker-character)}
+.marker.monster .head{box-shadow:0 0 0 2px var(--marker-monster-outline)}
+.map-top{position:absolute;left:12px;right:12px;top:12px;z-index:5;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;align-items:center}
 .map-top .chip:not(.on){background:rgba(21,21,28,.92)}
+.map-filter-btn{flex:none;position:relative}
+.map-filter-btn.has-off::after{content:"";position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--accent);border:1px solid var(--accent-ink)}
+.filter-chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.filter-chips .chip.off{opacity:.45;text-decoration:line-through}
 @media (max-width:767px){
   .proto label{display:none}
   .map-hint{max-width:calc(100% - 90px);font-size:11px}
@@ -164,6 +174,7 @@ h1,h2,h3{margin:0}
 .map-ctrl{position:absolute;right:12px;bottom:14px;z-index:5;display:flex;flex-direction:column;gap:8px}
 .fab{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font-size:30px;background:var(--accent);color:var(--accent-ink);box-shadow:0 6px 18px rgba(0,0,0,.5)}
 .zbtn{width:48px;height:48px;border-radius:14px;background:rgba(21,21,28,.94);border:1px solid var(--line);font-size:22px;display:grid;place-items:center}
+.zbtn.on{border-color:var(--accent);background:#2b2210}
 .map-hint{position:absolute;left:12px;bottom:14px;z-index:5;max-width:60%;font-size:12px;background:rgba(21,21,28,.92);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--muted)}
 .type-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
 .type-grid button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:10px;border:1px solid var(--line);font-size:10px}
@@ -285,9 +296,8 @@ h1,h2,h3{margin:0}
 <div id="overlay"></div>
 <script>
 /* =====================================================================
-   WorldCraft UI-Prototyp zu Plan 005 (Bestiarium). Reine Attrappe: keine
-   Server, keine Persistenz. Die Rolle oben rechts simuliert die Rechtematrix
-   inkl. Owner-Stufe („nur ich“).
+   WorldCraft UI-Prototyp zu Plan 006 (Karten-Marker & Filter). Reine Attrappe:
+   keine Server. Die Rolle oben rechts simuliert die Rechtematrix inkl. Owner.
    ===================================================================== */
 
 const PIN_META = {
@@ -314,6 +324,16 @@ function pinIcon(t){
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="58" viewBox="0 0 48 58"><path d="M24 2c-11 0-20 9-20 20 0 15 20 34 20 34s20-19 20-34C44 11 35 2 24 2z" fill="${c}" stroke="#0f172a" stroke-width="2"/><circle cx="24" cy="21" r="11" fill="#fff7ed"/><svg x="15" y="12" width="18" height="18" viewBox="0 0 24 24" color="${c}">${PICTO[t]}</svg></svg>`;
   return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 }
+/** Stecknadel-Körper für Charakter-/Monster-Marker (Spitze bei 24,56). */
+function markerPinBody(variant){
+  const fill = variant==="monster" ? "#141414" : "#c9a227";
+  const stroke = variant==="monster" ? "#e8e4dc" : "#3d2e08";
+  return `<svg class="pin-body" xmlns="http://www.w3.org/2000/svg" width="48" height="58" viewBox="0 0 48 58" aria-hidden="true"><path d="M24 2c-11 0-20 9-20 20 0 15 20 34 20 34s20-19 20-34C44 11 35 2 24 2z" fill="${fill}" stroke="${stroke}" stroke-width="2"/><circle cx="24" cy="21" r="11" fill="#fff7ed"/></svg>`;
+}
+function markerPinHtml({name, variant, shortName}){
+  const label = shortName || name.split(" ")[0];
+  return `${markerPinBody(variant)}<span class="head" style="background:hsl(${hue(name)} 60% 68%)">${initials(name)}</span><span class="nm">${esc(label)}</span>`;
+}
 
 /* ---------------- Testdaten ---------------- */
 const USERS = { diego:"Diego", mara:"Mara", jonas:"Jonas", lea:"Lea" };
@@ -338,7 +358,7 @@ const MONSTER_KIND = {
   beast:"Bestie", undead:"Untoter", demon:"Dämon", dragon:"Drache", humanoid:"Humanoid",
   construct:"Konstrukt", aberration:"Aberration", plant:"Pflanze", magical:"Magisch", other:"sonstiges"
 };
-const MONSTER_RARITY = {common:"Common", uncommon:"Uncommon", rare:"Rare", epic:"Epic", legendary:"Legendary"};
+const MONSTER_RARITY = {common:"Gewöhnlich", uncommon:"Ungewöhnlich", rare:"Selten", epic:"Episch", legendary:"Legendär"};
 const MONSTER_DANGER = {
   harmless:"Harmlos", dangerous:"Gefährlich", deadly:"Tödlich",
   devastating:"Verheerend", divine:"Göttlich", apocalyptic:"Apokalyptisch"
@@ -388,19 +408,19 @@ const D = {
     c4:{name:"Sylva",owner:"lea",cls:"Druidin",attrs:[10,13,14,12,17,11],sk:[{name:"Kräuterkunde",attr:3,level:"expertise"},{name:"Heilkunde",attr:4,level:"trained"},{name:"Mit Tieren sprechen",attr:4,level:"trained"}],ab:[],pers:"Ruhig.",ideals:"Gleichgewicht.",bonds:"Der Silbersee.",flaws:"Weltfremd.",bio:"<p>Hüterin des Silbersees.</p>",imgs:2}
   },
   monsters:{
-    m1:{name:"Schattenwolf",owner:"diego",cls:"Raubtier",kind:"beast",rarity:"uncommon",legendary:false,danger:"dangerous",size:"medium",habitat:"a2",vis:"published",
+    m1:{name:"Schattenwolf",owner:"diego",cls:"Raubtier",kind:"beast",rarity:"uncommon",boss:false,danger:"dangerous",size:"medium",habitat:"a2",vis:"published",
       attrs:[15,16,13,4,12,6],prof:2,sk:[{name:"Heimlichkeit",attr:1,level:"expertise"},{name:"Wahrnehmung",attr:4,level:"trained"}],ab:[{text:"Im Schatten springen",attr:1}],
       pers:"Jagt in Rudeln.",ideals:"",bonds:"Das Rudel.",flaws:"Scheut offenes Feuer.",bio:"<p>Streift um [[article:a2]]. Ziel von [[quest:q5]].</p>",portrait:true},
-    m2:{name:"Gottschleim-Brut",owner:"diego",cls:"Schleimwesen",kind:"aberration",rarity:"rare",legendary:false,danger:"deadly",size:"large",habitat:"a2",vis:"gm_only",
+    m2:{name:"Gottschleim-Brut",owner:"diego",cls:"Schleimwesen",kind:"aberration",rarity:"rare",boss:false,danger:"deadly",size:"large",habitat:"a2",vis:"gm_only",
       attrs:[14,8,18,2,6,1],prof:2,sk:[{name:"Athletik",attr:0,level:"trained"}],ab:[{text:"Säure verspritzen",attr:2}],
       pers:"Hungrig.",ideals:"",bonds:"",flaws:"",bio:"<p>Junge des [[article:a1]]. Nur Spielleitung.</p>",portrait:false},
-    m3:{name:"Ashara, die Glut",owner:"diego",cls:"Antiker Drache",kind:"dragon",rarity:"legendary",legendary:true,danger:"apocalyptic",size:"gigantic",habitat:null,vis:"published",
+    m3:{name:"Ashara, die Glut",owner:"diego",cls:"Antiker Drache",kind:"dragon",rarity:"legendary",boss:true,danger:"apocalyptic",size:"gigantic",habitat:null,vis:"published",
       attrs:[28,12,26,18,16,22],prof:6,sk:[{name:"Einschüchtern",attr:5,level:"expertise"},{name:"Arcana",attr:3,level:"expertise"}],ab:[{text:"Feueratem",attr:2},{text:"Legendäre Resistenz",attr:4}],
       pers:"Hochmütig.",ideals:"Macht.",bonds:"Ihr Hort.",flaws:"Gier.",bio:"<p>Schläft unter den [[article:a6]]. Erwähnt den [[monster:m1]].</p>",portrait:true},
-    m4:{name:"Torwächter",owner:"mara",cls:"Konstrukt",kind:"construct",rarity:"epic",legendary:false,danger:"devastating",size:"large",habitat:null,vis:"owner_only",
+    m4:{name:"Torwächter",owner:"mara",cls:"Konstrukt",kind:"construct",rarity:"epic",boss:false,danger:"devastating",size:"large",habitat:null,vis:"owner_only",
       attrs:[20,8,20,6,10,4],prof:3,sk:[{name:"Athletik",attr:0,level:"expertise"}],ab:[{text:"Unbeweglich",attr:2}],
       pers:"Befehlstreu.",ideals:"",bonds:"",flaws:"",bio:"<p>Wacht am Eingang zum [[article:a7]].</p>",portrait:false},
-    m5:{name:"Nebelgeist",owner:"diego",cls:"Untoter",kind:"undead",rarity:"common",legendary:false,danger:"harmless",size:"tiny",habitat:null,vis:"published",
+    m5:{name:"Nebelgeist",owner:"diego",cls:"Untoter",kind:"undead",rarity:"common",boss:false,danger:"harmless",size:"tiny",habitat:null,vis:"published",
       attrs:[4,14,10,8,12,6],prof:2,sk:[],ab:[{text:"Durch Wände gleiten",attr:1}],
       pers:"Neugierig.",ideals:"",bonds:"",flaws:"",bio:"<p>Harmloser Spuk bei [[pin:p5]].</p>",portrait:false}
   },
@@ -418,6 +438,11 @@ const D = {
     p10:{m:"m1",t:"plants",title:"Geheimer Kräutergarten",x:.55,y:.55,vis:"owner_only",owner:"diego",desc:"<p>Nur Diego kennt diesen Ort.</p>"}
   },
   markers:{ m1:{c1:[.49,.44],c2:[.52,.38],c4:[.62,.30]} },
+  monsterMarkers:{
+    mm1:{m:"m1",monster:"m1",x:.33,y:.70,vis:"owner_only",owner:"diego"},
+    mm2:{m:"m1",monster:"m1",x:.28,y:.74,vis:"published",owner:"diego"},
+    mm3:{m:"m1",monster:"m5",x:.58,y:.30,vis:"gm_only",owner:"diego"}
+  },
   manual:[
     {from:["quest","q1"],to:["pin","p2"],label:"findet statt bei",counter:"ist Schauplatz von"},
     {from:["article","a3"],to:["character","c2"],label:"ist verfeindet mit",counter:""}
@@ -460,14 +485,62 @@ const D = {
 let nextId = 100;
 
 /* ---------------- Zustand ---------------- */
+const ROLE_LABEL = {game_master:"Game Master",master:"Master",player:"Player"};
+const VIS_LABEL = {owner_only:"nur ich",gm_only:"nur Spielleitung",published:"veröffentlicht"};
+const VIS_TWO = {gm_only:"nur Spielleitung",published:"veröffentlicht"};
+
+const MAP_FILTER_KEY = "worldcraft.mapFilter.w1";
+function loadMapFilter(){
+  try {
+    const raw = localStorage.getItem(MAP_FILTER_KEY);
+    if(!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+function saveMapFilter(){
+  try { localStorage.setItem(MAP_FILTER_KEY, JSON.stringify(S.mapFilterHidden)); }
+  catch { /* private Fenster / Quota: Filter bleibt nur in der Session */ }
+}
+function mapFilterOn(cat){ return !S.mapFilterHidden.includes(cat); }
+function toggleMapFilter(cat){
+  if(mapFilterOn(cat)) S.mapFilterHidden = [...S.mapFilterHidden, cat];
+  else S.mapFilterHidden = S.mapFilterHidden.filter(c=>c!==cat);
+  saveMapFilter();
+}
+function clearMapFilter(){ S.mapFilterHidden = []; saveMapFilter(); }
+const MAP_FILTER_CATS = [
+  {k:"characters",l:"Charaktere"},
+  {k:"monsters",l:"Monster"},
+  ...Object.entries(PIN_META).map(([k,v])=>({k:`pin:${k}`,l:v[0]}))
+];
+
+/* ---------------- Zustand ---------------- */
 const S = {
   role:"game_master", asOwner:true, loggedIn:true, articleFilter:"all", monsterFilter:"all", search:"", expanded:{},
-  dice:{n:1,m:20,mod:0,post:true}, universe:"u1", placing:false, map:null, lastMap:null,
+  dice:{n:1,m:20,mod:0,post:true}, universe:"u1",
+  mapMode:"none", mapCopy:null, mapPending:null, map:null, lastMap:null,
+  mapFilterHidden: loadMapFilter(),
   noteConflict:false, noteDraft:null, noteExpectedVer:null,
   selectedMsg:null, editingId:null
 };
 const isStaff = () => S.role !== "player";
 const isGM = () => S.role === "game_master";
+
+function clearMapMode(){
+  S.mapMode = "none";
+  S.mapCopy = null;
+  S.mapPending = null;
+  S.newPin = null;
+  S.monsterPickerQ = "";
+}
+function setMapMode(mode){
+  if(S.mapMode === mode){ clearMapMode(); return false; }
+  clearMapMode();
+  S.mapMode = mode;
+  return true;
+}
+function mapModeActive(){ return S.mapMode !== "none"; }
 
 function members(){
   const roles = {
@@ -477,9 +550,6 @@ function members(){
   }[S.role];
   return roles.map(([u,r])=>({u,r}));
 }
-const ROLE_LABEL = {game_master:"Game Master",master:"Master",player:"Player"};
-const VIS_LABEL = {owner_only:"nur ich",gm_only:"nur Spielleitung",published:"veröffentlicht"};
-const VIS_TWO = {gm_only:"nur Spielleitung",published:"veröffentlicht"};
 
 /* ---------------- Sichtbarkeit (Rechtematrix-Attrappe) ---------------- */
 function get(k,id){ return ({article:D.articles,quest:D.quests,universe:D.universes,character:D.characters,pin:D.pins,monster:D.monsters})[k]?.[id]; }
@@ -604,7 +674,7 @@ function visSelect(current, {twoTier=false, allowOwner=true, id="ed-vis"}={}){
 }
 function gmBadge(vis){ return visBadge(vis); }
 function rarityBadge(r){ return `<span class="badge rarity-${r}">${MONSTER_RARITY[r]}</span>`; }
-function legendaryBadge(flag){ return flag ? `<span class="badge legendary-flag">Legendär</span>` : ""; }
+function bossMark(flag){ return flag ? `<span class="monster-boss-mark" title="Boss" aria-label="Boss">💀</span>` : ""; }
 const STATUS = {open:"offen",active:"aktiv",completed:"abgeschlossen",failed:"gescheitert"};
 function statusBadge(s){ return `<span class="badge st-${s}">${STATUS[s]}</span>`; }
 function rich(html){
@@ -773,7 +843,7 @@ function viewHub(){
       ${monsters.length ? monsters.map(([id,m])=>`<a class="item" href="#/w/w1/monsters/${id}">
         ${avatar(m.name)}
         <div class="grow"><div>${esc(m.name)}</div><div class="kind">${esc(MONSTER_KIND[m.kind])}</div></div>
-        ${rarityBadge(m.rarity)}${legendaryBadge(m.legendary)}${gmBadge(m.vis)}<span class="muted">›</span></a>`).join("") : '<div class="empty">Keine Monster in dieser Kategorie.</div>'}
+        ${rarityBadge(m.rarity)}${bossMark(m.boss)}${gmBadge(m.vis)}<span class="muted">›</span></a>`).join("") : '<div class="empty">Keine Monster in dieser Kategorie.</div>'}
     </div>
 
     <div class="section-h"><h2>Artikel</h2>${isStaff()?'<a class="btn sm" href="#/w/w1/articles/new/edit">+ Artikel</a>':""}</div>
@@ -890,7 +960,7 @@ function viewMonster(id){
     <div class="row" style="margin-bottom:14px">${avatar(m.name,"lg")}<div class="grow">
       <h1 style="font-size:24px">${esc(m.name)}</h1>
       <div class="muted">${esc(m.cls||"–")} · ${esc(MONSTER_KIND[m.kind])}</div>
-      <div class="row wrap" style="margin-top:6px;gap:6px">${rarityBadge(m.rarity)}${legendaryBadge(m.legendary)}${gmBadge(m.vis)}</div>
+      <div class="row wrap" style="margin-top:6px;gap:6px">${rarityBadge(m.rarity)}${bossMark(m.boss)}${gmBadge(m.vis)}</div>
     </div>
       ${isStaff()?`<a class="btn sm" href="#/w/w1/monsters/${id}/edit">Bearbeiten</a>`:""}</div>
     <div class="card" style="margin-bottom:14px"><dl class="fields">
@@ -917,7 +987,7 @@ function viewMonsterEdit(id){
   if(!isStaff()) return shell("globe", `<div class="card">Nur die Spielleitung darf Monster anlegen und bearbeiten.</div>`);
   const isNew = id==="new";
   const m = isNew
-    ? {name:"",cls:"",kind:"other",rarity:"common",legendary:false,danger:"harmless",size:"medium",habitat:null,vis:"owner_only",owner:ME,attrs:[10,10,10,10,10,10],prof:2,sk:[],ab:[],pers:"",ideals:"",bonds:"",flaws:"",bio:"",portrait:false}
+    ? {name:"",cls:"",kind:"other",rarity:"common",boss:false,danger:"harmless",size:"medium",habitat:null,vis:"owner_only",owner:ME,attrs:[10,10,10,10,10,10],prof:2,sk:[],ab:[],pers:"",ideals:"",bonds:"",flaws:"",bio:"",portrait:false}
     : D.monsters[id];
   if(!isNew && (!m || !visible("monster",id))) return shell("globe", notFound());
   const allowOwner = isNew || m.owner===ME;
@@ -944,7 +1014,7 @@ function viewMonsterEdit(id){
         <label class="stack small muted">Gefahrenstufe<select id="ed-danger">${Object.entries(MONSTER_DANGER).map(([k,l])=>`<option value="${k}" ${m.danger===k?"selected":""}>${l}</option>`).join("")}</select></label>
         <label class="stack small muted">Größe<select id="ed-size">${Object.entries(MONSTER_SIZE).map(([k,l])=>`<option value="${k}" ${m.size===k?"selected":""}>${l}${k==="medium"?" (ca. 1,50 m)":""}</option>`).join("")}</select></label>
       </div>
-      <label class="row" style="gap:8px;align-items:center"><input type="checkbox" id="ed-legendary" ${m.legendary?"checked":""} style="width:auto"> <span>Legendär (Besonderheiten)</span></label>
+      <label class="row" style="gap:8px;align-items:center"><input type="checkbox" id="ed-boss" ${m.boss?"checked":""} style="width:auto"> <span>Boss</span></label>
       <label class="stack small muted">Lebensraum (Ort)<select id="ed-habitat"><option value="">— keiner —</option>${places.map(([aid,a])=>`<option value="${aid}" ${m.habitat===aid?"selected":""}>${esc(a.title)}</option>`).join("")}</select></label>
       <label class="stack small muted">Übungsbonus (0–10)<input type="number" id="prof" min="0" max="10" value="${m.prof ?? 2}"></label>
       <div class="attrs">${m.attrs.map((v,i)=>`<label class="attr"><div class="k">${ATTR[i]}</div><input type="number" min="1" max="30" value="${v}" data-attr="${i}" style="text-align:center;padding:6px"><div class="m" id="mod${i}">${mod(v)}</div></label>`).join("")}</div>
@@ -1067,31 +1137,62 @@ function mapSvg(style){
   </svg>`;
 }
 function canEditMarker(c){ return isStaff() || D.characters[c].owner===ME; }
+function canSeeMonsterMarker(mm){
+  if(!canSeeVis(mm.vis, mm.owner)) return false;
+  if(!visible("monster", mm.monster)) return false;
+  return true;
+}
 function viewMap(q){
   const params = new URLSearchParams(q||"");
   const pinId = params.get("pin");
+  const prevUniverse = S.universe;
   if(pinId && D.pins[pinId]) S.universe = D.maps[D.pins[pinId].m].u;
   if(params.get("universe")) S.universe = params.get("universe");
   const unis = Object.entries(D.universes).filter(([id])=>visible("universe",id));
   if(!visible("universe",S.universe)) S.universe = unis[0][0];
   const u = D.universes[S.universe]; const mId = u.map; const m = D.maps[mId];
+  if(prevUniverse !== S.universe || (S.mapCtx && S.mapCtx.mId && S.mapCtx.mId !== mId)) clearMapMode();
   const mapVisible = isStaff() || (m.vis==="published" && u.vis==="published");
-  const pins = Object.entries(D.pins).filter(([id,p])=>p.m===mId && visible("pin",id));
-  const markers = Object.entries(D.markers[mId]||{}).filter(([c])=>D.brought.includes(c));
+  const pins = Object.entries(D.pins).filter(([id,p])=>p.m===mId && visible("pin",id) && (pinId===id || mapFilterOn(`pin:${p.t}`)));
+  const markers = Object.entries(D.markers[mId]||{}).filter(([c])=>D.brought.includes(c) && mapFilterOn("characters"));
+  const monsterMs = Object.entries(D.monsterMarkers).filter(([,mm])=>mm.m===mId && canSeeMonsterMarker(mm) && mapFilterOn("monsters"));
+  const filterActive = S.mapFilterHidden.length>0;
+  const placingClass = mapModeActive() ? "placing" : "";
+  const copyName = S.mapCopy ? D.monsters[S.mapCopy.monster]?.name : "";
+  const hint = S.mapMode==="copy"
+    ? `Tippe, um Kopien von „${esc(copyName)}“ zu setzen (${VIS_LABEL[S.mapCopy.vis]}). × oder Esc beendet.`
+    : S.mapMode==="monster"
+      ? "Tippe auf die Karte — danach Monster wählen. Startet als „nur ich“. × / Esc = Abbrechen."
+      : S.mapMode==="pin"
+        ? "Tippe auf die Karte, um den Pin zu setzen. × / Esc = Abbrechen."
+        : "Ziehen = verschieben · Pinch/Scroll = zoomen · Antippen = Details. Nadelspitze = gespeicherte Position."
+          + (isStaff()?" · P = Pin, M = Monster.":"");
+  const fabCancel = mapModeActive();
   const inner = `<div class="map-page">
-    <div class="map-top">${unis.map(([id,x])=>`<a class="chip ${id===S.universe?"on":""}" href="#/w/w1/map?universe=${id}">🪐 ${esc(x.name)}${x.vis==="gm_only"?" · SL":""}</a>`).join("")}</div>
-    ${mapVisible ? `<div class="map-vp ${S.placing?"placing":""}" id="vp"><div class="map-cv" id="cv" data-map="${mId}">
+    <div class="map-top">
+      ${unis.map(([id,x])=>`<a class="chip ${id===S.universe?"on":""}" href="#/w/w1/map?universe=${id}">🪐 ${esc(x.name)}${x.vis==="gm_only"?" · SL":""}</a>`).join("")}
+      <button class="chip map-filter-btn ${filterActive?"has-off":""}" data-act="map-filter" aria-label="Kartenfilter">Filter</button>
+    </div>
+    ${mapVisible ? `<div class="map-vp ${placingClass}" id="vp"><div class="map-cv" id="cv" data-map="${mId}">
       ${mapSvg(m.style)}
       ${pins.map(([id,p])=>`<button class="pin ${p.vis==="gm_only"?"hidden-gm":""} ${p.vis==="owner_only"?"hidden-owner":""} ${id===pinId?"hl":""}" data-drag="pin" data-id="${id}" style="left:${p.x*100}%;top:${p.y*100}%" aria-label="${esc(p.title)}"><img src="${pinIcon(p.t)}" alt=""></button>`).join("")}
-      ${markers.map(([c,[x,y]])=>`<button class="marker" data-drag="marker" data-id="${c}" style="left:${x*100}%;top:${y*100}%">${avatar(D.characters[c].name)}<span class="nm">${esc(D.characters[c].name.split(" ")[0])}</span></button>`).join("")}
+      ${markers.map(([c,[x,y]])=>{
+        const ch=D.characters[c];
+        return `<button class="marker character" data-drag="marker" data-id="${c}" style="left:${x*100}%;top:${y*100}%" aria-label="${esc(ch.name)}">${markerPinHtml({name:ch.name,variant:"character"})}</button>`;
+      }).join("")}
+      ${monsterMs.map(([id,mm])=>{
+        const mon=D.monsters[mm.monster];
+        return `<button class="marker monster" data-drag="monster-marker" data-id="${id}" style="left:${mm.x*100}%;top:${mm.y*100}%" aria-label="${esc(mon.name)}">${markerPinHtml({name:mon.name,variant:"monster"})}</button>`;
+      }).join("")}
     </div></div>
-    <div class="map-hint">${S.placing ? "Tippe auf die Karte, um den Pin zu setzen." : "Ziehen = verschieben · Pinch/Scroll = zoomen · Pin antippen = Details. Nach dem Ablegen sehen alle die neue Position."}</div>
+    <div class="map-hint">${hint}</div>
     <div class="map-ctrl">
       <button class="zbtn" data-act="zoom" data-v="1.4" aria-label="Hineinzoomen">＋</button>
       <button class="zbtn" data-act="zoom" data-v="0.7" aria-label="Herauszoomen">－</button>
       <button class="zbtn" data-act="fit" aria-label="Ganze Karte">⤢</button>
       <button class="zbtn" data-act="place-marker" aria-label="Charakter platzieren">🧝</button>
-      ${isStaff()?`<button class="fab" data-act="place" aria-label="Pin setzen">${S.placing?"×":"+"}</button>`:""}
+      ${isStaff()?`<button class="zbtn ${S.mapMode==="monster"?"on":""}" data-act="place-monster" aria-label="Monster platzieren (M)" aria-keyshortcuts="M">👹</button>`:""}
+      ${isStaff()?`<button class="fab" data-act="${fabCancel?"cancel-map-mode":"place"}" aria-label="${fabCancel?"Abbrechen":"Pin setzen (P)"}" ${fabCancel?"":'aria-keyshortcuts="P"'}>${fabCancel?"×":"+"}</button>`:""}
     </div>` : `<div class="content"><div class="card">Diese Karte ist nur für die Spielleitung sichtbar.</div></div>`}
   </div>`;
   S.mapCtx = {mId, pinId};
@@ -1128,8 +1229,9 @@ function mountMap(){
     if(drag){
       const dist=Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy);
       if(dist>6){
-        const allowed = drag.kind==="pin" ? isStaff() : canEditMarker(drag.id);
-        if(!allowed){ if(!drag.warned){ toast(drag.kind==="pin"?"Nur die Spielleitung verschiebt Pins.":"Du darfst nur eigene Charakter-Marker verschieben."); drag.warned=true; } return; }
+        if(mapModeActive()){ /* im Platziermodus kein Verschieben — Tippen zählt als Setzen */ return; }
+        const allowed = drag.kind==="pin" || drag.kind==="monster-marker" ? isStaff() : canEditMarker(drag.id);
+        if(!allowed){ if(!drag.warned){ toast(drag.kind==="pin"||drag.kind==="monster-marker"?"Nur die Spielleitung verschiebt das.":"Du darfst nur eigene Charakter-Marker verschieben."); drag.warned=true; } return; }
         drag.moved=true; const [x,y]=toMap(e.clientX,e.clientY);
         drag.el.style.left=Math.min(100,Math.max(0,x*100))+"%"; drag.el.style.top=Math.min(100,Math.max(0,y*100))+"%";
       }
@@ -1142,17 +1244,41 @@ function mountMap(){
     pts.delete(e.pointerId);
     if(drag){
       const d=drag; drag=null;
+      if(mapModeActive() && !d.moved){
+        const [x,y]=toMap(e.clientX,e.clientY);
+        placeAtMap(x,y,key);
+        return;
+      }
       if(d.moved){
         const x=parseFloat(d.el.style.left)/100, y=parseFloat(d.el.style.top)/100;
-        if(d.kind==="pin"){ D.pins[d.id].x=x; D.pins[d.id].y=y; } else { D.markers[key][d.id]=[x,y]; }
+        if(d.kind==="pin"){ D.pins[d.id].x=x; D.pins[d.id].y=y; }
+        else if(d.kind==="monster-marker"){ D.monsterMarkers[d.id].x=x; D.monsterMarkers[d.id].y=y; }
+        else { D.markers[key][d.id]=[x,y]; }
         toast("Position gespeichert – an alle Anwesenden gesendet");
-      } else if(!d.warned){ if(d.kind==="pin") openPin(d.id); else openMarker(d.id); }
+      } else if(!d.warned){
+        if(d.kind==="pin") openPin(d.id);
+        else if(d.kind==="monster-marker") openMonsterMarker(d.id);
+        else openMarker(d.id);
+      }
       return;
     }
-    if(pan && !pan.moved && S.placing){ const [x,y]=toMap(e.clientX,e.clientY); S.placing=false; vp.classList.remove("placing"); openNewPin(x,y,key); }
+    if(pan && !pan.moved && mapModeActive()){
+      const [x,y]=toMap(e.clientX,e.clientY);
+      placeAtMap(x,y,key);
+    }
     if(pts.size<2) pinch=null; if(!pts.size) pan=null;
   };
   vp.addEventListener("pointerup",end); vp.addEventListener("pointercancel",end);
+}
+function placeAtMap(x,y,mId){
+  x=Math.min(1,Math.max(0,x)); y=Math.min(1,Math.max(0,y));
+  if(S.mapMode==="pin"){ openNewPin(x,y,mId); return; }
+  if(S.mapMode==="monster"){ S.mapPending={x,y,m:mId}; openMonsterPicker(); return; }
+  if(S.mapMode==="copy" && S.mapCopy){
+    const id="mm"+(nextId++);
+    D.monsterMarkers[id]={m:mId,monster:S.mapCopy.monster,x,y,vis:S.mapCopy.vis,owner:ME};
+    route(); toast("Kopie gesetzt ("+VIS_LABEL[S.mapCopy.vis]+")"); return;
+  }
 }
 function openPin(id){
   const p = D.pins[id];
@@ -1165,7 +1291,52 @@ function openMarker(c){
   const ch = D.characters[c];
   sheet(`<div class="row">${avatar(ch.name,"lg")}<div><h2>${esc(ch.name)}</h2><div class="muted">${esc(ch.cls)} · gespielt von ${USERS[ch.owner]}</div></div></div>
     <div class="row" style="margin-top:16px"><a class="btn grow" href="#/w/w1/characters/${c}" data-act="close-sheet-nav">Charakterbogen</a>
-    ${canEditMarker(c)?`<button class="btn danger" data-act="toast" data-msg="Marker von der Karte entfernt">Entfernen</button>`:""}</div>`);
+    ${canEditMarker(c)?`<button class="btn danger" data-act="remove-char-marker" data-id="${c}">Entfernen</button>`:""}</div>`);
+}
+function openMonsterMarker(id){
+  const mm = D.monsterMarkers[id]; if(!mm) return;
+  const mon = D.monsters[mm.monster]; if(!mon) return;
+  const staff = isStaff();
+  const allowOwner = mm.owner===ME;
+  const visOpts = Object.entries(VIS_LABEL).filter(([k])=>allowOwner||k!=="owner_only"||mm.vis==="owner_only");
+  sheet(`<div class="row">${avatar(mon.name,"lg")}<div class="grow"><h2>${esc(mon.name)}</h2>
+      <div class="row wrap" style="margin-top:6px;gap:6px">${rarityBadge(mon.rarity)}${gmBadge(mm.vis)}</div></div></div>
+    <div class="stack" style="margin-top:14px">
+      <a class="btn" href="#/w/w1/monsters/${mm.monster}" data-act="close-sheet-nav">Zum Monster</a>
+      ${staff?`<label class="vis-select small">Sichtbarkeit<select data-act="mm-vis" data-id="${id}">${visOpts.map(([k,l])=>`<option value="${k}" ${mm.vis===k?"selected":""}>${l}</option>`).join("")}</select></label>
+      <button class="btn" data-act="copy-monster-marker" data-id="${id}">Kopieren</button>
+      <button class="btn danger" data-act="remove-monster-marker" data-id="${id}">Entfernen</button>`:""}
+      ${!staff?`<p class="small muted">Nur Lesen — Verschieben und Entfernen nur für die Spielleitung.</p>`:""}
+      <button class="btn" data-act="close-sheet">Schließen</button>
+    </div>`);
+}
+function openMapFilter(){
+  const chips = MAP_FILTER_CATS.map(({k,l})=>{
+    const on = mapFilterOn(k);
+    return `<button class="chip ${on?"on":"off"}" data-act="toggle-map-filter" data-v="${k}">${l}</button>`;
+  }).join("");
+  sheet(`<h2>Kartenfilter</h2>
+    <p class="small muted">Ausgeblendete Elemente werden nicht gezeichnet; sie bleiben erhalten. Auswahl wird auf diesem Gerät gemerkt.</p>
+    <div class="filter-chips">${chips}</div>
+    <button class="btn primary" data-act="map-filter-all" style="width:100%">Alle an</button>`);
+}
+function openMonsterPicker(){
+  const q = (S.monsterPickerQ||"").toLowerCase();
+  const list = Object.entries(D.monsters).filter(([id])=>visible("monster",id))
+    .filter(([,m])=>!q || m.name.toLowerCase().includes(q));
+  sheet(`<h2>Monster wählen</h2>
+    <p class="small muted">Position steht. Wähle das Monster — startet als „nur ich“. Schließen ohne Auswahl = Abbrechen.</p>
+    <input id="mm-pick-q" placeholder="Suche nach Name…" value="${esc(S.monsterPickerQ||"")}" style="margin:10px 0" autocomplete="off">
+    <div class="list" id="mm-pick-list">${list.length?list.map(([id,m])=>`<button class="item" style="width:100%" data-act="pick-monster" data-id="${id}">${avatar(m.name)}<div class="grow" style="text-align:left">${esc(m.name)}<div class="kind">${MONSTER_KIND[m.kind]}</div></div>${rarityBadge(m.rarity)}</button>`).join(""):'<div class="empty">Keine Monster gefunden.</div>'}</div>`);
+  const inp=document.getElementById("mm-pick-q");
+  inp?.focus();
+  inp?.addEventListener("input",()=>{
+    S.monsterPickerQ=inp.value;
+    const q2=inp.value.toLowerCase();
+    const rows=Object.entries(D.monsters).filter(([id])=>visible("monster",id)).filter(([,m])=>!q2||m.name.toLowerCase().includes(q2));
+    const box=document.getElementById("mm-pick-list");
+    if(box) box.innerHTML = rows.length?rows.map(([id,m])=>`<button class="item" style="width:100%" data-act="pick-monster" data-id="${id}">${avatar(m.name)}<div class="grow" style="text-align:left">${esc(m.name)}<div class="kind">${MONSTER_KIND[m.kind]}</div></div>${rarityBadge(m.rarity)}</button>`).join(""):'<div class="empty">Keine Monster gefunden.</div>';
+  });
 }
 function openNewPin(x,y,mId){
   S.newPin={x,y,m:mId,t:"city",vis:"owner_only"};
@@ -1517,7 +1688,14 @@ document.addEventListener("click", e=>{
   const a = e.target.closest("[data-act]"); if(!a) return;
   if(["SELECT","INPUT","TEXTAREA","OPTION"].includes(e.target.tagName)) return;
   const act = a.dataset.act;
-  if(act==="close-sheet"){ if(e.target===a || a.tagName==="BUTTON") closeSheet(); return; }
+  if(act==="close-sheet"){
+    if(e.target===a || a.tagName==="BUTTON"){
+      const cancelPlace = !!S.mapPending || (S.mapMode==="pin" && S.newPin);
+      closeSheet();
+      if(cancelPlace){ clearMapMode(); route(); toast("Platziermodus abgebrochen"); }
+    }
+    return;
+  }
   if(act==="close-sheet-nav"){ closeSheet(); return; }
   if(act==="toast"){ toast(a.dataset.msg); if(a.tagName!=="A") e.preventDefault(); return; }
   e.preventDefault();
@@ -1536,7 +1714,7 @@ document.addEventListener("click", e=>{
         name, cls: document.getElementById("ed-cls")?.value||"",
         kind: document.getElementById("ed-kind")?.value||"other",
         rarity: document.getElementById("ed-rarity")?.value||"common",
-        legendary: !!document.getElementById("ed-legendary")?.checked,
+        boss: !!document.getElementById("ed-boss")?.checked,
         danger: document.getElementById("ed-danger")?.value||"harmless",
         size: document.getElementById("ed-size")?.value||"medium",
         habitat: document.getElementById("ed-habitat")?.value || null,
@@ -1554,13 +1732,39 @@ document.addEventListener("click", e=>{
     case "chev": S.expanded[a.dataset.id]=!S.expanded[a.dataset.id]; writeExpanded(S.expanded); route(); break;
     case "zoom": S.mapZoom && S.mapZoom(parseFloat(a.dataset.v)); break;
     case "fit": S.mapFit && S.mapFit(); break;
-    case "place": S.placing=!S.placing; route(); break;
+    case "place": setMapMode("pin"); route(); break;
+    case "cancel-map-mode": clearMapMode(); route(); toast("Abgebrochen"); break;
     case "place-marker": {
+      clearMapMode();
       const mine = D.brought.filter(c=>D.characters[c].owner===ME || isStaff());
       const onMap = D.markers[S.mapCtx.mId]||{};
-      sheet(`<h2>Charakter auf Karte setzen</h2><p class="small muted">Pro Charakter höchstens ein Marker pro Karte.</p><div class="list">${mine.map(c=>`<button class="item" style="width:100%" data-act="add-marker" data-id="${c}" ${onMap[c]?"disabled":""}>${avatar(D.characters[c].name)}<div class="grow" style="text-align:left">${esc(D.characters[c].name)}<div class="kind">${onMap[c]?"schon auf dieser Karte":USERS[D.characters[c].owner]}</div></div></button>`).join("")}</div>`);
+      sheet(`<h2>Charakter auf Karte setzen</h2><p class="small muted">Pro Charakter höchstens ein Marker (weltweit). Goldene Stecknadel.</p><div class="list">${mine.map(c=>`<button class="item" style="width:100%" data-act="add-marker" data-id="${c}" ${onMap[c]?"disabled":""}>${avatar(D.characters[c].name)}<div class="grow" style="text-align:left">${esc(D.characters[c].name)}<div class="kind">${onMap[c]?"schon auf dieser Karte":USERS[D.characters[c].owner]}</div></div></button>`).join("")}</div>`);
       break; }
     case "add-marker": if(a.disabled) break; (D.markers[S.mapCtx.mId] ||= {})[a.dataset.id]=[.5,.5]; closeSheet(); route(); toast("Marker in der Kartenmitte platziert"); break;
+    case "place-monster": {
+      if(!isStaff()){ toast("Nur die Spielleitung platziert Monster"); break; }
+      setMapMode("monster"); route(); break;
+    }
+    case "pick-monster": {
+      if(!S.mapPending){ toast("Zuerst Position tippen"); break; }
+      const {x,y,m}=S.mapPending;
+      const id="mm"+(nextId++);
+      D.monsterMarkers[id]={m,monster:a.dataset.id,x,y,vis:"owner_only",owner:ME};
+      clearMapMode(); closeSheet(); route(); toast("Monster-Marker gesetzt (nur ich)"); break;
+    }
+    case "copy-monster-marker": {
+      if(!isStaff()) break;
+      const mm=D.monsterMarkers[a.dataset.id]; if(!mm) break;
+      clearMapMode();
+      S.mapMode="copy";
+      S.mapCopy={monster:mm.monster,vis:mm.vis};
+      closeSheet(); route(); toast("Kopiermodus — tippe auf die Karte"); break;
+    }
+    case "map-filter": openMapFilter(); break;
+    case "toggle-map-filter": toggleMapFilter(a.dataset.v); route({keepSheet:true}); openMapFilter(); break;
+    case "map-filter-all": clearMapFilter(); closeSheet(); route(); toast("Alle Filter an"); break;
+    case "remove-char-marker": delete D.markers[S.mapCtx.mId][a.dataset.id]; closeSheet(); route(); toast("Marker entfernt"); break;
+    case "remove-monster-marker": delete D.monsterMarkers[a.dataset.id]; closeSheet(); route(); toast("Monster-Marker entfernt"); break;
     case "ptype": S.newPin.t=a.dataset.v; document.querySelectorAll("#tg button").forEach(b=>b.classList.toggle("on",b===a)); break;
     case "sw": a.classList.toggle("on"); break;
     case "save-pin": {
@@ -1568,7 +1772,7 @@ document.addEventListener("click", e=>{
       if(!t){ toast("Titel ist Pflicht"); break; }
       const vis=document.getElementById("np-vis")?.value || "owner_only";
       const id="p"+(nextId++); D.pins[id]={m:S.newPin.m,t:S.newPin.t,title:t,x:S.newPin.x,y:S.newPin.y,vis,owner:ME,desc:""};
-      closeSheet(); route(); toast("Pin gesetzt ("+VIS_LABEL[vis]+")"); break; }
+      clearMapMode(); closeSheet(); route(); toast("Pin gesetzt ("+VIS_LABEL[vis]+")"); break; }
     case "new-channel": sheet(`<h2>Neuer Kanal</h2><div class="stack" style="margin-top:12px"><input id="ch-name" placeholder="Kanalname (max. 80 Zeichen)" maxlength="80"><button class="btn primary" data-act="save-channel">Anlegen</button></div>`); break;
     case "save-channel": {
       const n=document.getElementById("ch-name").value.trim();
@@ -1747,6 +1951,7 @@ document.addEventListener("change", e=>{
   const a = e.target.closest("[data-act]"); if(a?.dataset.act==="role"){ S.role=a.value; if(S.role==="player") S.asOwner=false; S.map=null; route(); toast("Ansicht als "+ROLE_LABEL[S.role]); }
   if(a?.dataset.act==="as-owner"){ S.asOwner=a.value==="1"; S.map=null; route(); toast(S.asOwner?"Owner-Simulation: ich bin Owner":"Owner-Simulation: fremd – „nur ich“ verschwindet"); }
   if(a?.dataset.act==="ch-vis"){ const ch=D.chapters[a.dataset.id]; if(!ch) return; if(a.value==="owner_only" && ch.owner!==ME){ toast("Nur der Owner darf „nur ich“ setzen"); a.value=ch.vis; return; } ch.vis=a.value; route({keepScroll:true}); toast("Kapitel: "+VIS_LABEL[ch.vis]); }
+  if(a?.dataset.act==="mm-vis"){ const mm=D.monsterMarkers[a.dataset.id]; if(!mm) return; if(a.value==="owner_only" && mm.owner!==ME){ toast("Nur der Owner darf „nur ich“ setzen"); a.value=mm.vis; return; } mm.vis=a.value; route({keepSheet:true}); openMonsterMarker(a.dataset.id); toast("Sichtbarkeit: "+VIS_LABEL[mm.vis]); }
   if(a?.dataset.act==="tpl"){ if(confirm("Vorlage wechseln? Nicht passende Vorlagenfelder werden verworfen.")){ S.editTpl=a.value; route(); } else a.value=S.editTpl; }
   if(a?.dataset.act==="toast-change") toast(a.dataset.msg);
   if(e.target.dataset.attr!=null){ const v=parseInt(e.target.value)||1; document.getElementById("mod"+e.target.dataset.attr).textContent = v<1||v>30 ? "1–30!" : mod(v); }
@@ -1761,7 +1966,26 @@ document.addEventListener("keydown", e=>{
     if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); document.querySelector(`[data-act=save-edit][data-id="${S.editingId}"]`)?.click(); }
     if(e.key==="Escape"){ S.editingId=null; route({keepScroll:true}); }
   }
-  if(e.key==="Escape" && document.querySelector(".sheet-bg")) closeSheet();
+  if(e.key==="Escape"){
+    if(document.querySelector(".sheet-bg")){
+      const cancelPlace = !!S.mapPending || (S.mapMode==="pin" && S.newPin);
+      closeSheet();
+      if(cancelPlace){ clearMapMode(); route(); toast("Platziermodus abgebrochen"); }
+      else if(mapModeActive()){ clearMapMode(); route(); }
+      return;
+    }
+    if(mapModeActive()){ clearMapMode(); route(); toast("Abgebrochen"); return; }
+  }
+  // Karten-Hotkeys P / M (K10)
+  const onMap = /\/map/.test(location.hash);
+  if(!onMap || !isStaff()) return;
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  if(t && (t.tagName==="INPUT" || t.tagName==="TEXTAREA" || t.isContentEditable)) return;
+  if(document.querySelector(".sheet-bg")) return;
+  const k = e.key.toLowerCase();
+  if(k==="p"){ e.preventDefault(); setMapMode("pin"); route(); }
+  if(k==="m"){ e.preventDefault(); setMapMode("monster"); route(); }
 });
 route();
 </script>

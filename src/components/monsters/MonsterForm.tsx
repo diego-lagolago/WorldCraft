@@ -57,7 +57,7 @@ type Monster = {
   portraitId: string | null;
   kind: MonsterKind;
   rarity: MonsterRarity;
-  isLegendary: boolean;
+  isBoss: boolean;
   danger: MonsterDanger;
   size: MonsterSize;
   habitatArticleId: string | null;
@@ -96,7 +96,7 @@ export function MonsterForm({
   const [visibility, setVisibility] = useState<ContentVisibility>(monster?.visibility ?? "owner_only");
   const [kind, setKind] = useState<MonsterKind>(monster?.kind ?? "other");
   const [rarity, setRarity] = useState<MonsterRarity>(monster?.rarity ?? "common");
-  const [isLegendary, setIsLegendary] = useState(monster?.isLegendary ?? false);
+  const [isBoss, setIsBoss] = useState(monster?.isBoss ?? false);
   const [danger, setDanger] = useState<MonsterDanger>(monster?.danger ?? "harmless");
   const [size, setSize] = useState<MonsterSize>(monster?.size ?? "medium");
   const [habitatArticleId, setHabitatArticleId] = useState(monster?.habitatArticleId ?? "");
@@ -145,7 +145,7 @@ export function MonsterForm({
       ...traits,
       kind,
       rarity,
-      isLegendary,
+      isBoss,
       danger,
       size,
       ...(!monster || habitatArticleId !== originalHabitat
@@ -313,11 +313,11 @@ export function MonsterForm({
       <label className="row" style={{ gap: 8, alignItems: "center" }}>
         <input
           type="checkbox"
-          checked={isLegendary}
-          onChange={(e) => setIsLegendary(e.target.checked)}
+          checked={isBoss}
+          onChange={(e) => setIsBoss(e.target.checked)}
           style={{ width: "auto" }}
         />
-        <span>Legendär (Besonderheiten)</span>
+        <span>Boss</span>
       </label>
 
       <label className="stack" style={{ gap: 6 }}>

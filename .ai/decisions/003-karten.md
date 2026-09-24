@@ -155,3 +155,28 @@ Die Empfehlung bleibt A. Lizenz und Passung zu F4/F5 schließen C aus; B bleibt 
 - **Deep-Link:** Query-Parameter Pin-ID → `fit`/`setView` + Popup/Highlight.
 - **Nicht gewählt:** Konva (mehr Eigenbau, Canvas-Risiko auf dem Handy); tldraw (Production-License-Key, Wasserzeichen/Kosten, falsches Sync-Modell).
 - **No-Go-Pfad:** Ruckelt 8000 × 6000 in T-009/T-014 unzumutbar (besonders mobil), dieses ADR überarbeiten und Konva (gekachelt) oder eine verkleinerte Anzeigevariante neu bewerten.
+
+## Nachtrag 2026-09-23 (Plan `006`, K1–K4 / K8)
+
+### Stecknadel-Darstellung (Pins und Marker)
+
+Pins, Charakter-Marker und Monster-Marker teilen dieselbe Nadelgrafik-Größe und denselben Anker an der **Spitze** (Plan-Review K8):
+
+- Grafik 48 × 58 px, Spitze bei (24, 56); Leaflet `iconSize` / `iconAnchor` entsprechen diesen Werten (gemeinsame Konstante, z. B. `PIN_ICON`).
+- Charakter- und Monster-Marker: Stecknadel mit Bild (oder Initialen) im Nadelkopf; Rahmen/Nadel **Gold** bei Charakteren, **Schwarz** bei Monstern (CSS-Variablen `--marker-character` / `--marker-monster`). Name als Beschriftung **unter** der Nadel, außerhalb des Icon-Rahmens.
+- Gespeichert bleibt der Ankerpunkt (`pos_x`/`pos_y`); keine Datenmigration. Bestehende Pins rutschen einmalig optisch auf die gespeicherte Stelle.
+
+### Kartenfilter
+
+Rein **clientseitig**, pro Gerät (`localStorage`-Schlüssel `worldcraft.mapFilter.<worldId>`): Chips für Charaktere, Monster und jeden der 12 Pin-Typen. Ausgeblendete Elemente werden nicht gerendert, bleiben aber erhalten und werden per SSE weiter aktualisiert. Server und Rechte unverändert.
+
+### Kartenmarkierungen setzen (Plan `006`, K9–K12, 2026-09-23)
+
+**Normregel für alle künftigen Werkzeuge und Markierungsarten auf der Karte** (nicht nur Pin/Monster):
+
+1. **Erst Fadenkreuz, dann Picker.** Platziermodus starten → Tippen auf die Karte legt die Position fest → danach öffnet sich der Picker bzw. das Anlege-Sheet. Picker schließen ohne Auswahl = abbrechen, nichts entsteht.
+2. **Höchstens ein Modus** gleichzeitig (`none` | Werkzeugmodi). Die Hotkey-Taste eines anderen Modus wechselt dorthin; erneutes Drücken derselben Taste bricht ab. Karten- oder Universumswechsel beendet jeden Modus.
+3. **Abbrechen:** FAB unten rechts wird zu „×“; Desktop zusätzlich `Esc`.
+4. Solange ein Modus aktiv ist, öffnet Antippen eines bestehenden Pins/Markers **kein** Sheet, sondern zählt als Platzieren an dieser Stelle.
+5. **Hotkeys** (ohne Modifier Strg/Cmd/Alt): nur Spielleitung, nur Kartenseite mit Kartenbild, nicht bei fokussiertem Eingabefeld/`contenteditable` oder offenem Sheet. Groß-/Kleinschreibung egal. Aktuell: `P` = Pin, `M` = Monster; künftige Werkzeuge bekommen analog einen Buchstaben.
+6. **Kopieren** (aktuell nur Monster-Marker, K11): Aktion im Sheet → Kopiermodus (Fadenkreuz) mit demselben Objekt; jedes Tippen setzt eine Kopie auf derselben Karte ohne Picker; Modus bleibt aktiv bis „×“/`Esc`.

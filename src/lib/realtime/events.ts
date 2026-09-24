@@ -26,6 +26,20 @@ export type WorldRealtimeEvent =
       mapId: string;
       layers: VisibilityLayer[];
     }
+  | {
+      type: "map.monsterMarker";
+      worldId: string;
+      markerId: string;
+      mapId: string;
+      layers: VisibilityLayer[];
+    }
+  | {
+      type: "map.monsterMarker.deleted";
+      worldId: string;
+      markerId: string;
+      mapId: string;
+      layers: VisibilityLayer[];
+    }
   | { type: "membership.changed"; worldId: string; userId: string };
 
 export const worldEvents = createRealtimeBus<WorldRealtimeEvent>("world");
@@ -45,6 +59,8 @@ const WORLD_EVENT_TYPES = new Set([
   "map.pin.deleted",
   "map.marker",
   "map.marker.deleted",
+  "map.monsterMarker",
+  "map.monsterMarker.deleted",
 ]);
 
 export function isWorldRealtimeEvent(value: unknown): value is WorldRealtimeEvent {

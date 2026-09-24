@@ -6,6 +6,8 @@ import {
   characters,
   files,
   maps,
+  monsterMarkers,
+  monsters,
   pins,
   universes,
   users,
@@ -13,6 +15,7 @@ import {
 } from "@/db/schema";
 import {
   authorizeMarkerAction,
+  authorizeOwnedContentWrite,
   authorizePinWrite,
   canSeePublishedLayer,
   canSeeContent,
@@ -44,10 +47,12 @@ import type {
   MapOptionDto,
   MapState,
   MarkerDto,
+  MonsterMarkerDto,
   PinDetails,
   PinDto,
   PlaceableCharacterDto,
 } from "./types";
+import type { MonsterRarity } from "@/lib/monsters/labels";
 
 export const MAP_NAME_MAX = 120;
 export const PIN_TITLE_MAX = 120;
@@ -127,6 +132,34 @@ function serializeMarker(row: {
   };
 }
 
+function serializeMonsterMarker(row: {
+  id: string;
+  mapId: string;
+  monsterId: string;
+  name: string;
+  portraitId: string | null;
+  rarity: MonsterRarity;
+  isBoss: boolean;
+  visibility: ContentVisibility;
+  ownerId: string;
+  posX: string | number;
+  posY: string | number;
+}): MonsterMarkerDto {
+  return {
+    id: row.id,
+    mapId: row.mapId,
+    monsterId: row.monsterId,
+    name: row.name,
+    imageUrl: row.portraitId ? fileUrl(row.portraitId) : null,
+    rarity: row.rarity,
+    isBoss: row.isBoss,
+    visibility: row.visibility,
+    ownerId: row.ownerId,
+    posX: toNumber(row.posX),
+    posY: toNumber(row.posY),
+  };
+}
+
 async function loadMapRow(mapId: string, worldId: string) {
   const [row] = await db
     .select({
@@ -174,6 +207,22 @@ function pinEventLayers(
     { visibility: universeVisibility },
     { visibility: mapVisibility },
     { visibility: pinVisibility, ownerId },
+  ];
+}
+
+function monsterMarkerEventLayers(
+  universeVisibility: VisibilityStatus,
+  mapVisibility: VisibilityStatus,
+  monsterVisibility: ContentVisibility,
+  monsterOwnerId: string,
+  markerVisibility: ContentVisibility,
+  markerOwnerId: string,
+): VisibilityLayer[] {
+  return [
+    { visibility: universeVisibility },
+    { visibility: mapVisibility },
+    { visibility: monsterVisibility, ownerId: monsterOwnerId },
+    { visibility: markerVisibility, ownerId: markerOwnerId },
   ];
 }
 
@@ -239,6 +288,7 @@ export async function loadMapState(input: {
       mapHidden: false,
       pins: [],
       markers: [],
+      monsterMarkers: [],
       characters: [],
       highlightPinId: null,
       ...partial,
@@ -325,7 +375,7 @@ export async function loadMapState(input: {
   const loaded = mapRows.find((row) => row.map.id === selected!.id)!;
   const dto = serializeMap(loaded.map, loaded);
 
-  const [pinRows, markerRows, characterRows, placedRows] = await Promise.all([
+  const [pinRows, markerRows, monsterMarkerRows, characterRows, placedRows] = await Promise.all([
     dto.imageId
       ? db.select().from(pins).where(eq(pins.mapId, dto.id))
       : Promise.resolve([] as (typeof pins.$inferSelect)[]),
@@ -352,6 +402,27 @@ export async function loadMapState(input: {
             ),
           )
           .where(eq(characterMarkers.mapId, dto.id))
+      : Promise.resolve([]),
+    dto.imageId
+      ? db
+          .select({
+            id: monsterMarkers.id,
+            mapId: monsterMarkers.mapId,
+            monsterId: monsterMarkers.monsterId,
+            posX: monsterMarkers.posX,
+            posY: monsterMarkers.posY,
+            visibility: monsterMarkers.visibility,
+            ownerId: monsterMarkers.ownerId,
+            name: monsters.name,
+            portraitId: monsters.portraitId,
+            rarity: monsters.rarity,
+            isBoss: monsters.isBoss,
+            monsterVisibility: monsters.visibility,
+            monsterOwnerId: monsters.ownerId,
+          })
+          .from(monsterMarkers)
+          .innerJoin(monsters, eq(monsters.id, monsterMarkers.monsterId))
+          .where(and(eq(monsterMarkers.mapId, dto.id), eq(monsters.worldId, input.worldId)))
       : Promise.resolve([]),
     db
       .select({
@@ -406,6 +477,17 @@ export async function loadMapState(input: {
         ),
       ),
     markers: markerRows.map(serializeMarker),
+    monsterMarkers: monsterMarkerRows
+      .filter((row) =>
+        canSeePublishedLayer(
+          { role: input.role, userId: input.actorId },
+          [
+            { visibility: row.visibility, ownerId: row.ownerId },
+            { visibility: row.monsterVisibility, ownerId: row.monsterOwnerId },
+          ],
+        ),
+      )
+      .map(serializeMonsterMarker),
     characters: charactersOnMap,
     highlightPinId,
   });
@@ -1004,6 +1086,324 @@ export async function deleteMarker(input: {
     markerId: input.markerId,
     mapId: loaded.marker.mapId,
     layers: mapEventLayers(loaded.universeVisibility, loaded.mapVisibility),
+  });
+  return ok({ id: input.markerId });
+}
+
+/** K5: reload maps that show this monster when name/image/visibility changes or it is deleted. */
+export { publishMapsForMonster } from "./monster-marker-events";
+
+async function loadMonsterMarkerContext(worldId: string, markerId: string) {
+  const [row] = await db
+    .select({
+      marker: monsterMarkers,
+      monster: {
+        id: monsters.id,
+        name: monsters.name,
+        portraitId: monsters.portraitId,
+        rarity: monsters.rarity,
+        isBoss: monsters.isBoss,
+        visibility: monsters.visibility,
+        ownerId: monsters.ownerId,
+        worldId: monsters.worldId,
+      },
+      universeVisibility: universes.visibility,
+      mapVisibility: maps.visibility,
+      universeId: universes.id,
+    })
+    .from(monsterMarkers)
+    .innerJoin(monsters, eq(monsters.id, monsterMarkers.monsterId))
+    .innerJoin(maps, eq(maps.id, monsterMarkers.mapId))
+    .innerJoin(universes, eq(universes.id, maps.universeId))
+    .where(and(eq(monsterMarkers.id, markerId), eq(universes.worldId, worldId), eq(monsters.worldId, worldId)))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function getMonsterMarkerDetails(input: {
+  worldId: string;
+  role: MembershipRole;
+  actorId: string;
+  markerId: string;
+}): Promise<AuthzResult<MonsterMarkerDto>> {
+  const loaded = await loadMonsterMarkerContext(input.worldId, input.markerId);
+  if (!loaded) return fail(404, "Diesen Monster-Marker gibt es nicht.");
+  if (
+    !canSeePublishedLayer(
+      { role: input.role, userId: input.actorId },
+      monsterMarkerEventLayers(
+        loaded.universeVisibility,
+        loaded.mapVisibility,
+        loaded.monster.visibility,
+        loaded.monster.ownerId,
+        loaded.marker.visibility,
+        loaded.marker.ownerId,
+      ),
+    )
+  ) {
+    return fail(404, "Diesen Monster-Marker gibt es nicht.");
+  }
+  return ok(
+    serializeMonsterMarker({
+      ...loaded.marker,
+      name: loaded.monster.name,
+      portraitId: loaded.monster.portraitId,
+      rarity: loaded.monster.rarity,
+      isBoss: loaded.monster.isBoss,
+    }),
+  );
+}
+
+export async function placeMonsterMarker(input: {
+  membership: MembershipRow | null;
+  actorId: string;
+  worldId: string;
+  mapId: string;
+  monsterId: string;
+  posX: number;
+  posY: number;
+}): Promise<AuthzResult<{ marker: MonsterMarkerDto }>> {
+  const staff = requireStaff(input.membership);
+  if (!staff.ok) return staff;
+  const loaded = await loadMapRow(input.mapId, input.worldId);
+  if (!loaded) return fail(404, "Diese Karte gibt es nicht.");
+  if (!loaded.map.imageId) return fail(400, "Diese Karte hat noch kein Bild.");
+  if (
+    !mapVisible(
+      staff.data.role,
+      loaded.universeVisibility,
+      loaded.map.visibility,
+      input.actorId,
+    )
+  ) {
+    return fail(404, "Diese Karte gibt es nicht.");
+  }
+
+  const [monster] = await db
+    .select({
+      id: monsters.id,
+      name: monsters.name,
+      portraitId: monsters.portraitId,
+      rarity: monsters.rarity,
+      isBoss: monsters.isBoss,
+      visibility: monsters.visibility,
+      ownerId: monsters.ownerId,
+    })
+    .from(monsters)
+    .where(and(eq(monsters.id, input.monsterId), eq(monsters.worldId, input.worldId)))
+    .limit(1);
+  if (!monster) return fail(404, "Dieses Monster gibt es nicht.");
+  if (
+    !canSeeContent(
+      { role: staff.data.role, userId: staff.data.userId },
+      { visibility: monster.visibility, ownerId: monster.ownerId },
+    )
+  ) {
+    return fail(404, "Dieses Monster gibt es nicht.");
+  }
+
+  try {
+    const [row] = await db
+      .insert(monsterMarkers)
+      .values({
+        monsterId: input.monsterId,
+        mapId: input.mapId,
+        posX: positionSql(input.posX),
+        posY: positionSql(input.posY),
+        visibility: "owner_only",
+        ownerId: input.actorId,
+        createdBy: input.actorId,
+        updatedBy: input.actorId,
+      })
+      .returning();
+    const marker = serializeMonsterMarker({
+      ...row,
+      name: monster.name,
+      portraitId: monster.portraitId,
+      rarity: monster.rarity,
+      isBoss: monster.isBoss,
+    });
+    worldEvents.publish({
+      type: "map.monsterMarker",
+      worldId: input.worldId,
+      markerId: marker.id,
+      mapId: marker.mapId,
+      layers: monsterMarkerEventLayers(
+        loaded.universeVisibility,
+        loaded.map.visibility,
+        monster.visibility,
+        monster.ownerId,
+        marker.visibility,
+        marker.ownerId,
+      ),
+    });
+    return ok({ marker });
+  } catch (error) {
+    const mapped = mapDbError(error);
+    if (mapped) return mapped;
+    throw error;
+  }
+}
+
+/** K11: copy keeps monster_id, map_id, visibility; new owner = actor. */
+export async function copyMonsterMarker(input: {
+  membership: MembershipRow | null;
+  actorId: string;
+  worldId: string;
+  sourceMarkerId: string;
+  posX: number;
+  posY: number;
+}): Promise<AuthzResult<{ marker: MonsterMarkerDto }>> {
+  const staff = requireStaff(input.membership);
+  if (!staff.ok) return staff;
+  const loaded = await loadMonsterMarkerContext(input.worldId, input.sourceMarkerId);
+  if (!loaded) return fail(404, "Diesen Monster-Marker gibt es nicht.");
+  if (
+    !canSeePublishedLayer(
+      { role: staff.data.role, userId: staff.data.userId },
+      monsterMarkerEventLayers(
+        loaded.universeVisibility,
+        loaded.mapVisibility,
+        loaded.monster.visibility,
+        loaded.monster.ownerId,
+        loaded.marker.visibility,
+        loaded.marker.ownerId,
+      ),
+    )
+  ) {
+    return fail(404, "Diesen Monster-Marker gibt es nicht.");
+  }
+
+  try {
+    const [row] = await db
+      .insert(monsterMarkers)
+      .values({
+        monsterId: loaded.marker.monsterId,
+        mapId: loaded.marker.mapId,
+        posX: positionSql(input.posX),
+        posY: positionSql(input.posY),
+        visibility: loaded.marker.visibility,
+        ownerId: input.actorId,
+        createdBy: input.actorId,
+        updatedBy: input.actorId,
+      })
+      .returning();
+    const marker = serializeMonsterMarker({
+      ...row,
+      name: loaded.monster.name,
+      portraitId: loaded.monster.portraitId,
+      rarity: loaded.monster.rarity,
+      isBoss: loaded.monster.isBoss,
+    });
+    worldEvents.publish({
+      type: "map.monsterMarker",
+      worldId: input.worldId,
+      markerId: marker.id,
+      mapId: marker.mapId,
+      layers: monsterMarkerEventLayers(
+        loaded.universeVisibility,
+        loaded.mapVisibility,
+        loaded.monster.visibility,
+        loaded.monster.ownerId,
+        marker.visibility,
+        marker.ownerId,
+      ),
+    });
+    return ok({ marker });
+  } catch (error) {
+    const mapped = mapDbError(error);
+    if (mapped) return mapped;
+    throw error;
+  }
+}
+
+export async function updateMonsterMarker(input: {
+  membership: MembershipRow | null;
+  actorId: string;
+  worldId: string;
+  markerId: string;
+  posX?: number;
+  posY?: number;
+  visibility?: ContentVisibility;
+}): Promise<AuthzResult<{ marker: MonsterMarkerDto }>> {
+  const loaded = await loadMonsterMarkerContext(input.worldId, input.markerId);
+  const allowed = authorizeOwnedContentWrite({
+    membership: input.membership,
+    content: loaded
+      ? { ownerId: loaded.marker.ownerId, visibility: loaded.marker.visibility }
+      : null,
+    nextVisibility: input.visibility,
+    notFoundError: "Diesen Monster-Marker gibt es nicht.",
+  });
+  if (!allowed.ok) return allowed;
+  if (!loaded) return fail(404, "Diesen Monster-Marker gibt es nicht.");
+
+  const dbPatch: ColumnPatch<typeof monsterMarkers.$inferInsert> = {
+    updatedBy: input.actorId,
+    updatedAt: new Date(),
+  };
+  if (input.posX !== undefined) dbPatch.posX = positionSql(input.posX);
+  if (input.posY !== undefined) dbPatch.posY = positionSql(input.posY);
+  if (input.visibility !== undefined) dbPatch.visibility = input.visibility;
+
+  const [row] = await db
+    .update(monsterMarkers)
+    .set(dbPatch)
+    .where(eq(monsterMarkers.id, input.markerId))
+    .returning();
+  const marker = serializeMonsterMarker({
+    ...row,
+    name: loaded.monster.name,
+    portraitId: loaded.monster.portraitId,
+    rarity: loaded.monster.rarity,
+    isBoss: loaded.monster.isBoss,
+  });
+  worldEvents.publish({
+    type: "map.monsterMarker",
+    worldId: input.worldId,
+    markerId: marker.id,
+    mapId: marker.mapId,
+    layers: monsterMarkerEventLayers(
+      loaded.universeVisibility,
+      loaded.mapVisibility,
+      loaded.monster.visibility,
+      loaded.monster.ownerId,
+      marker.visibility,
+      marker.ownerId,
+    ),
+  });
+  return ok({ marker });
+}
+
+export async function deleteMonsterMarker(input: {
+  membership: MembershipRow | null;
+  worldId: string;
+  markerId: string;
+}): Promise<AuthzResult<{ id: string }>> {
+  const loaded = await loadMonsterMarkerContext(input.worldId, input.markerId);
+  const allowed = authorizeOwnedContentWrite({
+    membership: input.membership,
+    content: loaded
+      ? { ownerId: loaded.marker.ownerId, visibility: loaded.marker.visibility }
+      : null,
+    notFoundError: "Diesen Monster-Marker gibt es nicht.",
+  });
+  if (!allowed.ok) return allowed;
+  if (!loaded) return fail(404, "Diesen Monster-Marker gibt es nicht.");
+  await db.delete(monsterMarkers).where(eq(monsterMarkers.id, input.markerId));
+  worldEvents.publish({
+    type: "map.monsterMarker.deleted",
+    worldId: input.worldId,
+    markerId: input.markerId,
+    mapId: loaded.marker.mapId,
+    layers: monsterMarkerEventLayers(
+      loaded.universeVisibility,
+      loaded.mapVisibility,
+      loaded.monster.visibility,
+      loaded.monster.ownerId,
+      loaded.marker.visibility,
+      loaded.marker.ownerId,
+    ),
   });
   return ok({ id: input.markerId });
 }

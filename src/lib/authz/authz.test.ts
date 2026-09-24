@@ -595,6 +595,21 @@ describe("CR-001 canReceiveWorldEvent / eventForViewer", () => {
       mapId: "m",
       layers: gmMapLayers,
     });
+
+    const monsterMarker: WorldRealtimeEvent = {
+      type: "map.monsterMarker",
+      worldId: "w",
+      markerId: "mm",
+      mapId: "m",
+      layers: gmPinLayers,
+    };
+    expect(eventForViewer(player, monsterMarker)).toEqual({
+      type: "map.monsterMarker.deleted",
+      worldId: "w",
+      markerId: "mm",
+      mapId: "m",
+      layers: gmPinLayers,
+    });
   });
 
   it("drops invisible map.updated and delete signals", () => {

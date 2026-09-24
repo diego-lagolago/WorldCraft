@@ -19,6 +19,10 @@
   --rail-w: 232px;
   --radius: 14px;
   --composer-h: 60px;
+  /* Plan 006 T-002 / T-005: Stecknadel-Marker (Charakter gold, Monster schwarz) */
+  --marker-character: #c9a227;
+  --marker-monster: #141414;
+  --marker-monster-outline: #e8e4dc;
   color-scheme: dark;
 }
 
@@ -450,10 +454,11 @@ textarea {
   background: #2a1c10;
 }
 
-.badge.legendary-flag {
-  color: #f5b83d;
-  border-color: #6a4e1a;
-  background: #2a2210;
+.monster-boss-mark {
+  display: inline-flex;
+  align-items: center;
+  font-size: 16px;
+  line-height: 1;
 }
 
 .av {
@@ -1551,30 +1556,70 @@ textarea {
   border-radius: 2px;
 }
 
-.map-character {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
+/* Stecknadel-Marker: Spitze = Leaflet-Anker (PIN_ICON); Name außerhalb unter der Spitze */
+.map-marker-pin {
+  position: relative;
+  width: 48px;
+  height: 58px;
+  filter: drop-shadow(0 3px 4px rgb(0 0 0 / 50%));
 }
 
-.map-character .av {
-  width: 42px;
-  height: 42px;
-  border: 3px solid var(--accent);
-  box-shadow: 0 3px 8px rgb(0 0 0 / 60%);
+.map-marker-pin .pin-body {
+  display: block;
+  width: 48px;
+  height: 58px;
+  pointer-events: none;
 }
 
-.map-character .nm {
+.map-marker-pin .head {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  overflow: hidden;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 800;
+  color: #111;
+  background: #fff7ed;
+}
+
+.map-marker-pin .head img,
+.map-marker-pin img.head {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.map-marker-pin .nm {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 2px);
+  transform: translateX(-50%);
   font-size: 11px;
   font-weight: 700;
-  background: rgb(0 0 0 / 70%);
+  background: rgb(0 0 0 / 75%);
   padding: 1px 6px;
   border-radius: 6px;
   white-space: nowrap;
+  pointer-events: none;
 }
 
-.map-character-marker {
+.map-marker-pin.character .head {
+  box-shadow: 0 0 0 2px var(--marker-character);
+}
+
+.map-marker-pin.monster .head {
+  box-shadow: 0 0 0 2px var(--marker-monster-outline);
+}
+
+.map-marker-leaflet {
   background: none;
   border: none;
 }
@@ -1672,6 +1717,35 @@ textarea {
   background: rgb(21 21 28 / 92%);
 }
 
+.map-filter-btn {
+  flex: none;
+  position: relative;
+}
+
+.map-filter-btn.has-off::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 1px solid var(--accent-ink);
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.filter-chips .chip.off {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
 .map-ctrl {
   position: absolute;
   right: 12px;
@@ -1707,6 +1781,11 @@ textarea {
   place-items: center;
   color: inherit;
   cursor: pointer;
+}
+
+.zbtn.on {
+  border-color: var(--accent);
+  background: #2b2210;
 }
 
 .map-hint {

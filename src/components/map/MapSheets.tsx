@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { RichTextView } from "@/components/editor/RichTextView";
-import { VisibilityBadge } from "@/components/world/display";
+import { Avatar, VisibilityBadge } from "@/components/world/display";
 import { ContentVisibilitySelect } from "@/components/world/VisibilitySelect";
+import { apiFetch } from "@/lib/client/api-fetch";
 import { PIN_TYPE_META, pinTypeIconUrl, type PinType } from "@/lib/map/pin-types";
-import type { MarkerDto, PinDetails, PlaceableCharacterDto } from "@/lib/map/types";
+import type { MarkerDto, MonsterMarkerDto, PinDetails, PlaceableCharacterDto } from "@/lib/map/types";
 import type { RichDoc } from "@/lib/editor/rich-text";
 import type { ContentVisibility } from "@/lib/authz";
+import type { MonsterSummary } from "@/lib/domain/monsters";
+import { MONSTER_KIND_LABEL } from "@/lib/monsters/labels";
+import { MonsterBossMark, MonsterRarityPill } from "@/components/monsters/MonsterRarityPill";
 
 export function Sheet({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   return (
@@ -234,6 +238,188 @@ export function PlaceCharacterSheet({
             </div>
           </button>
         ))}
+      </div>
+    </Sheet>
+  );
+}
+
+export function PlaceMonsterSheet({
+  worldId,
+  onPick,
+  onClose,
+}: {
+  worldId: string;
+  onPick: (monsterId: string) => void;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [monsters, setMonsters] = useState<MonsterSummary[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void apiFetch<{ monsters: MonsterSummary[] }>(`/api/worlds/${worldId}/monsters`).then((result) => {
+      if (cancelled) return;
+      if (result.ok) setMonsters(result.data.monsters);
+      else {
+        setMonsters([]);
+        setLoadError(result.error);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [worldId]);
+
+  const needle = query.trim().toLowerCase();
+  const filtered = (monsters ?? []).filter((row) =>
+    needle ? row.name.toLowerCase().includes(needle) : true,
+  );
+
+  return (
+    <Sheet title="Monster wählen" onClose={onClose}>
+      <p className="small muted">
+        Position steht. Wähle das Monster — startet als „nur ich“. Schließen ohne Auswahl = Abbrechen.
+      </p>
+      <input
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Suche nach Name…"
+        aria-label="Monster suchen"
+        style={{ marginTop: 12 }}
+      />
+      <div className="list" style={{ marginTop: 8 }}>
+        {monsters === null ? <div className="empty">Laden…</div> : null}
+        {loadError ? <p className="chat-error">{loadError}</p> : null}
+        {monsters && filtered.length === 0 ? <div className="empty">Keine Monster gefunden.</div> : null}
+        {filtered.map((monster) => (
+          <button
+            key={monster.id}
+            type="button"
+            className="item"
+            style={{ width: "100%" }}
+            onClick={() => onPick(monster.id)}
+          >
+            <Avatar
+              name={monster.name}
+              image={monster.portraitId ? `/api/files/${monster.portraitId}` : null}
+            />
+            <div className="grow" style={{ textAlign: "left" }}>
+              {monster.name}
+              <div className="kind">{MONSTER_KIND_LABEL[monster.kind]}</div>
+            </div>
+            <MonsterRarityPill rarity={monster.rarity} />
+            <MonsterBossMark isBoss={monster.isBoss} />
+          </button>
+        ))}
+      </div>
+    </Sheet>
+  );
+}
+
+export function MonsterMarkerSheet({
+  marker,
+  staff,
+  actorId,
+  href,
+  onClose,
+  onRemove,
+  onVisibility,
+  onCopy,
+}: {
+  marker: MonsterMarkerDto;
+  staff: boolean;
+  actorId: string;
+  href: string;
+  onClose: () => void;
+  onRemove: () => void;
+  onVisibility: (visibility: ContentVisibility) => void;
+  onCopy?: () => void;
+}) {
+  const allowOwner = marker.ownerId === actorId;
+  return (
+    <Sheet title={marker.name} onClose={onClose}>
+      <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <Avatar name={marker.name} image={marker.imageUrl} />
+        <div className="grow">
+          <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+            <MonsterRarityPill rarity={marker.rarity} />
+            <MonsterBossMark isBoss={marker.isBoss} />
+            <VisibilityBadge visibility={marker.visibility} />
+          </div>
+        </div>
+      </div>
+      {staff ? (
+        <div className="stack" style={{ marginTop: 14 }}>
+          <ContentVisibilitySelect
+            value={marker.visibility}
+            onChange={onVisibility}
+            allowOwner={allowOwner}
+            id="monster-marker-visibility"
+          />
+        </div>
+      ) : (
+        <p className="small muted" style={{ marginTop: 14 }}>
+          Nur Lesen — Verschieben und Entfernen nur für die Spielleitung.
+        </p>
+      )}
+      <div className="row" style={{ marginTop: 16, flexWrap: "wrap", gap: 8 }}>
+        <a className="btn grow" href={href}>
+          Zum Monster
+        </a>
+        {staff && onCopy ? (
+          <button type="button" className="btn grow" onClick={onCopy}>
+            Kopieren
+          </button>
+        ) : null}
+        {staff ? (
+          <button type="button" className="btn danger" onClick={onRemove}>
+            Entfernen
+          </button>
+        ) : null}
+      </div>
+    </Sheet>
+  );
+}
+
+export function MapFilterSheet({
+  cats,
+  hidden,
+  onToggle,
+  onClear,
+  onClose,
+}: {
+  cats: ReadonlyArray<{ key: string; label: string }>;
+  hidden: readonly string[];
+  onToggle: (key: string) => void;
+  onClear: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Sheet title="Kartenfilter" onClose={onClose}>
+      <p className="small muted">Ausgeblendete Kategorien bleiben nach Neuladen aus (dieses Gerät).</p>
+      <div className="filter-chips">
+        {cats.map((cat) => {
+          const on = !hidden.includes(cat.key);
+          return (
+            <button
+              key={cat.key}
+              type="button"
+              className={on ? "chip on" : "chip off"}
+              onClick={() => onToggle(cat.key)}
+            >
+              {cat.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="row" style={{ marginTop: 12, gap: 8 }}>
+        <button type="button" className="btn grow" onClick={onClear} disabled={hidden.length === 0}>
+          Alle an
+        </button>
+        <button type="button" className="btn grow" onClick={onClose}>
+          Schließen
+        </button>
       </div>
     </Sheet>
   );

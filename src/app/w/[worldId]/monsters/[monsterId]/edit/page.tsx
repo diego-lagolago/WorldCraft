@@ -45,7 +45,7 @@ export default async function EditMonsterPage({
         portraitId: monster.portraitId,
         kind: monster.kind,
         rarity: monster.rarity,
-        isLegendary: monster.isLegendary,
+        isBoss: monster.isBoss,
         danger: monster.danger,
         size: monster.size,
         habitatArticleId: monster.habitatArticleId,

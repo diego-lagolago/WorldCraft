@@ -4,7 +4,9 @@
 **Datum:** 2026-09-22
 **Änderung 2026-09-23 (Plan `004`):** Enum `content_visibility` (`owner_only`, `gm_only`, `published`) für Artikel, Quests, Pins, Quest-Kapitel; `visibility_status` bleibt für Universen und Karten. Spalte `owner_id` an Artikeln, Quests, Pins, Kapiteln. Neue Tabellen `quest_chapters`, `quest_notes`. Regeln `APP-VIS-OWNER`, `APP-CHAPTER-REL`, `APP-NOTE-VERSION`, `APP-NOTE-NO-REL`.
 **Änderung 2026-09-23 (Plan `005`, M1–M7 / PR1–PR6):** Tabelle `monsters`; Enums `monster_kind`, `monster_rarity`, `monster_danger`, `monster_size`; `content_kind` um `monster`; `relations` um `source_monster_id` / `target_monster_id` (COALESCE, CHECK, Unique). Owner und dreistufige Sichtbarkeit wie Artikel.
-**Bezug:** `.ai/architecture/datenmodell-fachlich.md` (freigegeben 2026-09-22, Plan `004`/`005` 2026-09-23), ADR-001 (PostgreSQL + Drizzle + Better Auth), ADR-003 (relative Position 0–1), ADR-004 (TipTap-JSON + Klartext)
+**Änderung 2026-09-24 (Owner):** `monsters.is_legendary` → `is_boss`; UI „Boss“ mit Totenschädel statt Pill. Seltenheits-Labels deutsch.
+**Änderung 2026-09-23 (Plan `006`, K1–K4):** Tabelle `monster_markers` (beliebig viele pro Monster); Stecknadel-Darstellung und Kartenfilter in ADR-003.
+**Bezug:** `.ai/architecture/datenmodell-fachlich.md` (freigegeben 2026-09-22, Plan `004`/`005`/`006` 2026-09-23), ADR-001 (PostgreSQL + Drizzle + Better Auth), ADR-003 (relative Position 0–1), ADR-004 (TipTap-JSON + Klartext)
 **Nicht Ziel:** SQL-Migrationen oder Drizzle-Dateien — die entstehen im Grundgerüst (T-007) und in den Folgeplänen. Dieses Dokument ist die verbindliche Vorlage dafür.
 
 **Leseregel:** Fachliche Namen bleiben Deutsch. Tabellen- und Spaltennamen sind Englisch/`snake_case` (Drizzle, Better Auth). Fachliche Enum-Werte werden intern als englische Schlüssel gespeichert; die Oberfläche zeigt die deutschen Bezeichnungen.
@@ -41,8 +43,10 @@ erDiagram
     universes ||--o{ maps : has
     maps ||--o{ pins : carries
     maps ||--o{ character_markers : shows
+    maps ||--o{ monster_markers : shows
     characters ||--o{ world_participations : brought
     characters ||--o{ character_markers : appears_as
+    monsters ||--o{ monster_markers : appears_as
     characters ||--o{ journal_entries : writes
     characters ||--o{ character_images : has
     characters ||--o{ quest_participants : named_in
@@ -82,7 +86,7 @@ Relationen verbinden Artikel, Quests, Charaktere, Pins, Universen und Monster po
 | Typ | Schlüssel (DB) | Fachlich |
 |---|---|---|
 | `visibility_status` | `published`, `gm_only` | veröffentlicht, nur Spielleitung — **nur** Universen und Karten (Karten-Ausnahme) |
-| `content_visibility` | `owner_only`, `gm_only`, `published` | nur ich, nur Spielleitung, veröffentlicht — Artikel, Quests, Quest-Kapitel, Pins, Monster |
+| `content_visibility` | `owner_only`, `gm_only`, `published` | nur ich, nur Spielleitung, veröffentlicht — Artikel, Quests, Quest-Kapitel, Pins, Monster, Monster-Marker |
 | `membership_role` | `game_master`, `master`, `player` | Game Master, Master, Player |
 | `invite_validity` | `one_day`, `seven_days`, `unlimited` | 1 Tag, 7 Tage, unbegrenzt |
 | `pin_type` | `danger`, `boss`, `house`, `city`, `treasure`, `landmark`, `fishing`, `plants`, `dungeon`, `quest`, `teleporter`, `shop` | Gefahr, Boss, Haus, Stadt, Schatz, Stern, Angeln, Pflanzen, Dungeon, Quest, Teleporter, Shop |
@@ -92,7 +96,7 @@ Relationen verbinden Artikel, Quests, Charaktere, Pins, Universen und Monster po
 | `content_kind` | `article`, `quest`, `character`, `pin`, `universe`, `monster` | artikel, quest, charakter, pin, universum, monster |
 | `relation_origin` | `mention`, `template_field`, `participation`, `manual` | Erwähnung, Vorlagenfeld, Beteiligung, manuell |
 | `monster_kind` | `beast`, `undead`, `demon`, `dragon`, `humanoid`, `construct`, `aberration`, `plant`, `magical`, `other` | Bestie, Untoter, Dämon, Drache, Humanoid, Konstrukt, Aberration, Pflanze, Magisch, sonstiges |
-| `monster_rarity` | `common`, `uncommon`, `rare`, `epic`, `legendary` | Common, Uncommon, Rare, Epic, Legendary (UI-Labels englisch) |
+| `monster_rarity` | `common`, `uncommon`, `rare`, `epic`, `legendary` | Gewöhnlich, Ungewöhnlich, Selten, Episch, Legendär (UI-Labels deutsch, Owner 2026-09-24) |
 | `monster_danger` | `harmless`, `dangerous`, `deadly`, `devastating`, `divine`, `apocalyptic` | Harmlos, Gefährlich, Tödlich, Verheerend, Göttlich, Apokalyptisch |
 | `monster_size` | `tiny`, `small`, `medium`, `large`, `gigantic` | Winzig, Klein, Durchschnitt, Groß, Gigantisch |
 
@@ -321,7 +325,7 @@ Gehört zu einer Welt. Charakterblatt wie `characters` (Abschnitte 3.8.1 / 3.8.2
 | `bio_tsv` | tsvector generated | ✅ | aus `name` und `bio_plain`, Konfiguration `german`; GIN-Index (PR4). Kein `name_tsv`. |
 | `kind` | `monster_kind` | ✅ | Default `other` |
 | `rarity` | `monster_rarity` | ✅ | Default `common` |
-| `is_legendary` | boolean | ✅ | Default `false` |
+| `is_boss` | boolean | ✅ | Default `false`; UI „Boss“, Anzeige Totenschädel (Owner 2026-09-24; zuvor `is_legendary`) |
 | `danger` | `monster_danger` | ✅ | Default `harmless` |
 | `size` | `monster_size` | ✅ | Default `medium` |
 | `habitat_article_id` | uuid FK `articles` ON DELETE SET NULL | – | nur Artikel `template_type = 'place'` derselben Welt (`APP-MONSTER-HABITAT`); Relation `origin = template_field`, `template_field_key = 'habitat'` |
@@ -372,6 +376,20 @@ Indizes: `(world_id)`, `(world_id, owner_id)`, GIN `pg_trgm` auf `name`, GIN auf
 | Protokollfelder | | ✅ | |
 
 `UNIQUE (character_id)` (`UQ-MARKER-CHARACTER`, Owner 2026-09-23). Früher `UNIQUE (character_id, map_id)`. Entstehen nicht automatisch (`APP-MARKER-MANUAL`). Entfernen = Zeile löschen. Platzieren auf einer anderen Karte löscht den bisherigen Marker.
+
+### 3.11a `monster_markers` (Monster-Marker)
+
+| Spalte | Typ | Pflicht | Regel |
+|---|---|:-:|---|
+| `id` | uuid PK | ✅ | |
+| `monster_id` | uuid FK `monsters` ON DELETE CASCADE | ✅ | |
+| `map_id` | uuid FK `maps` ON DELETE CASCADE | ✅ | |
+| `pos_x`, `pos_y` | numeric(8,7) | ✅ | 0–1 |
+| `visibility` | `content_visibility` | ✅ | Default `owner_only` |
+| `owner_id` | text FK `users` | ✅ | platzierender Benutzer; Löschverhalten wie `created_by` |
+| Protokollfelder | | ✅ | |
+
+Kein Unique-Constraint (Plan `006`, K1: beliebig viele Marker pro Monster, auch auf derselben Karte). Index auf `map_id`. Anlegen immer mit `owner_only` (`APP-MONSTER-MARKER`). Entfernen = Zeile löschen. Das zugeordnete Monster ist unveränderlich (kein `PATCH` auf `monster_id`).
 
 ### 3.12 `articles` (Artikel)
 
@@ -563,7 +581,7 @@ Jede Eigenschaft aus `.ai/architecture/datenmodell-fachlich.md`. Nichts ausgelas
 | Inhaltsverweis Art | `content_kind` / `source_kind` / `target_kind` |
 | Inhaltsverweis Ziel | Exclusive-FK plus generated `source_id` / `target_id` |
 | Sichtbarkeitsstatus (zweistufig) | `visibility_status` an `universes`, `maps` |
-| Sichtbarkeitsstatus (dreistufig) | `content_visibility` an `pins`, `articles`, `quests`, `quest_chapters`, `monsters` |
+| Sichtbarkeitsstatus (dreistufig) | `content_visibility` an `pins`, `articles`, `quests`, `quest_chapters`, `monsters`, `monster_markers` |
 | Owner | `owner_id` an `pins`, `articles`, `quests`, `quest_chapters` |
 | Rich-Text | `*_json` + `*_plain` |
 | Erwähnung im Text | TipTap-Mention-Node `{ id, label, art }` in `*_json` |
@@ -671,7 +689,7 @@ Jede Eigenschaft aus `.ai/architecture/datenmodell-fachlich.md`. Nichts ausgelas
 | Name | `monsters.name` |
 | Profilbild | `monsters.portrait_id` → `files` |
 | Charakterblatt | wie `characters` (Klasse, Attribute, Skills, Abilities, Textfelder, Bio) |
-| Art / Seltenheit / Legendär / Gefahr / Größe | `kind`, `rarity`, `is_legendary`, `danger`, `size` |
+| Art / Seltenheit / Boss / Gefahr / Größe | `kind`, `rarity`, `is_boss`, `danger`, `size` |
 | Lebensraum | `habitat_article_id` → `articles` |
 | Sichtbarkeit | `monsters.visibility` (`content_visibility`) |
 | Owner | `monsters.owner_id` |
@@ -691,6 +709,14 @@ Jede Eigenschaft aus `.ai/architecture/datenmodell-fachlich.md`. Nichts ausgelas
 |---|---|
 | Charakter / Karte | `character_markers.character_id`, `map_id` |
 | Position | `character_markers.pos_x`, `pos_y` |
+
+### 3.10a Monster-Marker
+
+| Fachlich | Schema |
+|---|---|
+| Monster / Karte | `monster_markers.monster_id`, `map_id` |
+| Position | `monster_markers.pos_x`, `pos_y` |
+| Sichtbarkeit / Owner | `monster_markers.visibility`, `owner_id` |
 
 ### 3.11–3.12 Artikel / Vorlage
 
@@ -767,7 +793,7 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 | R-2.1-3 | Universum erwähnbar, Quelle und Ziel | `content_kind` enthält `universe` |
 | R-2.1-3a | Monster erwähnbar, Quelle und Ziel | `content_kind` enthält `monster`; Exclusive-FKs `source_monster_id` / `target_monster_id` |
 | R-2.1-4 | Welt kein Inhaltsverweis | keine `content_kind = world`, keine Relationen auf `worlds` |
-| R-2.2-1 | Default Sichtbarkeit | Universen/Karten: DB-Default `gm_only` (`visibility_status`). Artikel/Quests/Pins/Kapitel/Monster: DB-Default `owner_only` (`content_visibility`) |
+| R-2.2-1 | Default Sichtbarkeit | Universen/Karten: DB-Default `gm_only` (`visibility_status`). Artikel/Quests/Pins/Kapitel/Monster/Monster-Marker: DB-Default `owner_only` (`content_visibility`) |
 | R-2.2-2 | Erstes Universum veröffentlicht | `APP-WORLD-CREATE` setzt erstes Universum `published` |
 | R-2.2-3 | Vererbung nach unten | `APP-VIS-INHERIT` (Abschnitt 8), keine denormalisierte Spalte; gilt auch Quest → Kapitel und Quest → Notizblock |
 | R-2.2-4 | Veröffentlichen erbt nicht nach unten | jeder Datensatz behält eigene `visibility` |
@@ -819,6 +845,10 @@ Jede mit „Regel“ gekennzeichnete Aussage des fachlichen Modells. Kürzel: `U
 | R-3.10-1 | Höchstens ein Marker pro Charakter (alle Karten) | `UQ-MARKER-CHARACTER` |
 | R-3.10-2 | Marker nicht automatisch | `APP-MARKER-MANUAL` |
 | R-3.10-3 | Platzieren nur auf sichtbarer Karte (Besitzer) | `APP-AUTHZ` + `APP-VIS-INHERIT` |
+| R-3.10a-1 | Beliebig viele Monster-Marker pro Monster | kein Unique auf `monster_markers` (Plan `006`, K1) |
+| R-3.10a-2 | Nur Spielleitung schreibt; Anlegen immer `owner_only` | `APP-MONSTER-MARKER` + `APP-AUTHZ` |
+| R-3.10a-3 | Sichtbar nur mit Monster und Karte | `APP-VIS-INHERIT` (Marker → Monster + Karte → Universum) |
+| R-3.10a-4 | Zugeordnetes Monster unveränderlich | kein `PATCH` auf `monster_id` |
 | R-3.11-1 | Vorlagentyp änderbar, Felder verwerfen | `APP-TEMPLATE-SWITCH` |
 | R-3.12-1 | Vorlagen im Code, neue ohne Schemaänderung | JSONB + Registry |
 | R-3.13-1 | Beteiligte nur mitgebrachte Charaktere | `APP-QUEST-PART` |
@@ -985,9 +1015,9 @@ Die Empfehlung bleibt A. B gewinnt bei Einfachheit, verliert bei den Löschregel
 |---|---|
 | **Welt** | `ON DELETE CASCADE` von `worlds` auf Mitgliedschaften, Links, Universen (→ Karten → Pins/Marker), Artikel, Quests (→ Participants), Monster, Relationen, Teilnahmen, Tagebuch dieser Welt, Chat. `files` werden nicht automatisch gelöscht (kein CASCADE von Welt auf `files`). `APP-FILE-GC` entfernt verwaiste Dateien nach dem Commit. **Charaktere** haben keine Welt-FK und bleiben. |
 | **Universum** | CASCADE auf Karten → Pins/Marker. Relationen mit Universum oder seinen Pins als Ende: Pin-CASCADE plus Universum-CASCADE. `TRIG-UNIVERSE-LAST` blockiert das letzte Universum. Erwähnungen in anderen Texten bleiben Nodes; `APP-MENTION-RENDER` zeigt `label` ohne Link. |
-| **Karte** | CASCADE auf Pins und Marker. Relationen der Pins über Pin-CASCADE. |
+| **Karte** | CASCADE auf Pins, Charakter-Marker und Monster-Marker. Relationen der Pins über Pin-CASCADE. |
 | **Artikel / Quest** | CASCADE auf deren Relationen-FKs. Quest zusätzlich Participants, Kapitel (`quest_chapters`) und Notizblock (`quest_notes`). Ort-Artikel: `monsters.habitat_article_id` SET NULL; Habitat-Relation fällt weg. Mentions in anderen Texten: Render ohne Link. |
-| **Monster** | CASCADE auf Relationen mit diesem Monster (`source_monster_id` / `target_monster_id`). Mentions: Render ohne Link. |
+| **Monster** | CASCADE auf Relationen mit diesem Monster (`source_monster_id` / `target_monster_id`) und auf `monster_markers`. Mentions: Render ohne Link. |
 | **Quest-Kapitel** | Zeile löschen; `APP-CHAPTER-REL` / `APP-REL-RECALC` berechnet Relationen der Quest neu. |
 | **Pin** | CASCADE auf Relationen mit diesem Pin. |
 | **Mitgliedschaft** (Austritt/Entfernen) | **Kein DELETE.** `archived_at = now()` an Mitgliedschaft und an allen `world_participations` des Benutzers in dieser Welt. Marker, Tagebuch, Relationen, Quest-Beteiligungen, Chat, von ihm erstellte Inhalte bleiben. Sichtbarkeit über `APP-AUTHZ` / `APP-REL-VISIBLE`. Re-Join: `archived_at` der Mitgliedschaft leeren, Rolle `player`. Wieder-mitbringen: `archived_at` der Teilnahme leeren. |
@@ -1078,7 +1108,8 @@ canSeePublished(user, world)    = isActiveMember
 1. der Benutzer aktives Mitglied ist, und
 2. die Sichtbarkeitsstufe nach `APP-VIS-OWNER` erlaubt ist, und
 3. alle übergeordneten Ebenen sichtbar sind:
-   - Pin / Marker → Karte sichtbar → Universum sichtbar
+   - Pin / Charakter-Marker → Karte sichtbar → Universum sichtbar
+   - Monster-Marker → Monster sichtbar **und** Karte sichtbar → Universum sichtbar
    - Karte → Universum sichtbar
    - Quest-Kapitel / Quest-Notizblock → Quest sichtbar
    - Universum / Artikel / Quest / Monster: keine Eltern-Ebene
@@ -1115,6 +1146,7 @@ Marker zusätzlich: Teilnahme des Charakters nicht archiviert.
 | Charakter | Besitzer immer; sonst `isActiveMember` und nicht archivierte Teilnahme | nur Besitzer |
 | Welt-Teilnahme | `isActiveMember` und nicht archiviert | mitbringen/reaktivieren: Besitzer |
 | Charakter-Marker | Mitglied + Teilnahme aktiv + Karte sichtbar | Besitzer oder `isStaff`; Besitzer nur auf sichtbarer Karte |
+| Monster-Marker | `APP-VIS-OWNER` + Monster sichtbar + Karte sichtbar | Anlegen/Verschieben/Löschen: `isStaff`. Sichtbarkeit: Owner oder `isStaff` bei Sichtbarkeit; `owner_only` setzen: nur Owner (Plan `006`, K2) |
 | Artikel, Quest | `APP-VIS-OWNER` | Anlegen: `isStaff` (setzt `owner_id`). Bearbeiten/Löschen: Owner oder `isStaff`, jeweils nur wenn sichtbar. `owner_only` setzen: nur Owner |
 | Monster | `APP-VIS-OWNER` | wie Artikel/Quest (Plan `005`, M4) |
 | Quest-Kapitel | Quest sichtbar + `APP-VIS-OWNER` | wie Artikel/Quest |
@@ -1123,7 +1155,7 @@ Marker zusätzlich: Teilnahme des Charakters nicht archiviert.
 | Tagebuch | `private` → Besitzer; `shared_with_gm` → Besitzer + Staff der Welt. Archivierte Teilnahme: niemand in der Welt | nur Besitzer |
 | Chat | `isActiveMember` | schreiben: Mitglied. update: niemand. delete: Autor (ohne Dice) oder Staff (ohne Dice) |
 
-Default neuer Inhalte: Artikel/Quest/Kapitel/Pin → `owner_only`; Universum/Karte → `gm_only`, außer erstes Universum (`published`).
+Default neuer Inhalte: Artikel/Quest/Kapitel/Pin/Monster/Monster-Marker → `owner_only`; Universum/Karte → `gm_only`, außer erstes Universum (`published`).
 
 ---
 
@@ -1138,6 +1170,7 @@ Default neuer Inhalte: Artikel/Quest/Kapitel/Pin → `owner_only`; Universum/Kar
 | `maps (universe_id)` | |
 | `pins (map_id)` | |
 | `character_markers (map_id)` | |
+| `monster_markers (map_id)` | |
 | `world_participations (world_id) WHERE archived_at IS NULL` | |
 | `articles (world_id)`, `quests (world_id)`, `journal_entries (world_id, character_id)` | |
 | `articles (world_id, owner_id)`, `quests (world_id, owner_id)` | Owner-Filter |

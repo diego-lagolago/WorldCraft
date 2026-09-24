@@ -43,13 +43,13 @@ export const MONSTER_KIND_LABEL: Record<MonsterKind, string> = {
   other: "sonstiges",
 };
 
-/** Rarity pill labels stay English (Plan 005 Begriffe). */
+/** Seltenheits-Pill: deutsche Labels (Owner 2026-09-24; zuvor englisch). */
 export const MONSTER_RARITY_LABEL: Record<MonsterRarity, string> = {
-  common: "Common",
-  uncommon: "Uncommon",
-  rare: "Rare",
-  epic: "Epic",
-  legendary: "Legendary",
+  common: "Gewöhnlich",
+  uncommon: "Ungewöhnlich",
+  rare: "Selten",
+  epic: "Episch",
+  legendary: "Legendär",
 };
 
 export const MONSTER_DANGER_LABEL: Record<MonsterDanger, string> = {

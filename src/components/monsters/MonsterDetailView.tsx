@@ -4,6 +4,7 @@ import { SheetBodyView } from "@/components/sheet/SheetBodyView";
 import { worldPath } from "@/components/shell/nav";
 import { Avatar, VisibilityBadge } from "@/components/world/display";
 import type { MembershipRole } from "@/lib/authz/types";
+import { contentHref } from "@/lib/content-href";
 import type { ResolvedMention } from "@/lib/domain/mention-resolve";
 import {
   MONSTER_DANGER_LABEL,
@@ -11,7 +12,7 @@ import {
   MONSTER_SIZE_LABEL,
 } from "@/lib/monsters/labels";
 import type { MonsterDetails } from "@/lib/domain/monsters";
-import { MonsterLegendaryPill, MonsterRarityPill } from "./MonsterRarityPill";
+import { MonsterBossMark, MonsterRarityPill } from "./MonsterRarityPill";
 import "@/components/sheet/sheet.css";
 
 function sizeLabel(size: MonsterDetails["size"]): string {
@@ -54,12 +55,12 @@ export function MonsterDetailView({
           </div>
           <div className="row wrap" style={{ marginTop: 6, gap: 6 }}>
             <MonsterRarityPill rarity={monster.rarity} />
-            <MonsterLegendaryPill isLegendary={monster.isLegendary} />
+            <MonsterBossMark isBoss={monster.isBoss} />
             <VisibilityBadge visibility={monster.visibility} />
           </div>
         </div>
         {canEdit ? (
-          <Link className="btn sm" href={worldPath(worldId, `/monsters/${monster.id}/edit`)}>
+          <Link className="btn sm" href={contentHref(worldId, "monster", monster.id, "edit")}>
             Bearbeiten
           </Link>
         ) : null}
@@ -76,7 +77,7 @@ export function MonsterDetailView({
           <dt>Lebensraum</dt>
           <dd>
             {habitat ? (
-              <Link className="mention" href={worldPath(worldId, `/articles/${habitat.id}`)}>
+              <Link className="mention" href={contentHref(worldId, "article", habitat.id)}>
                 {habitat.title}
               </Link>
             ) : (

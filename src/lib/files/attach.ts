@@ -11,6 +11,7 @@ import {
 import { fail, type AuthzResult, type MembershipRow } from "@/lib/authz";
 import { mapDbError } from "@/lib/domain/db-errors";
 import { MONSTER_NOT_FOUND } from "@/lib/domain/monsters";
+import { publishMapsForMonster } from "@/lib/map/monster-marker-events";
 import { worldEvents } from "@/lib/realtime/events";
 import { authorizeImageWrite, type ImageKind } from "./authorize";
 import { collectUnreferencedFiles } from "./gc";
@@ -194,6 +195,7 @@ export async function attachImage(input: {
       if (mapped) return mapped;
       throw error;
     }
+    await publishMapsForMonster(input.worldId, monster.id);
     return { ok: true, data: { fileId: saved.id } };
   }
 
