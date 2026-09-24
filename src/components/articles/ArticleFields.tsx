@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { ResolvedMention } from "@/lib/domain/mention-resolve";
 import { mentionKey } from "@/lib/editor/mentions";
+import { MonsterRarityPill } from "@/components/monsters/MonsterRarityPill";
+import { MONSTER_RARITIES, type MonsterRarity } from "@/lib/monsters/labels";
 import type { StoredTemplateFields, StoredTemplateValue } from "@/lib/templates/fields";
 import { templateOf, type TemplateField, type TemplateType } from "@/lib/templates/registry";
 
@@ -12,6 +14,9 @@ function formatValue(
 ): ReactNode {
   if (value === undefined || value === "") return <span className="muted">–</span>;
   if (field.type === "select" && typeof value === "string") {
+    if (field.display === "rarity" && (MONSTER_RARITIES as readonly string[]).includes(value)) {
+      return <MonsterRarityPill rarity={value as MonsterRarity} />;
+    }
     return field.options.find((option) => option.value === value)?.label ?? value;
   }
   if (field.type === "ref" && typeof value === "object") {

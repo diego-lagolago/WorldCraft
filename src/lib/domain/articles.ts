@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { articles, characters, worldParticipations } from "@/db/schema";
@@ -83,6 +83,9 @@ export type ArticleDetails = ArticleSummary & {
   bodyJson: unknown;
   templateFields: StoredTemplateFields;
 };
+
+/** Compact list shape; the list alone selects item rarity for its pill. */
+export type ArticleListItem = ArticleSummary & { rarity: string | null };
 
 const summaryColumns = {
   id: articles.id,
@@ -176,7 +179,7 @@ export async function listArticles(
   role: MembershipRole,
   viewerId: string,
   templateType?: TemplateType | "all",
-): Promise<ArticleSummary[]> {
+): Promise<ArticleListItem[]> {
   const filters = [
     eq(articles.worldId, worldId),
     visibleContentWhere({ visibility: articles.visibility, ownerId: articles.ownerId }, { role, userId: viewerId }),
@@ -184,7 +187,7 @@ export async function listArticles(
   if (templateType && templateType !== "all") filters.push(eq(articles.templateType, templateType));
 
   const rows = await db
-    .select(summaryColumns)
+    .select({ ...summaryColumns, rarity: sql<string | null>`template_fields->>'rarity'` })
     .from(articles)
     .where(and(...filters))
     .orderBy(asc(articles.title));

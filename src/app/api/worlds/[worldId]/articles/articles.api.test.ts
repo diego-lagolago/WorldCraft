@@ -92,6 +92,30 @@ describe("T-009 (3): race articles and person references", () => {
   });
 });
 
+describe("T-009 (4): item rarity list projection", () => {
+  it("returns rarity only for list rows, not create or detail summaries", async () => {
+    const createdItem = await create(gm, {
+      title: "Legendärer Fisch",
+      templateType: "item",
+      templateFields: { kind: "fish", rarity: "legendary" },
+    });
+    expect(createdItem).not.toHaveProperty("rarity");
+
+    const list = await api<{ articles: { id: string; rarity: string | null }[] }>(
+      gm,
+      "GET",
+      w("/articles?templateType=item"),
+    );
+    expect(list.status).toBe(200);
+    expect(list.data.articles.find((article) => article.id === createdItem.id)).toMatchObject({ rarity: "legendary" });
+
+    const detail = await api<{ article: Record<string, unknown> }>(gm, "GET", w(`/articles/${createdItem.id}`));
+    expect(detail.status).toBe(200);
+    expect(detail.data.article).not.toHaveProperty("rarity");
+    expect(detail.data.article.templateFields).toMatchObject({ rarity: "legendary" });
+  });
+});
+
 describe("T-009 (2)/(5): fields, refs and first_edited_at", () => {
   let personId = "";
   let placeId = "";
