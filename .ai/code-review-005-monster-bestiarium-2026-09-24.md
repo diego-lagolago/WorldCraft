@@ -15,7 +15,7 @@
 | CR-006 | Toter Code | niedrig | behoben | Ungenutzte Seltenheit aus verknüpften Zielen entfernt. |
 | CR-007 | Duplizierung & Modularisierung | niedrig | behoben | Typisiertes deutsches Label-Wörterbuch eingeführt und Verbraucher umgestellt. |
 | CR-008 | Lesbarkeit / Konsistenz | niedrig | behoben | Kartenansicht leitet Reihenfolge ab und zeigt Porträts. |
-| CR-009 | Lesbarkeit & Wartbarkeit | niedrig | offen | Regression: `map/repository.ts` (Plan 006) kopiert den 404-Text erneut als Literal. |
+| CR-009 | Lesbarkeit & Wartbarkeit | niedrig | behoben | Alle Monster-404-Pfade nutzen `MONSTER_NOT_FOUND`, auch `map/repository.ts`. |
 | CR-010 | Runtime-Risiken | niedrig | behoben | Bildarten typisiert; Object-URLs werden beim Unmount freigegeben. |
 | CR-011 | Runtime-Risiken | niedrig | behoben | Einzelbildwechsel werden unter Zeilensperre atomar ausgeführt. |
 | CR-012 | Sicherheit | niedrig | behoben | Nicht lesbare Lebensraum-IDs werden in Liste und Detail maskiert. |
@@ -147,6 +147,8 @@
 ~~Status: behoben.~~ Alle Monster-404-Pfade beziehen dieselbe Konstante aus dem leichtgewichtigen Nachrichtenmodul (und diese wird aus der Domain re-exportiert).
 
 **Status: offen (Review-Check 2026-09-24, Regression erkannt).** Der nach der Baseline hinzugekommene Monster-Marker-Code aus Plan 006 in `src/lib/map/repository.ts` (Monster-Zweig, ca. Z. 1195 und 1202) enthält `fail(404, "Dieses Monster gibt es nicht.")` zweimal als Literal statt `MONSTER_NOT_FOUND` aus `src/lib/monsters/messages.ts`. Das Abnahmekriterium (genau eine Definition außerhalb von Tests) ist damit nicht mehr erfüllt. Die übrigen Stellen (Route, `attach.ts`, `authorize.ts`, Domain) nutzen weiterhin die Konstante.
+
+**Status: behoben (zweiter Review-Check 2026-09-24).** Commit `b0f2266`: `src/lib/map/repository.ts` importiert `MONSTER_NOT_FOUND` aus `src/lib/monsters/messages.ts` statt der zwei Literale. `git grep` findet den Text nur noch in der Konstante.
 
 - **Fundstelle:** `src/lib/domain/monsters.ts` Z. 71 und `src/app/api/worlds/[worldId]/monsters/[monsterId]/route.ts` Z. 11 („Dieses Monster gibt es nicht.“); `src/lib/files/attach.ts` Monster-Zweig und `src/lib/files/authorize.ts` („Monster nicht gefunden.“)
 - **Kategorie:** Lesbarkeit & Wartbarkeit
@@ -290,3 +292,31 @@ Alle Findings CR-001 bis CR-015 sind umgesetzt und in der Tabelle als `behoben` 
 3. **Monster auf der Karte (Plan 006):** `publishMapsForMonster` in `updateMonster` und `deleteMonster` (`src/lib/domain/monsters.ts`), neuer Monster-Zweig in `src/lib/map/repository.ts`, neue Routen `src/app/api/worlds/[worldId]/map/monster-markers/…`, Migration `0022_monster_markers.sql`, `src/lib/map/monster-marker-events.ts` sowie Erweiterungen in `src/lib/realtime/events.ts`. Hier ist die CR-009-Regression entstanden. Fachlich gehört das zu Plan 006 und sollte dort reviewt werden.
 
 **Empfehlung:** Einen vollständigen neuen `/code-review` für 005 braucht es nicht. Die 14 bestätigten Fixes halten, Drift gibt es keine. CR-009 lässt sich mit zwei Zeilen beheben (`MONSTER_NOT_FOUND` in `src/lib/map/repository.ts` importieren), am besten zusammen mit Plan 006. Die Punkte 1 und 2 sind kleine Owner-Entscheidungen, für die sich kein eigenes Review lohnt. Punkt 3 sollte beim `/code-review` für Plan 006 mit abgedeckt werden. Vor dem Commit sollten `npm test`, `npm run test:rechte` und `npm run build` noch einmal laufen, weil der Build laut Umsetzungsvermerk bisher nicht bestätigt ist.
+
+---
+
+## Review-Check 2026-09-24 (zweiter Durchgang)
+
+**Geprüfter Stand:** Commit `b0f2266` (`main`) in einem isolierten Working Tree. Verglichen mit dem Stand des ersten Review-Checks (Fixes committet in `f30217f`), die Abnahmekriterien erneut per `git grep` und Codeinspektion geprüft. `npm test` (242 Tests), `lint` und `typecheck` liefen vor dem Commit `b0f2266` grün; `test:rechte` wurde hier nicht erneut ausgeführt.
+
+### Statusänderungen
+
+| ID | Vorher | Nachher | Beleg |
+|----|--------|---------|-------|
+| CR-009 | offen (Regression) | behoben | `MONSTER_NOT_FOUND` in `map/repository.ts`; Text nur noch in `messages.ts` |
+
+Die übrigen 14 Findings bleiben `behoben`. Keine Regression, kein `drift`.
+
+**Hinweise ohne Statuswirkung:**
+- **CR-004:** Der wörtliche `grep` trifft `"common"`/`"harmless"` als Standardwerte in `src/db/schema.ts` (`.default(...)`) und `MonsterForm.tsx` (`useState<MonsterRarity>`). Das sind typisierte Einzelwerte, keine zweite Werteliste; die Enums beziehen ihre Werte weiter aus `labels.ts`. Stand wie beim ersten Check.
+- **CR-013:** Die vier Treffer für `/monsters/` in `src/components/monsters` sind Importpfade (`@/lib/monsters/labels`), keine Routen.
+- **CR-011:** Unverändert wie im ersten Check vermerkt (Löschpfade ganzer Datensätze).
+
+### Nicht abgedeckte Änderungen
+
+Seit dem ersten Check nur die bereits dort genannten Änderungen aus Plan 006 (jetzt committet in `0711847`, `a310970`) und die Versionsanhebung auf `0.1.4`. Sie gehören zum Review von Plan 006 bzw. zum gezielten Review des Charakter-Platziermodus (Roadmap *Nächste Schritte* Schritt 2).
+
+### Empfehlung
+
+Review 005 ist vollständig erledigt: 15 von 15 Findings `behoben`. Kein erneuter `/code-review` für Plan 005 nötig.
+
