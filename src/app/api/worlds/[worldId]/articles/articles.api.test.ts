@@ -49,13 +49,46 @@ afterAll(async () => {
 });
 
 describe("T-009 (1): template types", () => {
-  it("creates none, person, place, organization and item", async () => {
-    for (const templateType of ["none", "person", "place", "organization", "item"]) {
+  it("creates none, person, place, organization, item and race", async () => {
+    for (const templateType of ["none", "person", "place", "organization", "item", "race"]) {
       const article = await create(gm, { title: `Typ ${templateType}`, templateType });
       expect(article.templateType).toBe(templateType);
     }
     const none = await api<{ article: { templateFields: unknown } }>(gm, "GET", w(`/articles/${created[0]}`));
     expect(none.data.article.templateFields).toEqual({});
+  });
+});
+
+describe("T-009 (3): race articles and person references", () => {
+  it("stores a Person → Rasse template-field relation and rejects other targets", async () => {
+    const race = await create(gm, { title: "Waldelfen", templateType: "race" });
+    const person = await create(gm, {
+      title: "Liora",
+      templateType: "person",
+      templateFields: { race: { kind: "article", id: race.id } },
+    });
+
+    const [relation] = await sql`
+      SELECT origin, template_field_key, source_article_id, target_article_id
+      FROM relations
+      WHERE source_article_id = ${person.id} AND target_article_id = ${race.id}
+    `;
+    expect(relation).toMatchObject({
+      origin: "template_field",
+      template_field_key: "race",
+      source_article_id: person.id,
+      target_article_id: race.id,
+    });
+
+    const place = await create(gm, { title: "Nicht eine Rasse", templateType: "place" });
+    const wrongArticle = await api(gm, "PATCH", w(`/articles/${person.id}`), {
+      templateFields: { race: { kind: "article", id: place.id } },
+    });
+    expect(wrongArticle.status).toBe(400);
+    const wrongCharacter = await api(gm, "PATCH", w(`/articles/${person.id}`), {
+      templateFields: { race: { kind: "character", id: "00000000-0000-4000-8000-0000000000dd" } },
+    });
+    expect(wrongCharacter.status).toBe(400);
   });
 });
 

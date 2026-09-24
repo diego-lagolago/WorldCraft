@@ -11,7 +11,7 @@ import {
   MONSTER_RARITY_LABEL,
 } from "@/lib/monsters/labels";
 
-export const TEMPLATE_TYPES = ["none", "person", "place", "organization", "item"] as const;
+export const TEMPLATE_TYPES = ["none", "person", "place", "organization", "item", "race"] as const;
 export type TemplateType = (typeof TEMPLATE_TYPES)[number];
 
 export type TemplateRefTarget =
@@ -57,6 +57,12 @@ export const TEMPLATES: Record<TemplateType, TemplateDefinition> = {
     fields: [
       { key: "aliases", label: "Andere Namen", type: "text" },
       { key: "occupation", label: "Beruf / Rolle", type: "text" },
+      {
+        key: "race",
+        label: "Rasse",
+        type: "ref",
+        targets: [{ kind: "article", templateType: "race" }],
+      },
       {
         key: "status",
         label: "Status",
@@ -222,6 +228,7 @@ export const TEMPLATES: Record<TemplateType, TemplateDefinition> = {
       },
     ],
   },
+  race: { type: "race", label: "Rasse", plural: "Rassen", fields: [] },
 };
 
 export function isTemplateType(value: unknown): value is TemplateType {

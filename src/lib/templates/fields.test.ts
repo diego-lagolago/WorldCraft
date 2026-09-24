@@ -57,4 +57,13 @@ describe("parseTemplateFields (APP-TEMPLATE-VALIDATE)", () => {
     expect(parsed).toEqual({ ok: true, data: {} });
     expect(templateFieldsHaveValue({})).toBe(false);
   });
+
+  it("only accepts race articles in the person race reference", () => {
+    expect(
+      parseTemplateFields("person", { race: { kind: "article", id: "00000000-0000-4000-8000-0000000000dd" } }),
+    ).toMatchObject({ ok: true });
+    expect(
+      parseTemplateFields("person", { race: { kind: "character", id: "00000000-0000-4000-8000-0000000000dd" } }),
+    ).toMatchObject({ ok: false, status: 400 });
+  });
 });
