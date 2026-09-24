@@ -12,12 +12,30 @@ Reihenfolge der Pläne für WorldCraft. Jeder Plan liegt unter `.ai/feature-task
 | 4 | [`007` Chat-Verbesserungen](feature-tasks/007-chat-verbesserungen.md) | Eigene Nachrichten rechts, statische Avatare, Bearbeiten/Kopieren/Lösch-Bestätigung, Thread umbenennen, gemerkter Aufklapp-Zustand | ✅ abgeschlossen (2026-09-23) |
 | 5 | [`008` Würfel-Sheet wie im Chat-Spike](feature-tasks/008-wuerfel-sheet-wie-spike.md) | Würfel-Sheet an den Chat-Spike angleichen (mehrere Terme, Bonus, Ergebnisfeld); Chat-Zeile unverändert | ✅ abgeschlossen (2026-09-23) |
 | 6 | [`005` Monster (Bestiarium)](feature-tasks/005-monster-bestiarium.md) | Monster als eigener Inhaltstyp mit vollem Charakterblatt, Monster-Feldern und einem Bild; vollwertig in Relationen, Erwähnungen und Suche; Titelbild beim Anlegen von Artikeln | ✅ abgeschlossen (2026-09-23) |
-| 7 | [`006` Monster-Marker, Stecknadeln, Kartenfilter](feature-tasks/006-karten-marker-und-filter.md) | Monster auf Karten, Charakter- und Monster-Marker als Stecknadel mit Spitze auf der Position, Kartenfilter für Charaktere, Monster und Pin-Typen | 🔄 in Arbeit (`/plan-run` seit 2026-09-23); Prototyp freigegeben 2026-09-24 |
-| 8 | [`002` MCP-Server für Claude](feature-tasks/002-mcp-server.md) | Nur lesender Remote-MCP-Server mit OAuth, nutzt die Daten- und Rechteschicht aus `003`/`004` | ⏳ geplant, startet nach `005` (Abgleich mit Monstern) |
+| 7 | [`006` Monster-Marker, Stecknadeln, Kartenfilter](feature-tasks/006-karten-marker-und-filter.md) | Monster auf Karten, Charakter- und Monster-Marker als Stecknadel mit Spitze auf der Position, Kartenfilter für Charaktere, Monster und Pin-Typen | ✅ abgeschlossen (2026-09-24) |
+| 8 | [`002` MCP-Server für Claude](feature-tasks/002-mcp-server.md) | Nur lesender Remote-MCP-Server mit OAuth, nutzt die Daten- und Rechteschicht aus `003`/`004` | ⏭ als Nächstes: Abgleich nach 004–006, dann Plan-Review |
 
-Die Nummern der Pläne geben die Reihenfolge ihrer Entstehung an, nicht die Reihenfolge der Umsetzung: `004` vor `002` (R4); `005` vor `006` (006 setzt Monster voraus); `002` nach `005`, damit der MCP-Server Monster mit abdeckt (Abgleich in `005` T-011).
+Die Nummern der Pläne geben die Reihenfolge ihrer Entstehung an, nicht die Reihenfolge der Umsetzung: `004` vor `002` (R4); `005` vor `006` (006 setzt Monster voraus); `002` nach `006`, damit der MCP-Server Monster und Monster-Marker mit abdeckt (Abgleiche in `004` T-012, `005` T-011 und nach `006`).
 
 Offene Ideen außerhalb dieser Pläne stehen in [`backlog.md`](backlog.md).
+
+## Nächste Schritte (Stand 2026-09-24)
+
+Alle Pläne außer `002` sind abgeschlossen und mit Version `0.1.4` auf Produktion. Reihenfolge der offenen Arbeit:
+
+| # | Schritt | Plan | Werkzeug | Voraussetzung | Wer |
+|---|---|---|---|---|---|
+| 1 | CR-009 aus Review 005 beheben (404-Text in `src/lib/map/repository.ts` wieder über `MONSTER_NOT_FOUND`), danach `/review-check 005` | 005 | Fix, `/review-check` | – | Claude |
+| 2 | Gezieltes Code-Review für die von Review 006 nicht abgedeckten Änderungen: Charakter-Platziermodus (Rechte, Hotkeys, Abgleich mit K10/K12) und Umbau der Kartenleiste; Findings umsetzen, Review-Check | 006 | `/code-review`, `/review-check` | – | Claude + Projektinhaber (Entscheidungen) |
+| 3 | Prod-Smoketest für den Stand `0.1.4`: Quest-Kapitel und Notizblock, dreistufige Sichtbarkeit („nur ich“), Bestiarium mit Bild, Monster-Marker und Kartenfilter, Chat-Nachtrag N1–N3, Würfel-Inline-Eingabe; Ergebnis als eigener Abschnitt in `infrastructure/smoketest.md` | 004–008 | Browser auf Prod | – | Projektinhaber |
+| 4 | Abgleich Plan 002 nach Plan 006 in `architecture.md` (neuer Unterpunkt „nach Plan 006“): `karte_lesen` und Monster-Marker, Filter `art` um Monster | 002 | Doku | – | Claude |
+| 5 | Offene Fragen aus den Abgleichen nach 004, 005 und 006 beantworten (u. a. `owner_only` über MCP, Kapitel, Notizblock, Monster in Suche und Lesen, Charakterblatt, Sichtbarkeit) und Plan 002 prüfen | 002 | `/plan-review 002` | 4 | Claude + Projektinhaber |
+| 6 | Plan 002 umsetzen (Remote-MCP-Server mit OAuth, nur lesend) | 002 | `/plan-run 002` | 5 | Claude |
+| 7 | Code-Review 002, Findings umsetzen, Review-Check | 002 | `/code-review 002`, `/review-check 002` | 6 | Claude + Projektinhaber |
+| 8 | Push-Freigabe und Prod-Smoketest für den MCP-Server (Anmeldung aus Claude, Rechte je Rolle) | 002 | Push nach Freigabe | 7 | Projektinhaber |
+| 9 | Backlog-Einträge vom 2026-09-24 sichten (Monster-Marker-Sheet vertiefen, versteckte Verweise kryptisch darstellen, Fähigkeiten mit Angriffs-/Wirkungsart taggen) und entscheiden, ob daraus ein Plan `009` wird | – | `/plan-create` | – | Projektinhaber |
+
+Die Schritte 1–4 hängen nicht voneinander ab und können parallel laufen. Schritt 9 kann jederzeit dazwischen erfolgen.
 
 ## Hinweise je Plan
 
@@ -26,9 +44,9 @@ Offene Ideen außerhalb dieser Pläne stehen in [`backlog.md`](backlog.md).
 - **`004`:** ✅ abgeschlossen (2026-09-23). Dreistufige Sichtbarkeit, Quest-Kapitel, Quest-Notizblock. Plan `002` kann starten (nach T-012-Abgleich).
 - **`007`:** Abgeschlossen (2026-09-23). Chat-UX: Ausrichtung, Avatare, Bearbeiten, Lösch-Bestätigung, Thread-Umbenennen, Aufklapp-Zustand; Nachtrag N1–N3 nach Smoketest (Absätze ohne Hintergrund, Aufklapp-Zustand per Cookie, Zeilen-Hervorhebung). Code-Review `code-review-007-chat-verbesserungen-2026-09-23.md`: alle Findings behoben (CR-013 verworfen), Review-Check 2026-09-23. Smoketest C7.1–C7.12 bestanden. Deploy mit dem nächsten freigegebenen Push.
 - **`008`:** Abgeschlossen (2026-09-23). Würfel-Sheet nach Chat-Spike (Commit `b5d28e8`); Darstellung im Chatverlauf bleibt wie in der App; Nachtrag N1: Anzahl und Bonus inline editierbar. Smoketest WS.1–WS.7 bestanden. Code-Review `code-review-008-wuerfel-sheet-wie-spike-2026-09-23.md`: alle Findings behoben (eines verworfen), Review-Check 2026-09-23.
-- **`005`:** ✅ abgeschlossen (2026-09-23). Monster/Bestiarium, Titelbild beim Anlegen; Smoketest B5.1–B5.7 lokal; T-011 MCP-Abgleich in `architecture.md`. Plan `006` kann Schema/API starten.
-- **`006`:** `/plan-run` parallel zu `005` gestartet (2026-09-23): T-001/T-002 (Normen, Prototyp) ohne Schema-/API-Kollision; T-003ff. warten auf abgeschlossenes `005` (Tabelle `monsters`). Plan-Review abgeschlossen (K5–K8).
-- **`002`:** Vor dem Start mit T-012 aus `004` abgleichen (Abgleich Plan 002 nach dreistufiger Sichtbarkeit/Owner/Kapitel/Notizblock, R4) und bei Bedarf erneut `/plan-review` ausführen. Zusätzlich weiter der Abgleich aus `003` T-018 in `architecture.md`.
+- **`005`:** ✅ abgeschlossen (2026-09-23). Monster/Bestiarium, Titelbild beim Anlegen; Smoketest B5.1–B5.7 lokal; T-011 MCP-Abgleich in `architecture.md`. Plan `006` kann Schema/API starten. Code-Review `code-review-005-monster-bestiarium-2026-09-24.md`: 14 Findings behoben, CR-009 nach Review-Check wieder offen (Regression durch Plan 006).
+- **`006`:** ✅ abgeschlossen (2026-09-24). Monster-Marker, Stecknadel-Darstellung, Kartenfilter, Hotkeys `P`/`M`, Monster-Marker kopieren; Smoketest lokal bestanden. Code-Review `code-review-006-karten-marker-und-filter-2026-09-24.md`: alle 16 Findings behoben, Review-Check 2026-09-24. Nicht abgedeckt und noch ungeprüft: Charakter-Platziermodus und Umbau der Kartenleiste (siehe *Nächste Schritte*). Ausgeliefert mit Version `0.1.4`.
+- **`002`:** Vor dem Start mit dem Stand nach `004`, `005` und `006` abgleichen und `/plan-review` ausführen (siehe *Nächste Schritte*). Abgleiche nach `004` (T-012) und `005` (T-011) stehen in `architecture.md` unter *Abgleich Plan 002*, dort sind 7 Fragen offen; ein Abgleich nach `006` fehlt noch. Zusätzlich weiter der Abgleich aus `003` T-018.
 
 ## Arbeitsweise
 
