@@ -38,6 +38,7 @@ import { mapDbError } from "@/lib/domain/db-errors";
 import { listUniverses } from "@/lib/domain/universes";
 import { richFieldFromInput } from "@/lib/domain/rich-field";
 import { setMapImage } from "@/lib/files/attach";
+import { MONSTER_NOT_FOUND } from "@/lib/monsters/messages";
 import { collectUnreferencedFiles } from "@/lib/files/gc";
 import { worldEvents } from "@/lib/realtime/events";
 import { positionSql, roundPosition } from "./coords";
@@ -1242,14 +1243,14 @@ export async function placeMonsterMarker(input: {
     .from(monsters)
     .where(and(eq(monsters.id, input.monsterId), eq(monsters.worldId, input.worldId)))
     .limit(1);
-  if (!monster) return fail(404, "Dieses Monster gibt es nicht.");
+  if (!monster) return fail(404, MONSTER_NOT_FOUND);
   if (
     !canSeeContent(
       { role: staff.data.role, userId: staff.data.userId },
       { visibility: monster.visibility, ownerId: monster.ownerId },
     )
   ) {
-    return fail(404, "Dieses Monster gibt es nicht.");
+    return fail(404, MONSTER_NOT_FOUND);
   }
 
   try {

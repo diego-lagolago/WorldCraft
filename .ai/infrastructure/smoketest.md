@@ -218,3 +218,19 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 | M6.4 | **Kartenfilter:** Filter-Button; Chip aus → ausgeblendet nach Reload; „Alle an“; Punkt am Button wenn etwas aus | Lokal | bestanden | Projektinhaber 2026-09-24; zusätzlich „Alle aus“ und Icon-Raster abgenommen. |
 | M6.5 | **Hotkeys:** Desktop `P`/`M`/`Esc` für Spielleitung; kein Auslösen in Inputs oder als Player | Lokal | bestanden | Projektinhaber 2026-09-24 |
 | M6.6 | **Kopieren:** „Kopieren“ im Sheet → Tippen setzt Kopien mit gleicher Sichtbarkeit; × beendet; Klick auf Marker setzt Kopie dort | Lokal | bestanden | Projektinhaber 2026-09-24 |
+
+---
+
+## Prod-Stand 0.1.4 (Pläne 004–008)
+
+**Zweck:** Stichprobe der seit dem MVP ausgelieferten Funktionen auf Produktion (Roadmap *Nächste Schritte* Schritt 3).  
+**Umgebung:** Prod `https://worldcraft.lagolago.at`, Version `0.1.4`, Discord-Login.
+
+| # | Kriterium | Wo | Ergebnis | Beobachtung |
+|---|---|---|---|---|
+| P4.1 | Quest-Kapitel und Quest-Notizblock | Prod | **bestanden** | Owner 2026-09-24. |
+| P4.2 | Dreistufige Sichtbarkeit mit „nur ich“ | Prod | **bestanden** | Owner 2026-09-24. |
+| P4.3 | Bestiarium: Monster mit Bild anlegen | Prod | **bestanden** | Owner 2026-09-24. |
+| P4.4 | Monster-Marker und Kartenfilter | Prod | **bestanden** | Owner 2026-09-24. |
+| P4.5 | Chat-Nachtrag N1–N3 (Absätze, Aufklapp-Zustand, Hervorhebung) | Prod | **bestanden** | Owner 2026-09-24. |
+| P4.6 | Würfel-Sheet mit Inline-Eingabe | Prod | **bestanden** | Owner 2026-09-24. |
