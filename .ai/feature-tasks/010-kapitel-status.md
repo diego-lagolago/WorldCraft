@@ -75,7 +75,7 @@ Begriffe aus Plan `004` und `.ai/architecture/datenmodell-fachlich.md` gelten (Q
 - Abnahmekriterium: `architecture.md` enthält den Unterpunkt „nach Plan 010“. Für `inhalt_lesen`, `quests_auflisten` und die Testwelt ist je Stelle „keine Anpassung nötig“ mit Begründung oder eine offene Frage bzw. Anpassung vermerkt. Die Verknüpfung zur offenen Kapitel-Frage aus dem Abgleich nach `004` ist gesetzt. Die Roadmap-Zeile zu Plan `002` (*Hinweise je Plan*) nennt den Abgleich nach `010`.
 
 ### T-005: Lokaler Smoketest und Abschluss
-- [ ] Beschreibung: Lokal mit `npm run dev` prüfen und das Ergebnis mit Datum als Abschnitt „Plan 010“ in `.ai/infrastructure/smoketest.md` festhalten. Danach Plan und Roadmap auf „abgeschlossen“ setzen.
+- [x] Beschreibung: Lokal mit `npm run dev` prüfen und das Ergebnis mit Datum als Abschnitt „Plan 010“ in `.ai/infrastructure/smoketest.md` festhalten. Danach Plan und Roadmap auf „abgeschlossen“ setzen.
   - S10.1: Die Spielleitung setzt den Status eines Kapitels auf „aktiv“. Das bleibt nach dem Neuladen erhalten.
   - S10.2: Die Spielleitung ändert die Sichtbarkeit eines Kapitels über „Bearbeiten“ auf „veröffentlicht“. Das Badge wechselt.
   - S10.3: Ein Player sieht beim veröffentlichten Kapitel das Badge „aktiv“ und kann es nicht ändern.
