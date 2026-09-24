@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveMapTap, tapOnItemPosition, type MapMode, type MapTapTarget } from "./map-mode";
+import { MAP_MODE_CANCEL_HINT, MAP_TOOLS, mapModeHint, resolveMapTap, tapOnItemPosition, type MapMode } from "./map-mode";
 
 describe("map mode", () => {
   it("offsets taps on existing items without crossing the right edge", () => {
@@ -14,13 +14,20 @@ describe("map mode", () => {
       { kind: "character" },
       { kind: "copy", source: { id: "marker", mapId: "map", monsterId: "monster", name: "Wolf", imageUrl: null, rarity: "common", isBoss: false, visibility: "published", ownerId: "owner", posX: 0.5, posY: 0.5 } },
     ];
-    const targets: MapTapTarget[] = ["map", "pin", "marker", "monster-marker"];
+    expect(modes.map((mode) => resolveMapTap(mode))).toEqual([
+      "create-pin",
+      "pick-monster",
+      "pick-character",
+      "copy",
+    ]);
+    expect(resolveMapTap({ kind: "none" })).toBe("none");
+  });
 
-    for (const target of targets) {
-      expect(resolveMapTap(modes[0], target)).toBe("create-pin");
-      expect(resolveMapTap(modes[1], target)).toBe("pick-monster");
-      expect(resolveMapTap(modes[2], target)).toBe("pick-character");
-      expect(resolveMapTap(modes[3], target)).toBe("copy");
+  it("gives every mode a hint with the same cancel text", () => {
+    expect(mapModeHint({ kind: "none" })).toBeNull();
+    for (const tool of MAP_TOOLS) {
+      expect(mapModeHint({ kind: tool.kind })).toContain(MAP_MODE_CANCEL_HINT);
     }
+    expect(MAP_TOOLS.find((tool) => tool.kind === "character")).toMatchObject({ hotkey: null, staffOnly: false });
   });
 });

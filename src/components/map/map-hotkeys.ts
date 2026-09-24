@@ -14,9 +14,8 @@ export type MapHotkeyInput = {
   focusEditable: boolean;
 };
 
-/** Pure gate for map place-mode hotkeys (Plan 006 K10 / T-010). */
+/** Pure gate for map place-mode hotkeys (Plan 006 K10 / T-010): P/M staff only, Esc for all. */
 export function mapHotkeyAction(input: MapHotkeyInput): MapHotkeyAction {
-  if (!input.staff) return null;
   if (input.ctrlKey || input.metaKey || input.altKey) return null;
   if (input.sheetOpen) return null;
   if (input.focusEditable) return null;
@@ -24,7 +23,9 @@ export function mapHotkeyAction(input: MapHotkeyInput): MapHotkeyAction {
   if (tag === "input" || tag === "textarea" || tag === "select") return null;
 
   const key = input.key.length === 1 ? input.key.toLowerCase() : input.key;
+  // Esc cancels every mode for everyone, incl. the player character mode (K9, CR-018).
   if (key === "Escape") return "cancel";
+  if (!input.staff) return null;
   if (key === "p") return "pin";
   if (key === "m") return "monster";
   return null;

@@ -1494,6 +1494,8 @@ textarea {
 
 /* ---------- Karte ---------- */
 .map-page {
+  /* Top of the context buttons below the map title bar; the map error is placed relative to it. */
+  --map-ctx-top: 68px;
   position: relative;
   height: calc(100dvh - 53px - var(--nav-h) - env(safe-area-inset-bottom));
 }
@@ -1691,10 +1693,6 @@ textarea {
   align-items: center;
 }
 
-.map-top-btn {
-  flex-shrink: 0;
-}
-
 .dialog-backdrop {
   position: fixed;
   inset: 0;
@@ -1727,10 +1725,6 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-
-.map-top .chip:not(.on) {
-  background: rgb(21 21 28 / 92%);
 }
 
 .map-filter-btn {
@@ -1790,7 +1784,7 @@ textarea {
 .map-context-ctrl {
   position: absolute;
   left: 16px;
-  top: 68px;
+  top: var(--map-ctx-top);
   z-index: 5;
   display: flex;
   flex-direction: row;
@@ -1843,10 +1837,11 @@ textarea {
   color: var(--muted);
 }
 
+/* Error sits below the context buttons (48px .zbtn + gap) instead of covering them (CR-024). */
 .map-error {
   position: absolute;
   left: 12px;
-  top: 56px;
+  top: calc(var(--map-ctx-top) + 56px);
   z-index: 6;
 }
 

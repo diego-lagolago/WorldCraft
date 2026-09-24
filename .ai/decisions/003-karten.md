@@ -170,13 +170,14 @@ Pins, Charakter-Marker und Monster-Marker teilen dieselbe Nadelgrafik-Größe un
 
 Rein **clientseitig**, pro Gerät (`localStorage`-Schlüssel `worldcraft.mapFilter.<worldId>`): Chips für Charaktere, Monster und jeden der 12 Pin-Typen. Ausgeblendete Elemente werden nicht gerendert, bleiben aber erhalten und werden per SSE weiter aktualisiert. Server und Rechte unverändert.
 
-### Kartenmarkierungen setzen (Plan `006`, K9–K12, 2026-09-23)
+### Kartenmarkierungen setzen (Plan `006`, K9–K13, 2026-09-23/24)
 
 **Normregel für alle künftigen Werkzeuge und Markierungsarten auf der Karte** (nicht nur Pin/Monster):
 
 1. **Erst Fadenkreuz, dann Picker.** Platziermodus starten → Tippen auf die Karte legt die Position fest → danach öffnet sich der Picker bzw. das Anlege-Sheet. Picker schließen ohne Auswahl = abbrechen, nichts entsteht.
 2. **Höchstens ein Modus** gleichzeitig (`none` | Werkzeugmodi). Die Hotkey-Taste eines anderen Modus wechselt dorthin; erneutes Drücken derselben Taste bricht ab. Karten- oder Universumswechsel beendet jeden Modus.
-3. **Abbrechen:** FAB unten rechts wird zu „×“; Desktop zusätzlich `Esc`.
+3. **Abbrechen:** Der Knopf des aktiven Modus in der Werkzeugleiste unten rechts wird zu „❌“ (im Kopiermodus erscheint dafür ein eigener „❌“); Desktop zusätzlich `Esc` – für **alle** Rollen, auch Player im Charaktermodus (Review 006 CR-018, 2026-09-24). Alle Modi zeigen denselben Hinweis „❌ oder Esc = Abbrechen.“
 4. Solange ein Modus aktiv ist, öffnet Antippen eines bestehenden Pins/Markers **kein** Sheet, sondern zählt als Platzieren an dieser Stelle.
-5. **Hotkeys** (ohne Modifier Strg/Cmd/Alt): nur Spielleitung, nur Kartenseite mit Kartenbild, nicht bei fokussiertem Eingabefeld/`contenteditable` oder offenem Sheet. Groß-/Kleinschreibung egal. Aktuell: `P` = Pin, `M` = Monster; künftige Werkzeuge bekommen analog einen Buchstaben.
+5. **Hotkeys** (ohne Modifier Strg/Cmd/Alt): nur Spielleitung, nur Kartenseite mit Kartenbild, nicht bei fokussiertem Eingabefeld/`contenteditable` oder offenem Sheet. Groß-/Kleinschreibung egal. Aktuell: `P` = Pin, `M` = Monster; künftige Werkzeuge bekommen analog einen Buchstaben. Ausnahme: der Charaktermodus hat **keine** Taste (K13).
 6. **Kopieren** (aktuell nur Monster-Marker, K11): Aktion im Sheet → Kopiermodus (Fadenkreuz) mit demselben Objekt; jedes Tippen setzt eine Kopie auf derselben Karte ohne Picker; Modus bleibt aktiv bis „×“/`Esc`.
+7. **Charaktermodus** (K13, Projektinhaber 2026-09-24): 🧝 startet für alle, die einen Charakter platzieren dürfen (Besitzer des Charakters oder Spielleitung, siehe Rechte Charakter-Marker), einen Platziermodus nach Regel 1: erst Fadenkreuz, dann Auswahl des Charakters. Keine Taste. Ohne platzierbaren Charakter zeigt die Auswahl einen erklärenden Leerzustand.

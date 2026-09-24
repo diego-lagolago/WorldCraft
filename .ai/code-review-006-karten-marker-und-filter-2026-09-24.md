@@ -35,15 +35,15 @@
 | CR-014 | Aufgaben-Abgleich | niedrig | behoben | Kurzname (erstes Wort) unter der Nadel in Norm und Test festhalten (E2) |
 | CR-015 | Runtime-Risiken | niedrig | behoben | Hotkeys feuern hinter dem offenen „Bild ersetzen“-Dialog |
 | CR-016 | Lesbarkeit & Wartbarkeit | niedrig | behoben | `MapFilterSheet` mit `string`-Keys + Cast; Chips ohne `aria-pressed` |
-| CR-017 | Aufgaben-Abgleich / Runtime-Risiken | mittel | offen | Kartenverwaltung „…“ nur bei Karte mit Bild: Karte ohne Bild lässt sich nicht löschen, verstecken oder um eine weitere Karte ergänzen (Rückschritt ggü. vor 006) |
-| CR-018 | Fehlerbehandlung & Validierung | mittel | offen | `Esc` bricht den Charaktermodus für Player nicht ab (Hotkey-Gate prüft `staff` vor `Escape`) |
-| CR-019 | Aufgaben-Abgleich | mittel | offen | Charakter-Platziermodus ist weder in Plan 006 noch in `003-karten.md` (K9/K12) beschlossen oder beschrieben |
-| CR-020 | Toter Code / Duplizierung | niedrig | offen | `resolveMapTap` wird nur im Test benutzt; `MapView.placeAt` verzweigt die Modi ein zweites Mal |
-| CR-021 | Lesbarkeit & Wartbarkeit | niedrig | offen | Hinweise und Beschriftungen der Modi uneinheitlich („×“ vs. ❌, `Esc` mal genannt, mal nicht, `title` nur teilweise) |
-| CR-022 | Fehlerbehandlung / UX | niedrig | offen | 🧝 auch ohne platzierbaren Charakter; nach dem Tippen öffnet ein leeres Auswahl-Sheet ohne Hinweis |
-| CR-023 | Toter Code | niedrig | offen | CSS `.map-top-btn` und `.map-top .chip:not(.on)` nach dem Umbau ungenutzt |
-| CR-024 | Bad Practices | niedrig | offen | Feste Pixel-Positionen: `.map-error` (top 56 px) überlappt `.map-context-ctrl` (top 68 px) |
-| CR-025 | Testabdeckung | niedrig | offen | Kein Test für „Alle aus“ (`hideAll`) im Filter-Hook |
+| CR-017 | Aufgaben-Abgleich / Runtime-Risiken | mittel | behoben | Kartenverwaltung „…“ nur bei Karte mit Bild: Karte ohne Bild lässt sich nicht löschen, verstecken oder um eine weitere Karte ergänzen (Rückschritt ggü. vor 006) |
+| CR-018 | Fehlerbehandlung & Validierung | mittel | behoben | `Esc` bricht den Charaktermodus für Player nicht ab (Hotkey-Gate prüft `staff` vor `Escape`) |
+| CR-019 | Aufgaben-Abgleich | mittel | behoben | Charakter-Platziermodus ist weder in Plan 006 noch in `003-karten.md` (K9/K12) beschlossen oder beschrieben |
+| CR-020 | Toter Code / Duplizierung | niedrig | behoben | `resolveMapTap` wird nur im Test benutzt; `MapView.placeAt` verzweigt die Modi ein zweites Mal |
+| CR-021 | Lesbarkeit & Wartbarkeit | niedrig | behoben | Hinweise und Beschriftungen der Modi uneinheitlich („×“ vs. ❌, `Esc` mal genannt, mal nicht, `title` nur teilweise) |
+| CR-022 | Fehlerbehandlung / UX | niedrig | behoben | 🧝 auch ohne platzierbaren Charakter; nach dem Tippen öffnet ein leeres Auswahl-Sheet ohne Hinweis |
+| CR-023 | Toter Code | niedrig | behoben | CSS `.map-top-btn` und `.map-top .chip:not(.on)` nach dem Umbau ungenutzt |
+| CR-024 | Bad Practices | niedrig | behoben | Feste Pixel-Positionen: `.map-error` (top 56 px) überlappt `.map-context-ctrl` (top 68 px) |
+| CR-025 | Testabdeckung | niedrig | behoben | Kein Test für „Alle aus“ (`hideAll`) im Filter-Hook |
 
 ---
 
@@ -309,6 +309,7 @@ Einzige Anmerkung: bei CR-012 wurde die Testdatei nicht umbenannt (siehe dort).
 - **Beschreibung:** Der Knopf „…“ (Kartenwerkzeuge: hinzufügen, löschen, Bild ersetzen, verstecken/freigeben) erscheint nur, wenn die gewählte Karte ein Bild hat. Hat sie keines, bietet der leere Zustand nur „Kartenbild hochladen“. Die Spielleitung kann eine Karte ohne Bild also weder löschen noch auf „nur Spielleitung“ setzen, und solange eine solche Karte gewählt ist, auch keine weitere Karte anlegen. Vor Plan 006 standen „Karte hinzufügen“ und „Karte löschen“ immer in der oberen Leiste (`485e30e`, `map-top-btn`).
 - **Empfehlung:** „…“ für die Spielleitung immer zeigen, sobald `state.map` existiert; nur die Zoom-Knöpfe an `mapHasImage` binden. Im Werkzeug-Sheet „Kartenbild ersetzen“ bei fehlendem Bild als „Kartenbild hochladen“ beschriften.
 - **Abnahmekriterium:** Spielleitung wählt eine Karte ohne Bild → „…“ ist sichtbar, „Karte löschen“, „Karte verstecken/freigeben“ und „Karte hinzufügen“ funktionieren; Zoom-Knöpfe erscheinen dort nicht; Player sehen „…“ weiterhin nicht.
+- **Umsetzung (2026-09-24):** `MapView.tsx`: „…“ für die Spielleitung, sobald `state.map` existiert; Zoom nur mit Bild. `MapToolsSheet` beschriftet „Kartenbild hochladen“, wenn kein Bild da ist. Browser: Karte ohne Bild zeigt „…“ mit allen vier Aktionen, keine Zoom-Knöpfe.
 
 ### CR-018 – `Esc` bricht den Charaktermodus für Player nicht ab
 - **Fundstelle:** `src/components/map/map-hotkeys.ts`, `mapHotkeyAction` (erste Zeile `if (!input.staff) return null;`)
@@ -318,6 +319,7 @@ Einzige Anmerkung: bei CR-012 wurde die Testdatei nicht umbenannt (siehe dort).
 - **Beschreibung:** Player können den Charaktermodus starten (🧝 ist für alle sichtbar), aber `Esc` wird für sie verworfen, weil das `staff`-Gate vor der `Escape`-Prüfung steht. Laut K9 bricht auf dem Desktop `Esc` jeden Platziermodus ab. Für die Spielleitung funktioniert es.
 - **Empfehlung:** `Escape` vor dem `staff`-Gate auswerten (Modifier-, Fokus- und Sheet-Regeln gelten weiter); `P`/`M` bleiben nur für die Spielleitung. Test ergänzen.
 - **Abnahmekriterium:** `mapHotkeyAction({ key: "Escape", staff: false, … })` liefert `"cancel"`; `P`/`M` liefern für `staff: false` weiter `null`; beides in `map-hotkeys.test.ts` abgedeckt.
+- **Umsetzung (2026-09-24):** `mapHotkeyAction` wertet `Escape` vor dem `staff`-Gate aus; `P`/`M` bleiben Spielleitung. Tests in `map-hotkeys.test.ts` (Player-Esc, Fokus/Sheet sperren Esc, keine Taste `C`).
 
 ### CR-019 – Charakter-Platziermodus ohne Beschluss und Norm
 - **Fundstelle:** `.ai/feature-tasks/006-karten-marker-und-filter.md` (K9, K10, K12); `.ai/decisions/003-karten.md` Abschnitt *Kartenmarkierungen setzen*; Code: `MapMode` in `src/lib/map/map-mode.ts`
@@ -327,6 +329,7 @@ Einzige Anmerkung: bei CR-012 wurde die Testdatei nicht umbenannt (siehe dort).
 - **Beschreibung:** Der Code erweitert K9/K12 um einen Modus „Charakter“ (erst Fadenkreuz, dann Charakter-Auswahl; vorher öffnete 🧝 direkt die Auswahl). Plan und Norm nennen weiterhin nur Pin, Monster und Kopieren („gilt für Pin und Monster“, `mode: "none" | "pin" | "monster" | "copy"`). Offen ist auch, ob der Modus eine Taste bekommt (K10 kennt nur `P`/`M`) und dass er – anders als Pin/Monster – auch für Player gilt. Der Modus steht bisher nur in `.ai/features.md`.
 - **Empfehlung:** Entscheidung des Projektinhabers als K13 in Plan 006 eintragen (Charakter folgt K9/K12, gilt für alle mit platzierbarem Charakter, Taste ja/nein) und `003-karten.md` entsprechend ergänzen.
 - **Abnahmekriterium:** Plan 006 enthält K13 mit Datum; `003-karten.md` nennt den Charaktermodus bei „Erst Fadenkreuz, dann Picker“ und in der Modusliste; eine beschlossene Taste ist umgesetzt und getestet oder ausdrücklich verworfen.
+- **Umsetzung (2026-09-24):** Entscheidung Projektinhaber 2026-09-24: **keine Taste**. K13 in Plan 006, Regel 3 und neue Regel 7 in `.ai/decisions/003-karten.md`.
 
 ### CR-020 – `resolveMapTap` nur im Test benutzt
 - **Fundstelle:** `src/lib/map/map-mode.ts` (`resolveMapTap`, `MapTapTarget`, `MapTapResolution`); `src/components/map/MapView.tsx` `placeAt`
@@ -336,6 +339,7 @@ Einzige Anmerkung: bei CR-012 wurde die Testdatei nicht umbenannt (siehe dort).
 - **Beschreibung:** `resolveMapTap` beschreibt, was ein Tippen je Modus bewirkt, und wird in `map-mode.test.ts` geprüft. `MapView` ruft die Funktion aber nicht auf, sondern verzweigt in `placeAt` selbst über `mode.kind`. Der Test belegt damit Logik, die die App nicht nutzt; der Parameter `target` wird per `void target` verworfen.
 - **Empfehlung:** `placeAt` auf `resolveMapTap` umstellen (Ergebnis → Sheet bzw. Kopie) oder die Funktion samt Typen und Test entfernen und die Verzweigung aus `placeAt` als reine Funktion testen.
 - **Abnahmekriterium:** `git grep -n "resolveMapTap" src` findet einen Aufruf außerhalb von Tests oder keinen Treffer mehr; die Modus-Verzweigung existiert genau einmal.
+- **Umsetzung (2026-09-24):** `resolveMapTap(mode)` ohne `target`, Ergebnis `"none"` statt `"open-sheet"`; `MapView.placeAt` verzweigt nur noch über `resolveMapTap`. `MapTapTarget` entfernt.
 
 ### CR-021 – Uneinheitliche Hinweise und Beschriftungen der Modi
 - **Fundstelle:** `src/components/map/MapView.tsx`, Werkzeugleiste und `map-hint`-Absätze (ca. Z. 288–347)
@@ -345,6 +349,7 @@ Einzige Anmerkung: bei CR-012 wurde die Testdatei nicht umbenannt (siehe dort).
 - **Beschreibung:** Der Abbrechen-Knopf zeigt ❌, die Hinweise für Monster und Kopieren sagen „× / Esc“, der Charakterhinweis „❌ = Abbrechen“ ohne `Esc`, der Pin-Hinweis nennt gar keinen Abbruch. `title` gibt es bei Pin und Monster, beim Charakter nicht; „Abbrechen (Esc)“ nur beim Pin. Texte sind je Modus von Hand gepflegt.
 - **Empfehlung:** Eine kleine Tabelle je Modus (Symbol, Label, Hinweis, Taste) in `map-mode.ts` o. Ä. und daraus Knöpfe und Hinweise rendern; überall ❌ und, wo es gilt, `Esc` nennen.
 - **Abnahmekriterium:** Knöpfe und Hinweise aller Modi kommen aus einer Stelle; jeder Hinweis nennt denselben Abbruchweg; jeder Modusknopf hat `title` und `aria-label`.
+- **Umsetzung (2026-09-24):** `MAP_TOOLS` und `mapModeHint` in `src/lib/map/map-mode.ts`; Knöpfe und Hinweise werden daraus gerendert, alle Hinweise enden mit „❌ oder Esc = Abbrechen.“, jeder Knopf hat `title`/`aria-label`. Nebenbei behoben: Im Kopiermodus fehlte ein ❌-Knopf (mobil nur per Kartenwechsel beendbar); jetzt „Kopiermodus beenden“. Test in `map-mode.test.ts`; Browser geprüft.
 
 ### CR-022 – Charaktermodus ohne platzierbaren Charakter
 - **Fundstelle:** `src/components/map/MapView.tsx` (🧝 ohne Bedingung); `PlaceCharacterSheet` in `src/components/map/MapSheets.tsx`
@@ -354,6 +359,7 @@ Einzige Anmerkung: bei CR-012 wurde die Testdatei nicht umbenannt (siehe dort).
 - **Beschreibung:** Ein Player ohne Charakter in der Welt sieht 🧝, tippt auf die Karte und bekommt ein leeres Sheet ohne Erklärung.
 - **Empfehlung:** 🧝 ausblenden, wenn `state.characters` leer ist, oder im Sheet einen Leerzustand zeigen („Du hast noch keinen Charakter in dieser Welt.“).
 - **Abnahmekriterium:** Bei leerer Charakterliste erscheint entweder kein 🧝 oder das Sheet zeigt einen erklärenden Leerzustand.
+- **Umsetzung (2026-09-24):** `PlaceCharacterSheet` zeigt bei leerer Liste einen Leerzustand.
 
 ### CR-023 – Ungenutzte CSS-Regeln nach dem Umbau
 - **Fundstelle:** `src/app/globals.css` `.map-top-btn`, `.map-top .chip:not(.on)`
@@ -363,6 +369,7 @@ Einzige Anmerkung: bei CR-012 wurde die Testdatei nicht umbenannt (siehe dort).
 - **Beschreibung:** Beide Klassen werden von keiner Komponente mehr verwendet (die Knöpfe oben und die Chips sind entfallen).
 - **Empfehlung:** Regeln entfernen.
 - **Abnahmekriterium:** `git grep -n "map-top-btn\|map-top .chip" src` findet keine Treffer.
+- **Umsetzung (2026-09-24):** `.map-top-btn` und `.map-top .chip:not(.on)` aus `globals.css` entfernt.
 
 ### CR-024 – Feste Pixel-Positionen, Fehlermeldung überlappt die Kontextleiste
 - **Fundstelle:** `src/app/globals.css` `.map-error` (`left: 12px; top: 56px`) und `.map-context-ctrl` (`left: 16px; top: 68px`)
@@ -372,6 +379,7 @@ Einzige Anmerkung: bei CR-012 wurde die Testdatei nicht umbenannt (siehe dort).
 - **Beschreibung:** Beide Elemente liegen links oben mit festen Abständen, die an die Höhe der Titelzeile gekoppelt sind. Eine Fehlermeldung legt sich über „…“ und die Zoom-Knöpfe und verdeckt sie.
 - **Empfehlung:** Fehlermeldung unterhalb der Kontextleiste oder mittig oben platzieren; Abstände über eine gemeinsame CSS-Variable (Höhe der Titelzeile) ableiten.
 - **Abnahmekriterium:** Bei angezeigter Kartenfehlermeldung bleiben „…“ und Zoom bedienbar (Browserprüfung bei 375 px und Desktop); `.map-context-ctrl` und `.map-error` nutzen dieselbe Variable statt zweier fester Werte.
+- **Umsetzung (2026-09-24):** CSS-Variable `--map-ctx-top` auf `.map-page`; `.map-context-ctrl` nutzt sie, `.map-error` sitzt darunter (`calc(var(--map-ctx-top) + 56px)`). Browserprüfung mit sichtbarer Fehlermeldung nicht durchgeführt.
 
 ### CR-025 – Kein Test für „Alle aus“
 - **Fundstelle:** `src/components/map/use-map-filter.ts` `hideAll`; Tests `use-map-filter.test.ts`, `src/lib/map/map-filter.test.ts`
@@ -381,6 +389,7 @@ Einzige Anmerkung: bei CR-012 wurde die Testdatei nicht umbenannt (siehe dort).
 - **Beschreibung:** „Alle an“ und Umschalten sind getestet, „Alle aus“ nicht.
 - **Empfehlung:** Test: `hideAll` speichert alle Kategorien, danach ist jede Kategorie ausgeblendet, ein hervorgehobener Pin bleibt sichtbar.
 - **Abnahmekriterium:** Ein Test ruft `hideAll` auf und prüft gespeicherten Zustand und Sichtbarkeit; `npm test` grün.
+- **Umsetzung (2026-09-24):** Test „hides every category with hideAll …“ in `use-map-filter.test.ts`.
 
 ### Prioritätenliste (Nachtrag)
 

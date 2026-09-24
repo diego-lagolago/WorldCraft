@@ -216,6 +216,9 @@ export function PlaceCharacterSheet({
   return (
     <Sheet title="Charakter auf Karte setzen" onClose={onClose}>
       <p className="small muted">Ein Charakter kann nur auf einer Karte gleichzeitig sein.</p>
+      {characters.length === 0 ? (
+        <p className="empty">Hier gibt es noch keinen Charakter, den du setzen kannst. Bring zuerst einen Charakter in diese Welt mit.</p>
+      ) : null}
       <div className="list">
         {characters.map((character) => (
           <button
@@ -436,6 +439,7 @@ export function MapFilterSheet({
 
 export function MapToolsSheet({
   mapPublished,
+  hasImage,
   onClose,
   onCreate,
   onDelete,
@@ -443,6 +447,7 @@ export function MapToolsSheet({
   onToggleVisibility,
 }: {
   mapPublished: boolean;
+  hasImage: boolean;
   onClose: () => void;
   onCreate: () => void;
   onDelete: () => void;
@@ -454,7 +459,9 @@ export function MapToolsSheet({
       <div className="stack" style={{ gap: 8 }}>
         <button type="button" className="btn" onClick={onCreate}>Karte hinzufügen</button>
         <button type="button" className="btn" onClick={onDelete}>Karte löschen</button>
-        <button type="button" className="btn" onClick={onUpload}>Kartenbild ersetzen</button>
+        <button type="button" className="btn" onClick={onUpload}>
+          {hasImage ? "Kartenbild ersetzen" : "Kartenbild hochladen"}
+        </button>
         <button type="button" className="btn" onClick={onToggleVisibility}>
           {mapPublished ? "Karte verstecken" : "Karte freigeben"}
         </button>

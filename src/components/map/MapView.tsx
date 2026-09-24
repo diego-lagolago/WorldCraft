@@ -23,7 +23,7 @@ import {
 import { useMapFilter } from "./use-map-filter";
 import { useMapHotkeys } from "./use-map-hotkeys";
 import { isMapFilterVisible } from "@/lib/map/map-filter";
-import { nextMapMode, tapOnItemPosition, type MapMode } from "@/lib/map/map-mode";
+import { MAP_TOOLS, mapModeHint, nextMapMode, resolveMapTap, tapOnItemPosition, type MapMode } from "@/lib/map/map-mode";
 
 type Sheet =
   | { kind: "none" }
@@ -95,20 +95,17 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
 
   const placeAt = useCallback(
     (x: number, y: number) => {
-      if (mode.kind === "copy") {
+      const action = resolveMapTap(mode);
+      if (action === "none") return;
+      if (action === "copy" && mode.kind === "copy") {
+        // K11: copy mode stays active for further taps.
         void stream.copyMonsterMarker(mode.source.id, x, y);
         return;
       }
       setMode({ kind: "none" });
-      if (mode.kind === "monster") {
-        setSheet({ kind: "monster-pick", posX: x, posY: y });
-        return;
-      }
-      if (mode.kind === "character") {
-        setSheet({ kind: "place", posX: x, posY: y });
-        return;
-      }
-      setSheet({ kind: "create", posX: x, posY: y });
+      if (action === "pick-monster") setSheet({ kind: "monster-pick", posX: x, posY: y });
+      else if (action === "pick-character") setSheet({ kind: "place", posX: x, posY: y });
+      else if (action === "create-pin") setSheet({ kind: "create", posX: x, posY: y });
     },
     [mode, stream],
   );
@@ -213,16 +210,21 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
         </div>
       </div>
 
-      {mapHasImage(state.map) ? (
+      {state.map && (state.staff || mapHasImage(state.map)) ? (
         <div className="map-context-ctrl">
+          {/* Map management must work without an image, too (CR-017). */}
           {state.staff ? (
             <button type="button" className="zbtn" aria-label="Kartenverwaltung" title="Kartenverwaltung" onClick={() => setSheet({ kind: "tools" })}>
               <Ellipsis size={20} aria-hidden />
             </button>
           ) : null}
-          <button type="button" className="zbtn" aria-label="Hineinzoomen" title="Hineinzoomen" onClick={() => leaflet.zoomBy(1.4)}>＋</button>
-          <button type="button" className="zbtn" aria-label="Herauszoomen" title="Herauszoomen" onClick={() => leaflet.zoomBy(0.7)}>－</button>
-          <button type="button" className="zbtn" aria-label="Ganze Karte" title="Ganze Karte" onClick={() => leaflet.fit()}>⤢</button>
+          {mapHasImage(state.map) ? (
+            <>
+              <button type="button" className="zbtn" aria-label="Hineinzoomen" title="Hineinzoomen" onClick={() => leaflet.zoomBy(1.4)}>＋</button>
+              <button type="button" className="zbtn" aria-label="Herauszoomen" title="Herauszoomen" onClick={() => leaflet.zoomBy(0.7)}>－</button>
+              <button type="button" className="zbtn" aria-label="Ganze Karte" title="Ganze Karte" onClick={() => leaflet.fit()}>⤢</button>
+            </>
+          ) : null}
         </div>
       ) : null}
 
@@ -285,39 +287,35 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
         <div className="map-ctrl">
           {mapHasImage(state.map) ? (
             <>
-              <button
-                type="button"
-                className={mode.kind === "character" ? "zbtn on" : "zbtn"}
-                aria-label={mode.kind === "character" ? "Charaktermodus abbrechen" : "Charakter platzieren"}
-                onClick={() => setMode((current) => nextMapMode(current, "character"))}
-              >
-                {mode.kind === "character" ? "❌" : "🧝"}
-              </button>
-              {state.staff ? (
-                <>
+              {MAP_TOOLS.filter((tool) => state.staff || !tool.staffOnly).map((tool) => {
+                const active = mode.kind === tool.kind;
+                const label = tool.hotkey ? `${tool.label} (${tool.hotkey})` : tool.label;
+                return (
                   <button
+                    key={tool.kind}
                     type="button"
-                    className={mode.kind === "monster" ? "zbtn on" : "zbtn"}
-                    aria-label={mode.kind === "monster" ? "Monstermodus abbrechen" : "Monster platzieren (M)"}
-                    aria-keyshortcuts="M"
-                    title="Monster platzieren (M)"
-                    onClick={() => setMode((current) => nextMapMode(current, "monster"))}
+                    className={active ? "zbtn on" : "zbtn"}
+                    aria-label={active ? tool.cancelLabel : label}
+                    aria-keyshortcuts={active ? "Escape" : (tool.hotkey ?? undefined)}
+                    title={active ? `${tool.cancelLabel} (Esc)` : label}
+                    onClick={() => setMode((current) => nextMapMode(current, tool.kind))}
                   >
-                    {mode.kind === "monster" ? "❌" : "👹"}
+                    {active ? "❌" : tool.icon}
                   </button>
-                  <button
-                    type="button"
-                    className={mode.kind === "pin" ? "zbtn on" : "zbtn"}
-                    aria-label={mode.kind === "pin" ? "Pinmodus abbrechen" : "Pin setzen (P)"}
-                    aria-keyshortcuts="P"
-                    title={mode.kind === "pin" ? "Abbrechen (Esc)" : "Pin setzen (P)"}
-                    onClick={() => {
-                      setMode((current) => nextMapMode(current, "pin"));
-                    }}
-                  >
-                    {mode.kind === "pin" ? "❌" : "📍"}
-                  </button>
-                </>
+                );
+              })}
+              {mode.kind === "copy" ? (
+                // K11: copy mode has no tool button of its own, so it needs its own cancel.
+                <button
+                  type="button"
+                  className="zbtn on"
+                  aria-label="Kopiermodus beenden"
+                  aria-keyshortcuts="Escape"
+                  title="Kopiermodus beenden (Esc)"
+                  onClick={() => setMode({ kind: "none" })}
+                >
+                  ❌
+                </button>
               ) : null}
               <button
                 type="button"
@@ -333,18 +331,7 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
         </div>
       ) : null}
 
-      {mode.kind === "pin" ? <p className="map-hint">Tippe auf die Karte, um den Pin zu setzen.</p> : null}
-      {mode.kind === "monster" ? (
-        <p className="map-hint">
-          Tippe auf die Karte — danach Monster wählen. Startet als „nur ich“. × / Esc = Abbrechen.
-        </p>
-      ) : null}
-      {mode.kind === "character" ? <p className="map-hint">Tippe auf die Karte — danach Charakter wählen. ❌ = Abbrechen.</p> : null}
-      {mode.kind === "copy" ? (
-        <p className="map-hint">
-          Tippe, um Kopien von „{mode.source.name}“ zu setzen. × / Esc = Abbrechen.
-        </p>
-      ) : null}
+      {mapModeHint(mode) ? <p className="map-hint">{mapModeHint(mode)}</p> : null}
 
       {stream.error ? <p className="chat-error map-error">{stream.error}</p> : null}
 
@@ -501,6 +488,7 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
       {sheet.kind === "tools" && state.map ? (
         <MapToolsSheet
           mapPublished={mapPublished}
+          hasImage={mapHasImage(state.map)}
           onClose={() => setSheet({ kind: "none" })}
           onCreate={() => { setSheet({ kind: "create-map" }); }}
           onDelete={() => { setSheet({ kind: "none" }); onDeleteMap(); }}

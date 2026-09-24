@@ -26,6 +26,7 @@ describe("mapHotkeyAction", () => {
 
   it("does not fire for players, modifiers, focus, or open sheet", () => {
     expect(mapHotkeyAction(base({ staff: false }))).toBeNull();
+    expect(mapHotkeyAction(base({ staff: false, key: "m" }))).toBeNull();
     expect(mapHotkeyAction(base({ ctrlKey: true }))).toBeNull();
     expect(mapHotkeyAction(base({ metaKey: true }))).toBeNull();
     expect(mapHotkeyAction(base({ altKey: true }))).toBeNull();
@@ -33,5 +34,12 @@ describe("mapHotkeyAction", () => {
     expect(mapHotkeyAction(base({ focusTag: "textarea" }))).toBeNull();
     expect(mapHotkeyAction(base({ focusEditable: true }))).toBeNull();
     expect(mapHotkeyAction(base({ sheetOpen: true }))).toBeNull();
+  });
+
+  it("lets everyone cancel with Escape (players have the character mode)", () => {
+    expect(mapHotkeyAction(base({ staff: false, key: "Escape" }))).toBe("cancel");
+    expect(mapHotkeyAction(base({ staff: false, key: "Escape", focusTag: "input" }))).toBeNull();
+    expect(mapHotkeyAction(base({ staff: false, key: "Escape", sheetOpen: true }))).toBeNull();
+    expect(mapHotkeyAction(base({ key: "c" }))).toBeNull();
   });
 });
