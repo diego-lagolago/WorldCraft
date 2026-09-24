@@ -8,7 +8,7 @@ import { Sheet } from "@/components/map/MapSheets";
 import { VisibilityBadge } from "@/components/world/display";
 import { ContentVisibilitySelect } from "@/components/world/VisibilitySelect";
 import type { ContentVisibility } from "@/lib/authz/types";
-import { CHAPTER_TITLE_MAX } from "@/lib/quests/status";
+import { CHAPTER_TITLE_MAX, type QuestStatus } from "@/lib/quests/status";
 import { apiRequest } from "@/lib/client/api";
 import type { ResolvedMention } from "@/lib/domain/mention-resolve";
 import type { MentionState } from "@/lib/editor/mentions";
@@ -18,6 +18,7 @@ export type QuestChapterView = {
   id: string;
   title: string;
   bodyJson: unknown;
+  status: QuestStatus;
   visibility: ContentVisibility;
   ownerId: string;
 };

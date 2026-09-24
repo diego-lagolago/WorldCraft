@@ -14,7 +14,7 @@ import {
   type MembershipRole,
   type MembershipRow,
 } from "@/lib/authz";
-import { CHAPTER_TITLE_MAX } from "@/lib/quests/status";
+import { CHAPTER_TITLE_MAX, QUEST_STATUSES, type QuestStatus } from "@/lib/quests/status";
 import { mapDbError } from "./db-errors";
 import {
   canSeeQuest,
@@ -34,6 +34,7 @@ const ORDER_INVALID = "Die Reihenfolge muss alle sichtbaren Kapitel genau einmal
 const chapterFields = {
   title: chapterTitleSchema,
   body: z.unknown(),
+  status: z.enum(QUEST_STATUSES),
   visibility: contentVisibilitySchema,
 };
 
@@ -47,6 +48,7 @@ export const chapterUpdateSchema = z
   .object({
     title: chapterFields.title.optional(),
     body: chapterFields.body.optional(),
+    status: chapterFields.status.optional(),
     visibility: chapterFields.visibility.optional(),
   })
   .refine((value) => Object.keys(value).length > 0);
@@ -59,6 +61,7 @@ export type ChapterSummary = {
   id: string;
   title: string;
   bodyJson: unknown;
+  status: QuestStatus;
   visibility: ContentVisibility;
   ownerId: string;
   position: number;
@@ -69,6 +72,7 @@ type ChapterRow = {
   questId: string;
   title: string;
   bodyJson: unknown;
+  status: QuestStatus;
   visibility: ContentVisibility;
   ownerId: string;
   position: number;
@@ -85,6 +89,7 @@ function toSummary(row: ChapterRow): ChapterSummary {
     id: row.id,
     title: row.title,
     bodyJson: row.bodyJson,
+    status: row.status,
     visibility: row.visibility,
     ownerId: row.ownerId,
     position: row.position,
@@ -114,6 +119,7 @@ async function loadChapters(questId: string): Promise<ChapterRow[]> {
       questId: questChapters.questId,
       title: questChapters.title,
       bodyJson: questChapters.bodyJson,
+      status: questChapters.status,
       visibility: questChapters.visibility,
       ownerId: questChapters.ownerId,
       position: questChapters.position,
@@ -152,10 +158,12 @@ type ChapterPatch = Partial<typeof questChapters.$inferInsert>;
 function toPatch(input: {
   title?: string;
   body?: unknown;
+  status?: QuestStatus;
   visibility?: ContentVisibility;
 }): AuthzResult<ChapterPatch> {
   const patch: ChapterPatch = {};
   if (input.title !== undefined) patch.title = input.title;
+  if (input.status !== undefined) patch.status = input.status;
   if (input.visibility !== undefined) patch.visibility = input.visibility;
   if (input.body !== undefined) {
     const body = richFieldFromInput(input.body, { mentions: true });
@@ -267,6 +275,7 @@ export async function createChapter(input: {
           questId: questChapters.questId,
           title: questChapters.title,
           bodyJson: questChapters.bodyJson,
+          status: questChapters.status,
           visibility: questChapters.visibility,
           ownerId: questChapters.ownerId,
           position: questChapters.position,
@@ -290,6 +299,7 @@ export async function updateChapter(input: {
   chapterId: string;
   title?: string;
   body?: unknown;
+  status?: QuestStatus;
   visibility?: ContentVisibility;
 }): Promise<AuthzResult<{ id: string }>> {
   const loaded = await loadWritableChapter({
