@@ -110,7 +110,7 @@ Alle neuen Felder sind optional. Bestehende Artikel bleiben gültig; ohne Wert z
 - Abnahmekriterium: `architecture.md` enthält den Unterpunkt „nach Plan 009“ mit allen vier Aufzählungspunkten oben, einschließlich `continent`, `incapacitated`/`sealed`, `fish`/`plant` und der fünf neuen Felder. Für `inhalt_lesen`, `suchen`, `relationen_abrufen` und die Testwelt ist je Werkzeug entweder „keine Anpassung nötig“ mit Begründung oder eine offene Frage bzw. Anpassung vermerkt. Die Roadmap-Zeile zu Plan `002` (*Hinweise je Plan*) nennt den Abgleich nach `009`.
 
 ### T-006: Lokaler Smoketest und Abschluss
-- [ ] Beschreibung: Lokal mit `npm run dev` als Spielleitung prüfen. Das Ergebnis mit Datum als Abschnitt „Plan 009“ in `.ai/infrastructure/smoketest.md` festhalten. Danach Plan und Roadmap auf „abgeschlossen“ setzen.
+- [x] Beschreibung: Lokal mit `npm run dev` als Spielleitung prüfen. Das Ergebnis mit Datum als Abschnitt „Plan 009“ in `.ai/infrastructure/smoketest.md` festhalten. Danach Plan und Roadmap auf „abgeschlossen“ setzen.
   - S9.1: Person mit Status „versiegelt“ und Rasse anlegen, Seite zeigt beide Werte, Rasse ist ein Link, und „Verknüpft“ zeigt die Rasse.
   - S9.2: Die Rasse-Seite zeigt unter „Verknüpft“ die Person (eingehende Relation).
   - S9.3: Ort mit Art „Kontinent“, Gefahrenstufe „Tödlich“ und Ruf „Verrufen“ speichern und anzeigen.

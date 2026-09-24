@@ -234,3 +234,22 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 | P4.4 | Monster-Marker und Kartenfilter | Prod | **bestanden** | Owner 2026-09-24. |
 | P4.5 | Chat-Nachtrag N1–N3 (Absätze, Aufklapp-Zustand, Hervorhebung) | Prod | **bestanden** | Owner 2026-09-24. |
 | P4.6 | Würfel-Sheet mit Inline-Eingabe | Prod | **bestanden** | Owner 2026-09-24. |
+
+---
+
+## Plan 009 – Vorlagenfelder und Rasse (lokal)
+
+**Datum:** 2026-09-24
+**Umgebung:** Lokal `http://localhost:3000`, Test-Login als Game Master.
+**Ergebnis:** bestanden
+
+| ID | Check | Status | Beobachtung |
+|---|---|---|---|
+| S9.1 | Person mit Status „versiegelt“ und Rasse anlegen | bestanden | Status und Rassen-Link werden angezeigt; „Verknüpft“ enthält die Rasse als Vorlagenfeld. |
+| S9.2 | Eingehende Relation auf der Rasse-Seite | bestanden | „Verknüpft“ zeigt die Person unter „Personen“ mit Herkunft Vorlagenfeld. |
+| S9.3 | Ort mit Kontinent, Tödlich und Verrufen | bestanden | Alle drei Werte werden gespeichert und im Feldblock angezeigt. |
+| S9.4 | Organisation mit 101+ und Göttlich | bestanden | Größe und Gefahrenstufe werden gespeichert und angezeigt. |
+| S9.5 | Gegenstand Fisch mit Seltenheit Episch | bestanden | `.badge.rarity-epic` erscheint im Feldblock und im Glossar. |
+| S9.6 | Glossar-Filter „Rassen“ und Scrollposition | bestanden | Filter zeigt den Rasse-Artikel; beim Wechsel zurück zu „Alle“ blieb `window.scrollY` bei 1315.5 px. |
+| S9.7 | `@`-Vorschlag für Rasse | bestanden | `@Waldelfen` zeigt „Waldelfen 009 · Artikel · Rasse“. |
+| S9.8 | Artikel ohne neue Felder bearbeiten | bestanden | Person ohne neue Feldwerte zeigt überall „–“ und öffnet ohne Fehlermeldung im Bearbeitungsformular. |
