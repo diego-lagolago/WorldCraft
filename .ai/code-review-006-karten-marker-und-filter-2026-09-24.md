@@ -184,6 +184,7 @@
 - **Empfehlung:** Datei in `src/lib/map/marker-pin.ts` umbenennen (Test ebenso). Den Modus-Typ einmal in `src/lib/map/map-mode.ts` exportieren (siehe E3, CR-008, CR-013); `MapView.tsx` und `use-map-hotkeys.ts` importieren ihn von dort. `shouldFetchPinForMap` in `isEventForCurrentMap` umbenennen.
 - **Abnahmekriterium:** `markerPinHtml` liegt in `marker-pin.ts`. `type PlaceMode =` kommt in `src/` genau einmal vor. Kein Aufruf von `shouldFetchPinForMap` bezieht sich auf Marker.
 - **Status:** behoben — der Renderer liegt in `marker-pin.ts`, der Modus-Typ zentral in `map-mode.ts`, und `isEventForCurrentMap` beschreibt die gemeinsame Verwendung korrekt.
+- **Review-Check 2026-09-24 (Nachprüfung, `e428a91`):** Das Abnahmekriterium ist erfüllt. Offen ist nur ein Rest der Empfehlung: Die Testdatei heißt weiterhin `src/lib/map/character-marker.test.ts` und testet `marker-pin.ts`. Das ist rein kosmetisch, der Status bleibt `behoben`.
 
 ### CR-013 – Seiteneffekt im State-Updater von `setMode`
 - **Fundstelle:** `src/components/map/MapView.tsx:62-70` (`queueMicrotask(() => setCopySource(null))` innerhalb von `setPlaceMode(updater)`), `:486` (`onCopy` ruft `setPlaceMode("copy")` direkt auf)
@@ -252,3 +253,33 @@
 **Änderungen ohne eigenes ursprüngliches Finding:** Die später freigegebenen UI-Verfeinerungen — Kontext-Aktionsmenü und Zoom unter dem Kartentitel, reduzierte untere Werkzeugleiste sowie Filter-Iconraster mit „Alle aus“ — sind Funktionsnachzüge innerhalb von Plan 006. Sie wurden durch den Projektinhaber lokal abgenommen, im Smoketest M6.4 protokolliert und im Features-Katalog nachgezogen.
 
 **Empfehlung:** Kein weiterer Code-Review für dieses Dokument nötig. Ein neuer Review ist erst wieder sinnvoll, wenn ein nächstes in sich geschlossenes Kartenpaket ansteht.
+
+## Review-Check 2026-09-24 (Nachprüfung)
+
+**Geprüfter Stand:** Commit `e428a91` (`docs(006): review check abschließen`), geprüft in einem isolierten Working Tree. Die Einträge oben stammen aus dem Umsetzungsdurchlauf. Diese Nachprüfung prüft sie unabhängig davon. Verglichen wurde mit `0711847`, dem tatsächlich reviewten Code-Stand. Die Baseline `485e30e` im Kopf beschreibt nur den Stand vor dem Commit.
+
+**Ergebnis:** 16 × `behoben` sind bestätigt. Keine Statusänderung, keine `drift`, keine Regression. Für alle Findings wurde das Abnahmekriterium direkt im Code geprüft, zum Beispiel:
+- CR-001: `NONE` und `getMapFilterSnapshot` mit Cache, dazu ein happy-dom-Test.
+- CR-002: `placeAt(tapOnItemPosition(...))` für Pin, Charakter- und Monster-Marker.
+- CR-003: `canSeeMonsterMarker` in PATCH und DELETE, dazu ein Fall in der Rechte-Matrix.
+- CR-004: `mapsForMonster`, dann `db.delete(monsters)`, dann `publishMapUpdates`.
+- CR-006: `monsterMarkerEventLayers(` 1×, `insert(monsterMarkers)` 1×, `function mapEventLayers` 1× in `event-layers.ts`.
+- CR-010: alle `--marker-*`-Variablen werden verwendet.
+- CR-011: keine Hex-Werte in `marker-pin.ts`.
+- CR-013: kein `queueMicrotask` und kein `copySource`.
+- CR-015: `sheetOpen: … || replaceConfirm`.
+- CR-016: `aria-pressed` ist gesetzt, der Cast ist entfernt.
+
+Einzige Anmerkung: bei CR-012 wurde die Testdatei nicht umbenannt (siehe dort).
+
+**Ausgeführte Prüfungen:**
+- `npx eslint src/components/map src/lib/map "src/app/api/worlds/[worldId]/map"`: 0 Fehler, 5 `<img>`-Warnungen.
+- `npx vitest run src/lib/map src/components/map`: 9 Dateien und 37 Tests grün.
+- Nicht ausgeführt wurden die API- und Integrationstests (`map.api.test.ts`, `rechte-matrix.api.test.ts`, `monster-markers.integration.test.ts`), weil im isolierten Working Tree keine Datenbank zur Verfügung stand. Die Testfälle sind vorhanden. Grün sind sie nur laut Umsetzungsvermerk.
+- `tsc --noEmit` meldet im frischen Working Tree `PageProps`-Fehler in Quest- und Universum-Seiten. Grund sind die fehlenden generierten Next-Typen (`.next/types`). Das hat keinen Bezug zu Plan 006.
+
+**Nicht abgedeckte Änderungen (ohne neue CR-ID):**
+1. **Neuer Platziermodus „Charakter“:** `MapMode` hat jetzt `{ kind: "character" }`, `resolveMapTap` liefert `"pick-character"`, und die Werkzeugleiste zeigt 🧝 (`map-mode.ts`, `MapView.tsx`, `use-map-hotkeys.ts`). Der Modus steht in `.ai/features.md`, aber weder in der Task-Datei 006 noch in der K12- oder Hotkey-Regel von `003-karten.md`. Ob es einen Hotkey dafür gibt und wie er sich zu K10 verhält, wurde nicht reviewt.
+2. **UI-Umbau:** Kontextmenü `…` und Zoom unter dem Kartentitel, die reduzierte untere Werkzeugleiste und das Filter-Icon-Raster mit „Alle aus“ (`MapView.tsx`, `MapSheets.tsx`, `globals.css`). Der Umbau ist laut Smoketest M6.4 und `features.md` abgenommen, war aber nicht Gegenstand dieses Reviews.
+
+**Empfehlung:** Für die 16 Findings ist kein erneuter `/code-review` nötig. Ein kurzer, gezielter `/code-review` für die beiden nicht abgedeckten Änderungen lohnt sich, vor allem für den Charakter-Platziermodus (Rechte, Hotkeys, Normabgleich mit K10/K12). Das kann auch zusammen mit dem nächsten Kartenpaket passieren.
