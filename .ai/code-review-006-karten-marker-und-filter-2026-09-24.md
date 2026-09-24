@@ -400,3 +400,35 @@ Einzige Anmerkung: bei CR-012 wurde die Testdatei nicht umbenannt (siehe dort).
 5. **CR-022**, **CR-024** – kleine UX-Fixes.
 6. **CR-023**, **CR-025** – Aufräumen und Test.
 
+---
+
+## Review-Check 2026-09-24 (Nachtrag CR-017–CR-025)
+
+**Geprüfter Stand:** Commit `33e1ccf` (`main`) in einem isolierten Working Tree, verglichen mit der Baseline des Nachtrag-Reviews `541760e`. Vor dem Commit liefen `npm test` (245), `npm run test:rechte` (171), `lint`, `typecheck` und `build` grün; Browserprüfung als Spielleitung auf der lokalen Testwelt (Karte ohne Bild, Modus-Hinweise, `Esc`, `P`, Kopiermodus mit ❌).
+
+### Statusänderungen
+
+Alle neun Findings CR-017 bis CR-025: `offen` → `behoben`, jeweils mit Umsetzungsvermerk im Detailabschnitt. Die Abnahmekriterien wurden per `grep` und Codeinspektion nachgeprüft:
+
+| ID | Beleg |
+|----|-------|
+| CR-017 | `.map-context-ctrl` erscheint bei `state.map && (state.staff \|\| mapHasImage(...))`, Zoom nur mit Bild |
+| CR-018 | `Escape` vor dem `staff`-Gate in `mapHotkeyAction`; Tests für Player |
+| CR-019 | K13 in Plan 006; Regel 3 und 7 in `003-karten.md` |
+| CR-020 | `resolveMapTap` wird in `MapView.placeAt` aufgerufen |
+| CR-021 | `MAP_TOOLS`/`mapModeHint` rendern Knöpfe und Hinweise; Kopiermodus mit eigenem ❌ |
+| CR-022 | Leerzustand in `PlaceCharacterSheet` |
+| CR-023 | `git grep` findet `map-top-btn` / `map-top .chip` nicht mehr |
+| CR-024 | `--map-ctx-top` für Kontextleiste und Fehlermeldung (Browserprüfung mit sichtbarer Fehlermeldung offen) |
+| CR-025 | `hideAll`-Test in `use-map-filter.test.ts` |
+
+Keine Regression, kein `drift`. Die Findings CR-001 bis CR-016 waren nicht Gegenstand dieses Checks.
+
+### Nicht abgedeckte Änderungen
+
+1. Eigener ❌-Knopf für den Kopiermodus (`MapView.tsx`) – beim Umbau für CR-021 entdeckt und behoben, im Vermerk zu CR-021 dokumentiert.
+
+### Empfehlung
+
+Kein erneuter `/code-review` nötig. Review 006 ist mit CR-001 bis CR-025 vollständig erledigt.
+

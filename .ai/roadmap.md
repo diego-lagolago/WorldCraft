@@ -25,9 +25,9 @@ Alle Pläne außer `002` sind abgeschlossen und mit Version `0.1.4` auf Produkti
 
 | # | Schritt | Plan | Werkzeug | Voraussetzung | Wer |
 |---|---|---|---|---|---|
-| 1 | CR-009 aus Review 005 beheben (404-Text in `src/lib/map/repository.ts` wieder über `MONSTER_NOT_FOUND`), danach `/review-check 005` | 005 | Fix, `/review-check` | – | Claude |
-| 2 | Gezieltes Code-Review für die von Review 006 nicht abgedeckten Änderungen: Charakter-Platziermodus (Rechte, Hotkeys, Abgleich mit K10/K12) und Umbau der Kartenleiste; Findings umsetzen, Review-Check | 006 | `/code-review`, `/review-check` | – | Claude + Projektinhaber (Entscheidungen) |
-| 3 | Prod-Smoketest für den Stand `0.1.4`: Quest-Kapitel und Notizblock, dreistufige Sichtbarkeit („nur ich“), Bestiarium mit Bild, Monster-Marker und Kartenfilter, Chat-Nachtrag N1–N3, Würfel-Inline-Eingabe; Ergebnis als eigener Abschnitt in `infrastructure/smoketest.md` | 004–008 | Browser auf Prod | – | Projektinhaber |
+| 1 | ✅ CR-009 aus Review 005 beheben (404-Text in `src/lib/map/repository.ts` wieder über `MONSTER_NOT_FOUND`), danach `/review-check 005` | 005 | Fix, `/review-check` | – | Claude |
+| 2 | ✅ Gezieltes Code-Review für die von Review 006 nicht abgedeckten Änderungen: Charakter-Platziermodus (Rechte, Hotkeys, Abgleich mit K10/K12) und Umbau der Kartenleiste; Findings umsetzen, Review-Check | 006 | `/code-review`, `/review-check` | – | Claude + Projektinhaber (Entscheidungen) |
+| 3 | ✅ Prod-Smoketest für den Stand `0.1.4`: Quest-Kapitel und Notizblock, dreistufige Sichtbarkeit („nur ich“), Bestiarium mit Bild, Monster-Marker und Kartenfilter, Chat-Nachtrag N1–N3, Würfel-Inline-Eingabe; Ergebnis als eigener Abschnitt in `infrastructure/smoketest.md` | 004–008 | Browser auf Prod | – | Projektinhaber |
 | 4 | ✅ erledigt (2026-09-24): Abgleich Plan 002 nach Plan 006 in `architecture.md` (Unterpunkt „nach Plan 006“, P6-1 bis P6-6, 4 offene Fragen): `karte_lesen` und Monster-Marker, Filter `art` um Monster | 002 | Doku | – | Claude |
 | 5 | Offene Fragen aus den Abgleichen nach 004, 005 und 006 beantworten (u. a. `owner_only` über MCP, Kapitel, Notizblock, Monster in Suche und Lesen, Charakterblatt, Sichtbarkeit, Monster-Marker in `karte_lesen`, Testwelt) und Plan 002 prüfen | 002 | `/plan-review 002` | 4 ✅ | Claude + Projektinhaber |
 | 6 | Plan 002 umsetzen (Remote-MCP-Server mit OAuth, nur lesend) | 002 | `/plan-run 002` | 5 | Claude |
@@ -37,6 +37,8 @@ Alle Pläne außer `002` sind abgeschlossen und mit Version `0.1.4` auf Produkti
 
 Die Schritte 1–4 hängen nicht voneinander ab und können parallel laufen. Schritt 9 kann jederzeit dazwischen erfolgen.
 
+**Stand 2026-09-24:** Schritte 1–3 erledigt (Review 005 CR-009 behoben, Review 006 um CR-017–CR-025 ergänzt und abgearbeitet, Prod-Smoketest `0.1.4` bestanden). Die Fixes aus Schritt 1 und 2 sind lokal und gehen mit dem nächsten Push raus.
+
 ## Hinweise je Plan
 
 - **`001`:** Alle Aufgaben erledigt, Smoketest auf Produktion dokumentiert in [`infrastructure/smoketest.md`](infrastructure/smoketest.md). Ein Code-Review liegt vor (`code-review-001-mvp-infrastruktur-2026-09-22.md`). Die Findings des Code Reviews werden im Rahmen von 003 umgesetzt und nur innerhalb von Plan 003 auf das Code Review referenziert.
@@ -45,7 +47,7 @@ Die Schritte 1–4 hängen nicht voneinander ab und können parallel laufen. Sch
 - **`007`:** Abgeschlossen (2026-09-23). Chat-UX: Ausrichtung, Avatare, Bearbeiten, Lösch-Bestätigung, Thread-Umbenennen, Aufklapp-Zustand; Nachtrag N1–N3 nach Smoketest (Absätze ohne Hintergrund, Aufklapp-Zustand per Cookie, Zeilen-Hervorhebung). Code-Review `code-review-007-chat-verbesserungen-2026-09-23.md`: alle Findings behoben (CR-013 verworfen), Review-Check 2026-09-23. Smoketest C7.1–C7.12 bestanden. Deploy mit dem nächsten freigegebenen Push.
 - **`008`:** Abgeschlossen (2026-09-23). Würfel-Sheet nach Chat-Spike (Commit `b5d28e8`); Darstellung im Chatverlauf bleibt wie in der App; Nachtrag N1: Anzahl und Bonus inline editierbar. Smoketest WS.1–WS.7 bestanden. Code-Review `code-review-008-wuerfel-sheet-wie-spike-2026-09-23.md`: alle Findings behoben (eines verworfen), Review-Check 2026-09-23.
 - **`005`:** ✅ abgeschlossen (2026-09-23). Monster/Bestiarium, Titelbild beim Anlegen; Smoketest B5.1–B5.7 lokal; T-011 MCP-Abgleich in `architecture.md`. Plan `006` kann Schema/API starten. Code-Review `code-review-005-monster-bestiarium-2026-09-24.md`: 14 Findings behoben, CR-009 nach Review-Check wieder offen (Regression durch Plan 006).
-- **`006`:** ✅ abgeschlossen (2026-09-24). Monster-Marker, Stecknadel-Darstellung, Kartenfilter, Hotkeys `P`/`M`, Monster-Marker kopieren; Smoketest lokal bestanden. Code-Review `code-review-006-karten-marker-und-filter-2026-09-24.md`: alle 16 Findings behoben, Review-Check 2026-09-24. Nicht abgedeckt und noch ungeprüft: Charakter-Platziermodus und Umbau der Kartenleiste (siehe *Nächste Schritte*). Ausgeliefert mit Version `0.1.4`.
+- **`006`:** ✅ abgeschlossen (2026-09-24). Monster-Marker, Stecknadel-Darstellung, Kartenfilter, Hotkeys `P`/`M`, Monster-Marker kopieren, Charakter-Platziermodus (K13, ohne Taste); Smoketest lokal bestanden. Code-Review `code-review-006-karten-marker-und-filter-2026-09-24.md`: CR-001–CR-025 behoben (CR-017–CR-025 aus dem Nachtrag-Review zu Charaktermodus und Kartenleiste), Review-Checks 2026-09-24. Ausgeliefert mit Version `0.1.4`, Fixes aus dem Nachtrag folgen mit dem nächsten Push.
 - **`002`:** Vor dem Start mit dem Stand nach `004`, `005` und `006` abgleichen und `/plan-review` ausführen (siehe *Nächste Schritte*). Abgleiche nach `004` (T-012), `005` (T-011) und `006` (2026-09-24) stehen in `architecture.md` unter *Abgleich Plan 002*, dort sind 11 Fragen offen (3 + 4 + 4). Zusätzlich weiter der Abgleich aus `003` T-018.
 
 ## Arbeitsweise
