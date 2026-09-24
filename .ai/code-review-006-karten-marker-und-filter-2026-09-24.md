@@ -240,3 +240,15 @@
 6. **CR-008**: Übrige Testlücken schließen (Hook, Realtime, GET-Sichtbarkeit).
 7. **CR-007**: Smoketest durchlaufen, 006 committen.
 8. Aufräumen: **CR-009**, **CR-010**, **CR-011**, **CR-012**, **CR-014**, **CR-015**, **CR-016**.
+
+---
+
+## Review-Check 2026-09-24
+
+**Geprüfter Stand:** Commit `a310970` (`(006) Karten-Marker und Filter abschließen`), verglichen mit der Baseline `485e30eb7728e085ed2d75209ed745f702e5a862`. Im ursprünglichen Arbeitsverzeichnis liegt nur `.claude/launch.json` uncommittet; diese fremde IDE-Ablage wurde nicht berücksichtigt und nicht verändert.
+
+**Ergebnis:** 16 Findings insgesamt — **0 offen**, **16 behoben**, **0 verworfen**, **0 drift**; kein behobenes Finding ist regressiert. Die Kriterien für CR-007 sind mit M6.1–M6.6 und dem eigenen `(006)`-Commit erfüllt. CR-009 teilt im aktuellen Code POST, Refetch-Auswertung und Leaflet-Synchronisation wie gefordert.
+
+**Änderungen ohne eigenes ursprüngliches Finding:** Die später freigegebenen UI-Verfeinerungen — Kontext-Aktionsmenü und Zoom unter dem Kartentitel, reduzierte untere Werkzeugleiste sowie Filter-Iconraster mit „Alle aus“ — sind Funktionsnachzüge innerhalb von Plan 006. Sie wurden durch den Projektinhaber lokal abgenommen, im Smoketest M6.4 protokolliert und im Features-Katalog nachgezogen.
+
+**Empfehlung:** Kein weiterer Code-Review für dieses Dokument nötig. Ein neuer Review ist erst wieder sinnvoll, wenn ein nächstes in sich geschlossenes Kartenpaket ansteht.
