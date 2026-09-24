@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import { ok, requireGm, type AuthzResult, type MembershipRole, type MembershipRow } from "@/lib/authz";
 import { collectUnreferencedFiles } from "@/lib/files/gc";
+import { swapSingleImage } from "@/lib/files/single-image";
 import { mapDbError } from "./db-errors";
 import { richFieldFromInput } from "./rich-field";
 
@@ -133,19 +134,16 @@ export async function updateWorld(input: {
     patch.descriptionPlain = description.data.plain;
   }
 
-  let previousImage: string | null = null;
-  if (input.removeTitleImage) {
-    const [row] = await db
-      .select({ id: worlds.titleImageId })
-      .from(worlds)
-      .where(eq(worlds.id, input.worldId))
-      .limit(1);
-    previousImage = row?.id ?? null;
-    patch.titleImageId = null;
-  }
-
   await db.update(worlds).set(patch).where(eq(worlds.id, input.worldId));
-  await collectUnreferencedFiles([previousImage]);
+  if (input.removeTitleImage) {
+    const previousImage = await swapSingleImage({
+      kind: "world_title",
+      targetId: input.worldId,
+      fileId: null,
+      actorId: input.actorId,
+    });
+    await collectUnreferencedFiles([previousImage]);
+  }
   return ok({ id: input.worldId });
 }
 

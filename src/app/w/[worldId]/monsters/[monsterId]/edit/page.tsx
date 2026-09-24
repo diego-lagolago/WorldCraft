@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { MonsterForm } from "@/components/monsters/MonsterForm";
 import { isStaff } from "@/lib/authz/types";
-import { listArticles } from "@/lib/domain/articles";
+import { getArticle, listArticles } from "@/lib/domain/articles";
 import { editorMentionStates, resolveMentions } from "@/lib/domain/mention-resolve";
 import { getMonster } from "@/lib/domain/monsters";
 import { asRichDoc, extractMentions } from "@/lib/editor/rich-text";
@@ -13,7 +13,7 @@ export default async function EditMonsterPage({
   searchParams,
 }: {
   params: Promise<{ worldId: string; monsterId: string }>;
-  searchParams: Promise<{ portraitError?: string }>;
+  searchParams: Promise<{ imageError?: string }>;
 }) {
   const { worldId, monsterId } = await params;
   const query = await searchParams;
@@ -24,9 +24,12 @@ export default async function EditMonsterPage({
   if (!monster) notFound();
 
   const bio = asRichDoc(monster.bioJson);
-  const [mentions, places] = await Promise.all([
+  const [mentions, places, habitat] = await Promise.all([
     resolveMentions(world.id, membership.role, membership.userId, extractMentions(bio)),
     listArticles(world.id, membership.role, membership.userId, "place"),
+    monster.habitatArticleId
+      ? getArticle(world.id, monster.habitatArticleId, membership.role, membership.userId)
+      : Promise.resolve(null),
   ]);
 
   return (
@@ -57,9 +60,10 @@ export default async function EditMonsterPage({
         bioJson: monster.bioJson,
       }}
       placeOptions={places.map((place) => ({ id: place.id, title: place.title }))}
+      currentHabitat={habitat ? { id: habitat.id, title: habitat.title } : null}
       mentionStates={editorMentionStates(mentions)}
       initialError={
-        query.portraitError === "1"
+        query.imageError === "1"
           ? "Monster angelegt, Profilbild konnte nicht hochgeladen werden."
           : undefined
       }

@@ -1,4 +1,5 @@
 import type { ContentKind } from "@/lib/authz/types";
+import { contentKindLabel } from "@/lib/i18n";
 import { templateOf } from "@/lib/templates/registry";
 
 /** Pins are never mentionable (datenmodell R-2.1-2). Monster stubs are not creatable via `@`. */
@@ -36,21 +37,13 @@ export function mentionKey(ref: MentionRef): string {
   return `${ref.kind}:${ref.id}`;
 }
 
-const KIND_LABEL: Record<MentionableKind, string> = {
-  article: "Artikel",
-  quest: "Quest",
-  character: "Charakter",
-  universe: "Universum",
-  monster: "Monster",
-};
-
 /** Fachmodell 2.4: category, for articles plus template, e.g. „Artikel · Ort“. */
 export function mentionCategoryLabel(hit: Pick<MentionHit, "kind" | "templateType">): string {
   if (hit.kind === "article" && hit.templateType) {
     const template = templateOf(hit.templateType);
-    if (template.type !== "none") return `${KIND_LABEL.article} · ${template.label}`;
+    if (template.type !== "none") return `${contentKindLabel("article")} · ${template.label}`;
   }
-  return KIND_LABEL[hit.kind];
+  return contentKindLabel(hit.kind);
 }
 
 function startsAWord(title: string, query: string): boolean {

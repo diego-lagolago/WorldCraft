@@ -6,15 +6,21 @@ import { fail, ok, requireCharacterOwner, type AuthzResult } from "@/lib/authz";
 import {
   CHARACTER_NAME_MAX,
   IMAGE_CAPTION_MAX,
+  abilitiesSchema,
+  abilitySchema,
   attributesSchema,
   readAbilities,
   readSkills,
   sheetSchema,
+  skillSchema,
+  skillsSchema,
   type Ability,
   type Attributes,
   type Skill,
 } from "@/lib/characters/sheet";
 import { collectUnreferencedFiles } from "@/lib/files/gc";
+import { swapSingleImage } from "@/lib/files/single-image";
+import { parseWithUserMessage } from "@/lib/http";
 import { mapDbError } from "./db-errors";
 import { richFieldFromInput } from "./rich-field";
 
@@ -35,8 +41,9 @@ const characterFields = {
   class: sheetSchema.shape.class,
   attributes: attributesSchema.partial(),
   proficiencyBonus: sheetSchema.shape.proficiencyBonus,
-  skills: sheetSchema.shape.skills,
-  abilities: sheetSchema.shape.abilities,
+  /** Length and duplicate rules are validated in the domain as 422. */
+  skills: z.array(skillSchema),
+  abilities: z.array(abilitySchema),
   personality: sheetSchema.shape.personality,
   ideals: sheetSchema.shape.ideals,
   bonds: sheetSchema.shape.bonds,
@@ -247,8 +254,16 @@ function toPatch(input: CharacterUpdateInput): AuthzResult<CharacterPatch> {
     if (a.cha !== undefined) patch.attrCha = a.cha;
   }
   if (input.proficiencyBonus !== undefined) patch.proficiencyBonus = input.proficiencyBonus;
-  if (input.skills !== undefined) patch.skills = input.skills;
-  if (input.abilities !== undefined) patch.abilities = input.abilities;
+  if (input.skills !== undefined) {
+    const parsed = parseWithUserMessage(skillsSchema, input.skills);
+    if (!parsed.ok) return fail(422, parsed.error);
+    patch.skills = parsed.data;
+  }
+  if (input.abilities !== undefined) {
+    const parsed = parseWithUserMessage(abilitiesSchema, input.abilities);
+    if (!parsed.ok) return fail(422, parsed.error);
+    patch.abilities = parsed.data;
+  }
   if (input.personality !== undefined) patch.personality = input.personality;
   if (input.ideals !== undefined) patch.ideals = input.ideals;
   if (input.bonds !== undefined) patch.bonds = input.bonds;
@@ -259,7 +274,6 @@ function toPatch(input: CharacterUpdateInput): AuthzResult<CharacterPatch> {
     patch.bioJson = bio.data.json;
     patch.bioPlain = bio.data.plain;
   }
-  if (input.removePortrait) patch.portraitId = null;
   return ok(patch);
 }
 
@@ -311,7 +325,15 @@ export async function updateCharacter(
     if (mapped) return mapped;
     throw error;
   }
-  if (input.removePortrait) await collectUnreferencedFiles([owned.data.portraitId]);
+  if (input.removePortrait) {
+    const previousImage = await swapSingleImage({
+      kind: "character_portrait",
+      targetId: characterId,
+      fileId: null,
+      actorId,
+    });
+    await collectUnreferencedFiles([previousImage]);
+  }
   return ok({ id: characterId });
 }
 

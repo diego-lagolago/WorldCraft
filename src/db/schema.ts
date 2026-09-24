@@ -17,6 +17,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { MONSTER_DANGERS, MONSTER_KINDS, MONSTER_RARITIES, MONSTER_SIZES } from "@/lib/monsters/labels";
 
 const tsvector = customType<{ data: string }>({
   dataType() {
@@ -168,40 +169,10 @@ export const questStatus = pgEnum("quest_status", [
   "completed",
   "failed",
 ]);
-export const monsterKind = pgEnum("monster_kind", [
-  "beast",
-  "undead",
-  "demon",
-  "dragon",
-  "humanoid",
-  "construct",
-  "aberration",
-  "plant",
-  "magical",
-  "other",
-]);
-export const monsterRarity = pgEnum("monster_rarity", [
-  "common",
-  "uncommon",
-  "rare",
-  "epic",
-  "legendary",
-]);
-export const monsterDanger = pgEnum("monster_danger", [
-  "harmless",
-  "dangerous",
-  "deadly",
-  "devastating",
-  "divine",
-  "apocalyptic",
-]);
-export const monsterSize = pgEnum("monster_size", [
-  "tiny",
-  "small",
-  "medium",
-  "large",
-  "gigantic",
-]);
+export const monsterKind = pgEnum("monster_kind", MONSTER_KINDS);
+export const monsterRarity = pgEnum("monster_rarity", MONSTER_RARITIES);
+export const monsterDanger = pgEnum("monster_danger", MONSTER_DANGERS);
+export const monsterSize = pgEnum("monster_size", MONSTER_SIZES);
 
 const protocol = {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

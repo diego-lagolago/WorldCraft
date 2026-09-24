@@ -64,6 +64,13 @@ export type Ability = { text: string; attr: AttributeKey };
 
 export const EMPTY_ATTRIBUTES: Attributes = { str: null, dex: null, con: null, int: null, wis: null, cha: null };
 
+export const SHEET_SKILL_REQUIRED = "Jede Fertigkeit braucht einen Namen.";
+export const SHEET_ABILITY_REQUIRED = "Jede Fähigkeit braucht einen Text.";
+export const SHEET_SKILLS_MAX_ERROR = `Höchstens ${SKILLS_MAX} Fertigkeiten sind erlaubt.`;
+export const SHEET_ABILITIES_MAX_ERROR = `Höchstens ${ABILITIES_MAX} Fähigkeiten sind erlaubt.`;
+export const duplicateSkillError = (skill: string) => `Die Fertigkeit „${skill}“ gibt es doppelt.`;
+export const duplicateAbilityError = (ability: string) => `Die Fähigkeit „${ability}“ gibt es doppelt.`;
+
 /** abgerundet((Wert − 10) / 2); an empty attribute counts as 0. */
 export function attributeModifier(value: number | null | undefined): number {
   return typeof value === "number" ? Math.floor((value - 10) / 2) : 0;
@@ -98,6 +105,27 @@ export function firstDuplicate(values: readonly string[]): string | null {
   return null;
 }
 
+/** Shared browser-side validation for character and monster sheets. */
+export function sheetLocalError(input: {
+  attributes: Attributes;
+  skills: readonly Skill[];
+  abilities: readonly Ability[];
+}): string | null {
+  for (const key of ATTRIBUTE_KEYS) {
+    const value = input.attributes[key];
+    if (value !== null && (!Number.isInteger(value) || value < ATTRIBUTE_MIN || value > ATTRIBUTE_MAX)) {
+      return `${ATTRIBUTE_LONG[key]} muss zwischen ${ATTRIBUTE_MIN} und ${ATTRIBUTE_MAX} liegen.`;
+    }
+  }
+  if (input.skills.some((skill) => !skill.name.trim())) return SHEET_SKILL_REQUIRED;
+  if (input.abilities.some((ability) => !ability.text.trim())) return SHEET_ABILITY_REQUIRED;
+  const skill = firstDuplicate(input.skills.map((entry) => entry.name.trim()));
+  if (skill) return duplicateSkillError(skill);
+  const ability = firstDuplicate(input.abilities.map((entry) => entry.text.trim()));
+  if (ability) return duplicateAbilityError(ability);
+  return null;
+}
+
 const attributeKeySchema = z.enum(ATTRIBUTE_KEYS);
 
 export const skillSchema = z.object({
@@ -113,13 +141,13 @@ export const abilitySchema = z.object({
 
 export const skillsSchema = z
   .array(skillSchema)
-  .max(SKILLS_MAX)
+  .max(SKILLS_MAX, SHEET_SKILLS_MAX_ERROR)
   .superRefine((skills, ctx) => {
     const duplicate = firstDuplicate(skills.map((skill) => skill.name));
     if (duplicate) {
       ctx.addIssue({
         code: "custom",
-        message: `Die Fertigkeit „${duplicate}“ gibt es doppelt.`,
+        message: duplicateSkillError(duplicate),
         params: { [USER_MESSAGE]: true },
       });
     }
@@ -127,13 +155,13 @@ export const skillsSchema = z
 
 export const abilitiesSchema = z
   .array(abilitySchema)
-  .max(ABILITIES_MAX)
+  .max(ABILITIES_MAX, SHEET_ABILITIES_MAX_ERROR)
   .superRefine((abilities, ctx) => {
     const duplicate = firstDuplicate(abilities.map((ability) => ability.text));
     if (duplicate) {
       ctx.addIssue({
         code: "custom",
-        message: `Die Fähigkeit „${duplicate}“ gibt es doppelt.`,
+        message: duplicateAbilityError(duplicate),
         params: { [USER_MESSAGE]: true },
       });
     }

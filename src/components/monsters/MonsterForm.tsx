@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+import { ImageUploadField } from "@/components/files/ImageUploadField";
 import {
   SheetBodyFields,
   fromAttributeInputs,
@@ -11,24 +12,21 @@ import {
 } from "@/components/sheet/SheetBodyFields";
 import { worldPath } from "@/components/shell/nav";
 import { Avatar } from "@/components/world/display";
-import { IMAGE_ACCEPT } from "@/components/world/image-accept";
 import { ContentVisibilitySelect } from "@/components/world/VisibilitySelect";
 import type { ContentVisibility } from "@/lib/authz/types";
+import { contentHref } from "@/lib/content-href";
 import {
-  ATTRIBUTE_KEYS,
-  ATTRIBUTE_LONG,
-  ATTRIBUTE_MAX,
-  ATTRIBUTE_MIN,
   CHARACTER_CLASS_MAX,
   CHARACTER_NAME_MAX,
   EMPTY_ATTRIBUTES,
   PROFICIENCY_DEFAULT,
-  firstDuplicate,
+  sheetLocalError,
   type Ability,
   type Attributes,
   type Skill,
 } from "@/lib/characters/sheet";
-import { apiRequest, uploadImage } from "@/lib/client/api";
+import { apiRequest } from "@/lib/client/api";
+import { finishCreateWithImage } from "@/lib/client/finish-create-with-image";
 import { usePendingImageUpload } from "@/lib/client/usePendingImageUpload";
 import {
   MONSTER_DANGERS,
@@ -79,6 +77,7 @@ export function MonsterForm({
   monster,
   actorId,
   placeOptions,
+  currentHabitat,
   mentionStates,
   initialError,
 }: {
@@ -86,6 +85,8 @@ export function MonsterForm({
   monster?: Monster;
   actorId: string;
   placeOptions: HabitatOption[];
+  /** A readable habitat whose article is no longer a place. */
+  currentHabitat?: HabitatOption | null;
   mentionStates?: Record<string, MentionState>;
   initialError?: string;
 }) {
@@ -120,8 +121,8 @@ export function MonsterForm({
   const attributes = fromAttributeInputs(attributeInputs);
   const proficiencyValue = Number(proficiency) || 0;
   const base = `/api/worlds/${worldId}/monsters`;
-  const viewPath = (id: string) => worldPath(worldId, `/monsters/${id}`);
-  const editPath = (id: string) => worldPath(worldId, `/monsters/${id}/edit`);
+  const viewPath = (id: string) => contentHref(worldId, "monster", id);
+  const editPath = (id: string) => contentHref(worldId, "monster", id, "edit");
 
   async function run<T>(request: Promise<{ ok: true; data: T } | { ok: false; error: string }>) {
     setError(null);
@@ -132,23 +133,8 @@ export function MonsterForm({
     return result;
   }
 
-  function localError(): string | null {
-    for (const key of ATTRIBUTE_KEYS) {
-      const value = attributes[key];
-      if (value !== null && (!Number.isInteger(value) || value < ATTRIBUTE_MIN || value > ATTRIBUTE_MAX)) {
-        return `${ATTRIBUTE_LONG[key]} muss zwischen ${ATTRIBUTE_MIN} und ${ATTRIBUTE_MAX} liegen.`;
-      }
-    }
-    if (skills.some((skill) => !skill.name.trim())) return "Jede Fertigkeit braucht einen Namen.";
-    if (abilities.some((ability) => !ability.text.trim())) return "Jede Fähigkeit braucht einen Text.";
-    const skill = firstDuplicate(skills.map((entry) => entry.name.trim()));
-    if (skill) return `Die Fertigkeit „${skill}“ gibt es doppelt.`;
-    const ability = firstDuplicate(abilities.map((entry) => entry.text.trim()));
-    if (ability) return `Die Fähigkeit „${ability}“ gibt es doppelt.`;
-    return null;
-  }
-
   function sheetPayload() {
+    const originalHabitat = monster?.habitatArticleId ?? "";
     return {
       name,
       class: className,
@@ -162,7 +148,9 @@ export function MonsterForm({
       isLegendary,
       danger,
       size,
-      habitatArticleId: habitatArticleId || null,
+      ...(!monster || habitatArticleId !== originalHabitat
+        ? { habitatArticleId: habitatArticleId || null }
+        : {}),
       visibility,
       ...(bio ? { bio } : {}),
     };
@@ -170,7 +158,7 @@ export function MonsterForm({
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    const problem = localError();
+    const problem = sheetLocalError({ attributes, skills, abilities });
     if (problem) {
       setError(problem);
       return;
@@ -187,15 +175,17 @@ export function MonsterForm({
       const newId = created.data.monster.id;
       if (pendingImage.hasFile) {
         setPending(true);
-        const uploaded = await pendingImage.uploadAfterCreate({
+        const uploaded = await finishCreateWithImage({
+          file: pendingImage.file,
           kind: "monster_portrait",
           worldId,
           targetId: newId,
+          onFailureHref: `${editPath(newId)}?imageError=1`,
+          navigate: router.push,
         });
         setPending(false);
-        if (!uploaded || !uploaded.ok) {
+        if (!uploaded) {
           pendingImage.clear();
-          router.push(`${editPath(newId)}?portraitError=1`);
           router.refresh();
           return;
         }
@@ -204,27 +194,6 @@ export function MonsterForm({
       router.push(viewPath(newId));
       router.refresh();
     }
-  }
-
-  async function onPortrait(event: ChangeEvent<HTMLInputElement>) {
-    if (!monster) {
-      pendingImage.choose(event);
-      return;
-    }
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    const result = await run(uploadImage({ file, kind: "monster_portrait", worldId, targetId: monster.id }));
-    if (result.ok) router.refresh();
-  }
-
-  async function onRemovePortrait() {
-    if (!monster) {
-      pendingImage.clear();
-      return;
-    }
-    const result = await run(apiRequest(`${base}/${monster.id}`, "PATCH", { removePortrait: true }));
-    if (result.ok) router.refresh();
   }
 
   async function onDelete() {
@@ -237,8 +206,6 @@ export function MonsterForm({
       router.refresh();
     }
   }
-
-  const showPortrait = !!(monster?.portraitId || pendingImage.hasFile);
 
   return (
     <form className="stack" onSubmit={onSubmit}>
@@ -261,15 +228,26 @@ export function MonsterForm({
             size="lg"
           />
           <div className="stack grow" style={{ gap: 6 }}>
-            <label className="btn sm" style={{ alignSelf: "flex-start" }}>
-              Bild wählen
-              <input type="file" accept={IMAGE_ACCEPT} hidden onChange={onPortrait} disabled={pending} />
-            </label>
-            {showPortrait ? (
-              <button type="button" className="btn sm" style={{ alignSelf: "flex-start" }} onClick={onRemovePortrait} disabled={pending}>
-                Entfernen
-              </button>
-            ) : null}
+            {monster ? (
+              <ImageUploadField
+                mode="immediate"
+                disabled={pending}
+                upload={{ kind: "monster_portrait", worldId, targetId: monster.id }}
+                onUploaded={() => router.refresh()}
+                onError={setError}
+                onRemove={monster.portraitId ? async () => {
+                  const result = await apiRequest(`${base}/${monster.id}`, "PATCH", { removePortrait: true });
+                  return result.ok ? { ok: true } : { ok: false, error: result.error };
+                } : undefined}
+              />
+            ) : (
+              <ImageUploadField
+                mode="pending"
+                disabled={pending}
+                onFileChange={pendingImage.chooseFile}
+                onRemove={pendingImage.hasFile ? pendingImage.clear : undefined}
+              />
+            )}
             <p className="small muted" style={{ margin: 0 }}>
               Genau ein Bild. Ohne Bild: Initialen-Platzhalter.
             </p>
@@ -346,6 +324,11 @@ export function MonsterForm({
         <span className="field-label">Lebensraum (Ort)</span>
         <select value={habitatArticleId} onChange={(e) => setHabitatArticleId(e.target.value)}>
           <option value="">— keiner —</option>
+          {currentHabitat && !placeOptions.some((place) => place.id === currentHabitat.id) ? (
+            <option value={currentHabitat.id} disabled>
+              {currentHabitat.title} (kein Ort mehr)
+            </option>
+          ) : null}
           {placeOptions.map((place) => (
             <option key={place.id} value={place.id}>
               {place.title}

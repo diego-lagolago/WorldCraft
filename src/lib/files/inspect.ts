@@ -1,11 +1,12 @@
 import { imageSize } from "image-size";
+import type { ImageKind } from "./kinds";
 
 export const MAP_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
 export const OTHER_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 export { CHARACTER_IMAGES_MAX as MAX_CHARACTER_IMAGES } from "@/lib/characters/sheet";
 
 /** Byte limit for an upload of the given image kind (`map` is larger). */
-export function maxBytesFor(kind: string): number {
+export function maxBytesFor(kind: ImageKind): number {
   return kind === "map" ? MAP_IMAGE_MAX_BYTES : OTHER_IMAGE_MAX_BYTES;
 }
 

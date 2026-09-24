@@ -160,6 +160,58 @@ describe("T-005 monsters API", () => {
     expect(res.status).toBe(422);
   });
 
+  it("does not let a non-owner master change a monster to owner_only", async () => {
+    const monster = await create(master, { name: "Fremdes Eigentum", visibility: "gm_only" });
+    expect((await api(gm, "PATCH", w(`/monsters/${monster.id}`), { visibility: "owner_only" })).status).toBe(403);
+  });
+
+  it("keeps an invalid stored habitat when PATCH omits habitatArticleId", async () => {
+    const place = await api<{ article: { id: string } }>(gm, "POST", w("/articles"), {
+      title: "Ehemaliger Ort",
+      templateType: "place",
+      visibility: "published",
+    });
+    expect(place.status).toBe(201);
+    const monster = await create(gm, { name: "Anpassbar", habitatArticleId: place.data.article.id });
+    await sql`UPDATE articles SET template_type = 'none' WHERE id = ${place.data.article.id}`;
+
+    expect((await api(gm, "PATCH", w(`/monsters/${monster.id}`), { name: "Weiter anpassbar" })).status).toBe(200);
+    const detail = await api<{ monster: { habitatArticleId: string | null } }>(gm, "GET", w(`/monsters/${monster.id}`));
+    expect(detail.data.monster.habitatArticleId).toBe(place.data.article.id);
+  });
+
+  it("masks habitats the current viewer may not read", async () => {
+    const gmOnly = await api<{ article: { id: string } }>(gm, "POST", w("/articles"), {
+      title: "Versteckte Höhle",
+      templateType: "place",
+      visibility: "gm_only",
+    });
+    expect(gmOnly.status).toBe(201);
+    const published = await create(gm, {
+      name: "Öffentliches Geheimnis",
+      visibility: "published",
+      habitatArticleId: gmOnly.data.article.id,
+    });
+    const playerDetail = await api<{ monster: { habitatArticleId: string | null } }>(playerA, "GET", w(`/monsters/${published.id}`));
+    expect(playerDetail.data.monster.habitatArticleId).toBeNull();
+    const playerList = await api<{ monsters: { id: string; habitatArticleId: string | null }[] }>(playerA, "GET", w("/monsters"));
+    expect(playerList.data.monsters.find((monster) => monster.id === published.id)?.habitatArticleId).toBeNull();
+    expect((await api<{ monster: { habitatArticleId: string | null } }>(gm, "GET", w(`/monsters/${published.id}`))).data.monster.habitatArticleId).toBe(gmOnly.data.article.id);
+
+    const ownerOnly = await api<{ article: { id: string } }>(master, "POST", w("/articles"), {
+      title: "Nur fremder Master",
+      templateType: "place",
+      visibility: "owner_only",
+    });
+    expect(ownerOnly.status).toBe(201);
+    const masterMonster = await create(master, {
+      name: "Fremder Lebensraum",
+      visibility: "published",
+      habitatArticleId: ownerOnly.data.article.id,
+    });
+    expect((await api<{ monster: { habitatArticleId: string | null } }>(gm, "GET", w(`/monsters/${masterMonster.id}`))).data.monster.habitatArticleId).toBeNull();
+  });
+
   it("filters list by kind and accepts bio with mentions", async () => {
     const place = await api<{ article: { id: string } }>(gm, "POST", w("/articles"), {
       title: "Höhle",
@@ -237,6 +289,16 @@ describe("T-006 monster portrait", () => {
     expect(await getFile(master, fileId)).toBe(200);
     expect(await getFile(gm, fileId)).toBe(404);
     expect(await getFile(playerA, fileId)).toBe(404);
+  });
+
+  it("removes a portrait reference and its unreferenced file", async () => {
+    const monster = await create(gm, { name: "Ohne Porträt" });
+    const uploaded = await uploadPortrait(gm, monster.id);
+    expect(uploaded.status).toBe(201);
+    expect((await api(gm, "PATCH", w(`/monsters/${monster.id}`), { removePortrait: true })).status).toBe(200);
+    expect((await api<{ monster: { portraitId: string | null } }>(gm, "GET", w(`/monsters/${monster.id}`))).data.monster.portraitId).toBeNull();
+    const [file] = await sql`SELECT id FROM files WHERE id = ${uploaded.data.fileId!}`;
+    expect(file).toBeUndefined();
   });
 });
 

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+import { ImageUploadField } from "@/components/files/ImageUploadField";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { worldPath } from "@/components/shell/nav";
-import { IMAGE_ACCEPT } from "@/components/world/image-accept";
 import { ContentVisibilitySelect } from "@/components/world/VisibilitySelect";
 import type { ContentVisibility } from "@/lib/authz/types";
-import { apiRequest, uploadImage } from "@/lib/client/api";
+import { apiRequest } from "@/lib/client/api";
+import { finishCreateWithImage } from "@/lib/client/finish-create-with-image";
 import { usePendingImageUpload } from "@/lib/client/usePendingImageUpload";
 import type { ArticleRefOption } from "@/lib/domain/articles";
 import type { MentionState } from "@/lib/editor/mentions";
@@ -136,15 +137,17 @@ export function ArticleForm({
       const newId = created.data.article.id;
       if (pendingImage.hasFile) {
         setPending(true);
-        const uploaded = await pendingImage.uploadAfterCreate({
+        const uploaded = await finishCreateWithImage({
+          file: pendingImage.file,
           kind: "article_title",
           worldId,
           targetId: newId,
+          onFailureHref: `${editPath(newId)}?imageError=1`,
+          navigate: router.push,
         });
         setPending(false);
-        if (!uploaded || !uploaded.ok) {
+        if (!uploaded) {
           pendingImage.clear();
-          router.push(`${editPath(newId)}?titleImageError=1`);
           router.refresh();
           return;
         }
@@ -153,27 +156,6 @@ export function ArticleForm({
       router.push(viewPath(newId));
       router.refresh();
     }
-  }
-
-  async function onImage(event: ChangeEvent<HTMLInputElement>) {
-    if (!article) {
-      pendingImage.choose(event);
-      return;
-    }
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    const result = await run(uploadImage({ file, kind: "article_title", worldId, targetId: article.id }));
-    if (result.ok) router.refresh();
-  }
-
-  async function onRemoveImage() {
-    if (!article) {
-      pendingImage.clear();
-      return;
-    }
-    const result = await run(apiRequest(`${base}/${article.id}`, "PATCH", { removeTitleImage: true }));
-    if (result.ok) router.refresh();
   }
 
   async function onDelete() {
@@ -218,15 +200,28 @@ export function ArticleForm({
       <div className="card stack" style={{ gap: 8 }}>
         <div className="row">
           <span className="grow">Titelbild</span>
-          <label className="btn sm">
-            Bild wählen
-            <input type="file" accept={IMAGE_ACCEPT} hidden onChange={onImage} disabled={pending} />
-          </label>
-          {article?.titleImageId || pendingImage.hasFile ? (
-            <button type="button" className="btn sm" onClick={onRemoveImage} disabled={pending}>
-              Entfernen
-            </button>
-          ) : null}
+          {article ? (
+            <ImageUploadField
+              mode="immediate"
+              label="Bild wählen"
+              disabled={pending}
+              upload={{ kind: "article_title", worldId, targetId: article.id }}
+              onUploaded={() => router.refresh()}
+              onError={setError}
+              onRemove={article.titleImageId ? async () => {
+                const result = await apiRequest(`${base}/${article.id}`, "PATCH", { removeTitleImage: true });
+                return result.ok ? { ok: true } : { ok: false, error: result.error };
+              } : undefined}
+            />
+          ) : (
+            <ImageUploadField
+              mode="pending"
+              label="Bild wählen"
+              disabled={pending}
+              onFileChange={pendingImage.chooseFile}
+              onRemove={pendingImage.hasFile ? pendingImage.clear : undefined}
+            />
+          )}
         </div>
         {pendingImage.previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- local blob preview

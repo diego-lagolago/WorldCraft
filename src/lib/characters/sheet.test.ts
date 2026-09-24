@@ -6,6 +6,7 @@ import {
   firstDuplicate,
   formatSigned,
   readSkills,
+  sheetLocalError,
   skillBonus,
   skillsSchema,
 } from "./sheet";
@@ -92,5 +93,20 @@ describe("sheetSchema", () => {
       expect(parsed.data.flaws).toBeNull();
       expect(parsed.data.bonds).toBeNull();
     }
+  });
+});
+
+describe("sheetLocalError", () => {
+  it("uses the shared messages for incomplete and duplicate sheet rows", () => {
+    expect(sheetLocalError({
+      attributes: EMPTY_ATTRIBUTES,
+      skills: [{ name: "", level: "trained", attr: "dex" }],
+      abilities: [],
+    })).toBe("Jede Fertigkeit braucht einen Namen.");
+    expect(sheetLocalError({
+      attributes: EMPTY_ATTRIBUTES,
+      skills: [{ name: "Reiten", level: "trained", attr: "dex" }, { name: "reiten", level: "trained", attr: "dex" }],
+      abilities: [],
+    })).toBe("Die Fertigkeit „reiten“ gibt es doppelt.");
   });
 });

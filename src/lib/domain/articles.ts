@@ -16,6 +16,7 @@ import {
 } from "@/lib/authz";
 import { parseUuid } from "@/lib/http";
 import { collectUnreferencedFiles } from "@/lib/files/gc";
+import { swapSingleImage } from "@/lib/files/single-image";
 import {
   parseTemplateFields,
   templateFieldsHaveValue,
@@ -234,7 +235,6 @@ async function toPatch(
   const patch: ArticlePatch = {};
   if (input.title !== undefined) patch.title = input.title;
   if (input.visibility !== undefined) patch.visibility = input.visibility;
-  if (input.removeTitleImage) patch.titleImageId = null;
 
   const nextType: TemplateType = input.templateType ?? (isTemplateType(current?.templateType) ? current.templateType : "none");
   if (input.templateType !== undefined) patch.templateType = input.templateType;
@@ -363,7 +363,16 @@ export async function updateArticle(input: {
     if (mapped) return mapped;
     throw error;
   }
-  if (input.removeTitleImage) await collectUnreferencedFiles([current.titleImageId]);
+  if (input.removeTitleImage) {
+    const previousImage = await swapSingleImage({
+      kind: "article_title",
+      worldId: input.worldId,
+      targetId: current.id,
+      fileId: null,
+      actorId: input.actorId,
+    });
+    await collectUnreferencedFiles([previousImage]);
+  }
   return ok({ id: current.id });
 }
 

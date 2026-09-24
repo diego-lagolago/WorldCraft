@@ -35,7 +35,7 @@ export async function apiRequest<T = unknown>(
 
 export async function uploadImage(input: {
   file: File;
-  kind: string;
+  kind: ImageKind;
   worldId?: string;
   targetId?: string;
 }): Promise<ApiResult<{ fileId: string }>> {
@@ -51,3 +51,4 @@ export async function uploadImage(input: {
     return { ok: false, error: "Keine Verbindung zum Server.", status: 0 };
   }
 }
+import type { ImageKind } from "@/lib/files/kinds";

@@ -41,7 +41,7 @@ export default async function EditArticlePage({
       refOptions={refOptions}
       mentionStates={editorMentionStates(mentions)}
       initialError={
-        query.titleImageError === "1"
+        query.imageError === "1"
           ? "Artikel angelegt, Titelbild konnte nicht hochgeladen werden."
           : undefined
       }

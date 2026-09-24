@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiRequest } from "@/lib/client/api";
+import { contentKindLabel } from "@/lib/i18n";
 import { SEARCH_QUERY_MIN, type SearchHit } from "@/lib/search";
+import { templateOf } from "@/lib/templates/registry";
 
 const DEBOUNCE_MS = 300;
 
@@ -14,6 +16,14 @@ export function CampaignSearch({ worldId }: { worldId: string }) {
   const [pending, setPending] = useState(false);
   const trimmed = query.trim();
   const active = trimmed.length >= SEARCH_QUERY_MIN;
+
+  function category(hit: SearchHit): string {
+    if (hit.kind === "article" && hit.templateType) {
+      const template = templateOf(hit.templateType);
+      if (template.type !== "none") return `${contentKindLabel("article")} · ${template.label}`;
+    }
+    return contentKindLabel(hit.kind);
+  }
 
   useEffect(() => {
     if (!active) return;
@@ -68,7 +78,7 @@ export function CampaignSearch({ worldId }: { worldId: string }) {
             <Link key={`${hit.kind}:${hit.id}`} className="item" href={hit.href}>
               <div className="grow">
                 <div>
-                  {hit.title} <span className="kind">· {hit.kindLabel}</span>
+                  {hit.title} <span className="kind">· {category(hit)}</span>
                 </div>
                 {hit.snippet ? <div className="small muted">{hit.snippet}</div> : null}
               </div>

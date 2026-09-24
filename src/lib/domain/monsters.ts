@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { articles, monsters } from "@/db/schema";
@@ -29,8 +29,11 @@ import {
   type Attributes,
   type Skill,
 } from "@/lib/characters/sheet";
-import { parseUuid, USER_MESSAGE } from "@/lib/http";
+import { parseUuid, parseWithUserMessage } from "@/lib/http";
 import { collectUnreferencedFiles } from "@/lib/files/gc";
+import { swapSingleImage } from "@/lib/files/single-image";
+export { MONSTER_NOT_FOUND } from "@/lib/monsters/messages";
+import { MONSTER_NOT_FOUND } from "@/lib/monsters/messages";
 import {
   MONSTER_DANGERS,
   MONSTER_KINDS,
@@ -68,7 +71,6 @@ export const monsterDangerSchema = z.enum(MONSTER_DANGERS);
 export const monsterSizeSchema = z.enum(MONSTER_SIZES);
 export const monsterNameSchema = z.string().trim().min(1).max(CHARACTER_NAME_MAX);
 
-const NOT_FOUND = "Dieses Monster gibt es nicht.";
 const HABITAT_INVALID = "Lebensraum muss ein sichtbarer Ort-Artikel dieser Welt sein.";
 
 const monsterFields = {
@@ -186,50 +188,47 @@ const summaryColumns = {
   habitatArticleId: monsters.habitatArticleId,
 };
 
-function asKind(value: string): MonsterKind {
-  return (MONSTER_KINDS as readonly string[]).includes(value) ? (value as MonsterKind) : "other";
-}
+type MonsterSummaryRow = Pick<typeof monsters.$inferSelect, keyof typeof summaryColumns>;
 
-function asRarity(value: string): MonsterRarity {
-  return (MONSTER_RARITIES as readonly string[]).includes(value) ? (value as MonsterRarity) : "common";
-}
-
-function asDanger(value: string): MonsterDanger {
-  return (MONSTER_DANGERS as readonly string[]).includes(value) ? (value as MonsterDanger) : "harmless";
-}
-
-function asSize(value: string): MonsterSize {
-  return (MONSTER_SIZES as readonly string[]).includes(value) ? (value as MonsterSize) : "medium";
-}
-
-function toSummary(row: {
-  id: string;
-  name: string;
-  class: string | null;
-  kind: string;
-  rarity: string;
-  isLegendary: boolean;
-  danger: string;
-  size: string;
-  visibility: ContentVisibility;
-  ownerId: string;
-  portraitId: string | null;
-  habitatArticleId: string | null;
-}): MonsterSummary {
+function toSummary(row: MonsterSummaryRow): MonsterSummary {
   return {
     id: row.id,
     name: row.name,
     class: row.class,
-    kind: asKind(row.kind),
-    rarity: asRarity(row.rarity),
+    kind: row.kind,
+    rarity: row.rarity,
     isLegendary: row.isLegendary,
-    danger: asDanger(row.danger),
-    size: asSize(row.size),
+    danger: row.danger,
+    size: row.size,
     visibility: row.visibility,
     ownerId: row.ownerId,
     portraitId: row.portraitId,
     habitatArticleId: row.habitatArticleId,
   };
+}
+
+/** Do not disclose the ID of a habitat article the viewer cannot read. */
+async function maskHiddenHabitats(
+  rows: MonsterSummary[],
+  viewer: { role: MembershipRole; userId: string },
+): Promise<MonsterSummary[]> {
+  const habitatIds = [...new Set(rows.flatMap((row) => (row.habitatArticleId ? [row.habitatArticleId] : [])))];
+  if (habitatIds.length === 0) return rows;
+
+  const habitats = await db
+    .select({ id: articles.id, visibility: articles.visibility, ownerId: articles.ownerId })
+    .from(articles)
+    .where(inArray(articles.id, habitatIds));
+  const readable = new Set(
+    habitats
+      .filter((habitat) => canSeeContent(viewer, habitat))
+      .map((habitat) => habitat.id),
+  );
+  return rows.map((row) =>
+    row.habitatArticleId && !readable.has(row.habitatArticleId)
+      ? { ...row, habitatArticleId: null }
+      : row,
+  );
 }
 
 /** APP-MONSTER-HABITAT: optional place article of this world, visible to the actor. */
@@ -284,23 +283,13 @@ async function toPatch(
   }
   if (input.proficiencyBonus !== undefined) patch.proficiencyBonus = input.proficiencyBonus;
   if (input.skills !== undefined) {
-    const parsed = skillsSchema.safeParse(input.skills);
-    if (!parsed.success) {
-      const shown = parsed.error.issues.find(
-        (issue) => issue.code === "custom" && issue.params?.[USER_MESSAGE],
-      );
-      return fail(422, shown?.message ?? "Die Eingaben sind ungültig.");
-    }
+    const parsed = parseWithUserMessage(skillsSchema, input.skills);
+    if (!parsed.ok) return fail(422, parsed.error);
     patch.skills = parsed.data;
   }
   if (input.abilities !== undefined) {
-    const parsed = abilitiesSchema.safeParse(input.abilities);
-    if (!parsed.success) {
-      const shown = parsed.error.issues.find(
-        (issue) => issue.code === "custom" && issue.params?.[USER_MESSAGE],
-      );
-      return fail(422, shown?.message ?? "Die Eingaben sind ungültig.");
-    }
+    const parsed = parseWithUserMessage(abilitiesSchema, input.abilities);
+    if (!parsed.ok) return fail(422, parsed.error);
     patch.abilities = parsed.data;
   }
   if (input.personality !== undefined) patch.personality = input.personality;
@@ -313,7 +302,6 @@ async function toPatch(
   if (input.danger !== undefined) patch.danger = input.danger;
   if (input.size !== undefined) patch.size = input.size;
   if (input.visibility !== undefined) patch.visibility = input.visibility;
-  if (input.removePortrait) patch.portraitId = null;
 
   if (input.bio !== undefined) {
     const bio = richFieldFromInput(input.bio, { mentions: true });
@@ -349,9 +337,10 @@ export async function listMonsters(
     .from(monsters)
     .where(and(...filters))
     .orderBy(asc(monsters.name));
-  return rows
+  const visible = rows
     .filter((row) => canSeeContent({ role, userId: viewerId }, { visibility: row.visibility, ownerId: row.ownerId }))
     .map(toSummary);
+  return maskHiddenHabitats(visible, { role, userId: viewerId });
 }
 
 export async function getMonster(
@@ -388,8 +377,9 @@ export async function getMonster(
   ) {
     return null;
   }
+  const [summary] = await maskHiddenHabitats([toSummary(row)], { role, userId: viewerId });
   return {
-    ...toSummary(row),
+    ...summary,
     worldId: row.worldId,
     attributes: {
       str: row.attrStr,
@@ -465,10 +455,10 @@ export async function updateMonster(input: {
     membership: input.membership,
     content: current ? { ownerId: current.ownerId, visibility: current.visibility } : null,
     nextVisibility: input.visibility,
-    notFoundError: NOT_FOUND,
+    notFoundError: MONSTER_NOT_FOUND,
   });
   if (!allowed.ok) return allowed;
-  if (!current || !input.membership) return fail(404, NOT_FOUND);
+  if (!current || !input.membership) return fail(404, MONSTER_NOT_FOUND);
   const patch = await toPatch(input.worldId, input, {
     role: input.membership.role,
     userId: input.membership.userId,
@@ -487,7 +477,16 @@ export async function updateMonster(input: {
     if (mapped) return mapped;
     throw error;
   }
-  if (input.removePortrait) await collectUnreferencedFiles([current.portraitId]);
+  if (input.removePortrait) {
+    const previousImage = await swapSingleImage({
+      kind: "monster_portrait",
+      worldId: input.worldId,
+      targetId: current.id,
+      fileId: null,
+      actorId: input.actorId,
+    });
+    await collectUnreferencedFiles([previousImage]);
+  }
   return ok({ id: current.id });
 }
 
@@ -510,10 +509,10 @@ export async function deleteMonster(input: {
   const allowed = authorizeOwnedContentWrite({
     membership: input.membership,
     content: current ? { ownerId: current.ownerId, visibility: current.visibility } : null,
-    notFoundError: NOT_FOUND,
+    notFoundError: MONSTER_NOT_FOUND,
   });
   if (!allowed.ok) return allowed;
-  if (!current) return fail(404, NOT_FOUND);
+  if (!current) return fail(404, MONSTER_NOT_FOUND);
   await db.delete(monsters).where(eq(monsters.id, current.id));
   await collectUnreferencedFiles([current.portraitId]);
   return ok({ id: current.id });

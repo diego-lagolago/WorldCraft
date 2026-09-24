@@ -1,4 +1,5 @@
 import type { ContentKind } from "@/lib/authz";
+import { contentKindLabel } from "@/lib/i18n";
 import { templateOf } from "@/lib/templates/registry";
 
 export type RelationTargetOption = { kind: ContentKind; id: string; title: string };
@@ -14,7 +15,6 @@ export type LinkedItem = {
   mapName?: string;
   templateType?: string;
   portraitId?: string | null;
-  rarity?: string;
 };
 
 export const LINKED_KIND_ORDER: readonly ContentKind[] = [
@@ -31,14 +31,7 @@ export function linkedGroupLabel(kind: ContentKind, templateType?: string): stri
     const template = templateOf(templateType ?? "none");
     return template.type === "none" ? "Artikel" : template.plural;
   }
-  return {
-    pin: "Pins",
-    quest: "Quests",
-    character: "Charaktere",
-    universe: "Universen",
-    article: "Artikel",
-    monster: "Monster",
-  }[kind];
+  return contentKindLabel(kind, "other");
 }
 
 /** Fachmodell 2.5: kind groups, articles split by template; empty groups omitted. */

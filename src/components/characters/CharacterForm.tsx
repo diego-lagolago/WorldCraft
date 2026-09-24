@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+import { ImageUploadField } from "@/components/files/ImageUploadField";
 import {
   SheetBodyFields,
   fromAttributeInputs,
@@ -10,21 +11,16 @@ import {
   type TraitKey,
 } from "@/components/sheet/SheetBodyFields";
 import { Avatar } from "@/components/world/display";
-import { IMAGE_ACCEPT } from "@/components/world/image-accept";
 import {
-  ATTRIBUTE_KEYS,
-  ATTRIBUTE_LONG,
-  ATTRIBUTE_MAX,
-  ATTRIBUTE_MIN,
   CHARACTER_CLASS_MAX,
   CHARACTER_IMAGES_MAX,
   CHARACTER_NAME_MAX,
   IMAGE_CAPTION_MAX,
-  firstDuplicate,
+  sheetLocalError,
   type Ability,
   type Skill,
 } from "@/lib/characters/sheet";
-import { apiRequest, uploadImage, type ApiResult } from "@/lib/client/api";
+import { apiRequest, type ApiResult } from "@/lib/client/api";
 import type { CharacterSheet } from "@/lib/domain/characters";
 import { asRichDoc, type RichDoc } from "@/lib/editor/rich-text";
 import "@/components/sheet/sheet.css";
@@ -64,25 +60,9 @@ export function CharacterForm({ sheet, backHref }: { sheet: CharacterSheet; back
     return result;
   }
 
-  function localError(): string | null {
-    for (const key of ATTRIBUTE_KEYS) {
-      const value = attributes[key];
-      if (value !== null && (!Number.isInteger(value) || value < ATTRIBUTE_MIN || value > ATTRIBUTE_MAX)) {
-        return `${ATTRIBUTE_LONG[key]} muss zwischen ${ATTRIBUTE_MIN} und ${ATTRIBUTE_MAX} liegen.`;
-      }
-    }
-    if (skills.some((skill) => !skill.name.trim())) return "Jede Fertigkeit braucht einen Namen.";
-    if (abilities.some((ability) => !ability.text.trim())) return "Jede Fähigkeit braucht einen Text.";
-    const skill = firstDuplicate(skills.map((entry) => entry.name.trim()));
-    if (skill) return `Die Fertigkeit „${skill}“ gibt es doppelt.`;
-    const ability = firstDuplicate(abilities.map((entry) => entry.text.trim()));
-    if (ability) return `Die Fähigkeit „${ability}“ gibt es doppelt.`;
-    return null;
-  }
-
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    const problem = localError();
+    const problem = sheetLocalError({ attributes, skills, abilities });
     if (problem) {
       setError(problem);
       return;
@@ -103,27 +83,6 @@ export function CharacterForm({ sheet, backHref }: { sheet: CharacterSheet; back
       setSaved(true);
       router.refresh();
     }
-  }
-
-  async function onPortrait(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    const result = await run(uploadImage({ file, kind: "character_portrait", targetId: sheet.id }));
-    if (result.ok) router.refresh();
-  }
-
-  async function onRemovePortrait() {
-    const result = await run(apiRequest(base, "PATCH", { removePortrait: true }));
-    if (result.ok) router.refresh();
-  }
-
-  async function onAddImage(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    const result = await run(uploadImage({ file, kind: "character_image", targetId: sheet.id }));
-    if (result.ok) router.refresh();
   }
 
   async function onImage(imageId: string, method: "PATCH" | "DELETE", body?: unknown) {
@@ -156,15 +115,18 @@ export function CharacterForm({ sheet, backHref }: { sheet: CharacterSheet; back
         <div className="row">
           <Avatar name={name || sheet.name} image={sheet.portraitId ? `/api/files/${sheet.portraitId}` : null} size="lg" />
           <div className="stack grow" style={{ gap: 6 }}>
-            <label className="btn sm" style={{ alignSelf: "flex-start" }}>
-              Porträt hochladen
-              <input type="file" accept={IMAGE_ACCEPT} hidden onChange={onPortrait} disabled={pending} />
-            </label>
-            {sheet.portraitId ? (
-              <button type="button" className="btn sm" style={{ alignSelf: "flex-start" }} onClick={onRemovePortrait}>
-                Porträt entfernen
-              </button>
-            ) : null}
+            <ImageUploadField
+              mode="immediate"
+              label="Porträt hochladen"
+              disabled={pending}
+              upload={{ kind: "character_portrait", targetId: sheet.id }}
+              onUploaded={() => router.refresh()}
+              onError={setError}
+              onRemove={sheet.portraitId ? async () => {
+                const result = await apiRequest(base, "PATCH", { removePortrait: true });
+                return result.ok ? { ok: true } : { ok: false, error: result.error };
+              } : undefined}
+            />
           </div>
         </div>
         <label className="stack" style={{ gap: 6 }}>
@@ -213,10 +175,14 @@ export function CharacterForm({ sheet, backHref }: { sheet: CharacterSheet; back
             Bilder ({sheet.images.length}/{CHARACTER_IMAGES_MAX})
           </h2>
           {sheet.images.length < CHARACTER_IMAGES_MAX ? (
-            <label className="btn sm">
-              ＋ Bild
-              <input type="file" accept={IMAGE_ACCEPT} hidden onChange={onAddImage} disabled={pending} />
-            </label>
+            <ImageUploadField
+              mode="immediate"
+              label="＋ Bild"
+              disabled={pending}
+              upload={{ kind: "character_image", targetId: sheet.id }}
+              onUploaded={() => router.refresh()}
+              onError={setError}
+            />
           ) : null}
         </div>
         {sheet.images.length === 0 ? <span className="muted small">Noch keine Bilder.</span> : null}

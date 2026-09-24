@@ -57,7 +57,12 @@ export async function removeStoredFile(fileId: string): Promise<void> {
   const [row] = await db.select().from(files).where(eq(files.id, fileId)).limit(1);
   if (!row) return;
   await db.delete(files).where(eq(files.id, fileId));
-  await unlink(storedFilePath(row.storageKey)).catch((error: NodeJS.ErrnoException) => {
+  await deleteStoredObject(row.storageKey);
+}
+
+/** Storage boundary for deletion; callers must not know the local object path. */
+export async function deleteStoredObject(storageKey: string): Promise<void> {
+  await unlink(storedFilePath(storageKey)).catch((error: NodeJS.ErrnoException) => {
     if (error.code !== "ENOENT") throw error;
   });
 }

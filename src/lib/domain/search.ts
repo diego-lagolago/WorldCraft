@@ -24,7 +24,6 @@ import {
   type SearchHit,
   type SearchKind,
 } from "@/lib/search";
-import { templateOf } from "@/lib/templates/registry";
 
 export {
   clampSearchLimit,
@@ -39,23 +38,6 @@ export {
   type SearchHit,
   type SearchKind,
 } from "@/lib/search";
-
-const KIND_LABEL: Record<SearchKind, string> = {
-  article: "Artikel",
-  quest: "Quest",
-  character: "Charakter",
-  pin: "Pin",
-  universe: "Universum",
-  monster: "Monster",
-};
-
-function kindLabel(kind: SearchKind, templateType?: string): string {
-  if (kind === "article" && templateType) {
-    const template = templateOf(templateType);
-    if (template.type !== "none") return `${KIND_LABEL.article} · ${template.label}`;
-  }
-  return KIND_LABEL[kind];
-}
 
 function matchTitleOrPlain(title: AnyColumn, plain: SQL, tsv: AnyColumn, query: string): SQL {
   const pattern = `%${escapeLikePattern(query)}%`;
@@ -108,7 +90,6 @@ export async function searchWorld(input: {
     title: row.title,
     href: contentHref(input.worldId, row.kind, row.id),
     templateType: row.templateType,
-    kindLabel: kindLabel(row.kind, row.templateType),
     snippet: searchSnippet(row.plain, query),
   }));
 }

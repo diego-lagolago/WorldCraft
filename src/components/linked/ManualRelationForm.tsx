@@ -5,15 +5,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import type { ContentKind } from "@/lib/authz/types";
 import { apiRequest } from "@/lib/client/api";
 import type { RelationTargetOption } from "@/lib/domain/linked";
-
-const KIND_LABEL: Record<ContentKind, string> = {
-  article: "Artikel",
-  quest: "Quest",
-  character: "Charakter",
-  pin: "Pin",
-  universe: "Universum",
-  monster: "Monster",
-};
+import { contentKindLabel } from "@/lib/i18n";
 
 export function ManualRelationForm({
   worldId,
@@ -80,9 +72,9 @@ export function ManualRelationForm({
             setTargetId("");
           }}
         >
-          {(Object.keys(KIND_LABEL) as ContentKind[]).map((kind) => (
+          {(["article", "quest", "character", "pin", "universe", "monster"] as ContentKind[]).map((kind) => (
             <option key={kind} value={kind}>
-              {KIND_LABEL[kind]}
+              {contentKindLabel(kind)}
             </option>
           ))}
         </select>

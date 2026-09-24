@@ -1,20 +1,20 @@
 import { and, count, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
-  articles,
   characterImages,
   characters,
   maps,
   memberships,
   monsters,
   universes,
-  worlds,
 } from "@/db/schema";
 import { fail, type AuthzResult, type MembershipRow } from "@/lib/authz";
 import { mapDbError } from "@/lib/domain/db-errors";
+import { MONSTER_NOT_FOUND } from "@/lib/domain/monsters";
 import { worldEvents } from "@/lib/realtime/events";
 import { authorizeImageWrite, type ImageKind } from "./authorize";
 import { collectUnreferencedFiles } from "./gc";
+import { swapSingleImage } from "./single-image";
 import { maxBytesFor } from "./inspect";
 import { persistImage, removeStoredFile } from "./store";
 
@@ -166,7 +166,7 @@ export async function attachImage(input: {
         : null,
     });
     if (!allowed.ok) return allowed;
-    if (!monster) return fail(404, "Monster nicht gefunden.");
+    if (!monster) return fail(404, MONSTER_NOT_FOUND);
 
     const saved = await persistImage({
       bytes: input.bytes,
@@ -176,17 +176,24 @@ export async function attachImage(input: {
     if ("error" in saved) return fail(400, saved.error);
 
     try {
-      await db
-        .update(monsters)
-        .set({ portraitId: saved.id, updatedAt: new Date(), updatedBy: input.actorId })
-        .where(eq(monsters.id, monster.id));
+      const previous = await swapSingleImage({
+        kind: "monster_portrait",
+        worldId: input.worldId,
+        targetId: monster.id,
+        fileId: saved.id,
+        actorId: input.actorId,
+      });
+      if (previous === undefined) {
+        await removeStoredFile(saved.id);
+        return fail(404, MONSTER_NOT_FOUND);
+      }
+      await collectUnreferencedFiles([previous]);
     } catch (error) {
       await removeStoredFile(saved.id);
       const mapped = mapDbError(error, { unique: "Bitte das Bild erneut hochladen." });
       if (mapped) return mapped;
       throw error;
     }
-    await collectUnreferencedFiles([monster.portraitId]);
     return { ok: true, data: { fileId: saved.id } };
   }
 
@@ -221,10 +228,17 @@ export async function attachImage(input: {
 
   try {
     if (input.kind === "character_portrait") {
-      await db
-        .update(characters)
-        .set({ portraitId: saved.id, updatedAt: new Date(), updatedBy: input.actorId })
-        .where(eq(characters.id, character.id));
+      const previous = await swapSingleImage({
+        kind: "character_portrait",
+        targetId: character.id,
+        fileId: saved.id,
+        actorId: input.actorId,
+      });
+      if (previous === undefined) {
+        await removeStoredFile(saved.id);
+        return fail(404, "Charakter nicht gefunden.");
+      }
+      await collectUnreferencedFiles([previous]);
     } else {
       await db.insert(characterImages).values({
         characterId: character.id,
@@ -241,7 +255,6 @@ export async function attachImage(input: {
     throw error;
   }
 
-  if (input.kind === "character_portrait") await collectUnreferencedFiles([character.portraitId]);
   return { ok: true, data: { fileId: saved.id } };
 }
 
@@ -254,31 +267,15 @@ async function linkStaffImage(
 ): Promise<AuthzResult<true>> {
   const now = new Date();
   if (kind === "world_title") {
-    const [previous] = await db
-      .select({ id: worlds.titleImageId })
-      .from(worlds)
-      .where(eq(worlds.id, worldId))
-      .limit(1);
-    if (!previous) return fail(404, "Welt nicht gefunden.");
-    await db
-      .update(worlds)
-      .set({ titleImageId: fileId, updatedAt: now, updatedBy: actorId })
-      .where(eq(worlds.id, worldId));
-    await collectUnreferencedFiles([previous.id]);
+    const previous = await swapSingleImage({ kind, targetId: worldId, fileId, actorId });
+    if (previous === undefined) return fail(404, "Welt nicht gefunden.");
+    await collectUnreferencedFiles([previous]);
     return { ok: true, data: true };
   }
   if (kind === "article_title") {
-    const [previous] = await db
-      .select({ id: articles.titleImageId })
-      .from(articles)
-      .where(and(eq(articles.id, targetId), eq(articles.worldId, worldId)))
-      .limit(1);
-    if (!previous) return fail(404, "Artikel nicht gefunden.");
-    await db
-      .update(articles)
-      .set({ titleImageId: fileId, updatedAt: now, updatedBy: actorId })
-      .where(eq(articles.id, targetId));
-    await collectUnreferencedFiles([previous.id]);
+    const previous = await swapSingleImage({ kind, worldId, targetId, fileId, actorId });
+    if (previous === undefined) return fail(404, "Artikel nicht gefunden.");
+    await collectUnreferencedFiles([previous]);
     return { ok: true, data: true };
   }
   const [map] = await db

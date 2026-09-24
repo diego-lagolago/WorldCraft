@@ -589,7 +589,6 @@ async function loadVisibleTargets(
             visibility: monsters.visibility,
             ownerId: monsters.ownerId,
             portraitId: monsters.portraitId,
-            rarity: monsters.rarity,
           })
           .from(monsters)
           .where(and(eq(monsters.worldId, worldId), inArray(monsters.id, monsterIds)))
@@ -682,7 +681,6 @@ async function loadVisibleTargets(
       title: row.title,
       href: contentHref(worldId, "monster", row.id),
       portraitId: row.portraitId,
-      rarity: row.rarity,
     });
   }
   return out;
@@ -919,4 +917,3 @@ export async function listRelationTargets(
   }
   return out.sort((a, b) => a.title.localeCompare(b.title, "de"));
 }
-

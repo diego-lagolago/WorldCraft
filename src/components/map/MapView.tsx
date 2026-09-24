@@ -2,6 +2,7 @@
 
 import { Eye, EyeOff, ImageUp, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ImageUploadField } from "@/components/files/ImageUploadField";
 import { CONTENT_VISIBILITY_LABEL } from "@/lib/authz/types";
 import { rememberUniverse } from "@/lib/client/last-context";
 import type { MapDto, MapState, MarkerDto, PinDetails } from "@/lib/map/types";
@@ -87,10 +88,6 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
     fileInputRef.current?.click();
   }
 
-  function onFilePicked(file: File | undefined) {
-    if (!file || !state.map) return;
-    void stream.replaceImage(state.map.id, file);
-  }
 
   function onDeleteMap() {
     if (!state.map) return;
@@ -151,17 +148,16 @@ export function MapView({ worldId, initial }: { worldId: string; initial: MapSta
         </div>
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        hidden
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          onFilePicked(file);
-        }}
-      />
+      {state.map ? (
+        <ImageUploadField
+          mode="immediate"
+          hideButton
+          inputRef={fileInputRef}
+          upload={{ kind: "map", worldId, targetId: state.map.id }}
+          onUploaded={() => void stream.reload()}
+          onError={(message) => { stream.setError(message); void stream.reload(); }}
+        />
+      ) : null}
 
       {replaceConfirm ? (
         <ReplaceImageDialog

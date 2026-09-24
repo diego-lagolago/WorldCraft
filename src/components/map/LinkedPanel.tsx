@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { linkedGroupLabel, type LinkedItem } from "@/lib/map/linked";
+import { LINKED_KIND_ORDER, linkedGroupLabel, type LinkedItem } from "@/lib/map/linked";
 import { pinTypeIconUrl, isPinType } from "@/lib/map/pin-types";
 
-const KIND_ORDER = ["pin", "article", "quest", "character", "universe", "monster"] as const;
+/** Maps put pins first; all remaining kinds use the shared linked-item order. */
+const KIND_ORDER = ["pin", ...LINKED_KIND_ORDER.filter((kind) => kind !== "pin")] as const;
 
 export function LinkedPanel({ items }: { items: LinkedItem[] }) {
   if (items.length === 0) {
@@ -58,7 +59,7 @@ function LinkedRow({ item }: { item: LinkedItem }) {
         <img src={pinTypeIconUrl(item.pinType)} width={26} height={31} alt="" />
       ) : null}
       {item.kind === "character" || item.kind === "monster" ? (
-        <span className="av">{item.title.slice(0, 1)}</span>
+        item.portraitId ? <img className="av" src={`/api/files/${item.portraitId}`} alt="" /> : <span className="av">{item.title.slice(0, 1)}</span>
       ) : null}
       <div className="grow">
         <div>{item.title}</div>

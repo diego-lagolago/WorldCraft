@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contentHref } from "./content-href";
+import { contentHref, contentNewHref } from "./content-href";
 
 describe("contentHref", () => {
   it("opens pins on the map with a deep-link", () => {
@@ -7,5 +7,10 @@ describe("contentHref", () => {
     expect(contentHref("w1", "article", "a1")).toBe("/w/w1/articles/a1");
     expect(contentHref("w1", "character", "c1")).toBe("/w/w1/characters/c1");
     expect(contentHref("w1", "monster", "m1")).toBe("/w/w1/monsters/m1");
+  });
+
+  it("builds canonical editor and create paths for editable content", () => {
+    expect(contentHref("w1", "monster", "m1", "edit")).toBe("/w/w1/monsters/m1/edit");
+    expect(contentNewHref("w1", "monster")).toBe("/w/w1/monsters/new");
   });
 });

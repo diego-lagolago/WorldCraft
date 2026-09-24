@@ -133,7 +133,9 @@ describe("T-008 (4)/(4a)/(4b): character sheet", () => {
   it("rejects a 31st, empty or duplicate skill and ability", async () => {
     const patch = (body: unknown) => api<{ error: string }>(playerA, "PATCH", `/api/characters/${charA1}`, body);
     const skills = Array.from({ length: 31 }, (_, i) => ({ name: `S${i}`, level: "trained", attr: "dex" }));
-    expect((await patch({ skills })).status).toBe(400);
+    const tooManySkills = await patch({ skills });
+    expect(tooManySkills.status).toBe(422);
+    expect(tooManySkills.data.error).toContain("30 Fertigkeiten");
     expect((await patch({ skills: [{ name: "  ", level: "trained", attr: "dex" }] })).status).toBe(400);
     const duplicate = await patch({
       skills: [
@@ -141,15 +143,15 @@ describe("T-008 (4)/(4a)/(4b): character sheet", () => {
         { name: "reiten", level: "expertise", attr: "wis" },
       ],
     });
-    expect(duplicate.status).toBe(400);
+    expect(duplicate.status).toBe(422);
     expect(duplicate.data.error).toContain("doppelt");
 
     const abilities = Array.from({ length: 31 }, (_, i) => ({ text: `A${i}`, attr: "cha" }));
-    expect((await patch({ abilities })).status).toBe(400);
+    expect((await patch({ abilities })).status).toBe(422);
     expect((await patch({ abilities: [{ text: "", attr: "cha" }] })).status).toBe(400);
     expect(
       (await patch({ abilities: [{ text: "Wolf rufen", attr: "cha" }, { text: "WOLF RUFEN", attr: "str" }] })).status,
-    ).toBe(400);
+    ).toBe(422);
     expect((await sheet(playerA, charA1)).skills).toHaveLength(1);
   });
 

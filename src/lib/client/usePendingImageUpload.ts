@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
-import { uploadImage, type ApiResult } from "@/lib/client/api";
+import { useEffect, useState, type ChangeEvent } from "react";
 
 /**
  * Hold a chosen image file until after create, then upload to the new target.
@@ -11,12 +10,20 @@ export function usePendingImageUpload() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  function choose(event: ChangeEvent<HTMLInputElement>) {
-    const next = event.target.files?.[0] ?? null;
-    event.target.value = "";
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  function chooseFile(next: File | null) {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setFile(next);
     setPreviewUrl(next ? URL.createObjectURL(next) : null);
+  }
+
+  function choose(event: ChangeEvent<HTMLInputElement>) {
+    const next = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    chooseFile(next);
   }
 
   function clear() {
@@ -25,14 +32,5 @@ export function usePendingImageUpload() {
     setPreviewUrl(null);
   }
 
-  async function uploadAfterCreate(input: {
-    kind: string;
-    worldId?: string;
-    targetId: string;
-  }): Promise<ApiResult<{ fileId: string }> | null> {
-    if (!file) return null;
-    return uploadImage({ file, kind: input.kind, worldId: input.worldId, targetId: input.targetId });
-  }
-
-  return { file, previewUrl, choose, clear, uploadAfterCreate, hasFile: !!file };
+  return { file, previewUrl, choose, chooseFile, clear, hasFile: !!file };
 }

@@ -84,6 +84,8 @@ Neue Rechtefälle: zuerst in `src/lib/authz` plus Test, nicht nur in der UI und 
 
 ## UI-Normen (Querverweise)
 
+Neue UI-Labels für Systemschlüssel kommen ins Wörterbuch `src/lib/i18n/de.ts`.
+
 - [standards/mobile-first.md](standards/mobile-first.md)
 - [standards/mobile-navigation.md](standards/mobile-navigation.md) — Bottom-Bar später
 - [standards/erwaehnungen.md](standards/erwaehnungen.md)

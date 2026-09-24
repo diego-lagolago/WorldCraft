@@ -3,10 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
+import { ImageUploadField } from "@/components/files/ImageUploadField";
 import { worldPath } from "@/components/shell/nav";
-import { apiRequest, uploadImage } from "@/lib/client/api";
+import { apiRequest } from "@/lib/client/api";
+import { finishCreateWithImage } from "@/lib/client/finish-create-with-image";
 import type { RichDoc } from "@/lib/editor/rich-text";
-import { IMAGE_ACCEPT } from "./image-accept";
 
 export function CreateWorldForm() {
   const router = useRouter();
@@ -15,7 +16,6 @@ export function CreateWorldForm() {
   const [image, setImage] = useState<File | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [createdId, setCreatedId] = useState<string | null>(null);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -31,28 +31,20 @@ export function CreateWorldForm() {
       return;
     }
     if (image) {
-      const uploaded = await uploadImage({ file: image, kind: "world_title", worldId: created.data.id });
-      if (!uploaded.ok) {
-        setCreatedId(created.data.id);
-        setError(`Die Welt ist angelegt, das Titelbild nicht: ${uploaded.error}`);
-        setPending(false);
+      const uploaded = await finishCreateWithImage({
+        file: image,
+        kind: "world_title",
+        worldId: created.data.id,
+        targetId: created.data.id,
+        onFailureHref: `${worldPath(created.data.id, "/menu")}?imageError=1`,
+        navigate: router.push,
+      });
+      if (!uploaded) {
+        router.refresh();
         return;
       }
     }
     router.push(worldPath(created.data.id));
-  }
-
-  if (createdId) {
-    return (
-      <div className="card stack">
-        <p className="error-text" role="alert">
-          {error}
-        </p>
-        <button type="button" className="btn primary" onClick={() => router.push(worldPath(createdId))}>
-          Weiter zur Welt
-        </button>
-      </div>
-    );
   }
 
   return (
@@ -75,10 +67,10 @@ export function CreateWorldForm() {
           placeholder="Worum geht es in dieser Welt?"
         />
       </div>
-      <label className="stack small muted" style={{ gap: 6 }}>
-        Titelbild (optional, JPG, PNG oder WebP, max. 10 MB)
-        <input type="file" accept={IMAGE_ACCEPT} onChange={(event) => setImage(event.target.files?.[0] ?? null)} />
-      </label>
+      <div className="stack small muted" style={{ gap: 6 }}>
+        <span>Titelbild (optional, JPG, PNG oder WebP, max. 10 MB)</span>
+        <ImageUploadField mode="pending" onFileChange={setImage} onRemove={image ? () => setImage(null) : undefined} />
+      </div>
       <p className="small muted">
         Du wirst Game Master. Das „Hauptuniversum“ und der Chat-Kanal „Allgemein“ werden automatisch angelegt.
       </p>

@@ -12,8 +12,12 @@ import { getWorldDetails } from "@/lib/domain/worlds";
 import { asRichDoc } from "@/lib/editor/rich-text";
 import { requireWorldPage } from "@/lib/page-context";
 
-export default async function WorldMenuPage({ params }: PageProps<"/w/[worldId]">) {
+export default async function WorldMenuPage({
+  params,
+  searchParams,
+}: PageProps<"/w/[worldId]"> & { searchParams: Promise<{ imageError?: string }> }) {
   const { worldId } = await params;
+  const query = await searchParams;
   const { world, membership, user } = await requireWorldPage(worldId);
   const gm = isGm(membership.role);
   const [members, invites, details, characters, mine] = await Promise.all([
@@ -41,6 +45,7 @@ export default async function WorldMenuPage({ params }: PageProps<"/w/[worldId]"
                 description: asRichDoc(details.descriptionJson),
                 titleImageId: details.titleImageId,
               }}
+              initialImageError={query.imageError === "1"}
             />
           ) : null}
         </div>

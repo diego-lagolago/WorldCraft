@@ -9,17 +9,10 @@ import {
   type MembershipRow,
 } from "@/lib/authz";
 import { MAX_CHARACTER_IMAGES } from "./inspect";
+import { MONSTER_NOT_FOUND } from "@/lib/monsters/messages";
+import type { ImageKind } from "./kinds";
 
-export const IMAGE_KINDS = [
-  "world_title",
-  "map",
-  "article_title",
-  "monster_portrait",
-  "character_portrait",
-  "character_image",
-] as const;
-
-export type ImageKind = (typeof IMAGE_KINDS)[number];
+export { IMAGE_KINDS, type ImageKind } from "./kinds";
 
 export function authorizeImageWrite(input: {
   kind: ImageKind;
@@ -44,7 +37,7 @@ export function authorizeImageWrite(input: {
     return authorizeOwnedContentWrite({
       membership: input.membership,
       content: input.content ?? null,
-      notFoundError: "Monster nicht gefunden.",
+      notFoundError: MONSTER_NOT_FOUND,
     });
   }
 

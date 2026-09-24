@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createMapWithImage } from "./repository";
+import { removeStoredFile } from "@/lib/files/store";
 
 /** CR-011: domain helper for MCP-style map+image create; GIF must be rejected. */
 const sql = postgres(process.env.DATABASE_URL ?? "", { max: 1 });
@@ -43,7 +44,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  const files = await sql`SELECT id FROM files WHERE created_by = ${gmId}`;
   await sql`DELETE FROM worlds WHERE id = ${worldId}`;
+  await Promise.all(files.map((file) => removeStoredFile(file.id)));
   await sql`DELETE FROM users WHERE id = ${gmId}`;
   await sql.end();
 });

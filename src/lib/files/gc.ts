@@ -1,8 +1,7 @@
-import { unlink } from "node:fs/promises";
 import { and, inArray, sql, type AnyColumn } from "drizzle-orm";
 import { db } from "@/db/client";
 import { FILE_REFERENCE_COLUMNS, files } from "@/db/schema";
-import { storedFilePath } from "./store";
+import { deleteStoredObject } from "./store";
 
 function notReferencedBy(column: AnyColumn) {
   return sql`NOT EXISTS (SELECT 1 FROM ${column.table} WHERE ${column} = ${files.id})`;
@@ -23,10 +22,6 @@ export async function collectUnreferencedFiles(candidateIds: readonly (string | 
     .returning({ storageKey: files.storageKey });
 
   await Promise.all(
-    removed.map((row) =>
-      unlink(storedFilePath(row.storageKey)).catch((error: NodeJS.ErrnoException) => {
-        if (error.code !== "ENOENT") throw error;
-      }),
-    ),
+    removed.map((row) => deleteStoredObject(row.storageKey)),
   );
 }
