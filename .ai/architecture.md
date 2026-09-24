@@ -144,3 +144,25 @@ Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `005` (Mons
 3. Wird das Charakterblatt mit ausgeliefert?
 4. Gilt die dreistufige Sichtbarkeit wie bei Artikeln?
 
+
+### nach Plan 006 (2026-09-24)
+
+Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `006` (Monster-Marker, Stecknadel-Darstellung, Kartenfilter, Hotkeys, Kopieren) und gegen den tatsächlichen Code gelesen. **Plan 002 wurde nicht geändert** (wie `004` T-012 und `005` T-011).
+
+| # | Fundstelle in Plan 002 | Abweichung / Ist nach Plan 006 | Bezug |
+|---|---|---|---|
+| P6-1 | `karte_lesen` mit `karte_id`: „alle Pins … sowie alle Charakter-Marker“ | Neu: **Monster-Marker** (`monster_markers`) als dritte Art auf einer Karte. Beliebig viele pro Monster, auch mehrere auf derselben Karte (K1). Der Kartenzustand liefert sie bereits als `MonsterMarkerDto` (Monster-ID, Name, Bild-URL, Seltenheit, Boss, eigene Sichtbarkeit, Owner, `pos_x`/`pos_y` 0–1). Plan 002 nennt sie nicht (Frage 1). | Plan 006 K1/K2; `src/lib/map/types.ts`, `src/lib/map/repository.ts` |
+| P6-2 | Sichtbarkeit in `karte_lesen` („Kennzeichnung, ob … `nur Spielleitung`“) | Monster-Marker haben eine **eigene dreistufige Sichtbarkeit** (neu immer `owner_only`, K6; Kopien übernehmen die Sichtbarkeit des Originals, K11) und sind nur sichtbar, wenn zusätzlich Monster und Karte sichtbar sind (`APP-VIS-INHERIT`). Die Filterung steckt heute in `getMapState` (`src/lib/map/repository.ts`); ein MCP-Werkzeug muss dieselbe Funktion nutzen statt direkt auf `monster_markers` zuzugreifen. Charakter-Marker bleiben ohne eigene Sichtbarkeit (unverändert). | Plan 006 K2/K6/K11; `APP-VIS-INHERIT`; M3 |
+| P6-3 | Filter `art` bei `suchen`, `inhalt_lesen`, `relationen_abrufen` (Werte artikel / quest / charakter / pin / universum) | **Monster als eigene Art** ist im Produkt vollständig vorhanden: `content_kind` und `SEARCH_KINDS` enthalten `monster`, die Hub-Suche findet Monster über Name und Bio (`searchMonsters`, mit `visibleContentWhere`). Die Wertelisten von `art` in Plan 002 müssen um `monster` ergänzt werden, sofern Frage 1 nach Plan 005 mit „ja“ beantwortet wird. Der deutsche MCP-Wert wäre ebenfalls `monster`; die Abbildung hängt an der offenen Frage zu deutschen oder englischen Parametern (Abgleich #4 / M2). | Plan 005 T-011 (P5-1/P5-2); `src/lib/search.ts`, `src/lib/domain/search.ts` |
+| P6-4 | `karte_lesen`: „verknüpfte Inhalte (aus Erwähnungen und manuellen Relationen: Art, ID, Titel)“ bei Pins | Pins können über Erwähnungen und manuelle Relationen jetzt auch auf **Monster** verweisen (`content_kind` `monster`). Die Art-Liste der verknüpften Inhalte muss Monster abdecken. Monster-Marker selbst sind **kein** `content_kind`: Sie haben weder Relationen noch Erwähnungen und tauchen in der Hub-Suche nicht auf. | datenmodell.md `relations`; Plan 006 *Begriffe* |
+| P6-5 | T-002 Testwelt (Karte des ersten Universums: 4 Pins + ein Charakter-Marker); T-007 Abnahme (4); T-008 Rechte-Suite | Die Testwelt enthält weder Monster noch Monster-Marker. Damit Rechte-Tests die Vererbung prüfen können, braucht die Testwelt mindestens einen veröffentlichten Marker eines veröffentlichten Monsters, einen `gm_only`-Marker und einen veröffentlichten Marker eines `gm_only`-Monsters (analog zu den Abnahmekriterien von Plan 006 T-004). Das hängt von Frage 1 ab. | Plan 006 T-004; Plan 002 T-002/T-007/T-008 |
+| P6-6 | – | **Ohne MCP-Wirkung:** Kartenfilter (rein clientseitig, `localStorage`), Stecknadel-Darstellung und Anker-Korrektur (K8, gespeichert wird weiter die relative Position), Hotkeys `P`/`M`, Platziermodi (K9/K10/K12). Kopieren (K11) erzeugt gewöhnliche `monster_markers`-Zeilen und braucht keine eigene Behandlung. Die SSE-Ereignisse `map.monsterMarker*` betreffen MCP nicht, da die Werkzeuge nur lesend und ohne Echtzeit arbeiten. | Plan 006 K3/K8–K12; ADR-003 |
+
+**Offene Fragen für das Review von Plan `002` (Antwort vor Umsetzung nötig):**
+
+1. Liefert `karte_lesen` mit `karte_id` Monster-Marker, und wenn ja, mit welchen Feldern? Vorschlag: Monster-ID, Monster-Name, Seltenheit, Boss-Kennzeichen, relative Position und Sichtbarkeitskennzeichnung wie bei Pins. Ohne Bild-URL, analog zum Ausschluss von Bildanhängen bei Charakteren.
+2. Werden mehrere Marker desselben Monsters auf einer Karte einzeln ausgegeben (je Marker eine Zeile mit Position) oder gruppiert (Monster mit Anzahl und Positionsliste)?
+3. Bleiben Monster-Marker ausschließlich Teil von `karte_lesen`, oder sollen sie zusätzlich lesbar sein, z. B. als Liste „Vorkommen auf Karten“ bei `inhalt_lesen` für ein Monster? Plan 006 schließt eine solche Liste in der App bewusst aus.
+4. Wird die Testwelt aus T-002 um Monster und Monster-Marker in den drei Sichtbarkeitsfällen aus P6-5 erweitert, und wird T-007 Abnahme (4) entsprechend ergänzt?
+
+Die Frage nach Monster in `suchen` und `inhalt_lesen` (P6-3) ist Frage 1 aus dem Abgleich nach Plan 005 und wird hier nicht doppelt gezählt.
