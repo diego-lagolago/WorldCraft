@@ -39,6 +39,7 @@ export function ArticleList({
           <Link
             key={entry.value}
             href={hubFilterHref(worldId, hubFilters, "template", entry.value)}
+            scroll={false}
             className={filter === entry.value ? "chip on" : "chip"}
           >
             {entry.label}

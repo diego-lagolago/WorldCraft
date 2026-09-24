@@ -40,6 +40,7 @@ export function MonsterList({
           <Link
             key={entry.value}
             href={hubFilterHref(worldId, hubFilters, "kind", entry.value)}
+            scroll={false}
             className={filter === entry.value ? "chip on" : "chip"}
           >
             {entry.label}
