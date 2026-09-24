@@ -26,7 +26,9 @@ async function createChapter(
   questId: string,
   body: Record<string, unknown>,
 ) {
-  const res = await api<{ chapter: { id: string; title: string; visibility: string; position: number } }>(
+  const res = await api<{
+    chapter: { id: string; title: string; status: string; visibility: string; position: number };
+  }>(
     session,
     "POST",
     chaptersPath(questId),
@@ -178,6 +180,65 @@ describe("T-006 (3): player mutations rejected", () => {
     expect((await api(player, "DELETE", chapterPath(quest.id, chapter.id))).status).toBe(403);
     expect(
       (await api(player, "PUT", orderPath(quest.id), { chapterIds: [chapter.id] })).status,
+    ).toBe(403);
+  });
+});
+
+describe("T-002 (010): chapter status", () => {
+  it("defaults to open, accepts staff PATCH, rejects invalid values and players without recalculating relations", async () => {
+    const article = await api<{ article: { id: string } }>(gm, "POST", w("/articles"), {
+      title: "Status-Relationsziel",
+      visibility: "published",
+    });
+    expect(article.status).toBe(201);
+
+    const quest = await createQuest(gm, {
+      title: "Kapitelstatus",
+      visibility: "published",
+    });
+    const chapter = await createChapter(gm, quest.id, {
+      title: "Statuskapitel",
+      visibility: "published",
+      body: mentionDoc(article.data.article.id, "article", "Status-Relationsziel"),
+    });
+    expect(chapter.status).toBe("open");
+
+    const before = await sql`
+      SELECT id, created_by FROM relations
+      WHERE world_id = ${worldId}
+        AND source_quest_id = ${quest.id}
+        AND origin = 'mention'
+    `;
+    expect(before).toHaveLength(1);
+
+    const updated = await api<{ id: string }>(masterA, "PATCH", chapterPath(quest.id, chapter.id), {
+      status: "completed",
+    });
+    expect(updated.status).toBe(200);
+
+    const list = await api<{ chapters: { id: string; status: string }[] }>(
+      gm,
+      "GET",
+      chaptersPath(quest.id),
+    );
+    expect(list.status).toBe(200);
+    expect(list.data.chapters.find((entry) => entry.id === chapter.id)?.status).toBe("completed");
+
+    const after = await sql`
+      SELECT id, created_by FROM relations
+      WHERE world_id = ${worldId}
+        AND source_quest_id = ${quest.id}
+        AND origin = 'mention'
+    `;
+    expect(after.map((row) => ({ id: row.id, created_by: row.created_by }))).toEqual(
+      before.map((row) => ({ id: row.id, created_by: row.created_by })),
+    );
+
+    expect(
+      (await api(gm, "PATCH", chapterPath(quest.id, chapter.id), { status: "done" })).status,
+    ).toBe(400);
+    expect(
+      (await api(player, "PATCH", chapterPath(quest.id, chapter.id), { status: "active" })).status,
     ).toBe(403);
   });
 });

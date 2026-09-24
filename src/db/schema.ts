@@ -599,6 +599,7 @@ export const questChapters = pgTable(
     bodyPlain: text("body_plain"),
     bodyTsv: tsvector("body_tsv").generatedAlwaysAs(plainTsv("body_plain")),
     position: integer("position").notNull(),
+    status: questStatus("status").default("open").notNull(),
     visibility: contentVisibility("visibility").default("owner_only").notNull(),
     ownerId: text("owner_id")
       .notNull()

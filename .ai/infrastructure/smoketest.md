@@ -253,3 +253,19 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 | S9.6 | Glossar-Filter „Rassen“ und Scrollposition | bestanden | Filter zeigt den Rasse-Artikel; beim Wechsel zurück zu „Alle“ blieb `window.scrollY` bei 1315.5 px. |
 | S9.7 | `@`-Vorschlag für Rasse | bestanden | `@Waldelfen` zeigt „Waldelfen 009 · Artikel · Rasse“. |
 | S9.8 | Artikel ohne neue Felder bearbeiten | bestanden | Person ohne neue Feldwerte zeigt überall „–“ und öffnet ohne Fehlermeldung im Bearbeitungsformular. |
+
+---
+
+## Plan 010 – Status für Quest-Kapitel (lokal)
+
+**Datum:** 2026-09-24
+**Umgebung:** Isolierter Dev-Server `http://localhost:3001`, Test-Login als Game Master bzw. Player.
+**Ergebnis:** bestanden
+
+| ID | Check | Status | Beobachtung |
+|---|---|---|---|
+| S10.1 | Spielleitung setzt ein Kapitel auf „aktiv“; Reload | bestanden | Inline-Auswahl „Status von Öffentliches Kapitel“ auf `aktiv` gesetzt; nach Reload weiter `aktiv`. |
+| S10.2 | Sichtbarkeit über „Bearbeiten“ auf „veröffentlicht“; Anzeige aktualisiert | bestanden | `SL-Kapitel` im Bearbeiten-Dialog veröffentlicht; das vorherige Badge „nur Spielleitung“ verschwindet wie bei anderen veröffentlichten Inhalten. |
+| S10.3 | Player sieht beim veröffentlichten Kapitel „aktiv“, kann nicht ändern | bestanden | Player-HTML enthält `badge st-active`, aber kein Status- oder Sichtbarkeits-Auswahlfeld; API-PATCH durch Player wird mit 403 abgelehnt. |
+| S10.4 | Bestehende Kapitel zeigen nach Migration „offen“ | bestanden | Additive Migration `0023_quest_chapter_status.sql` lief lokal; das vorhandene `SL-Kapitel` hatte anschließend den Default `open`. |
+| S10.5 | Kapitelzeile bei 375 px bedienbar | bestanden | `scrollWidth` 360 bei Viewport 375 px; kein horizontaler Überlauf. |

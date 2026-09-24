@@ -184,3 +184,15 @@ Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `009` (neue
 
 1. Gibt `inhalt_lesen` Auswahlwerte als deutsche Labels (empfohlen, analog zur UI) oder als gespeicherte englische Schlüssel aus? Diese Entscheidung gilt für alle bestehenden und neuen Vorlagenfelder.
 2. Soll die Testwelt in T-002 mit weiterhin genau fünf Artikeln arbeiten und `race` einen bisherigen Vorlagentyp ersetzen, oder soll sie auf sechs Artikel erweitert werden, damit alle fünf Vorlagentypen plus ein Artikel ohne Vorlage vorkommen?
+
+### nach Plan 010 (2026-09-24)
+
+Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `010` (Status an Quest-Kapiteln) gelesen. Plan `002` wird nicht geändert; dieser Abgleich ergänzt die weiterhin offene Kapitel-Entscheidung aus Plan `004`.
+
+| # | Änderung aus Plan 010 | Betroffene MCP-Werkzeuge / Abgleich |
+|---|---|---|
+| P10-1 | `quest_chapters.status` nutzt wie Quests `open` / `active` / `completed` / `failed`; Standard ist `open`. Kapitel- und Quest-Status bleiben unabhängig. | Die offene Frage aus P4-2 bleibt maßgeblich: **Falls** `inhalt_lesen` Quest-Kapitel ausliefert, muss jedes sichtbare Kapitel seinen Status mit diesen vier Werten enthalten. Werden Kapitel nicht ausgeliefert, ist keine Erweiterung des Werkzeugergebnisses nötig. |
+| P10-2 | Kapitel-Status ist nur eine Eigenschaft des Kapitels; Statusänderungen beeinflussen Sichtbarkeit, Suche und Relationen nicht. | `quests_auflisten` bleibt unverändert: Sein optionaler Statusfilter und der ausgegebene Status beziehen sich ausschließlich auf den **Quest-Status**, nicht auf Kapitel. `suchen` und `relationen_abrufen` brauchen keine Statusanpassung. |
+| P10-3 | Kapitel können in der Testwelt unterschiedliche Status haben. | T-002 der Testwelt braucht nur dann Kapitel mit unterschiedlichen Status, wenn P4-2 mit Kapitel-Auslieferung beantwortet wird. Dann muss die Testwelt mindestens sichtbare Kapitel mit unterschiedlichen Status enthalten und der `inhalt_lesen`-Test sie samt Status abnehmen. |
+
+**Offene Frage für das Plan-Review von Plan 002:** Ergänzend zu P4-2: Falls Kapitel über `inhalt_lesen` ausgeliefert werden, sind sie nur verschachtelter Quest-Inhalt oder sollen sie auch als eigene Treffer/Objekte in `suchen` bzw. `relationen_abrufen` erscheinen? Der Kapitel-Status selbst erweitert keinen dieser Scopes.

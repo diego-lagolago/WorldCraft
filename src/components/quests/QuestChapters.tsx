@@ -5,10 +5,11 @@ import { useState } from "react";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { Sheet } from "@/components/map/MapSheets";
+import { QuestStatusSelect } from "@/components/quests/QuestStatusSelect";
 import { VisibilityBadge } from "@/components/world/display";
 import { ContentVisibilitySelect } from "@/components/world/VisibilitySelect";
 import type { ContentVisibility } from "@/lib/authz/types";
-import { CHAPTER_TITLE_MAX } from "@/lib/quests/status";
+import { CHAPTER_TITLE_MAX, QUEST_STATUS_LABEL, type QuestStatus } from "@/lib/quests/status";
 import { apiRequest } from "@/lib/client/api";
 import type { ResolvedMention } from "@/lib/domain/mention-resolve";
 import type { MentionState } from "@/lib/editor/mentions";
@@ -18,6 +19,7 @@ export type QuestChapterView = {
   id: string;
   title: string;
   bodyJson: unknown;
+  status: QuestStatus;
   visibility: ContentVisibility;
   ownerId: string;
 };
@@ -65,10 +67,10 @@ export function QuestChapters({
     router.refresh();
   }
 
-  async function onVisibilityChange(chapter: QuestChapterView, visibility: ContentVisibility) {
-    if (visibility === chapter.visibility) return;
+  async function onStatusChange(chapter: QuestChapterView, status: QuestStatus) {
+    if (status === chapter.status) return;
     const saved = await run(
-      apiRequest(`${base}/${chapter.id}`, "PATCH", { visibility }),
+      apiRequest(`${base}/${chapter.id}`, "PATCH", { status }),
     );
     if (saved.ok) await refresh();
   }
@@ -124,12 +126,10 @@ export function QuestChapters({
               <VisibilityBadge visibility={chapter.visibility} />
               {staff ? (
                 <div className="ch-actions">
-                  <ContentVisibilitySelect
-                    compact
-                    value={chapter.visibility}
-                    onChange={(visibility) => void onVisibilityChange(chapter, visibility)}
-                    allowOwner={chapter.ownerId === actorId}
-                    ariaLabel={`Sichtbarkeit von ${chapter.title}`}
+                  <QuestStatusSelect
+                    value={chapter.status}
+                    onChange={(status) => void onStatusChange(chapter, status)}
+                    ariaLabel={`Status von ${chapter.title}`}
                     disabled={pending}
                   />
                   <button
@@ -169,7 +169,9 @@ export function QuestChapters({
                     Löschen
                   </button>
                 </div>
-              ) : null}
+              ) : (
+                <span className={`badge st-${chapter.status}`}>{QUEST_STATUS_LABEL[chapter.status]}</span>
+              )}
             </div>
             <RichTextView
               doc={asRichDoc(chapter.bodyJson)}
