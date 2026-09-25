@@ -16,6 +16,7 @@ Reihenfolge der Pläne für WorldCraft. Jeder Plan liegt unter `.ai/feature-task
 | 8 | [`009` Neue Vorlagenfelder und Vorlage „Rasse“](feature-tasks/009-vorlagenfelder-und-rasse.md) | Neue Auswahlwerte/-felder für Person, Ort, Organisation, Gegenstand (u. a. Gefahrenstufe, Ruf, Größe, Seltenheit als Pill); Vorlage „Rasse“ mit Verweis Person → Rasse | ✅ abgeschlossen (2026-09-24) |
 | 9 | [`010` Status für Quest-Kapitel](feature-tasks/010-kapitel-status.md) | Kapitel bekommen den Quest-Status (offen/aktiv/abgeschlossen/gescheitert); Inline-Feld der Kapitelzeile wird Status, Sichtbarkeit nur noch im Bearbeitendialog | ✅ abgeschlossen (2026-09-24) |
 | 10 | [`002` MCP-Server für Claude](feature-tasks/002-mcp-server.md) | Nur lesender Remote-MCP-Server mit OAuth, nutzt die Daten- und Rechteschicht aus `003`/`004` | ⏳ nach `009` und `010`: Abgleiche nach 004–006, 009 und 010, dann Plan-Review |
+| 11 | [`011` MCP: Schreibend](feature-tasks/011-mcp-schreibend.md) | Schreibende MCP-Werkzeuge mit eigenem Scope `worlds:write`, Bestätigungspflicht für Änderungen, `nur ich` für Neues, kein Löschen, Bild-Upload per einmaligem Link | 📝 angelegt (2026-09-25); startet, wenn `002` auf Produktion wie erwartet läuft |
 
 Die Nummern der Pläne geben die Reihenfolge ihrer Entstehung an, nicht die Reihenfolge der Umsetzung: `004` vor `002` (R4); `005` vor `006` (006 setzt Monster voraus); `002` nach `006`, damit der MCP-Server Monster und Monster-Marker mit abdeckt (Abgleiche in `004` T-012, `005` T-011 und nach `006`); `009` und `010` vor `002` (Entscheidung Projektinhaber 2026-09-24), damit der MCP-Server die neuen Vorlagenfelder, die Vorlage „Rasse“ und den Kapitel-Status gleich mit abdeckt (Abgleiche in `009` T-005 und `010` T-004).
 
@@ -42,7 +43,7 @@ Die Pläne `009` und `010` sind lokal abgeschlossen; auf Produktion stehen sie s
 | 13 | Plan 002 umsetzen (Remote-MCP-Server mit OAuth, nur lesend) | 002 | `/plan-run 002` | 12 | Claude |
 | 14 | Code-Review 002, Findings umsetzen, Review-Check | 002 | `/code-review 002`, `/review-check 002` | 13 | Claude + Projektinhaber |
 | 15 | Push-Freigabe und Prod-Smoketest für den MCP-Server (Anmeldung aus Claude, Rechte je Rolle) | 002 | Push nach Freigabe | 14 | Projektinhaber |
-| 16 | Backlog-Einträge vom 2026-09-24 sichten (Monster-Marker-Sheet vertiefen, versteckte Verweise kryptisch darstellen, Fähigkeiten mit Angriffs-/Wirkungsart taggen, Kategorien in Tagebüchern, Threads archivieren) und entscheiden, ob daraus ein Plan `011` wird | – | `/plan-create` | – | Projektinhaber |
+| 16 | Backlog-Einträge vom 2026-09-24 sichten (Monster-Marker-Sheet vertiefen, versteckte Verweise kryptisch darstellen, Fähigkeiten mit Angriffs-/Wirkungsart taggen, Kategorien in Tagebüchern, Threads archivieren) und entscheiden, ob daraus ein Plan `012` wird | – | `/plan-create` | – | Projektinhaber |
 
 Die Schritte 5 und 8 (Plan-Reviews) können parallel laufen. Schritt 16 kann jederzeit dazwischen erfolgen.
 
