@@ -11,7 +11,7 @@
 | CR-002 | Duplizierung & Modularisierung | niedrig | behoben | Seltenheits-Prüfung `(MONSTER_RARITIES as readonly string[]).includes(...)` samt Cast doppelt in `ArticleFields` und `ArticleList` |
 | CR-003 | Bad Practices | niedrig | behoben | `monsterDangerOptions.slice(0, 3)` – Magic Number, hängt stillschweigend an der Reihenfolge von `MONSTER_DANGERS` |
 | CR-004 | Lesbarkeit & Wartbarkeit | niedrig | behoben | `rarity`-Projektion in `listArticles` als unqualifizierter SQL-String statt über die Drizzle-Spalte |
-| CR-005 | Testabdeckung | niedrig | offen | Keine Tests für Pill-Darstellung (Feldblock/Glossar), Glossar-Filter `race` und einige neue Auswahlwerte |
+| CR-005 | Testabdeckung | niedrig | behoben | Keine Tests für Pill-Darstellung (Feldblock/Glossar), Glossar-Filter `race` und einige neue Auswahlwerte |
 | CR-006 | Lesbarkeit & Wartbarkeit (Doku) | niedrig | behoben | Widersprüchlicher Satz zu `suchen` in P9-3 des MCP-Abgleichs (`architecture.md`) |
 | CR-007 | Aufgaben-Abgleich | niedrig | behoben | Roadmap-Anteile der Abnahmekriterien von T-005/T-006 liegen nur uncommittet im Working Tree |
 
@@ -82,6 +82,7 @@
 - **Status:** behoben – neue statische Komponententests decken Pill- und Fallback-Fälle ab; API- und Feldtests ergänzen Race-Filter bzw. Auswahlwerte. Keine Abhängigkeit wurde ergänzt; Unit- und Rechte-Suite sind grün.
 - **Review-Check 2026-09-25:** Status zurück auf `offen` (Abnahmekriterium nur teilweise erfüllt). `ArticleFields.test.ts`, `labels.test.ts`, der `race`-Filter-Test, die umbenannten `describe`-Titel und die Werte aus (c) sind vorhanden und grün. `src/components/articles/ArticleList.test.ts` prüft aber nur die Negativfälle (`place` mit `legendary`, `item` mit `mythic`); es fehlen die in (a) geforderten Fälle `item` mit `rarity: "legendary"` → Zeile enthält `badge rarity-legendary` und „Legendär“ sowie `item` mit `rarity: null` → keine `rarity-`-Klasse. Ohne den Positivfall würde ein Test auch grün bleiben, wenn die Pill in der Liste nie gerendert wird. Die Rechte-Suite (`npm run test:rechte`) wurde im Review-Check nicht ausgeführt (braucht laufenden Dev-Server).
 - **Review-Check 2026-09-25 (2. Durchgang):** weiterhin `offen` – `src/components/articles/ArticleList.test.ts` unverändert, die beiden Positivfälle (`item`/`legendary` → Pill, `item`/`null` → keine Pill) fehlen weiter.
+- **Nachtrag 2026-09-25:** behoben – `ArticleList.test.ts` ergänzt um `item`/`legendary` → `badge rarity-legendary` „Legendär“ und `item`/`null` → keine Pill. `npm test` grün. `npm run test:rechte` steht weiterhin aus (Dev-Server).
 
 ## CR-006 – Widersprüchlicher Satz zu `suchen` in P9-3
 

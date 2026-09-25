@@ -25,6 +25,16 @@ function render(templateType: string, rarity: string | null) {
 }
 
 describe("ArticleList item rarity", () => {
+  it("renders the rarity pill for items with a valid rarity", () => {
+    const html = render("item", "legendary");
+    expect(html).toContain("badge rarity-legendary");
+    expect(html).toContain("Legendär");
+  });
+
+  it("does not render a pill for items without rarity", () => {
+    expect(render("item", null)).not.toContain("rarity-");
+  });
+
   it("does not render an item rarity pill for other templates", () => {
     expect(render("place", "legendary")).not.toContain("rarity-");
   });
