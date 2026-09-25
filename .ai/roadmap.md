@@ -15,16 +15,16 @@ Reihenfolge der Pläne für WorldCraft. Jeder Plan liegt unter `.ai/feature-task
 | 7 | [`006` Monster-Marker, Stecknadeln, Kartenfilter](feature-tasks/006-karten-marker-und-filter.md) | Monster auf Karten, Charakter- und Monster-Marker als Stecknadel mit Spitze auf der Position, Kartenfilter für Charaktere, Monster und Pin-Typen | ✅ abgeschlossen (2026-09-24) |
 | 8 | [`009` Neue Vorlagenfelder und Vorlage „Rasse“](feature-tasks/009-vorlagenfelder-und-rasse.md) | Neue Auswahlwerte/-felder für Person, Ort, Organisation, Gegenstand (u. a. Gefahrenstufe, Ruf, Größe, Seltenheit als Pill); Vorlage „Rasse“ mit Verweis Person → Rasse | ✅ abgeschlossen (2026-09-24) |
 | 9 | [`010` Status für Quest-Kapitel](feature-tasks/010-kapitel-status.md) | Kapitel bekommen den Quest-Status (offen/aktiv/abgeschlossen/gescheitert); Inline-Feld der Kapitelzeile wird Status, Sichtbarkeit nur noch im Bearbeitendialog | ✅ abgeschlossen (2026-09-24) |
-| 10 | [`002` MCP-Server für Claude](feature-tasks/002-mcp-server.md) | Nur lesender Remote-MCP-Server mit OAuth, nutzt die Daten- und Rechteschicht aus `003`/`004` | ⏳ nach `009` und `010`: Abgleiche nach 004–006, 009 und 010, dann Plan-Review |
+| 10 | [`002` MCP-Server für Claude](feature-tasks/002-mcp-server.md) | Nur lesender Remote-MCP-Server mit OAuth, nutzt die Daten- und Rechteschicht aus `003`/`004` | ⏳ Entscheidungen D1–D18 eingetragen (2026-09-25), als Nächstes Plan-Review |
 | 11 | [`011` MCP: Schreibend](feature-tasks/011-mcp-schreibend.md) | Schreibende MCP-Werkzeuge mit eigenem Scope `worlds:write`, Bestätigungspflicht für Änderungen, `nur ich` für Neues, kein Löschen, Bild-Upload per einmaligem Link | 📝 angelegt (2026-09-25); startet, wenn `002` auf Produktion wie erwartet läuft |
 
 Die Nummern der Pläne geben die Reihenfolge ihrer Entstehung an, nicht die Reihenfolge der Umsetzung: `004` vor `002` (R4); `005` vor `006` (006 setzt Monster voraus); `002` nach `006`, damit der MCP-Server Monster und Monster-Marker mit abdeckt (Abgleiche in `004` T-012, `005` T-011 und nach `006`); `009` und `010` vor `002` (Entscheidung Projektinhaber 2026-09-24), damit der MCP-Server die neuen Vorlagenfelder, die Vorlage „Rasse“ und den Kapitel-Status gleich mit abdeckt (Abgleiche in `009` T-005 und `010` T-004).
 
 Offene Ideen außerhalb dieser Pläne stehen in [`backlog.md`](backlog.md).
 
-## Nächste Schritte (Stand 2026-09-24)
+## Nächste Schritte (Stand 2026-09-25)
 
-Die Pläne `009` und `010` sind lokal abgeschlossen; auf Produktion stehen sie samt Migration `0023` noch aus. Offen ist als nächster Plan `002`. Reihenfolge der offenen Arbeit:
+Alle Pläne außer `002` und `011` sind abgeschlossen und mit Version `0.1.5` auf Produktion. Offen ist als nächster Plan `002`, danach `011`. Reihenfolge der offenen Arbeit:
 
 | # | Schritt | Plan | Werkzeug | Voraussetzung | Wer |
 |---|---|---|---|---|---|
@@ -39,13 +39,17 @@ Die Pläne `009` und `010` sind lokal abgeschlossen; auf Produktion stehen sie s
 | 9 | ✅ erledigt (2026-09-24): Plan 010 umgesetzt, Migration `0023` lokal angewendet, MCP-Abgleich und Smoketest S10.1–S10.5 bestanden | 010 | `/plan-run 010` | 8; nach 6 (keine technische Abhängigkeit, nur Reihenfolge) | Claude |
 | 10 | ✅ erledigt (2026-09-25): Code-Review 010 (4 Findings behoben, 1 verworfen); Review-Check laut Projektinhaber erledigt, im Review-Dokument ohne eigenen Abschnitt | 010 | `/code-review 010`, `/review-check 010` | 9 | Claude + Projektinhaber |
 | 11 | ✅ erledigt (2026-09-25): Push als Version `0.1.5` (`aa90bda`), Migration `0023` auf Prod, Prod-Smoketest P5.1–P5.7 bestanden | 009, 010 | Push nach Freigabe | 7, 10 | Projektinhaber |
-| 12 | Grundsatzentscheidungen D1–D6 (nur lesen, Hauptschalter, Welt-Freigabe mit neuer Aufgabe T-012, feste Ausschlussliste, `owner_only` wie in der App) am 2026-09-25 in Plan 002 eingetragen. Offene Fragen aus den Abgleichen nach 004, 005, 006, 009 und 010 beantworten (u. a. `owner_only` über MCP, Kapitel und Kapitel-Status, Notizblock, Monster in Suche und Lesen, Charakterblatt, Sichtbarkeit, Monster-Marker in `karte_lesen`, Vorlage `race` und neue Vorlagenfelder, Testwelt) und Plan 002 prüfen | 002 | `/plan-review 002` | 4 ✅, 6, 9 | Claude + Projektinhaber |
+| 12 | Entscheidungen D1–D18 am 2026-09-25 in Plan 002 eingetragen (nur lesen, Hauptschalter, Welt-Freigabe, Ausschlussliste, Werkzeugumfang mit Tabelle A, offener Endpunkt, Discord-Allowlist, deutsche Parameter, `bild_lesen`, Demowelt auf Prod); damit sind die offenen Fragen aus den Abgleichen beantwortet. Jetzt Plan 002 prüfen | 002 | `/plan-review 002` | 4 ✅, 6, 9 | Claude + Projektinhaber |
 | 13 | Plan 002 umsetzen (Remote-MCP-Server mit OAuth, nur lesend) | 002 | `/plan-run 002` | 12 | Claude |
 | 14 | Code-Review 002, Findings umsetzen, Review-Check | 002 | `/code-review 002`, `/review-check 002` | 13 | Claude + Projektinhaber |
 | 15 | Push-Freigabe und Prod-Smoketest für den MCP-Server (Anmeldung aus Claude, Rechte je Rolle) | 002 | Push nach Freigabe | 14 | Projektinhaber |
-| 16 | Backlog-Einträge vom 2026-09-24 sichten (Monster-Marker-Sheet vertiefen, versteckte Verweise kryptisch darstellen, Fähigkeiten mit Angriffs-/Wirkungsart taggen, Kategorien in Tagebüchern, Threads archivieren) und entscheiden, ob daraus ein Plan `012` wird | – | `/plan-create` | – | Projektinhaber |
+| 16 | Plan 011 (MCP: Schreibend) prüfen; Stand nach 002 auf Produktion abgleichen | 011 | `/plan-review 011` | 15, Lesen auf Prod läuft wie erwartet | Claude + Projektinhaber |
+| 17 | Plan 011 umsetzen | 011 | `/plan-run 011` | 16 | Claude |
+| 18 | Code-Review 011, Findings umsetzen, Review-Check | 011 | `/code-review 011`, `/review-check 011` | 17 | Claude + Projektinhaber |
+| 19 | Push-Freigabe und Ende-zu-Ende-Test Schreiben auf Prod (Plan 011 T-011) | 011 | Push nach Freigabe | 18 | Projektinhaber |
+| 20 | Backlog-Einträge vom 2026-09-24 sichten (Monster-Marker-Sheet vertiefen, versteckte Verweise kryptisch darstellen, Fähigkeiten mit Angriffs-/Wirkungsart taggen, Kategorien in Tagebüchern, Threads archivieren) und entscheiden, ob daraus ein Plan `012` wird | – | `/plan-create` | – | Projektinhaber |
 
-Die Schritte 5 und 8 (Plan-Reviews) können parallel laufen. Schritt 16 kann jederzeit dazwischen erfolgen.
+Die Schritte 5 und 8 (Plan-Reviews) können parallel laufen. Schritt 20 kann jederzeit dazwischen erfolgen.
 
 **Stand 2026-09-24:** Schritte 1–4 erledigt (Review 005 CR-009 behoben, Review 006 um CR-017–CR-025 ergänzt und abgearbeitet, Prod-Smoketest `0.1.4` bestanden, Abgleich 002 nach 006). Die Fixes aus Schritt 1 und 2 sind lokal und gehen mit dem nächsten Push raus. Plan `009` ist lokal abgeschlossen; Plan `010` ist ebenfalls lokal abgeschlossen (Migration `0023` angewendet, S10.1–S10.5 bestanden).
 
@@ -60,7 +64,8 @@ Die Schritte 5 und 8 (Plan-Reviews) können parallel laufen. Schritt 16 kann jed
 - **`006`:** ✅ abgeschlossen (2026-09-24). Monster-Marker, Stecknadel-Darstellung, Kartenfilter, Hotkeys `P`/`M`, Monster-Marker kopieren, Charakter-Platziermodus (K13, ohne Taste); Smoketest lokal bestanden. Code-Review `code-review-006-karten-marker-und-filter-2026-09-24.md`: CR-001–CR-025 behoben (CR-017–CR-025 aus dem Nachtrag-Review zu Charaktermodus und Kartenleiste), Review-Checks 2026-09-24. Ausgeliefert mit Version `0.1.4`, Fixes aus dem Nachtrag folgen mit dem nächsten Push.
 - **`009`:** ✅ abgeschlossen (2026-09-24). Neue Auswahlwerte und -felder für Person, Ort, Organisation und Gegenstand, Vorlage „Rasse“ mit Verweis Person → Rasse; keine Migration. MCP-Abgleich nach `009` in `architecture.md`; lokaler Smoketest S9.1–S9.8 bestanden.
 - **`010`:** ✅ abgeschlossen (2026-09-24). Kapitel-Status wie bei Quests, Inline-Feld der Kapitelzeile ist Status, Sichtbarkeit nur noch im Bearbeitendialog. Migration `0023` lokal angewendet; MCP-Abgleich in `architecture.md` und Smoketest S10.1–S10.5 bestanden. Code-Review `code-review-010-kapitel-status-2026-09-24.md`: 4 Findings behoben, 1 verworfen.
-- **`002`:** Startet erst nach `009` und `010` (Entscheidung Projektinhaber 2026-09-24). Vor dem Start mit dem Stand nach `004`, `005`, `006`, `009` und `010` abgleichen und `/plan-review` ausführen (siehe *Nächste Schritte*). Abgleiche nach `004` (T-012), `005` (T-011), `006` (2026-09-24) und `009` (T-005, Vorlagentyp `race`, neue Vorlagenfelder, zwei offene Fragen) stehen in `architecture.md` unter *Abgleich Plan 002*; der Abgleich nach `010` (T-004) ist ebenfalls dokumentiert. Zusätzlich weiter der Abgleich aus `003` T-018.
+- **`002`:** Grundsatz- und Umfangsentscheidungen D1–D18 am 2026-09-25 eingetragen (u. a. acht Lesewerkzeuge, Ausschlussliste D9, Discord-Allowlist D13, `bild_lesen`, Demowelt-Skript T-014); als Nächstes `/plan-review 002`. Historie der Abgleiche: Abgleiche nach `004` (T-012), `005` (T-011), `006` (2026-09-24) und `009` (T-005, Vorlagentyp `race`, neue Vorlagenfelder, zwei offene Fragen) stehen in `architecture.md` unter *Abgleich Plan 002*; der Abgleich nach `010` (T-004) ist ebenfalls dokumentiert. Zusätzlich weiter der Abgleich aus `003` T-018.
+- **`011`:** 📝 angelegt (2026-09-25). Schreibende MCP-Werkzeuge nach den Entscheidungen S1–S9 (eigener Scope `worlds:write`, Pins und Charaktere gesperrt, Sichtbarkeit nur auf Wunsch, Bestätigung für Änderungen und Stubs, kein Löschen, Upload-Link). Hängt an `002` (D1, D18); `/plan-review 011` erst, wenn `002` auf Produktion läuft.
 
 ## Arbeitsweise
 
