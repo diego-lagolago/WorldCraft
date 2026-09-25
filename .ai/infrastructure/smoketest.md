@@ -269,3 +269,20 @@ Zwei Discord-Konten, **gleiche Welt**. Optional — kein T-014-Blocker, für T-0
 | S10.3 | Player sieht beim veröffentlichten Kapitel „aktiv“, kann nicht ändern | bestanden | Player-HTML enthält `badge st-active`, aber kein Status- oder Sichtbarkeits-Auswahlfeld; API-PATCH durch Player wird mit 403 abgelehnt. |
 | S10.4 | Bestehende Kapitel zeigen nach Migration „offen“ | bestanden | Additive Migration `0023_quest_chapter_status.sql` lief lokal; das vorhandene `SL-Kapitel` hatte anschließend den Default `open`. |
 | S10.5 | Kapitelzeile bei 375 px bedienbar | bestanden | `scrollWidth` 360 bei Viewport 375 px; kein horizontaler Überlauf. |
+
+---
+
+## Prod-Stand 0.1.5 (Pläne 009, 010, Review-Fixes 005/006)
+
+**Umgebung:** Prod `https://worldcraft.lagolago.at`, Version `0.1.5` (Push `aa90bda`), Discord-Login. Migration `0023` auf Prod angewendet.
+
+| # | Kriterium | Wo | Ergebnis | Beobachtung |
+|---|---|---|---|---|
+| P5.1 | Sidebar zeigt `v0.1.5` | Prod | **bestanden** | Owner 2026-09-25. |
+| P5.2 | Neue Vorlagenfelder bei Person, Ort, Organisation, Gegenstand speichern | Prod | **bestanden** | Owner 2026-09-25. |
+| P5.3 | Seltenheit als Pill in der Artikelliste | Prod | **bestanden** | Owner 2026-09-25. |
+| P5.4 | Vorlage „Rasse“ anlegen, Person verweist darauf | Prod | **bestanden** | Owner 2026-09-25. |
+| P5.5 | Bestehende Quest-Kapitel stehen nach Migration `0023` auf „offen“ | Prod | **bestanden** | Owner 2026-09-25. |
+| P5.6 | Kapitel-Status inline, Sichtbarkeit nur im Bearbeitendialog | Prod | **bestanden** | Owner 2026-09-25. |
+| P5.7 | Review-006-Fixes: „…“ bei Karte ohne Bild, ❌ im Kopiermodus | Prod | **bestanden** | Owner 2026-09-25. |
+

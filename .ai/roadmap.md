@@ -37,7 +37,7 @@ Die Pläne `009` und `010` sind lokal abgeschlossen; auf Produktion stehen sie s
 | 8 | ✅ erledigt (2026-09-24): Plan 010 prüfen (Kapitel-Status) | 010 | `/plan-review 010` | – | Claude + Projektinhaber |
 | 9 | ✅ erledigt (2026-09-24): Plan 010 umgesetzt, Migration `0023` lokal angewendet, MCP-Abgleich und Smoketest S10.1–S10.5 bestanden | 010 | `/plan-run 010` | 8; nach 6 (keine technische Abhängigkeit, nur Reihenfolge) | Claude |
 | 10 | ✅ erledigt (2026-09-25): Code-Review 010 (4 Findings behoben, 1 verworfen); Review-Check laut Projektinhaber erledigt, im Review-Dokument ohne eigenen Abschnitt | 010 | `/code-review 010`, `/review-check 010` | 9 | Claude + Projektinhaber |
-| 11 | Push als Version `0.1.5` freigegeben (2026-09-25); offen: Prod-Smoketest und Prod-Smoketest für `009` und `010` (neue Vorlagenfelder, Rasse, Kapitel-Status, Migration `0023`) | 009, 010 | Push nach Freigabe | 7, 10 | Projektinhaber |
+| 11 | ✅ erledigt (2026-09-25): Push als Version `0.1.5` (`aa90bda`), Migration `0023` auf Prod, Prod-Smoketest P5.1–P5.7 bestanden | 009, 010 | Push nach Freigabe | 7, 10 | Projektinhaber |
 | 12 | Offene Fragen aus den Abgleichen nach 004, 005, 006, 009 und 010 beantworten (u. a. `owner_only` über MCP, Kapitel und Kapitel-Status, Notizblock, Monster in Suche und Lesen, Charakterblatt, Sichtbarkeit, Monster-Marker in `karte_lesen`, Vorlage `race` und neue Vorlagenfelder, Testwelt) und Plan 002 prüfen | 002 | `/plan-review 002` | 4 ✅, 6, 9 | Claude + Projektinhaber |
 | 13 | Plan 002 umsetzen (Remote-MCP-Server mit OAuth, nur lesend) | 002 | `/plan-run 002` | 12 | Claude |
 | 14 | Code-Review 002, Findings umsetzen, Review-Check | 002 | `/code-review 002`, `/review-check 002` | 13 | Claude + Projektinhaber |
