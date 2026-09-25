@@ -2,6 +2,14 @@
 
 Kurze, undatierte Restpunkte. Kein Ersatz für Pläne unter `.ai/feature-tasks/`.
 
+## 2026-09-25 – MCP: Schreiben (Folgeplan zu `002`)
+
+**Quelle:** Projektinhaber beim Klären von Plan `002` (D1, D6, D15).
+
+Eigener Plan, sobald das Lesen über MCP auf Produktion wie erwartet läuft. Grundlagen legt ADR-005 (Plan `002` T-001 Punkt 7) fest: Scope `worlds:write`, Schreibrechte genau wie in der App (Players etwa nur Notizblock und eigener Charakter), neue Inhalte starten mit `nur ich`, **kein Löschen**, Audit-Log mit Herkunft „MCP“, Umwandlung Markdown → TipTap-JSON inkl. Erwähnungen.
+
+**Bilder hochladen:** Kein Base64 im Werkzeugaufruf. Das Modell kann die Bytes eines Bildes aus dem Chat nicht selbst ausgeben, und die Größe übersteigt jede Ausgabegrenze. Stattdessen ein **einmaliger Upload-Link**: Ein Werkzeug erzeugt für Benutzer, Welt und Ziel (z. B. Titelbild von Artikel X) ein kurzlebiges Upload-Ticket (10–15 Minuten, einmal nutzbar, nur als Hash gespeichert). Unter der Adresse gibt es eine schlichte Upload-Seite für den Browser (claude.ai, ChatGPT) und einen `multipart/form-data`-`POST` für Clients mit Dateizugriff (Claude Code etwa per `curl -F`). Prüfung und Speicherung wie beim heutigen Upload (JPG/PNG/WebP, 10/20 MB, Tabelle `files`, Rechte über die Rechteschicht). Optional prüfen: die clientspezifische Dateiübergabe von ChatGPT (Datei als Download-Link an das Werkzeug), dann serverseitiger Abruf nur von freigegebenen Hosts, mit Größenlimit und Typprüfung (Schutz gegen SSRF).
+
 ## 2026-09-25 – Pills/Badges projektweit standardisieren
 
 **Quelle:** Projektinhaber im Plan-Review des Code-Reviews zu Plan `009` (CR-005, `.ai/code-review-009-vorlagenfelder-und-rasse-2026-09-24.md`).
