@@ -4,7 +4,7 @@ import { worldPath } from "@/components/shell/nav";
 import { VisibilityBadge } from "@/components/world/display";
 import type { ArticleListItem } from "@/lib/domain/articles";
 import { hubFilterHref, type HubFilterParams } from "@/lib/hub-filter-href";
-import { MONSTER_RARITIES, type MonsterRarity } from "@/lib/monsters/labels";
+import { isMonsterRarity } from "@/lib/monsters/labels";
 import { TEMPLATES, TEMPLATE_TYPES, templateBadge, type TemplateType } from "@/lib/templates/registry";
 
 const FILTERS: { value: "all" | TemplateType; label: string }[] = [
@@ -56,8 +56,8 @@ export function ArticleList({
           const rarity =
             article.templateType === "item" &&
             article.rarity &&
-            (MONSTER_RARITIES as readonly string[]).includes(article.rarity)
-              ? (article.rarity as MonsterRarity)
+            isMonsterRarity(article.rarity)
+              ? article.rarity
               : null;
           return (
             <Link key={article.id} className="item" href={worldPath(worldId, `/articles/${article.id}`)}>

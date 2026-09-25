@@ -18,6 +18,7 @@ import { parseUuid } from "@/lib/http";
 import { collectUnreferencedFiles } from "@/lib/files/gc";
 import { swapSingleImage } from "@/lib/files/single-image";
 import {
+  keepCompatibleFields,
   parseTemplateFields,
   templateFieldsHaveValue,
   type StoredTemplateFields,
@@ -173,6 +174,65 @@ async function fieldsFrom(type: TemplateType, raw: unknown, worldId: string): Pr
   return parsed;
 }
 
+/** Drops stored refs whose target is gone or incompatible with a new template. */
+async function keepCompatibleRefTargets(
+  worldId: string,
+  type: TemplateType,
+  fields: StoredTemplateFields,
+): Promise<StoredTemplateFields> {
+  const refs: { key: string; value: TemplateRefValue }[] = [];
+  for (const [key, value] of Object.entries(fields)) {
+    if (typeof value === "object" && value && "kind" in value) refs.push({ key, value });
+  }
+  if (refs.length === 0) return fields;
+
+  const articleIds = refs.filter((ref) => ref.value.kind === "article").map((ref) => ref.value.id);
+  const characterIds = refs.filter((ref) => ref.value.kind === "character").map((ref) => ref.value.id);
+  const [articleRows, characterRows] = await Promise.all([
+    articleIds.length
+      ? db
+          .select({ id: articles.id, templateType: articles.templateType })
+          .from(articles)
+          .where(and(eq(articles.worldId, worldId), inArray(articles.id, articleIds)))
+      : [],
+    characterIds.length
+      ? db
+          .select({ id: characters.id })
+          .from(characters)
+          .innerJoin(
+            worldParticipations,
+            and(
+              eq(worldParticipations.characterId, characters.id),
+              eq(worldParticipations.worldId, worldId),
+              isNull(worldParticipations.archivedAt),
+            ),
+          )
+          .where(inArray(characters.id, characterIds))
+      : [],
+  ]);
+  const articlesById = new Map(articleRows.map((row) => [row.id, row]));
+  const characterIdsInWorld = new Set(characterRows.map((row) => row.id));
+  const fieldByKey = new Map(templateOf(type).fields.map((field) => [field.key, field]));
+  const out = { ...fields };
+
+  for (const ref of refs) {
+    const field = fieldByKey.get(ref.key);
+    const allowed =
+      field?.type === "ref" &&
+      (ref.value.kind === "character"
+        ? field.targets.some((target) => target.kind === "character") && characterIdsInWorld.has(ref.value.id)
+        : field.targets.some(
+            (target) =>
+              target.kind === "article" &&
+              articlesById.get(ref.value.id) &&
+              isTemplateType(articlesById.get(ref.value.id)?.templateType) &&
+              target.templateType === articlesById.get(ref.value.id)?.templateType,
+          ));
+    if (!allowed) delete out[ref.key];
+  }
+  return out;
+}
+
 /** Visible articles of a world, title A–Z; optional template filter. */
 export async function listArticles(
   worldId: string,
@@ -187,7 +247,7 @@ export async function listArticles(
   if (templateType && templateType !== "all") filters.push(eq(articles.templateType, templateType));
 
   const rows = await db
-    .select({ ...summaryColumns, rarity: sql<string | null>`template_fields->>'rarity'` })
+    .select({ ...summaryColumns, rarity: sql<string | null>`${articles.templateFields}->>'rarity'` })
     .from(articles)
     .where(and(...filters))
     .orderBy(asc(articles.title));
@@ -244,10 +304,13 @@ async function toPatch(
 
   let fields: StoredTemplateFields | undefined;
   if (input.templateFields !== undefined || input.templateType !== undefined) {
-    const source = input.templateFields !== undefined ? input.templateFields : current?.templateFields;
-    const parsed = await fieldsFrom(nextType, source, worldId);
-    if (!parsed.ok) return parsed;
-    fields = parsed.data;
+    if (input.templateFields !== undefined) {
+      const parsed = await fieldsFrom(nextType, input.templateFields, worldId);
+      if (!parsed.ok) return parsed;
+      fields = parsed.data;
+    } else {
+      fields = await keepCompatibleRefTargets(worldId, nextType, keepCompatibleFields(nextType, current?.templateFields));
+    }
     patch.templateFields = fields;
   }
 

@@ -68,6 +68,38 @@ export function parseTemplateFields(type: TemplateType, raw: unknown): AuthzResu
   return ok(out);
 }
 
+/**
+ * Keeps only values that are structurally valid for a new template.
+ *
+ * Unlike `parseTemplateFields`, this is deliberately tolerant: it is only
+ * used for stored values during a template switch, where incompatible values
+ * must disappear instead of rejecting the whole article update.
+ */
+export function keepCompatibleFields(type: TemplateType, stored: unknown): StoredTemplateFields {
+  const input =
+    stored && typeof stored === "object" && !Array.isArray(stored) ? (stored as Record<string, unknown>) : {};
+  const out: StoredTemplateFields = {};
+  for (const field of templateOf(type).fields) {
+    const value = input[field.key];
+    if (field.type === "text") {
+      if (typeof value !== "string") continue;
+      const trimmed = value.trim();
+      if (!trimmed || trimmed.length > TEMPLATE_TEXT_MAX) continue;
+      out[field.key] = trimmed;
+      continue;
+    }
+    if (field.type === "select") {
+      if (typeof value === "string" && field.options.some((option) => option.value === value)) {
+        out[field.key] = value;
+      }
+      continue;
+    }
+    const ref = parseRefValue(value);
+    if (ref && refKindAllowed(field.targets, ref.kind)) out[field.key] = ref;
+  }
+  return out;
+}
+
 export function templateFieldsHaveValue(fields: StoredTemplateFields): boolean {
   return Object.keys(fields).length > 0;
 }

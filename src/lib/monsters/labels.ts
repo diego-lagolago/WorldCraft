@@ -72,3 +72,7 @@ export const MONSTER_SIZE_LABEL: Record<MonsterSize, string> = {
 export function isMonsterKind(value: string): value is MonsterKind {
   return (MONSTER_KINDS as readonly string[]).includes(value);
 }
+
+export function isMonsterRarity(value: unknown): value is MonsterRarity {
+  return typeof value === "string" && (MONSTER_RARITIES as readonly string[]).includes(value);
+}

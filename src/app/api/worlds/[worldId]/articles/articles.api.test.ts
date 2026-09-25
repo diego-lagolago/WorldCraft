@@ -59,7 +59,7 @@ describe("T-009 (1): template types", () => {
   });
 });
 
-describe("T-009 (3): race articles and person references", () => {
+describe("Plan 009 T-003: race articles and person references", () => {
   it("stores a Person → Rasse template-field relation and rejects other targets", async () => {
     const race = await create(gm, { title: "Waldelfen", templateType: "race" });
     const person = await create(gm, {
@@ -89,10 +89,15 @@ describe("T-009 (3): race articles and person references", () => {
       templateFields: { race: { kind: "character", id: "00000000-0000-4000-8000-0000000000dd" } },
     });
     expect(wrongCharacter.status).toBe(400);
+
+    const filtered = await api<{ articles: { id: string }[] }>(gm, "GET", w("/articles?templateType=race"));
+    expect(filtered.status).toBe(200);
+    expect(filtered.data.articles.map((article) => article.id)).toContain(race.id);
+    expect(filtered.data.articles.map((article) => article.id)).not.toContain(person.id);
   });
 });
 
-describe("T-009 (4): item rarity list projection", () => {
+describe("Plan 009 T-004: item rarity list projection", () => {
   it("returns rarity only for list rows, not create or detail summaries", async () => {
     const createdItem = await create(gm, {
       title: "Legendärer Fisch",
@@ -113,6 +118,60 @@ describe("T-009 (4): item rarity list projection", () => {
     expect(detail.status).toBe(200);
     expect(detail.data.article).not.toHaveProperty("rarity");
     expect(detail.data.article.templateFields).toMatchObject({ rarity: "legendary" });
+  });
+});
+
+describe("CR-001: template switches", () => {
+  it("drops incompatible stored fields but keeps explicitly submitted fields strict", async () => {
+    const organization = await create(gm, {
+      title: "Göttliche Gilde",
+      templateType: "organization",
+      templateFields: { danger: "divine", size: "over_100" },
+    });
+
+    const switched = await api(gm, "PATCH", w(`/articles/${organization.id}`), { templateType: "place" });
+    expect(switched.status).toBe(200);
+    const detail = await api<{ article: { templateType: string; templateFields: unknown } }>(
+      gm,
+      "GET",
+      w(`/articles/${organization.id}`),
+    );
+    expect(detail.status).toBe(200);
+    expect(detail.data.article).toMatchObject({ templateType: "place", templateFields: {} });
+
+    const explicitInvalid = await api(gm, "PATCH", w(`/articles/${organization.id}`), {
+      templateType: "place",
+      templateFields: { danger: "divine" },
+    });
+    expect(explicitInvalid.status).toBe(400);
+
+    const race = await create(gm, { title: "Wechselnde Rasse", templateType: "race" });
+    const person = await create(gm, {
+      title: "Verweisende Person",
+      templateType: "person",
+      templateFields: { race: { kind: "article", id: race.id } },
+    });
+    expect((await api(gm, "PATCH", w(`/articles/${race.id}`), { templateType: "place" })).status).toBe(200);
+    expect((await api(gm, "PATCH", w(`/articles/${person.id}`), { templateType: "person" })).status).toBe(200);
+    const personDetail = await api<{ article: { templateFields: unknown } }>(gm, "GET", w(`/articles/${person.id}`));
+    expect(personDetail.data.article.templateFields).toEqual({});
+
+    const deletedRace = await create(gm, { title: "Gelöschte Rasse", templateType: "race" });
+    const missingTargetPerson = await create(gm, {
+      title: "Person ohne Ziel",
+      templateType: "person",
+      templateFields: { race: { kind: "article", id: deletedRace.id } },
+    });
+    expect((await api(gm, "DELETE", w(`/articles/${deletedRace.id}`))).status).toBe(200);
+    expect((await api(gm, "PATCH", w(`/articles/${missingTargetPerson.id}`), { templateType: "person" })).status).toBe(
+      200,
+    );
+    const missingTargetDetail = await api<{ article: { templateFields: unknown } }>(
+      gm,
+      "GET",
+      w(`/articles/${missingTargetPerson.id}`),
+    );
+    expect(missingTargetDetail.data.article.templateFields).toEqual({});
   });
 });
 

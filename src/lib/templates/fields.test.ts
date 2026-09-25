@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTemplateFields, templateFieldsHaveValue } from "./fields";
+import { keepCompatibleFields, parseTemplateFields, templateFieldsHaveValue } from "./fields";
 
 describe("parseTemplateFields (APP-TEMPLATE-VALIDATE)", () => {
   it("keeps valid values and drops unknown keys and blanks", () => {
@@ -41,6 +41,7 @@ describe("parseTemplateFields (APP-TEMPLATE-VALIDATE)", () => {
       ok: true,
       data: { status: "sealed" },
     });
+    expect(parseTemplateFields("person", { status: "incapacitated" })).toMatchObject({ ok: true });
     expect(
       parseTemplateFields("place", { kind: "continent", danger: "deadly", reputation: "beloved" }),
     ).toMatchObject({ ok: true });
@@ -48,7 +49,10 @@ describe("parseTemplateFields (APP-TEMPLATE-VALIDATE)", () => {
       ok: true,
     });
     expect(parseTemplateFields("item", { kind: "fish", rarity: "legendary" })).toMatchObject({ ok: true });
+    expect(parseTemplateFields("item", { kind: "plant" })).toMatchObject({ ok: true });
     expect(parseTemplateFields("place", { danger: "apocalyptic" })).toMatchObject({ ok: false, status: 400 });
+    expect(parseTemplateFields("place", { reputation: "adored" })).toMatchObject({ ok: false, status: 400 });
+    expect(parseTemplateFields("organization", { size: "huge" })).toMatchObject({ ok: false, status: 400 });
     expect(parseTemplateFields("item", { rarity: "mythic" })).toMatchObject({ ok: false, status: 400 });
   });
 
@@ -65,5 +69,15 @@ describe("parseTemplateFields (APP-TEMPLATE-VALIDATE)", () => {
     expect(
       parseTemplateFields("person", { race: { kind: "character", id: "00000000-0000-4000-8000-0000000000dd" } }),
     ).toMatchObject({ ok: false, status: 400 });
+  });
+
+  it("keeps only compatible stored fields during a template switch", () => {
+    expect(keepCompatibleFields("place", { kind: "other", danger: "divine" })).toEqual({ kind: "other" });
+    expect(
+      keepCompatibleFields("person", {
+        race: { kind: "character", id: "00000000-0000-4000-8000-0000000000dd" },
+      }),
+    ).toEqual({});
+    expect(keepCompatibleFields("race", { aliases: "Waldelfen" })).toEqual({});
   });
 });

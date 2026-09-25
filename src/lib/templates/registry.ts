@@ -9,6 +9,7 @@ import {
   MONSTER_DANGER_LABEL,
   MONSTER_RARITIES,
   MONSTER_RARITY_LABEL,
+  type MonsterDanger,
 } from "@/lib/monsters/labels";
 
 export const TEMPLATE_TYPES = ["none", "person", "place", "organization", "item", "race"] as const;
@@ -47,6 +48,9 @@ const monsterRarityOptions = MONSTER_RARITIES.map((value) => ({
   value,
   label: MONSTER_RARITY_LABEL[value],
 }));
+
+const PLACE_DANGERS = ["harmless", "dangerous", "deadly"] as const satisfies readonly MonsterDanger[];
+const placeDangerOptions = PLACE_DANGERS.map((value) => ({ value, label: MONSTER_DANGER_LABEL[value] }));
 
 export const TEMPLATES: Record<TemplateType, TemplateDefinition> = {
   none: { type: "none", label: "Ohne Vorlage", plural: "Ohne Vorlage", fields: [] },
@@ -115,7 +119,7 @@ export const TEMPLATES: Record<TemplateType, TemplateDefinition> = {
         key: "danger",
         label: "Gefahrenstufe",
         type: "select",
-        options: monsterDangerOptions.slice(0, 3),
+        options: placeDangerOptions,
       },
       {
         key: "reputation",
