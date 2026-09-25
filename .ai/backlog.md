@@ -4,6 +4,8 @@ Kurze, undatierte Restpunkte. Kein Ersatz für Pläne unter `.ai/feature-tasks/`
 
 ## 2026-09-25 – MCP: Schreiben (Folgeplan zu `002`)
 
+**→ Übernommen in Plan [`011`](feature-tasks/011-mcp-schreibend.md) (2026-09-25).**
+
 **Quelle:** Projektinhaber beim Klären von Plan `002` (D1, D6, D15).
 
 Eigener Plan, sobald das Lesen über MCP auf Produktion wie erwartet läuft. Grundlagen legt ADR-005 (Plan `002` T-001 Punkt 7) fest: Scope `worlds:write`, Schreibrechte genau wie in der App (Players etwa nur Notizblock und eigener Charakter), neue Inhalte starten mit `nur ich`, **kein Löschen**, Audit-Log mit Herkunft „MCP“, Umwandlung Markdown → TipTap-JSON inkl. Erwähnungen.
