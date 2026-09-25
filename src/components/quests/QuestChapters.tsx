@@ -1,15 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { Sheet } from "@/components/map/MapSheets";
+import { QuestStatusBadge } from "@/components/quests/QuestStatusBadge";
 import { QuestStatusSelect } from "@/components/quests/QuestStatusSelect";
 import { VisibilityBadge } from "@/components/world/display";
 import { ContentVisibilitySelect } from "@/components/world/VisibilitySelect";
 import type { ContentVisibility } from "@/lib/authz/types";
-import { CHAPTER_TITLE_MAX, QUEST_STATUS_LABEL, type QuestStatus } from "@/lib/quests/status";
+import { CHAPTER_TITLE_MAX, type QuestStatus } from "@/lib/quests/status";
 import { apiRequest } from "@/lib/client/api";
 import type { ResolvedMention } from "@/lib/domain/mention-resolve";
 import type { MentionState } from "@/lib/editor/mentions";
@@ -29,6 +30,36 @@ type SheetMode =
   | { kind: "create" }
   | { kind: "edit"; chapter: QuestChapterView }
   | { kind: "delete"; chapter: QuestChapterView };
+
+type StatusOverrideAction =
+  | { kind: "set"; chapterId: string; status: QuestStatus }
+  | { kind: "clear"; chapterId: string }
+  | { kind: "confirm"; chapters: QuestChapterView[] };
+
+function statusOverrideReducer(
+  current: Record<string, QuestStatus>,
+  action: StatusOverrideAction,
+): Record<string, QuestStatus> {
+  if (action.kind === "set") return { ...current, [action.chapterId]: action.status };
+  if (action.kind === "clear") {
+    if (!(action.chapterId in current)) return current;
+    const next = { ...current };
+    delete next[action.chapterId];
+    return next;
+  }
+
+  let changed = false;
+  const next: Record<string, QuestStatus> = {};
+  for (const [chapterId, status] of Object.entries(current)) {
+    const chapter = action.chapters.find((entry) => entry.id === chapterId);
+    if (!chapter || chapter.status === status) {
+      changed = true;
+      continue;
+    }
+    next[chapterId] = status;
+  }
+  return changed ? next : current;
+}
 
 export function QuestChapters({
   worldId,
@@ -51,8 +82,13 @@ export function QuestChapters({
   const [sheet, setSheet] = useState<SheetMode>({ kind: "none" });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusOverride, dispatchStatusOverride] = useReducer(statusOverrideReducer, {});
 
   const base = `/api/worlds/${worldId}/quests/${questId}/chapters`;
+
+  useEffect(() => {
+    dispatchStatusOverride({ kind: "confirm", chapters });
+  }, [chapters]);
 
   async function run<T>(request: Promise<{ ok: true; data: T } | { ok: false; error: string }>) {
     setError(null);
@@ -68,11 +104,17 @@ export function QuestChapters({
   }
 
   async function onStatusChange(chapter: QuestChapterView, status: QuestStatus) {
-    if (status === chapter.status) return;
+    const displayedStatus = statusOverride[chapter.id] ?? chapter.status;
+    if (status === displayedStatus) return;
+    dispatchStatusOverride({ kind: "set", chapterId: chapter.id, status });
     const saved = await run(
       apiRequest(`${base}/${chapter.id}`, "PATCH", { status }),
     );
-    if (saved.ok) await refresh();
+    if (saved.ok) {
+      await refresh();
+      return;
+    }
+    dispatchStatusOverride({ kind: "clear", chapterId: chapter.id });
   }
 
   async function onMove(chapterId: string, direction: -1 | 1) {
@@ -127,7 +169,7 @@ export function QuestChapters({
               {staff ? (
                 <div className="ch-actions">
                   <QuestStatusSelect
-                    value={chapter.status}
+                    value={statusOverride[chapter.id] ?? chapter.status}
                     onChange={(status) => void onStatusChange(chapter, status)}
                     ariaLabel={`Status von ${chapter.title}`}
                     disabled={pending}
@@ -170,7 +212,7 @@ export function QuestChapters({
                   </button>
                 </div>
               ) : (
-                <span className={`badge st-${chapter.status}`}>{QUEST_STATUS_LABEL[chapter.status]}</span>
+                <QuestStatusBadge status={chapter.status} />
               )}
             </div>
             <RichTextView

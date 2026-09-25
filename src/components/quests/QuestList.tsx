@@ -1,12 +1,8 @@
 import Link from "next/link";
+import { QuestStatusBadge } from "@/components/quests/QuestStatusBadge";
 import { worldPath } from "@/components/shell/nav";
 import { VisibilityBadge } from "@/components/world/display";
 import type { QuestSummary } from "@/lib/domain/quests";
-import { QUEST_STATUS_LABEL, type QuestStatus } from "@/lib/quests/status";
-
-function StatusBadge({ status }: { status: QuestStatus }) {
-  return <span className={`badge st-${status}`}>{QUEST_STATUS_LABEL[status]}</span>;
-}
 
 export function QuestList({
   worldId,
@@ -38,7 +34,7 @@ export function QuestList({
                 {names ? <div className="kind">{names}</div> : null}
               </div>
               <VisibilityBadge visibility={quest.visibility} />
-              <StatusBadge status={quest.status} />
+              <QuestStatusBadge status={quest.status} />
             </Link>
           );
         })}

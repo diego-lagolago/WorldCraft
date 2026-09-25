@@ -11,7 +11,6 @@ export function ContentVisibilitySelect({
   onChange,
   allowOwner = true,
   id = "visibility",
-  compact = false,
   disabled = false,
   ariaLabel = "Sichtbarkeit",
 }: {
@@ -20,32 +19,11 @@ export function ContentVisibilitySelect({
   /** Wenn false (fremder Datensatz), fehlt die Option „nur ich“ (R2). */
   allowOwner?: boolean;
   id?: string;
-  /** Kein Feld-Label/Hint, kleines Select (z. B. Kapitel-Zeile). */
-  compact?: boolean;
   disabled?: boolean;
   ariaLabel?: string;
 }) {
   const options = contentVisibilityOptions(allowOwner);
   const current = !allowOwner && value === "owner_only" ? "gm_only" : value;
-
-  if (compact) {
-    return (
-      <select
-        id={id}
-        value={current}
-        onChange={(event) => onChange(event.target.value as ContentVisibility)}
-        style={{ width: "auto", padding: "6px 8px", fontSize: 12 }}
-        aria-label={ariaLabel}
-        disabled={disabled}
-      >
-        {options.map((entry) => (
-          <option key={entry} value={entry}>
-            {CONTENT_VISIBILITY_LABEL[entry]}
-          </option>
-        ))}
-      </select>
-    );
-  }
 
   return (
     <label className="vis-select" htmlFor={id}>

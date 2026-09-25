@@ -185,7 +185,91 @@ describe("T-006 (3): player mutations rejected", () => {
 });
 
 describe("T-002 (010): chapter status", () => {
-  it("defaults to open, accepts staff PATCH, rejects invalid values and players without recalculating relations", async () => {
+  it("defaults a newly created chapter to open", async () => {
+    const quest = await createQuest(gm, {
+      title: "Kapitelstatus-Standard",
+      visibility: "published",
+    });
+    const chapter = await createChapter(gm, quest.id, {
+      title: "Statuskapitel",
+      visibility: "published",
+    });
+
+    expect(chapter.status).toBe("open");
+  });
+
+  it("ignores status when creating a chapter", async () => {
+    const quest = await createQuest(gm, {
+      title: "Kapitelstatus beim Anlegen",
+      visibility: "published",
+    });
+    const chapter = await createChapter(gm, quest.id, {
+      title: "Statuskapitel",
+      status: "completed",
+      visibility: "published",
+    });
+
+    expect(chapter.status).toBe("open");
+  });
+
+  it("lets staff update status and records updated_at and updated_by", async () => {
+    const quest = await createQuest(gm, {
+      title: "Kapitelstatus aktualisieren",
+      visibility: "published",
+    });
+    const chapter = await createChapter(gm, quest.id, {
+      title: "Statuskapitel",
+      visibility: "published",
+    });
+    const [before] = await sql`
+      SELECT updated_at, updated_by FROM quest_chapters WHERE id = ${chapter.id}
+    `;
+    expect(before).toBeTruthy();
+
+    const updated = await api<{ id: string }>(masterA, "PATCH", chapterPath(quest.id, chapter.id), {
+      status: "completed",
+    });
+    expect(updated.status).toBe(200);
+
+    const [after] = await sql`
+      SELECT status, updated_at, updated_by FROM quest_chapters WHERE id = ${chapter.id}
+    `;
+    expect(after.status).toBe("completed");
+    expect(new Date(after.updated_at).getTime()).toBeGreaterThan(new Date(before.updated_at).getTime());
+    expect(after.updated_by).toBe(masterA.user.id);
+  });
+
+  it("rejects invalid status values", async () => {
+    const quest = await createQuest(gm, {
+      title: "Ungültiger Kapitelstatus",
+      visibility: "published",
+    });
+    const chapter = await createChapter(gm, quest.id, {
+      title: "Statuskapitel",
+      visibility: "published",
+    });
+
+    expect(
+      (await api(gm, "PATCH", chapterPath(quest.id, chapter.id), { status: "done" })).status,
+    ).toBe(400);
+  });
+
+  it("rejects player status updates", async () => {
+    const quest = await createQuest(gm, {
+      title: "Player-Kapitelstatus",
+      visibility: "published",
+    });
+    const chapter = await createChapter(gm, quest.id, {
+      title: "Statuskapitel",
+      visibility: "published",
+    });
+
+    expect(
+      (await api(player, "PATCH", chapterPath(quest.id, chapter.id), { status: "active" })).status,
+    ).toBe(403);
+  });
+
+  it("keeps relations unchanged after a status-only PATCH", async () => {
     const article = await api<{ article: { id: string } }>(gm, "POST", w("/articles"), {
       title: "Status-Relationsziel",
       visibility: "published",
@@ -201,7 +285,6 @@ describe("T-002 (010): chapter status", () => {
       visibility: "published",
       body: mentionDoc(article.data.article.id, "article", "Status-Relationsziel"),
     });
-    expect(chapter.status).toBe("open");
 
     const before = await sql`
       SELECT id, created_by FROM relations
@@ -216,14 +299,6 @@ describe("T-002 (010): chapter status", () => {
     });
     expect(updated.status).toBe(200);
 
-    const list = await api<{ chapters: { id: string; status: string }[] }>(
-      gm,
-      "GET",
-      chaptersPath(quest.id),
-    );
-    expect(list.status).toBe(200);
-    expect(list.data.chapters.find((entry) => entry.id === chapter.id)?.status).toBe("completed");
-
     const after = await sql`
       SELECT id, created_by FROM relations
       WHERE world_id = ${worldId}
@@ -233,13 +308,6 @@ describe("T-002 (010): chapter status", () => {
     expect(after.map((row) => ({ id: row.id, created_by: row.created_by }))).toEqual(
       before.map((row) => ({ id: row.id, created_by: row.created_by })),
     );
-
-    expect(
-      (await api(gm, "PATCH", chapterPath(quest.id, chapter.id), { status: "done" })).status,
-    ).toBe(400);
-    expect(
-      (await api(player, "PATCH", chapterPath(quest.id, chapter.id), { status: "active" })).status,
-    ).toBe(403);
   });
 });
 

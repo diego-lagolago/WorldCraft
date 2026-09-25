@@ -4,12 +4,13 @@ import { LinkedSection } from "@/components/linked/LinkedSection";
 import { RichTextView } from "@/components/editor/RichTextView";
 import { QuestChapters } from "@/components/quests/QuestChapters";
 import { QuestNotesSheet } from "@/components/quests/QuestNotesSheet";
+import { QuestStatusBadge } from "@/components/quests/QuestStatusBadge";
 import { worldPath } from "@/components/shell/nav";
 import { VisibilityBadge } from "@/components/world/display";
 import { isStaff } from "@/lib/authz/types";
 import { editorMentionStates, resolveMentions } from "@/lib/domain/mention-resolve";
 import { getQuestNote, serializeQuestNoteClient } from "@/lib/domain/quest-notes";
-import { getQuest, QUEST_STATUS_LABEL } from "@/lib/domain/quests";
+import { getQuest } from "@/lib/domain/quests";
 import { asRichDoc, extractMentions } from "@/lib/editor/rich-text";
 import { parseUuid } from "@/lib/http";
 import { requireWorldPage } from "@/lib/page-context";
@@ -53,7 +54,7 @@ export default async function QuestPage({ params }: PageProps<"/w/[worldId]/ques
       <div className="row wrap" style={{ marginBottom: 14 }}>
         <span className="badge">Quest</span>
         <VisibilityBadge visibility={quest.visibility} />
-        <span className={`badge st-${quest.status}`}>{QUEST_STATUS_LABEL[quest.status]}</span>
+        <QuestStatusBadge status={quest.status} />
         {staff ? (
           <Link className="btn sm" style={{ marginLeft: "auto" }} href={worldPath(world.id, `/quests/${quest.id}/edit`)}>
             Bearbeiten
