@@ -2,6 +2,24 @@
 
 Kurze, undatierte Restpunkte. Kein Ersatz für Pläne unter `.ai/feature-tasks/`.
 
+## 2026-09-25 – Pills/Badges projektweit standardisieren
+
+**Quelle:** Projektinhaber im Plan-Review des Code-Reviews zu Plan `009` (CR-005, `.ai/code-review-009-vorlagenfelder-und-rasse-2026-09-24.md`).
+
+Pills/Badges werden heute an vielen Stellen direkt als `<span className="badge …">` mit eigener Logik gebaut: Seltenheit (`MonsterRarityPill`, dazu die `item`-/Gültigkeitsprüfung doppelt in `ArticleFields.tsx` und `ArticleList.tsx`), Quest- und Kapitelstatus (`QuestList.tsx`, `QuestChapters.tsx`, Quest-Seite), Sichtbarkeit (`VisibilityBadge` in `src/components/world/display.tsx`), Vorlagentyp (Artikelseite), Einladungsstatus, „gesperrt“ auf der Karte, Thread-Zähler im Chat. Ziel: gemeinsame Pill-Komponente(n) plus reine Helfer, die aus Typ und Wert entscheiden, ob und welche Pill erscheint (z. B. `itemRarityOf(templateType, value): MonsterRarity | null`), damit die Entscheidungslogik unit-testbar ist und nicht je Komponente wiederholt wird. Offen für den Plan: eine generische `Pill`-Komponente vs. je Fachbereich eine, Benennung der CSS-Klassen (`.badge.*` in `src/app/globals.css`), Abgleich mit dem UI-Prototyp.
+
+## 2026-09-24 – Kategorien in Tagebüchern
+
+**Quelle:** Projektinhaber.
+
+Tagebucheinträge (`/w/[worldId]/journal/[characterId]`) sollen Kategorien bekommen. **Detailplanung folgt** durch den Projektinhaber — vorher nichts umsetzen. Offen u. a.: feste oder frei definierbare Kategorien, eine oder mehrere pro Eintrag, Filter in der Tagebuchansicht.
+
+## 2026-09-24 – Chat: Threads archivieren
+
+**Quelle:** Projektinhaber.
+
+Threads sollen sich archivieren lassen, analog zur bestehenden Kanalarchivierung (Plan `003` T-012). `chat_threads` hat heute **kein** `archived_at` (nur Kanäle haben es; ein Thread ist nur über einen archivierten Kanal gesperrt, `resolveScope` in `src/lib/chat/repository.ts`). Braucht also eine Migration. Offen für den Plan: wer darf archivieren (Spielleitung, Thread-Ersteller?), Wiederherstellen, Anzeige archivierter Threads unter dem Kanal.
+
 ## 2026-09-24 – Monster-Marker-Sheet vertiefen
 
 **Quelle:** Projektinhaber beim lokalen Smoketest von Plan `006`.
