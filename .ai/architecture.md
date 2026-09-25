@@ -122,7 +122,7 @@ Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `004` (drei
 
 **Offene Fragen (Antwort vor Umsetzung Plan 002 nötig):**
 
-1. Sieht Claude `owner_only`-Inhalte des angemeldeten Owners (über dieselbe Rechteschicht wie die App), oder sollen `owner_only`-Inhalte über MCP wie Tagebuch ausgeschlossen werden?
+1. Sieht Claude `owner_only`-Inhalte des angemeldeten Owners (über dieselbe Rechteschicht wie die App), oder sollen `owner_only`-Inhalte über MCP wie Tagebuch ausgeschlossen werden? **✅ Beantwortet 2026-09-25 (Plan 002 D5):** wie in der App, keine Zusatzsperre; fremde `owner_only`-Inhalte bleiben unsichtbar.
 2. Werden Quest-Kapitel bei `inhalt_lesen` / `suchen` / Relationen mit ausgeliefert (nur sichtbare Kapitel), oder bleiben sie außerhalb von MCP?
 3. Ist der Quest-Notizblock über MCP ausgeschlossen (Analogie Tagebuch), oder lesbar für alle, die die Quest sehen?
 

@@ -14,6 +14,18 @@ WorldCraft-Benutzer sollen Claude mit ihrem **eigenen Claude-Abo** Fragen zu ihr
 - **Tagebucheinträge und Geheimnisse sind über MCP vollständig ausgeschlossen**, unabhängig von Rolle, Besitz und Sichtbarkeit des Eintrags, also auch die eigenen. Hintergrund: Alles, was Claude liest, wird an Anthropic übertragen.
 - **Chat-Nachrichten** sind über MCP nicht abrufbar.
 - **Kein KI-Chat innerhalb der App** (bleibt im Backlog, siehe Plan `001`).
+- **Freischaltung in zwei Stufen** (D2, D3): Der MCP-Server ist nur erreichbar, wenn der Hauptschalter an ist, und liefert Inhalte einer Welt nur, wenn deren Game Master MCP für diese Welt freigegeben hat.
+
+## Entscheidungen (Projektinhaber, 2026-09-25)
+
+| # | Frage | Entscheidung |
+|---|---|---|
+| D1 | Lesen, Schreiben, Löschen | **Plan `002` bleibt nur lesend.** Schreiben folgt als eigener Plan, sobald Lesen auf Produktion wie erwartet funktioniert; ADR-005 legt die Grundlagen dafür schon fest (T-001 Punkt 7), damit kein Umbau nötig wird. **Löschen über MCP gibt es nie.** Schreibrechte über MCP entsprechen später genau denen in der App (Players etwa nur Notizblock und eigener Charakter); die Lesefunktionen bleiben für alle Rollen unverändert. |
+| D2 | Hauptschalter | Umgebungsvariable `MCP_ENABLED` (Standard: aus). Ist sie nicht `true`, antworten `/mcp`, alle OAuth-Endpunkte aus T-003 und beide `/.well-known/…`-Metadaten mit HTTP 404. Abschalten ohne neuen Code-Stand, nur per Umgebungsvariable und Neustart in Coolify. |
+| D3 | Freigabe pro Welt | Schalter **an/aus** pro Welt, setzbar nur vom Game Master. **Standard aus**, für neue und bestehende Welten. Keine Abstufung nach Rolle oder Bereich. |
+| D4 | Ausschlüsse | **Feste Ausschlussliste im Code**, nicht pro Welt konfigurierbar. Fest ausgeschlossen: Tagebuch und Chat (siehe oben). Weitere Einträge werden zusammen mit dem Umfang der Werkzeuge im Plan-Review festgelegt. |
+| D5 | `nur ich`-Inhalte (`owner_only`) | **Keine Zusatzsperre.** MCP liefert, was die Rechteschicht dem angemeldeten Benutzer auch in der App zeigt, also die eigenen `nur ich`-Inhalte, solange er Spielleitung ist. Pflicht: Benutzer A sieht die `nur ich`-Inhalte von Benutzer B über kein Werkzeug, auch nicht als Game Master (Nachweis in T-008). |
+| D6 | Per MCP angelegte Inhalte (für den späteren Schreib-Plan) | Durch D5 erledigt: Was Claude für den Benutzer anlegt, gehört ihm, startet mit `nur ich` und bleibt für ihn über MCP les- und bearbeitbar. Veröffentlichen bleibt eine bewusste Handlung des Benutzers. |
 
 ## Begriffe & Systeme
 
@@ -78,10 +90,12 @@ Zum Zeitpunkt der Planerstellung existieren sie noch nicht. Sie werden durch Pla
   4. **Scope-Modell**: `worlds:read` jetzt, `worlds:write` später. Beschrieben wird, wie Werkzeuge ihren benötigten Scope deklarieren.
   5. **Anbindung an die Rechteschicht**: Wie erhält ein Werkzeug den Benutzerkontext aus dem Token, und wie wird sichergestellt, dass es ausschließlich über die Rechteschicht auf Daten zugreift?
   6. **Umwandlung TipTap-JSON → Markdown** für `inhalt_lesen`.
+  7. **Grundlagen für den späteren Schreib-Plan** (D1, D6): Scope `worlds:write`, neue Inhalte starten immer mit `nur ich`, kein Löschwerkzeug, Audit-Log vermerkt die Herkunft „MCP“, Umwandlung Markdown → TipTap-JSON inkl. Erwähnungen als Anforderung benannt. Nur festhalten, nicht bauen.
+  8. **Schalter** (D2, D3): wo `MCP_ENABLED` und die Welt-Freigabe geprüft werden, sodass kein Werkzeug die Prüfung umgehen kann.
 
   Zusätzlich die **aktuellen Anforderungen der Claude-Clients** an Remote-Connectors anhand der offiziellen Dokumentation von Anthropic und der MCP-Spezifikation prüfen und mit Quellenlink und Abrufdatum dokumentieren: unterstützte Spezifikationsversion, DCR oder manuell eingetragene Client-ID, Callback-URL(s) von claude.ai und Claude Code, Anforderungen an die Metadaten-Endpunkte.
 - Abhängigkeiten: keine innerhalb dieses Plans (siehe Globale Abhängigkeiten)
-- Abnahmekriterium: ADR-005 existiert, beantwortet die Punkte 1–6 jeweils mit genau einer Entscheidung und Begründung und enthält den Abschnitt „Anforderungen der Claude-Clients“ mit mindestens einem Quellenlink samt Abrufdatum. Punkt 3 enthält eine Tabelle „Anforderung aus T-003 → abgedeckt durch Bibliothek / Eigenbau“.
+- Abnahmekriterium: ADR-005 existiert, beantwortet die Punkte 1–8 jeweils mit genau einer Entscheidung und Begründung und enthält den Abschnitt „Anforderungen der Claude-Clients“ mit mindestens einem Quellenlink samt Abrufdatum. Punkt 3 enthält eine Tabelle „Anforderung aus T-003 → abgedeckt durch Bibliothek / Eigenbau“.
 
 ### T-002: Testwelt-Skript
 - [ ] Beschreibung: Ein Skript (Pfad gemäß `.ai/conventions.md`) erstellen, das auf einer leeren Staging- oder lokalen Datenbank reproduzierbar eine Testwelt anlegt:
@@ -92,6 +106,8 @@ Zum Zeitpunkt der Planerstellung existieren sie noch nicht. Sie werden durch Pla
   - 2 Universen mit je 1 Karte; das zweite Universum hat den Status `nur Spielleitung`. Die Karte des ersten Universums hat 4 veröffentlichte Pins, davon 2 mit Erwähnungen in der Beschreibung, und einen Charakter-Marker für den Charakter von Player A.
   - 1 Charakter von Player A, in die Testwelt mitgebracht, mit je einem Tagebucheintrag `privat` und `mit Spielleitung geteilt`, die jeweils das eindeutige Wort `GEHEIMTEST` enthalten
   - 1 Chat-Nachricht mit dem eindeutigen Wort `CHATTEST`
+  - 1 zusätzlicher Artikel des Masters mit Status `nur ich` (D5)
+  - MCP-Freigabe (T-012): Testwelt an, zweite Welt aus; sobald T-012 umgesetzt ist
 
   Für jeden Testbenutzer lässt sich eine Sitzung erzeugen, ohne dass ein echter Discord-Login nötig ist. Das ist nur in Staging und lokal möglich, niemals in Produktion.
 - Abhängigkeiten: keine
@@ -119,14 +135,23 @@ Zum Zeitpunkt der Planerstellung existieren sie noch nicht. Sie werden durch Pla
 - Abhängigkeiten: T-001, T-003
 - Abnahmekriterium: (1) `curl` ohne Token auf `/mcp` liefert 401 mit korrektem `WWW-Authenticate`-Header. (2) Ein abgelaufenes Token, ein Token mit fremder Audience und ein widerrufenes Token liefern jeweils 401. (3) Im MCP Inspector liefert `whoami` nach der Anmeldung als Player A den Namen von Player A. (4) In Produktion ist `whoami` nicht in der Werkzeugliste enthalten.
 
+### T-012: Hauptschalter und Welt-Freigabe
+- [ ] Beschreibung: D2 und D3 umsetzen.
+  1. **Hauptschalter:** `MCP_ENABLED` in der Env-Validierung aufnehmen (Standard aus) und in `.ai/infrastructure/deployment.md` dokumentieren. Ist er aus, liefern `/mcp`, die OAuth-Endpunkte aus T-003 und beide Metadaten-Dokumente HTTP 404.
+  2. **Welt-Freigabe:** Neues Feld an der Welt (z. B. `worlds.mcp_enabled boolean not null default false`, Migration setzt bestehende Welten auf `false`). Schalter „Claude-Zugriff (MCP)“ in der Weltverwaltung (`/w/[worldId]/menu`), nur für den Game Master, mit Hinweis, dass freigegebene Inhalte an Anthropic übertragen werden. Änderung nur über die Rechteschicht (Game Master, sonst 403).
+  3. **Verhalten bei gesperrter Welt:** `welten_auflisten` führt die Welt weiter auf (ID, Name, eigene Rolle) mit der Kennzeichnung „MCP für diese Welt nicht freigegeben“, ohne Charaktere. Alle anderen Werkzeuge liefern für diese Welt den Werkzeugfehler „MCP ist für diese Welt nicht freigegeben“ und keine Inhalte.
+  4. Normen: `datenmodell-fachlich.md` (Welt-Eigenschaft und Rechte), `datenmodell.md` (Spalte), `features.md`.
+- Abhängigkeiten: T-001, T-005
+- Abnahmekriterium: (1) Mit `MCP_ENABLED` aus liefern `/mcp`, `/.well-known/oauth-protected-resource` und `/.well-known/oauth-authorization-server` jeweils 404 (automatisierter Test). (2) Eine neu angelegte Welt und jede Bestandswelt nach der Migration haben die Freigabe aus. (3) Master und Player sehen den Schalter nicht; ein `PATCH` durch sie liefert 403. (4) Bei gesperrter Welt liefert jedes Werkzeug außer `welten_auflisten` den Fehler aus Punkt 3; nach dem Freigeben liefern sie Inhalte ohne neue Anmeldung. (5) Die Testwelt aus T-002 ist freigegeben, die zweite Welt nicht, und T-008 prüft beide Fälle.
+
 ### T-006: Werkzeuge `welten_auflisten`, `suchen`, `inhalt_lesen`
 - [ ] Beschreibung: Die drei Werkzeuge gemäß der Tabelle *MCP-Werkzeuge* umsetzen. Eingaben werden per Schema validiert; bei ungültiger Eingabe gibt es einen verständlichen Werkzeugfehler statt eines Serverfehlers. Alle Datenzugriffe laufen über die Rechteschicht. Die Beschreibungen der Werkzeuge erklären Claude auf Deutsch, wann das Werkzeug zu nutzen ist und dass zuerst `welten_auflisten` aufgerufen werden sollte, wenn keine `welt_id` bekannt ist. Antworten über 20.000 Zeichen werden gekürzt und enthalten dann den Hinweis „gekürzt“.
-- Abhängigkeiten: T-002, T-005
+- Abhängigkeiten: T-002, T-005, T-012
 - Abnahmekriterium: Automatisierte Tests gegen die Testwelt: (1) `welten_auflisten` liefert für Player B zwei Welten, für Player A eine. (2) `suchen` mit „Rabenstein“ findet den Artikel „Burg Rabenstein“. (3) `inhalt_lesen` für „Burg Rabenstein“ liefert Markdown mit Titel, Vorlagenfeldern und Text, ohne JSON-Reste. (4) Eine ungültige `welt_id` oder eine Welt ohne Mitgliedschaft liefert einen Werkzeugfehler „Welt nicht gefunden“, ohne zu verraten, ob die Welt existiert. (5) `limit: 500` wird abgelehnt oder auf 50 begrenzt.
 
 ### T-007: Werkzeuge `relationen_abrufen`, `quests_auflisten`, `karte_lesen`
 - [ ] Beschreibung: Die drei Werkzeuge gemäß der Tabelle *MCP-Werkzeuge* umsetzen, mit denselben Regeln wie in T-006 (Schema-Validierung, Rechteschicht, Beschreibungen, Kürzung). Bei `relationen_abrufen` mit `tiefe: 2` werden Relationen zu Inhalten, die der Benutzer nicht sehen darf, vollständig weggelassen, einschließlich der Relationen, die nur über einen solchen Inhalt erreichbar sind.
-- Abhängigkeiten: T-002, T-005
+- Abhängigkeiten: T-002, T-005, T-012
 - Abnahmekriterium: Automatisierte Tests gegen die Testwelt: (1) `relationen_abrufen` für „Burg Rabenstein“ liefert genau die im Testwelt-Skript angelegten Relationen mit korrekter Herkunft, korrektem Feldnamen und bei der manuellen Relation der korrekten Bezeichnung (aus Sicht des Ziels die Gegenbezeichnung). (2) Mit `tiefe: 2` erscheint die Relation über 2 Stufen. (3) `quests_auflisten` mit Statusfilter liefert nur Quests dieses Status. (4) `karte_lesen` ohne `karte_id` liefert für den Game Master beide Universen mit je einer Karte, für Player A nur das erste. Mit der `karte_id` des ersten Universums liefert es die 4 Pins mit korrekten Pin-Typen und verknüpften Inhalten sowie den Charakter-Marker von Player A.
 
 ### T-008: Rechte- und Ausschlusstests
@@ -136,6 +161,8 @@ Zum Zeitpunkt der Planerstellung existieren sie noch nicht. Sie werden durch Pla
   - Die Wörter `GEHEIMTEST` und `CHATTEST` tauchen in **keiner** Antwort eines Werkzeugs auf, für keinen Benutzer, auch nicht für Player A.
   - Der Artikel mit Status `nur Spielleitung` erscheint für Game Master und Master in `suchen`, `inhalt_lesen` und `relationen_abrufen`, für beide Player in keinem Werkzeug, auch nicht als Relation.
   - Player A erhält keine Inhalte der zweiten Welt.
+  - Ein `nur ich`-Inhalt des Masters erscheint für den Master, aber in keinem Werkzeug für den Game Master oder die Player, auch nicht als Relation (D5).
+  - In einer Welt ohne MCP-Freigabe liefert kein Werkzeug Inhalte (D3).
   - Ein Token mit anderem Scope als `worlds:read` erhält bei jedem Werkzeug einen Autorisierungsfehler.
 
 ### T-009: Aufruflimit & Audit-Log
@@ -145,7 +172,7 @@ Zum Zeitpunkt der Planerstellung existieren sie noch nicht. Sie werden durch Pla
 
 ### T-010: Ende-zu-Ende-Test mit Claude & Anleitung
 - [ ] Beschreibung: Den MCP-Server auf Staging mit echten Claude-Clients verbinden und testen. Anschließend eine Anleitung für Benutzer als Hilfeseite in der App schreiben. Die Seite erklärt: Voraussetzungen (Claude-Konto mit Custom Connectors), das Hinzufügen in claude.ai bzw. der Desktop-App und in Claude Code, welche Daten Claude sehen kann und welche nicht (Tagebücher und Chat ausgeschlossen), sowie das Widerrufen des Zugriffs.
-- Abhängigkeiten: T-004, T-008, T-009
+- Abhängigkeiten: T-004, T-008, T-009, T-012
 - Abnahmekriterium: Als Player A verbunden, getestet in claude.ai **und** in Claude Code, beantwortet Claude die folgenden drei Fragen korrekt anhand der Testwelt. Das jeweilige Protokoll mit den aufgerufenen Werkzeugen wird in `.ai/infrastructure/mcp-e2e-test.md` festgehalten:
   1. „Welche Inhalte sind mit Burg Rabenstein verknüpft?“ – alle Relationen der Tiefe 1 werden genannt.
   2. „Welche Quests sind gerade aktiv?“ – genau die aktiven Quests.
