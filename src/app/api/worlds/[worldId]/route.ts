@@ -15,6 +15,7 @@ const patchSchema = z
     name: worldNameSchema.optional(),
     description: z.unknown().optional(),
     removeTitleImage: z.literal(true).optional(),
+    mcpEnabled: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0);
 

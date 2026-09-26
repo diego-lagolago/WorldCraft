@@ -1,4 +1,5 @@
 import { MyWorldCharactersCard, WorldCharactersCard } from "@/components/characters/WorldCharacterCards";
+import { ConnectedApplicationsCard } from "@/components/auth/ConnectedApplicationsCard";
 import { SignOutButton } from "@/components/shell/SignOutButton";
 import { InvitesCard } from "@/components/world/InvitesCard";
 import { LeaveWorldButton } from "@/components/world/LeaveWorldButton";
@@ -8,6 +9,7 @@ import { isGm } from "@/lib/authz/types";
 import { listMyCharacters, listWorldCharacters } from "@/lib/domain/characters";
 import { listInvites } from "@/lib/domain/invites";
 import { listMembers } from "@/lib/domain/members";
+import { listConnectedApplications } from "@/lib/domain/connected-applications";
 import { getWorldDetails } from "@/lib/domain/worlds";
 import { asRichDoc } from "@/lib/editor/rich-text";
 import { requireWorldPage } from "@/lib/page-context";
@@ -20,12 +22,13 @@ export default async function WorldMenuPage({
   const query = await searchParams;
   const { world, membership, user } = await requireWorldPage(worldId);
   const gm = isGm(membership.role);
-  const [members, invites, details, characters, mine] = await Promise.all([
+  const [members, invites, details, characters, mine, connectedApplications] = await Promise.all([
     listMembers(world.id),
     gm ? listInvites(membership) : null,
     gm ? getWorldDetails(world.id) : null,
     listWorldCharacters(world.id),
     listMyCharacters(user.id),
+    listConnectedApplications(user.id),
   ]);
 
   return (
@@ -44,12 +47,14 @@ export default async function WorldMenuPage({
                 name: details.name,
                 description: asRichDoc(details.descriptionJson),
                 titleImageId: details.titleImageId,
+                mcpEnabled: details.mcpEnabled,
               }}
               initialImageError={query.imageError === "1"}
             />
           ) : null}
         </div>
         <div className="stack">
+          <ConnectedApplicationsCard applications={connectedApplications} />
           <div className="card list">
             {gm ? null : <LeaveWorldButton worldId={world.id} worldName={world.name} />}
             <div className="item">

@@ -9,11 +9,12 @@ import {
   findEnvIssues,
   getTrustedOrigins,
   isDiscordIdAllowed,
+  isMcpEnabled,
   isProductionAppEnv,
   isTestLoginEnabled,
 } from "./env";
 
-const KEYS = ["ENABLE_TEST_LOGIN", "APP_ENV", "ALLOWED_DISCORD_IDS", "BETTER_AUTH_URL"] as const;
+const KEYS = ["ENABLE_TEST_LOGIN", "APP_ENV", "ALLOWED_DISCORD_IDS", "BETTER_AUTH_URL", "MCP_ENABLED"] as const;
 const original = Object.fromEntries(KEYS.map((key) => [key, process.env[key]]));
 
 afterEach(() => {
@@ -97,6 +98,17 @@ describe("isTestLoginEnabled", () => {
     expect(isTestLoginEnabled()).toBe(false);
     delete process.env.ENABLE_TEST_LOGIN;
     expect(isTestLoginEnabled()).toBe(false);
+  });
+});
+
+describe("isMcpEnabled", () => {
+  it("is true only for the explicit string true", () => {
+    process.env.MCP_ENABLED = "true";
+    expect(isMcpEnabled()).toBe(true);
+    process.env.MCP_ENABLED = "1";
+    expect(isMcpEnabled()).toBe(false);
+    delete process.env.MCP_ENABLED;
+    expect(isMcpEnabled()).toBe(false);
   });
 });
 

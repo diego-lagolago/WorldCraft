@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
-    exclude: ["src/**/*.integration.test.ts", "src/**/*.api.test.ts"],
+    exclude: ["src/**/*.integration.test.ts", "src/**/*.api.test.ts", "src/**/*.mcp.test.ts"],
   },
   resolve: {
     alias: {

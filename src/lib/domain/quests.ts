@@ -81,6 +81,7 @@ export type QuestSummary = {
   status: QuestStatus;
   visibility: ContentVisibility;
   ownerId: string;
+  updatedAt: Date;
   participants: QuestParticipant[];
 };
 
@@ -337,6 +338,7 @@ export async function listQuests(
       status: quests.status,
       visibility: quests.visibility,
       ownerId: quests.ownerId,
+      updatedAt: quests.updatedAt,
     })
     .from(quests)
     .where(and(...filters))
@@ -354,6 +356,7 @@ export async function listQuests(
     status: asStatus(row.status),
     visibility: row.visibility,
     ownerId: row.ownerId,
+    updatedAt: row.updatedAt,
     participants: participants.get(row.id) ?? [],
   }));
 }
@@ -375,6 +378,7 @@ export async function getQuest(
     status: asStatus(row.status),
     visibility: row.visibility,
     ownerId: row.ownerId,
+    updatedAt: row.updatedAt,
     descriptionJson: row.descriptionJson,
     participants: participants.get(row.id) ?? [],
     chapters,
@@ -440,6 +444,7 @@ export async function createQuest(input: {
           status: quests.status,
           visibility: quests.visibility,
           ownerId: quests.ownerId,
+          updatedAt: quests.updatedAt,
         });
       await replaceParticipants(row.id, input.actorId, participants.data, tx);
       await recalcQuestRelations(input.worldId, input.actorId, row.id, tx);
@@ -452,6 +457,7 @@ export async function createQuest(input: {
       status: asStatus(summary.status),
       visibility: summary.visibility,
       ownerId: summary.ownerId,
+      updatedAt: summary.updatedAt,
       participants: loaded.get(summary.id) ?? [],
     });
   } catch (error) {

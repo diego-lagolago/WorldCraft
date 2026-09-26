@@ -110,6 +110,163 @@ export const verifications = pgTable("verifications", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+/** Better Auth JWT signing keys for OAuth access tokens (T-003). */
+export const jwks = pgTable("jwks", {
+  id: text("id").primaryKey(),
+  publicKey: text("public_key").notNull(),
+  privateKey: text("private_key").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  alg: text("alg"),
+  crv: text("crv"),
+});
+
+/** OAuth 2.1 persistence required by the Better Auth MCP plugin (ADR-005). */
+export const oauthClients = pgTable(
+  "oauth_clients",
+  {
+    id: text("id").primaryKey(),
+    clientId: text("client_id").notNull().unique(),
+    clientSecret: text("client_secret"),
+    clientDiscoveryId: text("client_discovery_id"),
+    disabled: boolean("disabled").default(false).notNull(),
+    skipConsent: boolean("skip_consent"),
+    enableEndSession: boolean("enable_end_session"),
+    subjectType: text("subject_type"),
+    scopes: text("scopes").array(),
+    clientCredentialsScopes: text("client_credentials_scopes").array().default([]).notNull(),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    name: text("name"),
+    uri: text("uri"),
+    icon: text("icon"),
+    contacts: text("contacts").array(),
+    tos: text("tos"),
+    policy: text("policy"),
+    softwareId: text("software_id"),
+    softwareVersion: text("software_version"),
+    softwareStatement: text("software_statement"),
+    redirectUris: text("redirect_uris").array().notNull(),
+    postLogoutRedirectUris: text("post_logout_redirect_uris").array(),
+    backchannelLogoutUri: text("backchannel_logout_uri"),
+    backchannelLogoutSessionRequired: boolean("backchannel_logout_session_required"),
+    tokenEndpointAuthMethod: text("token_endpoint_auth_method"),
+    applicationType: text("application_type"),
+    jwks: text("jwks"),
+    jwksUri: text("jwks_uri"),
+    grantTypes: text("grant_types").array(),
+    responseTypes: text("response_types").array(),
+    requirePKCE: boolean("require_pkce"),
+    dpopBoundAccessTokens: boolean("dpop_bound_access_tokens").default(false).notNull(),
+    referenceId: text("reference_id"),
+    metadata: jsonb("metadata"),
+  },
+  (t) => [index("oauth_clients_user_id").on(t.userId)],
+);
+
+export const oauthResources = pgTable("oauth_resources", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull().unique(),
+  name: text("name").notNull(),
+  accessTokenTtl: integer("access_token_ttl"),
+  refreshTokenTtl: integer("refresh_token_ttl"),
+  signingAlgorithm: text("signing_algorithm"),
+  signingKeyId: text("signing_key_id"),
+  allowedScopes: text("allowed_scopes").array(),
+  customClaims: jsonb("custom_claims"),
+  dpopBoundAccessTokensRequired: boolean("dpop_bound_access_tokens_required").default(false).notNull(),
+  disabled: boolean("disabled").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  policyVersion: integer("policy_version").default(1).notNull(),
+  metadata: jsonb("metadata"),
+});
+
+export const oauthClientResources = pgTable(
+  "oauth_client_resources",
+  {
+    id: text("id").primaryKey(),
+    clientId: text("client_id").notNull().references(() => oauthClients.clientId, { onDelete: "cascade" }),
+    resourceId: text("resource_id").notNull().references(() => oauthResources.identifier, { onDelete: "cascade" }),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("oauth_client_resources_client_resource").on(t.clientId, t.resourceId),
+    index("oauth_client_resources_client_id").on(t.clientId),
+    index("oauth_client_resources_resource_id").on(t.resourceId),
+  ],
+);
+
+export const oauthRefreshTokens = pgTable(
+  "oauth_refresh_tokens",
+  {
+    id: text("id").primaryKey(),
+    token: text("token").notNull().unique(),
+    clientId: text("client_id").notNull().references(() => oauthClients.clientId, { onDelete: "cascade" }),
+    sessionId: text("session_id").references(() => sessions.id, { onDelete: "set null" }),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    referenceId: text("reference_id"),
+    authorizationCodeId: text("authorization_code_id"),
+    resources: text("resources").array(),
+    requestedUserInfoClaims: text("requested_user_info_claims").array(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    revoked: timestamp("revoked", { withTimezone: true }),
+    rotatedAt: timestamp("rotated_at", { withTimezone: true }),
+    rotationReplayResponse: text("rotation_replay_response"),
+    rotationReplayExpiresAt: timestamp("rotation_replay_expires_at", { withTimezone: true }),
+    authTime: timestamp("auth_time", { withTimezone: true }),
+    confirmation: jsonb("confirmation"),
+    scopes: text("scopes").array().notNull(),
+  },
+  (t) => [index("oauth_refresh_tokens_client_id").on(t.clientId), index("oauth_refresh_tokens_user_id").on(t.userId)],
+);
+
+export const oauthAccessTokens = pgTable(
+  "oauth_access_tokens",
+  {
+    id: text("id").primaryKey(),
+    token: text("token").unique(),
+    clientId: text("client_id").notNull().references(() => oauthClients.clientId, { onDelete: "cascade" }),
+    sessionId: text("session_id").references(() => sessions.id, { onDelete: "set null" }),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    referenceId: text("reference_id"),
+    authorizationCodeId: text("authorization_code_id"),
+    resources: text("resources").array(),
+    requestedUserInfoClaims: text("requested_user_info_claims").array(),
+    refreshId: text("refresh_id").references(() => oauthRefreshTokens.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    revoked: timestamp("revoked", { withTimezone: true }),
+    confirmation: jsonb("confirmation"),
+    scopes: text("scopes").array().notNull(),
+  },
+  (t) => [index("oauth_access_tokens_client_id").on(t.clientId), index("oauth_access_tokens_user_id").on(t.userId)],
+);
+
+export const oauthConsents = pgTable(
+  "oauth_consents",
+  {
+    id: text("id").primaryKey(),
+    clientId: text("client_id").notNull().references(() => oauthClients.clientId, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    referenceId: text("reference_id"),
+    resources: text("resources").array(),
+    requestedUserInfoClaims: text("requested_user_info_claims").array(),
+    scopes: text("scopes").array().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("oauth_consents_client_id").on(t.clientId), index("oauth_consents_user_id").on(t.userId)],
+);
+
+export const oauthClientAssertions = pgTable("oauth_client_assertions", {
+  id: text("id").primaryKey(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
 /**
  * Product domain tables from `.ai/architecture/datenmodell.md`.
  */
@@ -212,6 +369,7 @@ export const worlds = pgTable(
     titleImageId: uuid("title_image_id").references(() => files.id, {
       onDelete: "set null",
     }),
+    mcpEnabled: boolean("mcp_enabled").default(false).notNull(),
     createdBy: text("created_by")
       .notNull()
       .references(() => users.id),
@@ -905,6 +1063,24 @@ export const chatMessages = pgTable(
       )`,
     ),
   ],
+);
+
+/** Metadata-only audit trail for MCP tool calls (Plan 002 T-009). */
+export const mcpAuditLogs = pgTable(
+  "mcp_audit_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    clientId: text("client_id").notNull(),
+    toolName: text("tool_name").notNull(),
+    worldId: uuid("world_id").references(() => worlds.id, { onDelete: "set null" }),
+    durationMs: integer("duration_ms").notNull(),
+    result: text("result").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("mcp_audit_logs_created_at").on(t.createdAt), index("mcp_audit_logs_user_created").on(t.userId, t.createdAt)],
 );
 
 /**

@@ -29,6 +29,7 @@ export type UniverseSummary = {
   name: string;
   visibility: VisibilityStatus;
   sortOrder: number;
+  updatedAt: Date;
 };
 
 export type UniverseDetails = UniverseSummary & { worldId: string; descriptionJson: unknown };
@@ -45,6 +46,7 @@ export async function listUniverses(
       name: universes.name,
       visibility: universes.visibility,
       sortOrder: universes.sortOrder,
+      updatedAt: universes.updatedAt,
     })
     .from(universes)
     .where(eq(universes.worldId, worldId))
@@ -66,6 +68,7 @@ export async function getUniverse(
       name: universes.name,
       visibility: universes.visibility,
       sortOrder: universes.sortOrder,
+      updatedAt: universes.updatedAt,
       descriptionJson: universes.descriptionJson,
     })
     .from(universes)
@@ -113,6 +116,7 @@ export async function createUniverse(input: {
           name: universes.name,
           visibility: universes.visibility,
           sortOrder: universes.sortOrder,
+          updatedAt: universes.updatedAt,
         });
       await recalcOutgoingMentions(
         {

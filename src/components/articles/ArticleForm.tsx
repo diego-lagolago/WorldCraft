@@ -44,6 +44,7 @@ function fieldsForForm(type: TemplateType, stored: StoredTemplateFields): Record
   for (const field of templateOf(type).fields) {
     const value = stored[field.key];
     if (value === undefined) out[field.key] = "";
+    else if (value === true) out[field.key] = "true";
     else if (typeof value === "string") out[field.key] = value;
     else out[field.key] = encodeRef(value);
   }
@@ -55,7 +56,8 @@ function payloadFields(type: TemplateType, fields: Record<string, string>) {
   for (const field of templateOf(type).fields) {
     const value = fields[field.key] ?? "";
     if (!value) continue;
-    out[field.key] = field.type === "ref" ? decodeRef(value) || undefined : value;
+    if (field.type === "boolean") out[field.key] = true;
+    else out[field.key] = field.type === "ref" ? decodeRef(value) || undefined : value;
   }
   return out;
 }
@@ -239,7 +241,16 @@ export function ArticleForm({
           {template.fields.map((field) => (
             <label key={field.key} className="stack" style={{ gap: 6 }}>
               <span className="field-label">{field.label}</span>
-              {field.type === "select" ? (
+              {field.type === "boolean" ? (
+                <input
+                  type="checkbox"
+                  checked={fields[field.key] === "true"}
+                  onChange={(event) =>
+                    setFields((current) => ({ ...current, [field.key]: event.target.checked ? "true" : "" }))
+                  }
+                  style={{ alignSelf: "flex-start" }}
+                />
+              ) : field.type === "select" ? (
                 <select
                   value={fields[field.key] ?? ""}
                   onChange={(event) => setFields((current) => ({ ...current, [field.key]: event.target.value }))}

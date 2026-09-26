@@ -76,6 +76,7 @@ export type ArticleSummary = {
   visibility: ContentVisibility;
   ownerId: string;
   firstEditedAt: Date | null;
+  updatedAt: Date;
   titleImageId: string | null;
 };
 
@@ -95,6 +96,7 @@ const summaryColumns = {
   visibility: articles.visibility,
   ownerId: articles.ownerId,
   firstEditedAt: articles.firstEditedAt,
+  updatedAt: articles.updatedAt,
   titleImageId: articles.titleImageId,
 };
 

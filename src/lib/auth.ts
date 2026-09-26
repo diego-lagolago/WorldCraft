@@ -1,7 +1,11 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
+import { jwt } from "better-auth/plugins";
 import { APIError } from "better-auth/api";
+import { cimd } from "@better-auth/cimd";
+import { fetchClientMetadataResource } from "@better-auth/cimd/node";
+import { mcp } from "@better-auth/mcp";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import * as schema from "@/db/schema";
@@ -25,6 +29,7 @@ assertTestLoginNotInProduction();
 assertDiscordAllowlistConfigured();
 
 const APP_URL = getAuthUrl();
+const MCP_RESOURCE = `${APP_URL}/mcp`;
 
 export const auth = betterAuth({
   baseURL: APP_URL,
@@ -36,6 +41,14 @@ export const auth = betterAuth({
       session: schema.sessions,
       account: schema.accounts,
       verification: schema.verifications,
+      jwks: schema.jwks,
+      oauthClient: schema.oauthClients,
+      oauthResource: schema.oauthResources,
+      oauthClientResource: schema.oauthClientResources,
+      oauthRefreshToken: schema.oauthRefreshTokens,
+      oauthAccessToken: schema.oauthAccessTokens,
+      oauthConsent: schema.oauthConsents,
+      oauthClientAssertion: schema.oauthClientAssertions,
     },
   }),
   trustedOrigins: getTrustedOrigins(),
@@ -131,6 +144,25 @@ export const auth = betterAuth({
   },
   plugins: [
     ...(isTestLoginEnabled() ? [testLoginPlugin()] : []),
+    jwt(),
+    mcp({
+      resource: MCP_RESOURCE,
+      loginPage: "/",
+      consentPage: "/oauth/consent",
+      scopes: ["worlds:read", "offline_access"],
+      grantTypes: ["authorization_code", "refresh_token"],
+      accessTokenExpiresIn: 60 * 60,
+      refreshTokenExpiresIn: 60 * 60 * 24 * 30,
+      refreshTokenReuseInterval: 0,
+      allowDynamicClientRegistration: true,
+      allowUnauthenticatedClientRegistration: true,
+      clientRegistrationRequirePKCE: true,
+      clientRegistrationDefaultScopes: ["worlds:read", "offline_access"],
+    }),
+    cimd({
+      fetchClientMetadataResource,
+      metadataProfile: "mcp-2026-07-28",
+    }),
     nextCookies(),
   ],
 });

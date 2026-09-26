@@ -71,6 +71,7 @@ Namen aus `.env.example` — Werte selbst eintragen. Unverändert zur bisherigen
 | `DATABASE_URL` | Connection-String der Coolify-Postgres-Ressource |
 | `BETTER_AUTH_SECRET` | `openssl rand -base64 32`, nur in Coolify |
 | `BETTER_AUTH_URL` | `https://worldcraft.lagolago.at` ohne Slash am Ende |
+| `MCP_ENABLED` | Standard `false`. Erst nach dem Ende-zu-Ende-Test von Plan `002` dauerhaft auf `true` setzen; bei `false` sind `/mcp`, OAuth und Discovery absichtlich 404. |
 | `DISCORD_CLIENT_ID` | Discord Developer Portal (T-008) |
 | `DISCORD_CLIENT_SECRET` | Discord Developer Portal (T-008) |
 | `ENABLE_TEST_LOGIN` | **nicht setzen** (Test-Login nur lokal). Bei `APP_ENV=production` und `ENABLE_TEST_LOGIN=true` darf die App nicht starten. |

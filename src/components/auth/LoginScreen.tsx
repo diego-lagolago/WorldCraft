@@ -39,7 +39,12 @@ export function LoginScreen({
     setActionError(null);
     setPending("discord");
     try {
-      await signIn.social({ provider: "discord", callbackURL: next ?? "/" });
+      const oauthQuery = window.location.search.slice(1);
+      await signIn.social({
+        provider: "discord",
+        callbackURL: next ?? "/",
+        ...(oauthQuery ? { oauth_query: oauthQuery } : {}),
+      } as never);
     } catch {
       setActionError("Die Discord-Anmeldung konnte nicht gestartet werden.");
       setPending(null);

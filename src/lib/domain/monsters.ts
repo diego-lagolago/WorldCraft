@@ -159,6 +159,7 @@ export type MonsterSummary = {
   ownerId: string;
   portraitId: string | null;
   habitatArticleId: string | null;
+  updatedAt: Date;
 };
 
 export type MonsterDetails = MonsterSummary & {
@@ -187,6 +188,7 @@ const summaryColumns = {
   ownerId: monsters.ownerId,
   portraitId: monsters.portraitId,
   habitatArticleId: monsters.habitatArticleId,
+  updatedAt: monsters.updatedAt,
 };
 
 type MonsterSummaryRow = Pick<typeof monsters.$inferSelect, keyof typeof summaryColumns>;
@@ -205,6 +207,7 @@ function toSummary(row: MonsterSummaryRow): MonsterSummary {
     ownerId: row.ownerId,
     portraitId: row.portraitId,
     habitatArticleId: row.habitatArticleId,
+    updatedAt: row.updatedAt,
   };
 }
 

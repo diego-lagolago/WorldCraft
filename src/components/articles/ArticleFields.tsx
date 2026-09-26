@@ -12,6 +12,7 @@ function formatValue(
   value: StoredTemplateValue | undefined,
   mentions: Record<string, ResolvedMention>,
 ): ReactNode {
+  if (field.type === "boolean") return value === true ? "Ja" : "Nein";
   if (value === undefined || value === "") return <span className="muted">–</span>;
   if (field.type === "select" && typeof value === "string") {
     if (field.display === "rarity" && isMonsterRarity(value)) {

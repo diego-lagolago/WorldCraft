@@ -80,4 +80,13 @@ describe("parseTemplateFields (APP-TEMPLATE-VALIDATE)", () => {
     ).toEqual({});
     expect(keepCompatibleFields("race", { aliases: "Waldelfen" })).toEqual({});
   });
+
+  it("stores the item quest flag only when it is true", () => {
+    expect(parseTemplateFields("item", { quest: true })).toEqual({ ok: true, data: { quest: true } });
+    expect(parseTemplateFields("item", { quest: false })).toEqual({ ok: true, data: {} });
+    expect(parseTemplateFields("item", { quest: "true" })).toMatchObject({ ok: false, status: 400 });
+    expect(keepCompatibleFields("item", { quest: true })).toEqual({ quest: true });
+    expect(keepCompatibleFields("item", { quest: "yes" })).toEqual({});
+    expect(keepCompatibleFields("place", { quest: true })).toEqual({});
+  });
 });

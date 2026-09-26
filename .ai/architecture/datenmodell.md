@@ -901,6 +901,7 @@ Vorlagentypen leben in einer **Code-Registry** (TypeScript-Modul), nicht in der 
 | Text | string |
 | Zahl | number |
 | Auswahl | string aus der Liste der Registry |
+| Ja/Nein | `true`; nicht gesetzt = Schlüssel fehlt (`false` wird nicht gespeichert) |
 | Verweis | `{ "kind": content_kind, "id": uuid }` |
 | Verweisliste | Array derselben Objekte |
 
@@ -948,6 +949,7 @@ Verweis / Verweisliste erzeugen Relationen `origin = template_field` mit `templa
 | `kind` | Art | Auswahl: `weapon` Waffe, `armor` Rüstung, `artifact` Artefakt, `relic` Relikt, `mundane` alltäglich, `fish` Fisch, `plant` Pflanze, `other` sonstiges | — |
 | `rarity` | Seltenheit | Auswahl: `common` Gewöhnlich, `uncommon` Ungewöhnlich, `rare` Selten, `epic` Episch, `legendary` Legendär; Anzeige als Seltenheits-Pill | — |
 | `owner` | Besitzer | Verweis | Artikel `person` oder Charakter |
+| `quest` | Quest | Ja/Nein; Eingabe als Checkbox, Anzeige „Ja“/„Nein“ | — |
 
 ### `race` — Rasse
 

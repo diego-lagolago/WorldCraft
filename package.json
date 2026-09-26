@@ -1,21 +1,25 @@
 {
   "name": "worldcraft",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:rechte": "node --env-file=.env ./node_modules/vitest/vitest.mjs run --config vitest.rechte.config.ts",
+    "test:mcp": "node --env-file=.env ./node_modules/vitest/vitest.mjs run --config vitest.mcp.config.ts",
     "test:triggers": "node --env-file=.env ./node_modules/vitest/vitest.mjs run --config vitest.triggers.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file=.env scripts/migrate.mjs",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@better-auth/cimd": "^1.7.6",
+    "@better-auth/mcp": "^1.7.6",
+    "@modelcontextprotocol/server": "^2.1.0",
     "@tiptap/core": "^3.31.3",
     "@tiptap/extension-mention": "^3.31.3",
     "@tiptap/extension-placeholder": "^3.31.3",
@@ -23,7 +27,7 @@
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
     "@tiptap/suggestion": "^3.31.3",
-    "better-auth": "^1.7.5",
+    "better-auth": "^1.7.6",
     "drizzle-orm": "^0.45.2",
     "image-size": "^2.0.4",
     "leaflet": "^1.9.4",
@@ -32,6 +36,7 @@
     "postgres": "^3.4.9",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "sharp": "^0.35.4",
     "zod": "^4.6.5"
   },
   "devDependencies": {

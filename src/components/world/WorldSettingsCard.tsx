@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { ImageUploadField } from "@/components/files/ImageUploadField";
@@ -9,7 +10,7 @@ import { forgetWorld } from "@/lib/client/last-context";
 import type { RichDoc } from "@/lib/editor/rich-text";
 
 type Props = {
-  world: { id: string; name: string; description: RichDoc | null; titleImageId: string | null };
+  world: { id: string; name: string; description: RichDoc | null; titleImageId: string | null; mcpEnabled: boolean };
 };
 
 /** Game master only (Entscheidung Projektinhaber 2026-09-23). */
@@ -21,6 +22,7 @@ export function WorldSettingsCard({ world, initialImageError = false }: Props & 
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [confirmName, setConfirmName] = useState("");
+  const [mcpEnabled, setMcpEnabled] = useState(world.mcpEnabled);
 
   function begin() {
     setError(null);
@@ -88,6 +90,24 @@ export function WorldSettingsCard({ world, initialImageError = false }: Props & 
             return result.ok ? { ok: true } : { ok: false, error: result.error };
           } : undefined}
         />
+      </div>
+
+      <div className="stack" style={{ gap: 6 }}>
+        <label className="row" style={{ gap: 8 }}>
+          <input type="checkbox" checked={mcpEnabled} disabled={pending} onChange={async (event) => {
+            const enabled = event.target.checked;
+            setMcpEnabled(enabled);
+            begin();
+            const result = await apiRequest(`/api/worlds/${world.id}`, "PATCH", { mcpEnabled: enabled });
+            setPending(false);
+            if (!result.ok) { setMcpEnabled(!enabled); setError(result.error); return; }
+            setMessage(enabled ? "KI-Zugriff (MCP) freigegeben." : "KI-Zugriff (MCP) gesperrt.");
+            router.refresh();
+          }} />
+          KI-Zugriff (MCP) erlauben
+        </label>
+        <p className="small muted">Freigegebene Inhalte können an den Anbieter der verbundenen KI-Anwendung (z. B. Anthropic) übertragen werden.</p>
+        <Link href="/hilfe/mcp" className="small">MCP-Verbindung einrichten</Link>
       </div>
 
       {message ? <p className="small muted">{message}</p> : null}

@@ -38,6 +38,7 @@ export type WorldDetails = {
   name: string;
   descriptionJson: unknown;
   titleImageId: string | null;
+  mcpEnabled: boolean;
 };
 
 export async function getWorldDetails(worldId: string): Promise<WorldDetails | null> {
@@ -47,6 +48,7 @@ export async function getWorldDetails(worldId: string): Promise<WorldDetails | n
       name: worlds.name,
       descriptionJson: worlds.descriptionJson,
       titleImageId: worlds.titleImageId,
+      mcpEnabled: worlds.mcpEnabled,
     })
     .from(worlds)
     .where(eq(worlds.id, worldId))
@@ -121,12 +123,14 @@ export async function updateWorld(input: {
   name?: string;
   description?: unknown;
   removeTitleImage?: boolean;
+  mcpEnabled?: boolean;
 }): Promise<AuthzResult<{ id: string }>> {
   const gm = requireGm(input.membership);
   if (!gm.ok) return gm;
 
   const patch: Partial<typeof worlds.$inferInsert> = { updatedAt: new Date(), updatedBy: input.actorId };
   if (input.name !== undefined) patch.name = input.name;
+  if (input.mcpEnabled !== undefined) patch.mcpEnabled = input.mcpEnabled;
   if (input.description !== undefined) {
     const description = richFieldFromInput(input.description, { mentions: false });
     if (!description.ok) return description;

@@ -14,7 +14,8 @@ import {
   type TemplateType,
 } from "./registry";
 
-export type StoredTemplateValue = string | TemplateRefValue;
+/** Booleans are stored only as `true`; unchecked means the key is absent. */
+export type StoredTemplateValue = string | true | TemplateRefValue;
 export type StoredTemplateFields = Record<string, StoredTemplateValue>;
 
 export function parseRefValue(value: unknown): TemplateRefValue | null {
@@ -40,6 +41,13 @@ export function parseTemplateFields(type: TemplateType, raw: unknown): AuthzResu
   for (const field of templateOf(type).fields) {
     const value = input[field.key];
     if (value === undefined || value === null || value === "") continue;
+    if (field.type === "boolean") {
+      if (typeof value !== "boolean") {
+        return fail(400, `„${field.label}“ muss ja oder nein sein.`);
+      }
+      if (value) out[field.key] = true;
+      continue;
+    }
     if (field.type === "text") {
       if (typeof value !== "string") {
         return fail(400, `„${field.label}“ muss Text sein.`);
@@ -81,6 +89,10 @@ export function keepCompatibleFields(type: TemplateType, stored: unknown): Store
   const out: StoredTemplateFields = {};
   for (const field of templateOf(type).fields) {
     const value = input[field.key];
+    if (field.type === "boolean") {
+      if (value === true) out[field.key] = true;
+      continue;
+    }
     if (field.type === "text") {
       if (typeof value !== "string") continue;
       const trimmed = value.trim();

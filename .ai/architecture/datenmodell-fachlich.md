@@ -161,11 +161,13 @@ Wird beim ersten Discord-Login angelegt.
 | Name | Text, max. 120 | ✅ | |
 | Beschreibung | Rich-Text ohne Erwähnungen | – | |
 | Titelbild | Bild (JPG/PNG/WebP, max. 10 MB) | – | |
+| KI-Zugriff (MCP) | Ja/Nein | ✅ | Standard Nein; nur der Game Master darf ihn ändern. Bei Ja dürfen sichtbare Inhalte über einen verbundenen KI-Anbieter gelesen werden. |
 | Ersteller | Benutzer | ✅ | unveränderlich; ist der Game Master |
 
 Regeln:
 - Beim Erstellen entstehen automatisch: eine Mitgliedschaft des Erstellers mit Rolle `Game Master` und ein erstes Universum (Name „Hauptuniversum“, umbenennbar).
 - Eine Welt hat immer mindestens ein Universum.
+- MCP ist pro Welt standardmäßig gesperrt. Die Freigabe betrifft nur den lesenden MCP-Zugriff; sie ändert keine Sichtbarkeits- oder Rollenrechte.
 
 ### 3.3 Mitgliedschaft
 

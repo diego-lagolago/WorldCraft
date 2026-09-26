@@ -18,6 +18,7 @@ export type VisibleQuestRow = QuestAccessRow & {
   title: string;
   status: string;
   descriptionJson: unknown;
+  updatedAt: Date;
 };
 
 export function canSeeQuest(
@@ -72,6 +73,7 @@ export async function loadVisibleQuestDetails(
       visibility: quests.visibility,
       ownerId: quests.ownerId,
       descriptionJson: quests.descriptionJson,
+      updatedAt: quests.updatedAt,
     })
     .from(quests)
     .where(and(eq(quests.id, questId), eq(quests.worldId, worldId)))

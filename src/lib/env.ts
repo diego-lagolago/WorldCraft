@@ -6,6 +6,11 @@ export function isTestLoginEnabled(): boolean {
   return process.env.ENABLE_TEST_LOGIN === "true";
 }
 
+/** MCP stays completely unavailable unless explicitly enabled (D2). */
+export function isMcpEnabled(): boolean {
+  return process.env.MCP_ENABLED === "true";
+}
+
 export function isProductionAppEnv(): boolean {
   return process.env.APP_ENV === "production";
 }

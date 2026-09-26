@@ -21,6 +21,7 @@ export type TemplateRefTarget =
 
 export type TemplateField =
   | { key: string; label: string; type: "text" }
+  | { key: string; label: string; type: "boolean" }
   | {
       key: string;
       label: string;
@@ -230,6 +231,7 @@ export const TEMPLATES: Record<TemplateType, TemplateDefinition> = {
         type: "ref",
         targets: [{ kind: "article", templateType: "person" }, { kind: "character" }],
       },
+      { key: "quest", label: "Quest", type: "boolean" },
     ],
   },
   race: { type: "race", label: "Rasse", plural: "Rassen", fields: [] },

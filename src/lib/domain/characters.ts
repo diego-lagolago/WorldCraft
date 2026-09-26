@@ -79,6 +79,7 @@ export type CharacterImage = { id: string; fileId: string; caption: string | nul
 
 export type CharacterSheet = {
   id: string;
+  updatedAt: Date;
   ownerId: string;
   ownerName: string;
   name: string;
@@ -132,6 +133,7 @@ async function loadSheet(characterId: string): Promise<CharacterSheet | null> {
       bonds: characters.bonds,
       flaws: characters.flaws,
       bioJson: characters.bioJson,
+      updatedAt: characters.updatedAt,
     })
     .from(characters)
     .innerJoin(users, eq(users.id, characters.ownerId))
@@ -150,6 +152,7 @@ async function loadSheet(characterId: string): Promise<CharacterSheet | null> {
     .orderBy(asc(characterImages.sortOrder));
   return {
     id: row.id,
+    updatedAt: row.updatedAt,
     ownerId: row.ownerId,
     ownerName: row.ownerName,
     name: row.name,

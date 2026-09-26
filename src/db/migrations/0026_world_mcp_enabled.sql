@@ -1,0 +1,1 @@
+ALTER TABLE worlds ADD COLUMN mcp_enabled BOOLEAN NOT NULL DEFAULT false;

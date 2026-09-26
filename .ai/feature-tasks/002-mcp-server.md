@@ -107,7 +107,7 @@ Vor Beginn zu lesen (alle vorhanden):
 ## Aufgaben
 
 ### T-001: MCP-Architektur entscheiden (ADR-005)
-- [ ] Beschreibung: Die Architektur des MCP-Servers als `.ai/decisions/005-mcp-server.md` festhalten. Zu entscheiden und zu begründen sind:
+- [x] Beschreibung: Die Architektur des MCP-Servers als `.ai/decisions/005-mcp-server.md` festhalten. Zu entscheiden und zu begründen sind:
   1. **MCP-SDK**: offizielles MCP-SDK für die Backend-Sprache aus ADR-001, mit Version.
   2. **Betriebsart**: zustandsloser Streamable-HTTP-Endpunkt `/mcp` im bestehenden Backend oder eigener Container. Standard ist „im bestehenden Backend“; eine Abweichung ist zu begründen.
   3. **OAuth-Umsetzung**: fertige Bibliothek bzw. Plugin des Auth-Systems aus ADR-001 oder Eigenbau. Aufgelistet wird, welche der Anforderungen aus T-003 die gewählte Lösung abdeckt und welche selbst gebaut werden müssen.
@@ -123,7 +123,7 @@ Vor Beginn zu lesen (alle vorhanden):
 - Abnahmekriterium: ADR-005 existiert, beantwortet die Punkte 1–9 jeweils mit genau einer Entscheidung und Begründung und enthält den Abschnitt „Anforderungen der Claude-Clients“ mit mindestens einem Quellenlink samt Abrufdatum. Punkt 3 enthält eine Tabelle „Anforderung aus T-003 → abgedeckt durch Bibliothek / Eigenbau“.
 
 ### T-002: Testwelt-Skript
-- [ ] Beschreibung: Ein Skript (Pfad gemäß `.ai/conventions.md`) erstellen, das auf einer leeren lokalen Datenbank reproduzierbar eine Testwelt anlegt:
+- [x] Beschreibung: Ein Skript (Pfad gemäß `.ai/conventions.md`) erstellen, das auf einer leeren lokalen Datenbank reproduzierbar eine Testwelt anlegt:
   - 4 Testbenutzer: 1 Game Master (Ersteller der Testwelt), 1 Master, Player A, Player B
   - 1 zweite Welt, in der nur Player B Mitglied ist
   - 6 Artikel: je einer der Vorlagentypen Person, Ort, Organisation, Gegenstand, Rasse sowie einer ohne Vorlage; davon 1 mit Status `nur Spielleitung`. Der Gegenstand ist ein Quest-Gegenstand (D12); die Person verweist über das Feld `race` auf die Rasse (Relation mit Herkunft Vorlagenfeld). Der Ort heißt „Burg Rabenstein“ und hat ein Titelbild, der `nur Spielleitung`-Artikel ebenfalls (für `bild_lesen`, T-013). „Burg Rabenstein“ hat mindestens 3 sichtbare Relationen (mindestens eine per Erwähnung, eine per Vorlagenfeld und eine manuelle mit Bezeichnung und Gegenbezeichnung) und eine sichtbare Relation über 2 Stufen. Zusätzlich (D19): je eine manuelle Relation von „Burg Rabenstein“ zum `nur Spielleitung`-Artikel und zum `nur ich`-Artikel des Masters sowie ein zweiter 2-Stufen-Pfad „Burg Rabenstein“ → `nur Spielleitung`-Artikel → veröffentlichter Artikel.
