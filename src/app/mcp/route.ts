@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 const mcpHandler = createMcpHandler(
   (context) => {
-    const server = new McpServer({ name: "WorldCraft", version: "0.1.6.1" });
+    const server = new McpServer({ name: "WorldCraft", version: "0.1.6.2" });
     if (!isProductionAppEnv()) {
       const userName = typeof context.authInfo?.extra?.userName === "string" ? context.authInfo.extra.userName : "Unbekannt";
       server.registerTool("whoami", {
