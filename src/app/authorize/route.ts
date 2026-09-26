@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthUrl } from "@/lib/env";
+import { logMcpOAuthMilestone } from "@/lib/mcp/oauth-observability";
 
 /**
  * Compatibility entry point for MCP clients that resolve the authorization
@@ -9,6 +10,9 @@ import { getAuthUrl } from "@/lib/env";
  * alias prevents those clients from losing the PKCE request to a 404.
  */
 export function GET(request: Request) {
+  logMcpOAuthMilestone("mcp_oauth_compat_authorize", {
+    clientId: new URL(request.url).searchParams.get("client_id"),
+  });
   const target = new URL("/api/auth/oauth2/authorize", getAuthUrl());
   target.search = new URL(request.url).search;
   return NextResponse.redirect(target, 307);

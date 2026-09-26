@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-function clientFingerprint(value: string | null): string | null {
+export function mcpOAuthClientFingerprint(value: string | null): string | null {
   if (!value) return null;
   return createHash("sha256").update(value).digest("hex").slice(0, 12);
 }
@@ -25,7 +25,7 @@ async function requestDetails(request: Request) {
     // Observability must never interfere with the OAuth request itself.
   }
 
-  return { endpoint: url.pathname, grantType, client: clientFingerprint(clientId) };
+  return { endpoint: url.pathname, grantType, client: mcpOAuthClientFingerprint(clientId) };
 }
 
 async function responseError(response: Response): Promise<{ code: string | null; description: string | null }> {
@@ -77,6 +77,21 @@ export async function logMcpOAuthException(request: Request, error: unknown): Pr
       ...(grantType ? { grant_type: grantType } : {}),
       ...(client ? { client: client } : {}),
       error_type: error instanceof Error ? error.name : "unknown",
+    }),
+  );
+}
+
+/** Records a navigation milestone in the browser-facing OAuth flow. */
+export function logMcpOAuthMilestone(event: "mcp_oauth_consent_page" | "mcp_oauth_compat_authorize", details: {
+  clientId: string | null;
+  accessAllowed?: boolean;
+}): void {
+  const client = mcpOAuthClientFingerprint(details.clientId);
+  console.info(
+    JSON.stringify({
+      event,
+      ...(client ? { client } : {}),
+      ...(typeof details.accessAllowed === "boolean" ? { access_allowed: details.accessAllowed } : {}),
     }),
   );
 }

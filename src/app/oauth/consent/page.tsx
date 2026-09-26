@@ -4,6 +4,7 @@ import { OAuthConsent } from "@/components/auth/OAuthConsent";
 import { db } from "@/db/client";
 import { oauthClients } from "@/db/schema";
 import { isDiscordIdAllowed, isMcpEnabled } from "@/lib/env";
+import { logMcpOAuthMilestone } from "@/lib/mcp/oauth-observability";
 import { getOptionalSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,8 @@ export default async function OAuthConsentPage({ searchParams }: PageProps<"/oau
   } catch {
     // The provider validates the URI before this page can grant access.
   }
+  const accessAllowed = isDiscordIdAllowed(session.user.discordId);
+  logMcpOAuthMilestone("mcp_oauth_consent_page", { clientId, accessAllowed });
 
   return (
     <OAuthConsent
@@ -43,7 +46,7 @@ export default async function OAuthConsentPage({ searchParams }: PageProps<"/oau
       redirectDomain={redirectDomain}
       oauthQuery={oauthQuery}
       scopes={scope}
-      accessAllowed={isDiscordIdAllowed(session.user.discordId)}
+      accessAllowed={accessAllowed}
     />
   );
 }

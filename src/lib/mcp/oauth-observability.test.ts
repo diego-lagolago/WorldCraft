@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { logMcpOAuthResponse } from "./oauth-observability";
+import { logMcpOAuthMilestone, logMcpOAuthResponse } from "./oauth-observability";
 
 describe("MCP OAuth observability", () => {
   it("logs token failures without sensitive OAuth values", async () => {
@@ -21,6 +21,20 @@ describe("MCP OAuth observability", () => {
       expect(entry).not.toContain("secret-code");
       expect(entry).not.toContain("secret-verifier");
       expect(entry).not.toContain('"client":"claude"');
+    } finally {
+      info.mockRestore();
+    }
+  });
+
+  it("logs a consent-page milestone without the raw client id", () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    try {
+      logMcpOAuthMilestone("mcp_oauth_consent_page", { clientId: "claude", accessAllowed: true });
+
+      const entry = String(info.mock.calls[0]?.[0]);
+      expect(entry).toContain('"event":"mcp_oauth_consent_page"');
+      expect(entry).toContain('"access_allowed":true');
+      expect(entry).not.toContain("claude");
     } finally {
       info.mockRestore();
     }
