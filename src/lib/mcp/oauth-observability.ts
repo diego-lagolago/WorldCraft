@@ -82,7 +82,7 @@ export async function logMcpOAuthException(request: Request, error: unknown): Pr
 }
 
 /** Records a navigation milestone in the browser-facing OAuth flow. */
-export function logMcpOAuthMilestone(event: "mcp_oauth_consent_page" | "mcp_oauth_compat_authorize", details: {
+export function logMcpOAuthMilestone(event: "mcp_oauth_consent_page" | "mcp_oauth_compat_authorize" | "mcp_oauth_compat_token", details: {
   clientId: string | null;
   accessAllowed?: boolean;
 }): void {
