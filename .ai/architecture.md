@@ -104,8 +104,8 @@ Stand nach Plan `003` T-016 (2026-09-23). Plan `.ai/feature-tasks/002-mcp-server
 
 **Offene Rückfragen (wiederholt, noch unbeantwortet):**
 
-1. Staging-Texte in Plan 002 auf **lokal + Prod** umschreiben?
-2. MCP-Parameter deutsch belassen oder an englische Produkt-/DB-Schlüssel angleichen?
+1. Staging-Texte in Plan 002 auf **lokal + Prod** umschreiben? **✅ Erledigt (Plan 002, Begriffe & Systeme / Globale Abhängigkeiten: kein Staging).**
+2. MCP-Parameter deutsch belassen oder an englische Produkt-/DB-Schlüssel angleichen? **✅ Beantwortet 2026-09-25 (Plan 002 D14):** deutsch, Abbildungstabelle pro Enum.
 
 ### nach Plan 004 (2026-09-23)
 
@@ -123,8 +123,8 @@ Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `004` (drei
 **Offene Fragen (Antwort vor Umsetzung Plan 002 nötig):**
 
 1. Sieht Claude `owner_only`-Inhalte des angemeldeten Owners (über dieselbe Rechteschicht wie die App), oder sollen `owner_only`-Inhalte über MCP wie Tagebuch ausgeschlossen werden? **✅ Beantwortet 2026-09-25 (Plan 002 D5):** wie in der App, keine Zusatzsperre; fremde `owner_only`-Inhalte bleiben unsichtbar.
-2. Werden Quest-Kapitel bei `inhalt_lesen` / `suchen` / Relationen mit ausgeliefert (nur sichtbare Kapitel), oder bleiben sie außerhalb von MCP?
-3. Ist der Quest-Notizblock über MCP ausgeschlossen (Analogie Tagebuch), oder lesbar für alle, die die Quest sehen?
+2. Werden Quest-Kapitel bei `inhalt_lesen` / `suchen` / Relationen mit ausgeliefert (nur sichtbare Kapitel), oder bleiben sie außerhalb von MCP? **✅ Beantwortet 2026-09-25 (Plan 002 D10 V4).**
+3. Ist der Quest-Notizblock über MCP ausgeschlossen (Analogie Tagebuch), oder lesbar für alle, die die Quest sehen? **✅ Beantwortet 2026-09-25 (Plan 002 D10 V5).**
 
 ### nach Plan 005 (2026-09-23)
 
@@ -139,10 +139,10 @@ Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `005` (Mons
 
 **Offene Fragen für das spätere Review von Plan `002` (Antwort vor Umsetzung nötig):**
 
-1. Liefern Such- und Lese-Werkzeuge Monster?
-2. Filter nach Art (`monster_kind`)?
-3. Wird das Charakterblatt mit ausgeliefert?
-4. Gilt die dreistufige Sichtbarkeit wie bei Artikeln?
+1. Liefern Such- und Lese-Werkzeuge Monster? **✅ Plan 002 D10 V6.**
+2. Filter nach Art (`monster_kind`)? **✅ Plan 002 D11.**
+3. Wird das Charakterblatt mit ausgeliefert? **✅ Plan 002 D10 V6.**
+4. Gilt die dreistufige Sichtbarkeit wie bei Artikeln? **✅ Plan 002 D10 V6.**
 
 
 ### nach Plan 006 (2026-09-24)
@@ -165,6 +165,8 @@ Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `006` (Mons
 3. Bleiben Monster-Marker ausschließlich Teil von `karte_lesen`, oder sollen sie zusätzlich lesbar sein, z. B. als Liste „Vorkommen auf Karten“ bei `inhalt_lesen` für ein Monster? Plan 006 schließt eine solche Liste in der App bewusst aus.
 4. Wird die Testwelt aus T-002 um Monster und Monster-Marker in den drei Sichtbarkeitsfällen aus P6-5 erweitert, und wird T-007 Abnahme (4) entsprechend ergänzt?
 
+**✅ Fragen 1–4 beantwortet 2026-09-25 (Plan 002 D9 X5–X8, D10):** kein `karte_lesen`, Marker über MCP vollständig ausgeschlossen; Testwelt enthält Monster und je einen Charakter- und Monster-Marker nur als Nachweis des Ausschlusses.
+
 Die Frage nach Monster in `suchen` und `inhalt_lesen` (P6-3) ist Frage 1 aus dem Abgleich nach Plan 005 und wird hier nicht doppelt gezählt.
 
 ### nach Plan 009 (2026-09-24)
@@ -182,8 +184,8 @@ Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `009` (neue
 
 **Offene Fragen für das Plan-Review von Plan 002:**
 
-1. Gibt `inhalt_lesen` Auswahlwerte als deutsche Labels (empfohlen, analog zur UI) oder als gespeicherte englische Schlüssel aus? Diese Entscheidung gilt für alle bestehenden und neuen Vorlagenfelder.
-2. Soll die Testwelt in T-002 mit weiterhin genau fünf Artikeln arbeiten und `race` einen bisherigen Vorlagentyp ersetzen, oder soll sie auf sechs Artikel erweitert werden, damit alle fünf Vorlagentypen plus ein Artikel ohne Vorlage vorkommen?
+1. Gibt `inhalt_lesen` Auswahlwerte als deutsche Labels (empfohlen, analog zur UI) oder als gespeicherte englische Schlüssel aus? Diese Entscheidung gilt für alle bestehenden und neuen Vorlagenfelder. **✅ Plan 002 D10 V3: deutsche Labels.**
+2. Soll die Testwelt in T-002 mit weiterhin genau fünf Artikeln arbeiten und `race` einen bisherigen Vorlagentyp ersetzen, oder soll sie auf sechs Artikel erweitert werden, damit alle fünf Vorlagentypen plus ein Artikel ohne Vorlage vorkommen? **✅ Plan 002 T-002: sechs Artikel.**
 
 ### nach Plan 010 (2026-09-24)
 
@@ -195,4 +197,4 @@ Plan `.ai/feature-tasks/002-mcp-server.md` gegen den Stand nach Plan `010` (Stat
 | P10-2 | Kapitel-Status ist nur eine Eigenschaft des Kapitels; Statusänderungen beeinflussen Sichtbarkeit, Suche und Relationen nicht. | `quests_auflisten` bleibt unverändert: Sein optionaler Statusfilter und der ausgegebene Status beziehen sich ausschließlich auf den **Quest-Status**, nicht auf Kapitel. `suchen` und `relationen_abrufen` brauchen keine Statusanpassung. |
 | P10-3 | Kapitel können in der Testwelt unterschiedliche Status haben. | T-002 der Testwelt braucht nur dann Kapitel mit unterschiedlichen Status, wenn P4-2 mit Kapitel-Auslieferung beantwortet wird. Dann muss die Testwelt mindestens sichtbare Kapitel mit unterschiedlichen Status enthalten und der `inhalt_lesen`-Test sie samt Status abnehmen. |
 
-**Offene Frage für das Plan-Review von Plan 002:** Ergänzend zu P4-2: Falls Kapitel über `inhalt_lesen` ausgeliefert werden, sind sie nur verschachtelter Quest-Inhalt oder sollen sie auch als eigene Treffer/Objekte in `suchen` bzw. `relationen_abrufen` erscheinen? Der Kapitel-Status selbst erweitert keinen dieser Scopes.
+**Offene Frage für das Plan-Review von Plan 002:** Ergänzend zu P4-2: Falls Kapitel über `inhalt_lesen` ausgeliefert werden, sind sie nur verschachtelter Quest-Inhalt oder sollen sie auch als eigene Treffer/Objekte in `suchen` bzw. `relationen_abrufen` erscheinen? Der Kapitel-Status selbst erweitert keinen dieser Scopes. **✅ Beantwortet 2026-09-25 (Plan 002 D10 V4):** nur verschachtelter Quest-Inhalt; Kapiteltreffer in `suchen` zeigen auf die Quest.

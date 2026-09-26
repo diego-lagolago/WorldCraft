@@ -39,10 +39,10 @@ Alle Pläne außer `002` und `011` sind abgeschlossen und mit Version `0.1.5` au
 | 9 | ✅ erledigt (2026-09-24): Plan 010 umgesetzt, Migration `0023` lokal angewendet, MCP-Abgleich und Smoketest S10.1–S10.5 bestanden | 010 | `/plan-run 010` | 8; nach 6 (keine technische Abhängigkeit, nur Reihenfolge) | Claude |
 | 10 | ✅ erledigt (2026-09-25): Code-Review 010 (4 Findings behoben, 1 verworfen); Review-Check laut Projektinhaber erledigt, im Review-Dokument ohne eigenen Abschnitt | 010 | `/code-review 010`, `/review-check 010` | 9 | Claude + Projektinhaber |
 | 11 | ✅ erledigt (2026-09-25): Push als Version `0.1.5` (`aa90bda`), Migration `0023` auf Prod, Prod-Smoketest P5.1–P5.7 bestanden | 009, 010 | Push nach Freigabe | 7, 10 | Projektinhaber |
-| 12 | Entscheidungen D1–D18 am 2026-09-25 in Plan 002 eingetragen (nur lesen, Hauptschalter, Welt-Freigabe, Ausschlussliste, Werkzeugumfang mit Tabelle A, offener Endpunkt, Discord-Allowlist, deutsche Parameter, `bild_lesen`, Demowelt auf Prod); damit sind die offenen Fragen aus den Abgleichen beantwortet. Jetzt Plan 002 prüfen | 002 | `/plan-review 002` | 4 ✅, 6, 9 | Claude + Projektinhaber |
-| 13 | Plan 002 umsetzen (Remote-MCP-Server mit OAuth, nur lesend) | 002 | `/plan-run 002` | 12 | Claude |
-| 14 | Code-Review 002, Findings umsetzen, Review-Check | 002 | `/code-review 002`, `/review-check 002` | 13 | Claude + Projektinhaber |
-| 15 | Push-Freigabe und Prod-Smoketest für den MCP-Server (Anmeldung aus Claude, Rechte je Rolle) | 002 | Push nach Freigabe | 14 | Projektinhaber |
+| 12 | ✅ erledigt (2026-09-25): Plan-Review 002; Entscheidungen D1–D18 plus D19–D22 aus dem Review (Testdaten für Relationen, Aufruflimit/Löschjob, Produktion vor Code-Review, `npm run test:mcp`), offene Fragen aus den Abgleichen in `architecture.md` als beantwortet markiert | 002 | `/plan-review 002` | 4 ✅, 6, 9 | Claude + Projektinhaber |
+| 13 | Plan 002 umsetzen (Remote-MCP-Server mit OAuth, nur lesend), lokal: T-001–T-009, T-012, T-013, T-014 Abnahmen (1)–(4) | 002 | `/plan-run 002` | 12 | Claude |
+| 14 | Push nach Freigabe (D21), `MCP_ENABLED=true` auf Prod dauerhaft; Demowelt auf Prod (T-014 (5)), Ende-zu-Ende-Test mit Claude (T-010), Abschluss & Normen (T-011) | 002 | Push nach Freigabe, `/plan-run 002` | 13 | Projektinhaber + Claude |
+| 15 | Code-Review 002 auf dem aktiven Prod-Stand, Findings umsetzen (inkl. MCP-Fehler), Review-Check, Fix-Push nach Freigabe | 002 | `/code-review 002`, `/review-check 002` | 14 | Claude + Projektinhaber |
 | 16 | Plan 011 (MCP: Schreibend) prüfen; Stand nach 002 auf Produktion abgleichen | 011 | `/plan-review 011` | 15, Lesen auf Prod läuft wie erwartet | Claude + Projektinhaber |
 | 17 | Plan 011 umsetzen | 011 | `/plan-run 011` | 16 | Claude |
 | 18 | Code-Review 011, Findings umsetzen, Review-Check | 011 | `/code-review 011`, `/review-check 011` | 17 | Claude + Projektinhaber |
