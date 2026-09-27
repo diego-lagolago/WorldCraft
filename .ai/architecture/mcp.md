@@ -35,6 +35,12 @@ sequenceDiagram
 - OAuth/DCR nutzt zusätzlich Better Auths In-Memory-Limiter pro Client-IP: `POST /oauth2/register` 5 pro 60 s, `/oauth2/authorize` und `/oauth2/token` je 30 pro 60 s; sonst 100 pro 10 s. Er ist auch lokal aktiv, damit die Integrationstests die Grenzen belegen. Coolify muss einen einzelnen vertrauenswürdigen `x-forwarded-for`-Wert weiterreichen; ein direkter Zugriff auf den Container ist nicht zulässig.
 - CIMD verwendet den Node-Transport von `@better-auth/cimd`: HTTPS-only, DNS-Auflösung genau einmal, ausschließlich öffentlich routbare Adressen, gepinnte Verbindung und keine Redirects. Better Auth begrenzt den Dokumentabruf zusätzlich auf 5 KB und 5 s. WorldCraft pinnt die Revalidierung auf höchstens 15 Minuten und erneute Fehlversuche auf frühestens eine Minute.
 
+## Direkte Codex-/ChatGPT-Verbindung
+
+WorldCraft wird als direkter Remote-MCP-Endpunkt über `https://worldcraft.lagolago.at/mcp` verbunden; es gibt keine WorldCraft-spezifische lokale Plugin-Datei. Der Endpunkt liefert die Protected-Resource- und OAuth-Discovery und jedes Lesewerkzeug die kompatible Descriptor-Metadaten-Spiegelung `_meta.securitySchemes` mit `oauth2` und `worlds:read`. Beim ersten Werkzeugaufruf führt der Client den bestehenden CIMD-/PKCE-OAuth-Flow durch. Zugangstoken, Header oder Client-Secrets werden nie manuell hinterlegt.
+
+Die acht produktiven Lesewerkzeuge deklarieren zusätzlich eine Scope-Challenge für `worlds:read`. Das ergänzt die globale Tokenprüfung, damit ein Client bei unzureichendem Scope gezielt erneut autorisieren kann.
+
 ## Neues MCP-Werkzeug hinzufügen
 
 1. Scope und ausschließlich lesenden Umfang festlegen; Schreiboperationen gehören nicht in diesen Server.

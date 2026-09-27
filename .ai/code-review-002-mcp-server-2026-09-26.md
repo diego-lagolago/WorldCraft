@@ -49,6 +49,8 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 | CR-025 | Sicherheit | mittel | behoben | DCR-Redirect-Policy, PKCE, 5/min-IP-Limit sowie Ablehnung vertraulicher Clients und nicht unterstützter Grants getestet |
 | CR-026 | Sicherheit | mittel | teilweise behoben | Sichere CIMD-Transport-/Cache-Konfiguration und Validierung getestet; positiver 15-Minuten-Cache-Nachweis noch offen |
 | CR-027 | Testabdeckung | mittel | offen | Zusatzauftrag OAuth: Kompatibilitätsmatrix Codex/Claude für feste Client-ID, DCR und CIMD |
+| CR-028 | Aufgaben-Abgleich | mittel | behoben | Die OAuth-Anforderung der Lesewerkzeuge war nicht als clientlesbare Tool-Metadaten am MCP-Endpunkt deklariert |
+| CR-029 | Sicherheit | mittel | behoben | Lesewerkzeuge deklarieren ihren erforderlichen OAuth-Scope nicht als Scope-Challenge |
 
 ---
 
@@ -427,6 +429,26 @@ Vom Projektinhaber nachträglich als Aufgaben an dieses Review angehängt. Die P
 - **Festlegung feste Client-ID (Projektinhaber, Plan-Review 2026-09-26):** Die feste Client-ID bleibt **vorerst als Backup** erhalten und ist Teil der Matrix. Sie wird nicht entfernt, bevor (1) Codex über DCR bzw. CIMD ohne `invalid_redirect` funktioniert und (2) Claude über den neuen Weg (CIMD bzw. DCR) erfolgreich getestet ist.
 - **Abnahmekriterium:** Die Testmatrix läuft automatisiert oder mit klar dokumentierten manuellen Schritten. Codex kann sich ohne `invalid_redirect` authentifizieren und WorldCraft-Werkzeuge auflisten. Claude bleibt funktionsfähig. Fehlerfälle für Redirect-URI, PKCE, nicht freigegebenen Nutzer und abgelaufenes bzw. manipuliertes Token sind abgedeckt.
 - **Während des Baus definieren:** keine
+
+### CR-028
+- **Fundstelle:** `src/lib/mcp/tools.ts`, alle acht produktiven Lesewerkzeuge
+- **Kategorie:** Aufgaben-Abgleich
+- **Schweregrad:** mittel
+- **Bezug (Task-ID):** T-010, OAUTH-T-005
+- **Beschreibung:** Der Endpunkt stellt Protected-Resource- und OAuth-Discovery bereit, aber seine Lesewerkzeuge deklarierten nicht, dass sie OAuth mit `worlds:read` benötigen. Damit kann ein Client die notwendige Anmeldung nicht allein aus der Tool-Liste erkennen; ein separater Plugin-Download wäre lediglich ein unpassender, client-spezifischer Umweg.
+- **Empfehlung:** Die OAuth-Anforderung serverseitig an jedes Lesewerkzeug hängen. `@modelcontextprotocol/server` 2.1.0 gibt dafür die kompatible Descriptor-Metadaten-Spiegelung `_meta.securitySchemes` aus; sie enthält `oauth2` und exakt `worlds:read`. Ressourcen-Metadaten und die bestehende 401-Challenge bleiben der Discovery-Teil.
+- **Abnahmekriterium:** Jeder `tools/list`-Descriptor enthält die OAuth-Metadaten für exakt `worlds:read`; der Server bleibt ausschließlich über `https://worldcraft.lagolago.at/mcp` konfigurierbar und benötigt weder Plugin-Dateien noch manuelle Secrets oder Header. Die eigentliche Browser-Anmeldung, `tools/list` und die Quest-Abfrage bleiben Bestandteil von CR-027.
+- **Status:** behoben (2026-09-27). Alle acht Lesewerkzeuge liefern die OAuth-Descriptor-Metadaten unmittelbar vom MCP-Server. Die zwischenzeitliche lokale Plugin-Struktur wurde wieder entfernt.
+
+### CR-029
+- **Fundstelle:** `src/lib/mcp/tools.ts`, alle acht Lesewerkzeuge
+- **Kategorie:** Sicherheit
+- **Schweregrad:** mittel
+- **Bezug (Task-ID):** T-005, OAUTH-T-005
+- **Beschreibung:** Die globale Token-Prüfung verlangt `worlds:read`, aber die einzelnen Werkzeugdefinitionen konnten einem Client bei einem zu schwachen Token keine präzise Scope-Challenge liefern. Das erschwert eine gezielte Reautorisierung im modernen MCP-Protokoll.
+- **Empfehlung:** Für jedes Lesewerkzeug dieselbe `scopeChallenge` mit `worlds:read` registrieren. Die bestehende globale Prüfung bleibt die Schranke für fehlende oder ungültige Tokens.
+- **Abnahmekriterium:** Alle acht produktiven Lesewerkzeuge haben eine `scopeChallenge` für exakt `worlds:read`; ein Token ohne diesen Scope erhält weiterhin eine OAuth-Challenge statt einer Werkzeugausführung.
+- **Status:** behoben (2026-09-27). Die gemeinsame, typisierte Scope-Challenge ist an allen acht Lesewerkzeugen hinterlegt.
 
 ---
 

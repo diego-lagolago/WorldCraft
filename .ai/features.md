@@ -130,7 +130,7 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 | Feature | Was es tut | Status |
 |---|---|---|
 | Rechteschicht | Eine TypeScript-Schicht für HTTP, Loader (später MCP); keine Rechte nur in der UI | MVP / shipped |
-| MCP-Weltfreigabe | Game Master kann den lesenden KI-Zugriff je Welt ein- oder ausschalten; Standard ist aus. „Verbundene Anwendungen“ liegt im Weltmenü jeder Welt und zeigt weltunabhängige Zustimmungen des Benutzers. | in Umsetzung (Plan 002) |
+| MCP-Weltfreigabe | Game Master kann den lesenden KI-Zugriff je Welt ein- oder ausschalten; Standard ist aus. „Verbundene Anwendungen“ liegt im Weltmenü jeder Welt und zeigt weltunabhängige Zustimmungen des Benutzers. Der direkte MCP-Endpunkt startet beim ersten Zugriff OAuth, ohne manuelle Secrets oder Header. | in Umsetzung (Plan 002) |
 | Sichtbarkeit | Artikel/Quest/Pin: `nur ich` / `nur Spielleitung` / `veröffentlicht` (Default neu: `nur ich`); Universum/Karte bleiben zweistufig; Vererbung Universum → Karte → Pin | MVP / Plan 004 T-005 / shipped |
 | Archivierung | Austritt/Entfernen archiviert Mitgliedschaft, Teilnahmen, Marker, Relationen | MVP / shipped |
 

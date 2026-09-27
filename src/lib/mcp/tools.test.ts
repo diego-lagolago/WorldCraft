@@ -30,7 +30,7 @@ vi.mock("./context", () => ({
   McpToolError: class McpToolError extends Error {},
 }));
 
-const { withAudit } = await import("./tools");
+const { registerMcpReadTools, withAudit } = await import("./tools");
 
 describe("withAudit", () => {
   it("CR-003: hides unexpected failures from the MCP client and logs the tool name", async () => {
@@ -49,5 +49,22 @@ describe("withAudit", () => {
     expect(error).toHaveBeenCalledWith(expect.stringContaining('"tool":"relationen_abrufen"'));
     expect(writeMcpAuditLog).toHaveBeenCalledWith(expect.objectContaining({ result: "error" }));
     error.mockRestore();
+  });
+});
+
+describe("registerMcpReadTools", () => {
+  it("CR-028/CR-029: declares OAuth and challenges every productive read tool for worlds:read", () => {
+    const registerTool = vi.fn();
+
+    registerMcpReadTools(
+      { registerTool } as never,
+      { userId: "user-1", clientId: "client-1" },
+    );
+
+    expect(registerTool).toHaveBeenCalledTimes(8);
+    for (const [, definition] of registerTool.mock.calls) {
+      expect(definition.scopeChallenge()).toEqual({ scopes: ["worlds:read"] });
+      expect(definition._meta).toEqual({ securitySchemes: [{ type: "oauth2", scopes: ["worlds:read"] }] });
+    }
   });
 });

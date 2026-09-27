@@ -26,11 +26,12 @@
 
 ### Codex (CIMD)
 
-1. `codex mcp login worldcraft --no-browser` ausführen und den ausgegebenen Browser-Link öffnen.
-2. Mit einem berechtigten Discord-Konto anmelden und Consent bestätigen. Der dynamische Loopback-Callback muss automatisch zum wartenden Codex-Prozess zurückkehren.
-3. `codex mcp list` kontrollieren: `worldcraft` ist aktiviert und als `OAuth` erkannt.
-4. Eine neue Codex-Aufgabe mit „Frage über WorldCraft die offenen Quests ab“ starten.
-5. Bestehen: Die WorldCraft-Tools werden eingebunden, `quests_auflisten` wird aufgerufen und liefert nur Quests, die das angemeldete Konto sehen darf.
+1. In Codex eine neue Remote-MCP-Verbindung mit `https://worldcraft.lagolago.at/mcp` anlegen. Es werden keine Secrets oder Header hinterlegt.
+2. In einer neuen Codex-Aufgabe eine Frage zu einer Welt stellen. Codex muss die serverseitigen OAuth-Metadaten lesen und den vorhandenen CIMD-/PKCE-Login selbst starten.
+3. Mit einem berechtigten Discord-Konto anmelden und Consent bestätigen. Der dynamische Loopback-Callback muss automatisch zum wartenden Codex-Prozess zurückkehren.
+4. `codex mcp list` kontrollieren: `worldcraft` ist aktiviert und als `OAuth` erkannt.
+5. Eine neue Codex-Aufgabe mit „Frage über WorldCraft die offenen Quests ab“ starten.
+6. Bestehen: Die WorldCraft-Tools werden eingebunden, `quests_auflisten` wird aufgerufen und liefert nur Quests, die das angemeldete Konto sehen darf.
 
 ### Claude (CIMD)
 

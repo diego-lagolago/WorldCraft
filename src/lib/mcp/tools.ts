@@ -115,7 +115,12 @@ function renderSheet(subject: { class: string | null; attributes: { str: number 
 }
 
 export function registerMcpReadTools(server: McpServer, ctx: ToolContext) {
-  server.registerTool("welten_auflisten", { title: "Welten auflisten", description: "Liste die Welten des angemeldeten Benutzers. Vor einer Anfrage ohne bekannte Welt zuerst dieses Werkzeug nutzen." }, async () => withAudit(ctx, "welten_auflisten", async () => {
+  const readScopeChallenge = () => ({ scopes: ["worlds:read"] as const });
+  const readSecuritySchemes = [{ type: "oauth2", scopes: ["worlds:read"] }] as const;
+  // @modelcontextprotocol/server 2.1.0 exposes descriptor metadata through
+  // _meta. OpenAI hosts read this compatibility mirror during OAuth linking.
+  const readToolAuth = { scopeChallenge: readScopeChallenge, _meta: { securitySchemes: readSecuritySchemes } };
+  server.registerTool("welten_auflisten", { title: "Welten auflisten", description: "Liste die Welten des angemeldeten Benutzers. Vor einer Anfrage ohne bekannte Welt zuerst dieses Werkzeug nutzen.", ...readToolAuth }, async () => withAudit(ctx, "welten_auflisten", async () => {
     const worlds = await listMcpWorldMemberships(ctx.userId);
     const lines = await Promise.all(worlds.map(async (world) => {
       if (!world.mcpEnabled) return `## ${world.name}\nID: ${world.id}\nEigene Rolle: ${world.role}\nMCP für diese Welt nicht freigegeben.`;
@@ -126,13 +131,13 @@ export function registerMcpReadTools(server: McpServer, ctx: ToolContext) {
     return { value: lines.join("\n\n") || "Keine Welten vorhanden." };
   }));
 
-  server.registerTool("suchen", { title: "Inhalte suchen", description: "Suche sichtbare Inhalte in genau einer freigegebenen Welt. Wenn keine Welt bekannt ist, zuerst welten_auflisten nutzen; nie weltübergreifend suchen.", inputSchema: z.object({ welt: worldSchema, suchbegriff: z.string().trim().min(2).max(200), art: contentKind.optional(), limit: z.number().int().min(1).max(50).optional() }) }, async ({ welt, suchbegriff, art, limit }) => withAudit(ctx, "suchen", async () => {
+  server.registerTool("suchen", { title: "Inhalte suchen", description: "Suche sichtbare Inhalte in genau einer freigegebenen Welt. Wenn keine Welt bekannt ist, zuerst welten_auflisten nutzen; nie weltübergreifend suchen.", ...readToolAuth, inputSchema: z.object({ welt: worldSchema, suchbegriff: z.string().trim().min(2).max(200), art: contentKind.optional(), limit: z.number().int().min(1).max(50).optional() }) }, async ({ welt, suchbegriff, art, limit }) => withAudit(ctx, "suchen", async () => {
     const world = await resolveMcpWorld(ctx.userId, welt);
     const hits = await searchWorld({ worldId: world.id, role: world.role, viewerId: ctx.userId, query: suchbegriff, limit: limit ?? 20, kind: art ? MCP_CONTENT_KIND[art] : "all" });
     return { worldId: world.id, value: hits.length ? hits.map((hit) => `- ${hit.title} (${MCP_CONTENT_KIND_LABEL[MCP_CONTENT_KIND_FROM_INTERNAL[hit.kind]]}, ${hit.id})${hit.templateType ? ` – ${templateOf(hit.templateType).label}` : ""}${hit.snippet ? `\n  ${hit.snippet}` : ""}`).join("\n") : "Keine Treffer." };
   }));
 
-  server.registerTool("inhalte_auflisten", { title: "Artikel oder Monster auflisten", description: "Liste sichtbare Artikel oder Monster einer freigegebenen Welt, wenn kein Suchbegriff nötig ist.", inputSchema: z.object({ welt: worldSchema, art: z.enum(["artikel", "monster"]), vorlagentyp: templateTypes.optional(), monster_art: monsterKindLabel.optional(), quest_gegenstand: z.boolean().optional(), limit: z.number().int().min(1).max(200).optional() }) }, async ({ welt, art, vorlagentyp, monster_art, quest_gegenstand, limit }) => withAudit(ctx, "inhalte_auflisten", async () => {
+  server.registerTool("inhalte_auflisten", { title: "Artikel oder Monster auflisten", description: "Liste sichtbare Artikel oder Monster einer freigegebenen Welt, wenn kein Suchbegriff nötig ist.", ...readToolAuth, inputSchema: z.object({ welt: worldSchema, art: z.enum(["artikel", "monster"]), vorlagentyp: templateTypes.optional(), monster_art: monsterKindLabel.optional(), quest_gegenstand: z.boolean().optional(), limit: z.number().int().min(1).max(200).optional() }) }, async ({ welt, art, vorlagentyp, monster_art, quest_gegenstand, limit }) => withAudit(ctx, "inhalte_auflisten", async () => {
     if (art === "artikel" && monster_art) throw new McpToolError("monster_art ist nur bei art: monster erlaubt.");
     if (art === "monster" && (vorlagentyp || quest_gegenstand !== undefined)) throw new McpToolError("vorlagentyp und quest_gegenstand sind nur bei art: artikel erlaubt.");
     if (quest_gegenstand !== undefined && vorlagentyp !== "gegenstand") throw new McpToolError("quest_gegenstand ist nur bei vorlagentyp: gegenstand erlaubt.");
@@ -151,7 +156,7 @@ export function registerMcpReadTools(server: McpServer, ctx: ToolContext) {
     return { worldId: world.id, value: filtered.length ? filtered.map((row) => `- ${row.name} (${MONSTER_KIND_LABEL[row.kind]}, ${row.id}) – ${MONSTER_RARITY_LABEL[row.rarity]}${row.isBoss ? ", Boss" : ""}`).join("\n") : "Keine Monster." };
   }));
 
-  server.registerTool("inhalt_lesen", { title: "Inhalt lesen", description: "Lies einen sichtbaren Inhalt einer freigegebenen Welt vollständig. Bilder werden nie hier, sondern nur mit bild_lesen geliefert.", inputSchema: z.object({ welt: worldSchema, art: contentKind, id: z.string().uuid() }) }, async ({ welt, art, id }) => withAudit(ctx, "inhalt_lesen", async () => {
+  server.registerTool("inhalt_lesen", { title: "Inhalt lesen", description: "Lies einen sichtbaren Inhalt einer freigegebenen Welt vollständig. Bilder werden nie hier, sondern nur mit bild_lesen geliefert.", ...readToolAuth, inputSchema: z.object({ welt: worldSchema, art: contentKind, id: z.string().uuid() }) }, async ({ welt, art, id }) => withAudit(ctx, "inhalt_lesen", async () => {
     const world = await resolveMcpWorld(ctx.userId, welt);
     const role = world.role;
     let value = "";
@@ -189,7 +194,7 @@ export function registerMcpReadTools(server: McpServer, ctx: ToolContext) {
     return { worldId: world.id, value };
   }));
 
-  server.registerTool("relationen_abrufen", { title: "Relationen abrufen", description: "Lies sichtbare Verknüpfungen eines Inhalts. Unsichtbare Inhalte und Pfade werden nie ausgegeben.", inputSchema: z.object({ welt: worldSchema, art: contentKind, id: z.string().uuid(), tiefe: z.union([z.literal(1), z.literal(2)]).optional() }) }, async ({ welt, art, id, tiefe }) => withAudit(ctx, "relationen_abrufen", async () => {
+  server.registerTool("relationen_abrufen", { title: "Relationen abrufen", description: "Lies sichtbare Verknüpfungen eines Inhalts. Unsichtbare Inhalte und Pfade werden nie ausgegeben.", ...readToolAuth, inputSchema: z.object({ welt: worldSchema, art: contentKind, id: z.string().uuid(), tiefe: z.union([z.literal(1), z.literal(2)]).optional() }) }, async ({ welt, art, id, tiefe }) => withAudit(ctx, "relationen_abrufen", async () => {
     const world = await resolveMcpWorld(ctx.userId, welt);
     const first = await listLinked({ worldId: world.id, role: world.role, viewerId: ctx.userId, kind: MCP_CONTENT_KIND[art], id });
     const lines = first.map((row) => `- ${row.title} (${MCP_CONTENT_KIND_LABEL[MCP_CONTENT_KIND_FROM_INTERNAL[row.kind]]}, ${row.id}) – Herkunft: ${row.originLabels.join(", ")}${row.manualLabel ? ` – ${row.manualLabel}` : ""}`);
@@ -200,19 +205,19 @@ export function registerMcpReadTools(server: McpServer, ctx: ToolContext) {
     return { worldId: world.id, value: lines.length ? lines.join("\n") : "Keine sichtbaren Relationen." };
   }));
 
-  server.registerTool("quests_auflisten", { title: "Quests auflisten", description: "Liste sichtbare Quests einer freigegebenen Welt, optional gefiltert nach Status.", inputSchema: z.object({ welt: worldSchema, status: status.optional() }) }, async ({ welt, status: requestedStatus }) => withAudit(ctx, "quests_auflisten", async () => {
+  server.registerTool("quests_auflisten", { title: "Quests auflisten", description: "Liste sichtbare Quests einer freigegebenen Welt, optional gefiltert nach Status.", ...readToolAuth, inputSchema: z.object({ welt: worldSchema, status: status.optional() }) }, async ({ welt, status: requestedStatus }) => withAudit(ctx, "quests_auflisten", async () => {
     const world = await resolveMcpWorld(ctx.userId, welt);
     const rows = (await listQuests(world.id, world.role, ctx.userId)).filter((row) => !requestedStatus || row.status === MCP_QUEST_STATUS[requestedStatus]);
     return { worldId: world.id, value: rows.length ? rows.map((row) => `- ${row.title} (${row.id}) – ${MCP_QUEST_STATUS_LABEL[row.status]}${row.participants.length ? ` – Beteiligte: ${row.participants.map((entry) => entry.characterName).join(", ")}` : ""}`).join("\n") : "Keine Quests." };
   }));
 
-  server.registerTool("universen_auflisten", { title: "Universen auflisten", description: "Liste sichtbare Universen einer freigegebenen Welt und ihre Karten. Pins, Marker, Kartenbilder und Koordinaten werden nicht geliefert.", inputSchema: z.object({ welt: worldSchema }) }, async ({ welt }) => withAudit(ctx, "universen_auflisten", async () => {
+  server.registerTool("universen_auflisten", { title: "Universen auflisten", description: "Liste sichtbare Universen einer freigegebenen Welt und ihre Karten. Pins, Marker, Kartenbilder und Koordinaten werden nicht geliefert.", ...readToolAuth, inputSchema: z.object({ welt: worldSchema }) }, async ({ welt }) => withAudit(ctx, "universen_auflisten", async () => {
     const world = await resolveMcpWorld(ctx.userId, welt);
     const rows = await listMcpUniverseMaps(world.id, { role: world.role, userId: ctx.userId });
     return { worldId: world.id, value: rows.length ? rows.map((row) => [`## ${row.name}`, `ID: ${row.id}`, tiptapJsonToMcpMarkdown(row.descriptionJson), row.maps.length ? `Karten: ${row.maps.map((map) => `${map.name} (${map.id})`).join(", ")}` : "Karten: keine"].filter(Boolean).join("\n")).join("\n\n") : "Keine Universen." };
   }));
 
-  server.registerTool("bild_lesen", { title: "Bild lesen", description: "Liefert ein sichtbares Inhaltsbild als Bilddaten. Kartenbilder sind ausgeschlossen; niemals URLs oder Datei-IDs ausgeben.", inputSchema: z.object({ welt: worldSchema, art: z.enum(["welt", "artikel", "charakter", "monster"]), id: z.string().uuid().optional(), bild_nr: z.number().int().min(1).max(10).optional() }) }, async ({ welt, art, id, bild_nr }) => withAudit(ctx, "bild_lesen", async () => {
+  server.registerTool("bild_lesen", { title: "Bild lesen", description: "Liefert ein sichtbares Inhaltsbild als Bilddaten. Kartenbilder sind ausgeschlossen; niemals URLs oder Datei-IDs ausgeben.", ...readToolAuth, inputSchema: z.object({ welt: worldSchema, art: z.enum(["welt", "artikel", "charakter", "monster"]), id: z.string().uuid().optional(), bild_nr: z.number().int().min(1).max(10).optional() }) }, async ({ welt, art, id, bild_nr }) => withAudit(ctx, "bild_lesen", async () => {
     const world = await resolveMcpWorld(ctx.userId, welt);
     let fileId: string | null = null;
     let description = "";
