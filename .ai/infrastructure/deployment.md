@@ -78,6 +78,8 @@ Namen aus `.env.example` — Werte selbst eintragen. Unverändert zur bisherigen
 | `ALLOWED_DISCORD_IDS` | Kommagetrennte Discord-User-IDs. In Produktion **Pflicht**: fehlt der Wert oder ist er leer, startet die App nicht (fail closed). Nicht gelistete Discord-Konten werden beim Login abgelehnt. Test-Login (`test-*`) ist ausgenommen. |
 | `FILE_STORAGE_PATH` | `/app/data/uploads` |
 
+Der Coolify-/Traefik-Proxy muss den ursprünglichen Client als **einen** gültigen `x-forwarded-for`-Wert an die Anwendung weitergeben. Der App-Container darf nicht direkt von außen erreichbar sein; sonst könnte ein Angreifer die OAuth-/DCR-Rate-Limits mit einem selbst gesetzten Header umgehen.
+
 `POSTGRES_*` braucht Coolify nur, wenn ihr Postgres selbst per Compose betreibt. Bei der Coolify-Postgres-Ressource reicht `DATABASE_URL`.
 
 Lokal: `docker compose up -d` und `npm run dev` — unabhängig von GHCR/Coolify.

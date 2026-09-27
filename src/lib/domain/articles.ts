@@ -78,6 +78,7 @@ export type ArticleSummary = {
   firstEditedAt: Date | null;
   updatedAt: Date;
   titleImageId: string | null;
+  isQuestItem: boolean;
 };
 
 export type ArticleDetails = ArticleSummary & {
@@ -98,6 +99,7 @@ const summaryColumns = {
   firstEditedAt: articles.firstEditedAt,
   updatedAt: articles.updatedAt,
   titleImageId: articles.titleImageId,
+  isQuestItem: sql<boolean>`(${articles.templateFields}->>'quest')::boolean IS TRUE`,
 };
 
 function asFields(value: unknown): StoredTemplateFields {

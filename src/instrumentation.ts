@@ -9,7 +9,9 @@ export async function register() {
   assertServerEnv();
   assertTestLoginNotInProduction();
   assertDiscordAllowlistConfigured();
-  void purgeMcpAuditLog().catch(() => undefined);
-  const timer = setInterval(() => void purgeMcpAuditLog().catch(() => undefined), 24 * 60 * 60 * 1000);
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  const reportPurgeError = (error: unknown) => console.error(JSON.stringify({ event: "mcp_audit_error", operation: "purge", error: error instanceof Error ? error.name : "unknown" }));
+  void purgeMcpAuditLog().catch(reportPurgeError);
+  const timer = setInterval(() => void purgeMcpAuditLog().catch(reportPurgeError), 24 * 60 * 60 * 1000);
   timer.unref?.();
 }

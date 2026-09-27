@@ -13,6 +13,12 @@ const eslintConfig = defineConfig([
     "spikes/**",
     ".ai/**",
   ]),
+  {
+    files: ["src/lib/mcp/**/*.ts"],
+    rules: {
+      "max-len": ["error", { code: 160, ignoreStrings: true, ignoreTemplateLiterals: true, ignoreUrls: true, ignoreComments: true }],
+    },
+  },
 ]);
 
 export default eslintConfig;

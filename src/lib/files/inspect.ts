@@ -3,6 +3,7 @@ import type { ImageKind } from "./kinds";
 
 export const MAP_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
 export const OTHER_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+export const IMAGE_MAX_PIXELS = 25_000_000;
 export { CHARACTER_IMAGES_MAX as MAX_CHARACTER_IMAGES } from "@/lib/characters/sheet";
 
 /** Byte limit for an upload of the given image kind (`map` is larger). */
@@ -44,6 +45,9 @@ export function inspectImage(bytes: Buffer, maxBytes: number): InspectedImage | 
   if (bytes.byteLength > maxBytes) {
     const limitMb = Math.round(maxBytes / (1024 * 1024));
     return { error: `Das Bild darf höchstens ${limitMb} MB groß sein.` };
+  }
+  if (detected.width * detected.height > IMAGE_MAX_PIXELS) {
+    return { error: "Das Bild darf höchstens 25 Megapixel haben." };
   }
   return {
     mime: allowed.mime,

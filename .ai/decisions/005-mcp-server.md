@@ -45,15 +45,15 @@ Die Autorisierungsserver-Metadaten und die `/mcp`-Resource verwenden als kanonis
 
 ### 4. Scope-Modell
 
-In dieser Ausbaustufe existiert nur `worlds:read`. Jede Tool-Definition deklariert ihren benötigten Scope in einer zentralen Tool-Registry. Der Route-Handler fordert mindestens `worlds:read` mit `requireMcpAuth`; die Registry prüft ihn vor der Toolausführung noch einmal, damit ein künftig anders erreichbarer Aufruf keinen Scope umgehen kann.
+In dieser Ausbaustufe existiert nur `worlds:read`. Der Route-Handler fordert ihn global mit `requireMcpAuth`; Lesewerkzeuge deklarieren keinen eigenen Scope.
 
-`worlds:write` ist reserviert, aber jetzt weder in Consent noch Discovery noch Tool-Registry aktiv. Ein späteres schreibendes Werkzeug erhält eine explizite `requiredScopes: ["worlds:write"]`-Deklaration und wird nicht durch einen Read-Token autorisiert.
+`worlds:write` schließt künftig `worlds:read` ein. Plan `011` lockert dafür die globale Prüfung auf `worlds:read` **oder** `worlds:write`; nur Schreibwerkzeuge prüfen dann in ihrem Handler zusätzlich `worlds:write`. Eine Registry für alle Werkzeuge ist nicht vorgesehen.
 
 ### 5. Rechteschicht
 
 `requireMcpAuth` liefert verifizierte Token-Claims (`sub`, Client-ID, Scope, Audience). Eine einzige Adapterfunktion löst `sub` zum WorldCraft-Benutzer auf, prüft `isDiscordIdAllowed` und erzeugt den MCP-Request-Kontext. Alle Werkzeuge rufen ausschließlich öffentliche Funktionen aus `src/lib/authz/` und `src/lib/domain/` mit diesem Kontext auf.
 
-MCP-Module importieren weder `db` noch Tabellen aus `src/db/schema.ts`. Das wird durch Modulstruktur, Code-Review und die Rechte-/Ausschlusssuite abgesichert. Feste Ausschlüsse (Tagebuch, Chat, Dateien/URLs außerhalb von `bild_lesen`, Kartenbilder, Marker und Koordinaten) liegen zentral an der MCP-Fassade und werden nicht den einzelnen Abfragen überlassen.
+MCP-Fachwerkzeuge importieren weder `db` noch Tabellen aus `src/db/schema.ts`; sie verwenden ausschließlich öffentliche Funktionen aus `src/lib/authz/` und `src/lib/domain/`. Die MCP-Infrastruktur darf nur in `src/lib/mcp/context.ts` (Weltauflösung, Mitgliedschaft und Weltfreigabe) und `src/lib/mcp/audit.ts` (Audit-Persistenz, Aufruflimit) direkt auf die Datenbank zugreifen. Feste Ausschlüsse (Tagebuch, Chat, Dateien/URLs außerhalb von `bild_lesen`, Kartenbilder, Marker und Koordinaten) liegen zentral an der MCP-Fassade und werden nicht den einzelnen Abfragen überlassen.
 
 ### 6. TipTap-JSON nach Markdown
 

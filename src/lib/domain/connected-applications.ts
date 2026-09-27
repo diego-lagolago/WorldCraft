@@ -1,6 +1,6 @@
 import { and, desc, eq, max } from "drizzle-orm";
 import { db } from "@/db/client";
-import { oauthAccessTokens, oauthClients, oauthConsents, oauthRefreshTokens } from "@/db/schema";
+import { mcpAuditLogs, oauthAccessTokens, oauthClients, oauthConsents, oauthRefreshTokens } from "@/db/schema";
 
 export type ConnectedApplication = {
   clientId: string;
@@ -11,19 +11,29 @@ export type ConnectedApplication = {
 };
 
 export async function listConnectedApplications(userId: string): Promise<ConnectedApplication[]> {
-  const consents = await db
+  const [consents, lastUsage] = await Promise.all([
+    db
     .select({ clientId: oauthConsents.clientId, name: oauthClients.name, redirectUris: oauthClients.redirectUris, consentedAt: oauthConsents.createdAt })
     .from(oauthConsents)
     .innerJoin(oauthClients, eq(oauthClients.clientId, oauthConsents.clientId))
     .where(eq(oauthConsents.userId, userId))
-    .orderBy(desc(oauthConsents.updatedAt));
-  return Promise.all(consents.map(async (consent) => {
-    const [lastAccess] = await db.select({ lastUsedAt: max(oauthAccessTokens.createdAt) }).from(oauthAccessTokens)
-      .where(and(eq(oauthAccessTokens.userId, userId), eq(oauthAccessTokens.clientId, consent.clientId)));
+    .orderBy(desc(oauthConsents.updatedAt)),
+    db.select({ clientId: mcpAuditLogs.clientId, lastUsedAt: max(mcpAuditLogs.createdAt) })
+      .from(mcpAuditLogs).where(eq(mcpAuditLogs.userId, userId)).groupBy(mcpAuditLogs.clientId),
+  ]);
+  const lastUsageByClient = new Map(lastUsage.map((entry) => [entry.clientId, entry.lastUsedAt]));
+  return consents.map((consent) => {
     let redirectDomain = "Unbekannt";
     try { redirectDomain = new URL(consent.redirectUris[0] ?? "").host || "Unbekannt"; } catch { /* valid registration has a URI */ }
-    return { clientId: consent.clientId, name: consent.name?.trim() || "Unbenannte Anwendung", redirectDomain, consentedAt: consent.consentedAt, lastUsedAt: lastAccess?.lastUsedAt ?? null };
-  }));
+    return { clientId: consent.clientId, name: consent.name?.trim() || "Unbenannte Anwendung", redirectDomain, consentedAt: consent.consentedAt, lastUsedAt: lastUsageByClient.get(consent.clientId) ?? null };
+  });
+}
+
+/** A missing consent means the user revoked this client's access immediately. */
+export async function hasActiveMcpConsent(userId: string, clientId: string): Promise<boolean> {
+  const [consent] = await db.select({ id: oauthConsents.id }).from(oauthConsents)
+    .where(and(eq(oauthConsents.userId, userId), eq(oauthConsents.clientId, clientId))).limit(1);
+  return Boolean(consent);
 }
 
 /** Revocation is scoped to the authenticated user's consent and client only. */

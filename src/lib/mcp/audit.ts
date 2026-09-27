@@ -8,8 +8,18 @@ export class McpRateLimitError extends Error {
   }
 }
 
+function pruneMcpCallWindows(now: number): void {
+  const since = now - WINDOW_MS;
+  for (const [userId, calls] of callsByUser) {
+    const recent = calls.filter((at) => at > since);
+    if (recent.length === 0) callsByUser.delete(userId);
+    else callsByUser.set(userId, recent);
+  }
+}
+
 /** Single-process sliding window; ADR-005 deliberately assumes one app replica. */
 export function consumeMcpCall(userId: string, now = Date.now()): void {
+  pruneMcpCallWindows(now);
   const since = now - WINDOW_MS;
   const recent = (callsByUser.get(userId) ?? []).filter((at) => at > since);
   if (recent.length >= MAX_CALLS_PER_WINDOW) {
@@ -49,4 +59,12 @@ export async function purgeMcpAuditLog(now = new Date()): Promise<void> {
 /** Test-only reset; never exported from a route. */
 export function resetMcpRateLimitForTests(): void {
   callsByUser.clear();
+}
+
+export function hasMcpRateLimitEntryForTests(userId: string): boolean {
+  return callsByUser.has(userId);
+}
+
+export function pruneMcpRateLimitForTests(now: number): void {
+  pruneMcpCallWindows(now);
 }

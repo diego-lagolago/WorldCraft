@@ -16,31 +16,36 @@ import { tiptapJsonToMcpMarkdown } from "@/lib/editor/tiptap-mcp-markdown";
 import { attributeModifier, skillBonus, SKILL_LEVEL_LABEL } from "@/lib/characters/sheet";
 import { MONSTER_DANGER_LABEL, MONSTER_KIND_LABEL, MONSTER_RARITY_LABEL, MONSTER_SIZE_LABEL } from "@/lib/monsters/labels";
 import { pinTypeMeta } from "@/lib/map/pin-types";
-import { templateOf, type TemplateType } from "@/lib/templates/registry";
+import { templateOf } from "@/lib/templates/registry";
 import { writeMcpAuditLog } from "./audit";
 import { listMcpWorldMemberships, McpToolError, resolveMcpWorld } from "./context";
+import {
+  MCP_CONTENT_KIND,
+  MCP_CONTENT_KIND_FROM_INTERNAL,
+  MCP_CONTENT_KIND_LABEL,
+  MCP_MONSTER_KIND_LABELS,
+  MCP_QUEST_STATUS,
+  MCP_QUEST_STATUS_LABEL,
+  MCP_TEMPLATE_TYPE,
+} from "./enums";
 
 type ToolContext = { userId: string; clientId: string };
 const worldSchema = z.string().trim().min(1).max(120).optional().describe("ID oder Name der Welt. Bei mehreren Welten bitte zuerst welten_auflisten nutzen.");
 const contentKind = z.enum(["artikel", "quest", "charakter", "pin", "monster", "universum"]);
 const templateTypes = z.enum(["person", "ort", "organisation", "gegenstand", "rasse", "ohne"]);
 const status = z.enum(["offen", "aktiv", "abgeschlossen", "gescheitert"]);
+const monsterKindLabel = z.enum(MCP_MONSTER_KIND_LABELS);
 
-const internalKind = { artikel: "article", quest: "quest", charakter: "character", pin: "pin", monster: "monster", universum: "universe" } as const;
-const internalTemplate = { person: "person", ort: "place", organisation: "organization", gegenstand: "item", rasse: "race", ohne: "none" } as const satisfies Record<z.infer<typeof templateTypes>, TemplateType>;
-const statusLabel = { open: "offen", active: "aktiv", completed: "abgeschlossen", failed: "gescheitert" } as const;
-const contentKindLabel = { artikel: "Artikel", quest: "Quest", charakter: "Charakter", pin: "Pin", monster: "Monster", universum: "Universum" } as const;
-const contentKindFromInternal = { article: "artikel", quest: "quest", character: "charakter", pin: "pin", monster: "monster", universe: "universum" } as const;
 
 function text(value: string, isError = false) {
   return { isError, content: [{ type: "text" as const, text: value.length > 20_000 ? `${value.slice(0, 19_950)}\n\n_(gekürzt)_` : value }] };
 }
 
-function asError(error: unknown) {
-  return text(error instanceof Error ? error.message : "Die Anfrage konnte nicht verarbeitet werden.", true);
+export function asError(error: unknown) {
+  return text(error instanceof McpToolError ? error.message : "Die Anfrage konnte nicht verarbeitet werden.", true);
 }
 
-async function withAudit(ctx: ToolContext, toolName: string, action: () => Promise<{ value: string; worldId?: string | null; image?: { data: string; mimeType: "image/jpeg" | "image/webp" } }>) {
+export async function withAudit(ctx: ToolContext, toolName: string, action: () => Promise<{ value: string; worldId?: string | null; image?: { data: string; mimeType: "image/jpeg" | "image/webp" } }>) {
   const start = performance.now();
   let worldId: string | null = null;
   let result = "ok";
@@ -52,13 +57,22 @@ async function withAudit(ctx: ToolContext, toolName: string, action: () => Promi
       : text(response.value);
   } catch (error) {
     result = error instanceof McpToolError ? "tool_error" : "error";
+    if (!(error instanceof McpToolError)) {
+      console.error(JSON.stringify({ event: "mcp_tool_error", tool: toolName, error: error instanceof Error ? error.name : "unknown" }));
+    }
     return asError(error);
   } finally {
-    await writeMcpAuditLog({ userId: ctx.userId, clientId: ctx.clientId, toolName, worldId, durationMs: performance.now() - start, result }).catch(() => undefined);
+    await writeMcpAuditLog({ userId: ctx.userId, clientId: ctx.clientId, toolName, worldId, durationMs: performance.now() - start, result })
+      .catch((auditError: unknown) => console.error(JSON.stringify({ event: "mcp_audit_error", tool: toolName, error: auditError instanceof Error ? auditError.name : "unknown" })));
   }
 }
 
-function renderTemplateFields(templateType: string, fields: Record<string, unknown>) {
+async function renderTemplateFields(
+  templateType: string,
+  fields: Record<string, unknown>,
+  world: { id: string; role: Parameters<typeof getArticle>[2] },
+  viewerId: string,
+) {
   const definition = templateOf(templateType);
   const lines = [`Vorlagentyp: ${definition.label}`];
   for (const field of definition.fields) {
@@ -66,7 +80,16 @@ function renderTemplateFields(templateType: string, fields: Record<string, unkno
     if (raw === undefined) continue;
     if (field.type === "boolean") lines.push(`${field.label}: ${raw === true ? "Ja" : "Nein"}`);
     else if (field.type === "select") lines.push(`${field.label}: ${field.options.find((option) => option.value === raw)?.label ?? String(raw)}`);
-    else if (field.type === "ref" && raw && typeof raw === "object") lines.push(`${field.label}: ${(raw as { id?: string }).id ?? ""}`);
+    else if (field.type === "ref" && raw && typeof raw === "object") {
+      const ref = raw as { kind?: string; id?: string };
+      if (ref.kind === "article" && ref.id) {
+        const article = await getArticle(world.id, ref.id, world.role, viewerId);
+        if (article) lines.push(`${field.label}: @[${article.title}](artikel:${article.id})`);
+      } else if (ref.kind === "character" && ref.id) {
+        const character = await getWorldCharacter(world.id, ref.id);
+        if (character) lines.push(`${field.label}: @[${character.name}](charakter:${character.id})`);
+      }
+    }
     else lines.push(`${field.label}: ${String(raw)}`);
   }
   if (definition.type === "item") lines.push(`Quest-Gegenstand: ${fields.quest === true ? "Ja" : "Nein"}`);
@@ -105,22 +128,26 @@ export function registerMcpReadTools(server: McpServer, ctx: ToolContext) {
 
   server.registerTool("suchen", { title: "Inhalte suchen", description: "Suche sichtbare Inhalte in genau einer freigegebenen Welt. Wenn keine Welt bekannt ist, zuerst welten_auflisten nutzen; nie weltübergreifend suchen.", inputSchema: z.object({ welt: worldSchema, suchbegriff: z.string().trim().min(2).max(200), art: contentKind.optional(), limit: z.number().int().min(1).max(50).optional() }) }, async ({ welt, suchbegriff, art, limit }) => withAudit(ctx, "suchen", async () => {
     const world = await resolveMcpWorld(ctx.userId, welt);
-    const hits = await searchWorld({ worldId: world.id, role: world.role, viewerId: ctx.userId, query: suchbegriff, limit: limit ?? 20, kind: art ? internalKind[art] : "all" });
-    return { worldId: world.id, value: hits.length ? hits.map((hit) => `- ${hit.title} (${contentKindLabel[contentKindFromInternal[hit.kind]]}, ${hit.id})${hit.templateType ? ` – ${templateOf(hit.templateType).label}` : ""}${hit.snippet ? `\n  ${hit.snippet}` : ""}`).join("\n") : "Keine Treffer." };
+    const hits = await searchWorld({ worldId: world.id, role: world.role, viewerId: ctx.userId, query: suchbegriff, limit: limit ?? 20, kind: art ? MCP_CONTENT_KIND[art] : "all" });
+    return { worldId: world.id, value: hits.length ? hits.map((hit) => `- ${hit.title} (${MCP_CONTENT_KIND_LABEL[MCP_CONTENT_KIND_FROM_INTERNAL[hit.kind]]}, ${hit.id})${hit.templateType ? ` – ${templateOf(hit.templateType).label}` : ""}${hit.snippet ? `\n  ${hit.snippet}` : ""}`).join("\n") : "Keine Treffer." };
   }));
 
-  server.registerTool("inhalte_auflisten", { title: "Artikel oder Monster auflisten", description: "Liste sichtbare Artikel oder Monster einer freigegebenen Welt, wenn kein Suchbegriff nötig ist.", inputSchema: z.object({ welt: worldSchema, art: z.enum(["artikel", "monster"]), vorlagentyp: templateTypes.optional(), monster_art: z.string().trim().min(1).max(40).optional(), quest_gegenstand: z.boolean().optional(), limit: z.number().int().min(1).max(200).optional() }) }, async ({ welt, art, vorlagentyp, monster_art, quest_gegenstand, limit }) => withAudit(ctx, "inhalte_auflisten", async () => {
+  server.registerTool("inhalte_auflisten", { title: "Artikel oder Monster auflisten", description: "Liste sichtbare Artikel oder Monster einer freigegebenen Welt, wenn kein Suchbegriff nötig ist.", inputSchema: z.object({ welt: worldSchema, art: z.enum(["artikel", "monster"]), vorlagentyp: templateTypes.optional(), monster_art: monsterKindLabel.optional(), quest_gegenstand: z.boolean().optional(), limit: z.number().int().min(1).max(200).optional() }) }, async ({ welt, art, vorlagentyp, monster_art, quest_gegenstand, limit }) => withAudit(ctx, "inhalte_auflisten", async () => {
     if (art === "artikel" && monster_art) throw new McpToolError("monster_art ist nur bei art: monster erlaubt.");
     if (art === "monster" && (vorlagentyp || quest_gegenstand !== undefined)) throw new McpToolError("vorlagentyp und quest_gegenstand sind nur bei art: artikel erlaubt.");
+    if (quest_gegenstand !== undefined && vorlagentyp !== "gegenstand") throw new McpToolError("quest_gegenstand ist nur bei vorlagentyp: gegenstand erlaubt.");
     const world = await resolveMcpWorld(ctx.userId, welt);
     if (art === "artikel") {
-      const rows = await listArticles(world.id, world.role, ctx.userId, vorlagentyp ? internalTemplate[vorlagentyp] : "all");
-      const detailed = await Promise.all(rows.map(async (row) => ({ row, details: await getArticle(world.id, row.id, world.role, ctx.userId) })));
-      const filtered = detailed.filter(({ details }) => quest_gegenstand === undefined || (details?.templateType === "item" && details.templateFields.quest === true) === quest_gegenstand).slice(0, limit ?? 50);
-      return { worldId: world.id, value: filtered.length ? filtered.map(({ row, details }) => `- ${row.title} (${templateOf(row.templateType).label}, ${row.id})${row.rarity ? ` – ${row.rarity}` : ""}${details?.templateFields.quest === true ? " – Quest-Gegenstand" : ""}`).join("\n") : "Keine Inhalte." };
+      const rows = await listArticles(world.id, world.role, ctx.userId, vorlagentyp ? MCP_TEMPLATE_TYPE[vorlagentyp] : "all");
+      const filtered = rows.filter((row) => quest_gegenstand === undefined || row.isQuestItem === quest_gegenstand).slice(0, limit ?? 50);
+      return { worldId: world.id, value: filtered.length ? filtered.map((row) => {
+        const rarityField = templateOf(row.templateType).fields.find((field) => field.type === "select" && field.display === "rarity");
+        const rarity = rarityField?.type === "select" ? rarityField.options.find((option) => option.value === row.rarity)?.label : undefined;
+        return `- ${row.title} (${templateOf(row.templateType).label}, ${row.id})${rarity ? ` – ${rarity}` : ""}${row.isQuestItem ? " – Quest-Gegenstand" : ""}`;
+      }).join("\n") : "Keine Inhalte." };
     }
     const rows = await listMonsters(world.id, world.role, ctx.userId, "all");
-    const filtered = rows.filter((row) => !monster_art || MONSTER_KIND_LABEL[row.kind].localeCompare(monster_art, "de", { sensitivity: "accent" }) === 0).slice(0, limit ?? 50);
+    const filtered = rows.filter((row) => !monster_art || MONSTER_KIND_LABEL[row.kind] === monster_art).slice(0, limit ?? 50);
     return { worldId: world.id, value: filtered.length ? filtered.map((row) => `- ${row.name} (${MONSTER_KIND_LABEL[row.kind]}, ${row.id}) – ${MONSTER_RARITY_LABEL[row.rarity]}${row.isBoss ? ", Boss" : ""}`).join("\n") : "Keine Monster." };
   }));
 
@@ -131,12 +158,12 @@ export function registerMcpReadTools(server: McpServer, ctx: ToolContext) {
     if (art === "artikel") {
       const row = await getArticle(world.id, id, role, ctx.userId);
       if (!row) throw new McpToolError("Inhalt nicht gefunden.");
-      value = [`# ${row.title}`, `Sichtbarkeit: ${CONTENT_VISIBILITY_LABEL[row.visibility]}`, `Stand: ${row.updatedAt.toISOString()}`, renderTemplateFields(row.templateType, row.templateFields), row.titleImageId ? "Bilder: 1 (über bild_lesen)" : "Bilder: keine", tiptapJsonToMcpMarkdown(row.bodyJson)].filter(Boolean).join("\n\n");
+      value = [`# ${row.title}`, `Sichtbarkeit: ${CONTENT_VISIBILITY_LABEL[row.visibility]}`, `Stand: ${row.updatedAt.toISOString()}`, await renderTemplateFields(row.templateType, row.templateFields, world, ctx.userId), row.titleImageId ? "Bilder: 1 (über bild_lesen)" : "Bilder: keine", tiptapJsonToMcpMarkdown(row.bodyJson)].filter(Boolean).join("\n\n");
     } else if (art === "quest") {
       const row = await getQuest(world.id, id, role, ctx.userId);
       if (!row) throw new McpToolError("Inhalt nicht gefunden.");
       const note = await getQuestNote({ worldId: world.id, questId: row.id, role, viewerId: ctx.userId });
-      value = [`# ${row.title}`, `Status: ${statusLabel[row.status]}`, `Sichtbarkeit: ${CONTENT_VISIBILITY_LABEL[row.visibility]}`, `Stand: ${row.updatedAt.toISOString()}`, row.participants.length ? `Beteiligte Charaktere: ${row.participants.map((entry) => entry.characterName).join(", ")}` : "", tiptapJsonToMcpMarkdown(row.descriptionJson), ...row.chapters.map((chapter) => `## ${chapter.title}\nStatus: ${statusLabel[chapter.status]}\n${tiptapJsonToMcpMarkdown(chapter.bodyJson)}`), note.ok ? `## Notizblock\nStand: ${note.data.version}\n${tiptapJsonToMcpMarkdown(note.data.bodyJson)}` : ""].filter(Boolean).join("\n\n");
+      value = [`# ${row.title}`, `Status: ${MCP_QUEST_STATUS_LABEL[row.status]}`, `Sichtbarkeit: ${CONTENT_VISIBILITY_LABEL[row.visibility]}`, `Stand: ${row.updatedAt.toISOString()}`, row.participants.length ? `Beteiligte Charaktere: ${row.participants.map((entry) => entry.characterName).join(", ")}` : "", tiptapJsonToMcpMarkdown(row.descriptionJson), ...row.chapters.map((chapter) => `## ${chapter.title}\nStatus: ${MCP_QUEST_STATUS_LABEL[chapter.status]}\n${tiptapJsonToMcpMarkdown(chapter.bodyJson)}`), note.ok ? `## Notizblock\nStand: ${note.data.version}\n${tiptapJsonToMcpMarkdown(note.data.bodyJson)}` : ""].filter(Boolean).join("\n\n");
     } else if (art === "charakter") {
       const row = await getWorldCharacter(world.id, id);
       if (!row) throw new McpToolError("Inhalt nicht gefunden.");
@@ -149,9 +176,9 @@ export function registerMcpReadTools(server: McpServer, ctx: ToolContext) {
     } else if (art === "universum") {
       const row = await getUniverse(world.id, id, role, ctx.userId);
       if (!row) throw new McpToolError("Inhalt nicht gefunden.");
-      const maps = await listMcpUniverseMaps(world.id, { role, userId: ctx.userId });
+      const maps = await listMcpUniverseMaps(world.id, { role, userId: ctx.userId }, row.id);
       const visible = maps.find((entry) => entry.id === row.id);
-      value = [`# ${row.name}`, `Sichtbarkeit: ${row.visibility === "gm_only" ? "nur Spielleitung" : "veröffentlicht"}`, `Stand: ${row.updatedAt.toISOString()}`, visible?.maps.length ? `Karten: ${visible.maps.map((map) => `${map.name} (${map.id})`).join(", ")}` : "Karten: keine", tiptapJsonToMcpMarkdown(row.descriptionJson)].filter(Boolean).join("\n\n");
+      value = [`# ${row.name}`, `Sichtbarkeit: ${CONTENT_VISIBILITY_LABEL[row.visibility]}`, `Stand: ${row.updatedAt.toISOString()}`, visible?.maps.length ? `Karten: ${visible.maps.map((map) => `${map.name} (${map.id})`).join(", ")}` : "Karten: keine", tiptapJsonToMcpMarkdown(row.descriptionJson)].filter(Boolean).join("\n\n");
     } else if (art === "pin") {
       const row = await getMcpPin(world.id, id, { role, userId: ctx.userId });
       if (!row) throw new McpToolError("Inhalt nicht gefunden.");
@@ -164,20 +191,19 @@ export function registerMcpReadTools(server: McpServer, ctx: ToolContext) {
 
   server.registerTool("relationen_abrufen", { title: "Relationen abrufen", description: "Lies sichtbare Verknüpfungen eines Inhalts. Unsichtbare Inhalte und Pfade werden nie ausgegeben.", inputSchema: z.object({ welt: worldSchema, art: contentKind, id: z.string().uuid(), tiefe: z.union([z.literal(1), z.literal(2)]).optional() }) }, async ({ welt, art, id, tiefe }) => withAudit(ctx, "relationen_abrufen", async () => {
     const world = await resolveMcpWorld(ctx.userId, welt);
-    const first = await listLinked({ worldId: world.id, role: world.role, viewerId: ctx.userId, kind: internalKind[art], id });
-    const lines = first.map((row) => `- ${row.title} (${contentKindLabel[contentKindFromInternal[row.kind]]}, ${row.id}) – Herkunft: ${row.originLabels.join(", ")}${row.manualLabel ? ` – ${row.manualLabel}` : ""}`);
+    const first = await listLinked({ worldId: world.id, role: world.role, viewerId: ctx.userId, kind: MCP_CONTENT_KIND[art], id });
+    const lines = first.map((row) => `- ${row.title} (${MCP_CONTENT_KIND_LABEL[MCP_CONTENT_KIND_FROM_INTERNAL[row.kind]]}, ${row.id}) – Herkunft: ${row.originLabels.join(", ")}${row.manualLabel ? ` – ${row.manualLabel}` : ""}`);
     if (tiefe === 2) for (const row of first) {
       const next = await listLinked({ worldId: world.id, role: world.role, viewerId: ctx.userId, kind: row.kind, id: row.id });
-      for (const child of next.filter((entry) => !(entry.kind === internalKind[art] && entry.id === id))) lines.push(`  - ${row.title} → ${child.title} (${contentKindLabel[contentKindFromInternal[child.kind]]}, ${child.id}) – Herkunft: ${child.originLabels.join(", ")}${child.manualLabel ? ` – ${child.manualLabel}` : ""}`);
+      for (const child of next.filter((entry) => !(entry.kind === MCP_CONTENT_KIND[art] && entry.id === id))) lines.push(`  - ${row.title} → ${child.title} (${MCP_CONTENT_KIND_LABEL[MCP_CONTENT_KIND_FROM_INTERNAL[child.kind]]}, ${child.id}) – Herkunft: ${child.originLabels.join(", ")}${child.manualLabel ? ` – ${child.manualLabel}` : ""}`);
     }
     return { worldId: world.id, value: lines.length ? lines.join("\n") : "Keine sichtbaren Relationen." };
   }));
 
   server.registerTool("quests_auflisten", { title: "Quests auflisten", description: "Liste sichtbare Quests einer freigegebenen Welt, optional gefiltert nach Status.", inputSchema: z.object({ welt: worldSchema, status: status.optional() }) }, async ({ welt, status: requestedStatus }) => withAudit(ctx, "quests_auflisten", async () => {
     const world = await resolveMcpWorld(ctx.userId, welt);
-    const inverse = { offen: "open", aktiv: "active", abgeschlossen: "completed", gescheitert: "failed" } as const;
-    const rows = (await listQuests(world.id, world.role, ctx.userId)).filter((row) => !requestedStatus || row.status === inverse[requestedStatus]);
-    return { worldId: world.id, value: rows.length ? rows.map((row) => `- ${row.title} (${row.id}) – ${statusLabel[row.status]}${row.participants.length ? ` – Beteiligte: ${row.participants.map((entry) => entry.characterName).join(", ")}` : ""}`).join("\n") : "Keine Quests." };
+    const rows = (await listQuests(world.id, world.role, ctx.userId)).filter((row) => !requestedStatus || row.status === MCP_QUEST_STATUS[requestedStatus]);
+    return { worldId: world.id, value: rows.length ? rows.map((row) => `- ${row.title} (${row.id}) – ${MCP_QUEST_STATUS_LABEL[row.status]}${row.participants.length ? ` – Beteiligte: ${row.participants.map((entry) => entry.characterName).join(", ")}` : ""}`).join("\n") : "Keine Quests." };
   }));
 
   server.registerTool("universen_auflisten", { title: "Universen auflisten", description: "Liste sichtbare Universen einer freigegebenen Welt und ihre Karten. Pins, Marker, Kartenbilder und Koordinaten werden nicht geliefert.", inputSchema: z.object({ welt: worldSchema }) }, async ({ welt }) => withAudit(ctx, "universen_auflisten", async () => {
@@ -207,7 +233,7 @@ export function registerMcpReadTools(server: McpServer, ctx: ToolContext) {
     } else {
       if (!id) throw new McpToolError("id fehlt.");
       const character = await getWorldCharacter(world.id, id);
-      fileId = bild_nr ? character?.images.find((image) => image.sortOrder === bild_nr - 1)?.fileId ?? null : character?.portraitId ?? null;
+      fileId = bild_nr ? character?.images[bild_nr - 1]?.fileId ?? null : character?.portraitId ?? null;
       description = character ? `${bild_nr ? `Bild ${bild_nr}` : "Profilbild"} des Charakters ${character.name}.` : "";
     }
     if (!fileId) throw new McpToolError("Bild nicht gefunden.");

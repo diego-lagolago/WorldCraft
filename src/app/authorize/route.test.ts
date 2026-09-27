@@ -3,13 +3,16 @@ import { GET } from "./route";
 
 describe("GET /authorize", () => {
   const previousAuthUrl = process.env.BETTER_AUTH_URL;
+  const previousMcpEnabled = process.env.MCP_ENABLED;
 
   afterEach(() => {
     process.env.BETTER_AUTH_URL = previousAuthUrl;
+    process.env.MCP_ENABLED = previousMcpEnabled;
   });
 
   it("forwards the complete OAuth request to Better Auth's advertised endpoint", () => {
     process.env.BETTER_AUTH_URL = "https://worldcraft.example.com";
+    process.env.MCP_ENABLED = "true";
     const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
     try {
       const response = GET(
@@ -25,5 +28,10 @@ describe("GET /authorize", () => {
     } finally {
       info.mockRestore();
     }
+  });
+
+  it("returns 404 while MCP is disabled (T-012/D2)", () => {
+    process.env.MCP_ENABLED = "";
+    expect(GET(new Request("http://worldcraft.example.com/authorize")).status).toBe(404);
   });
 });

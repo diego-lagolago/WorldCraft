@@ -6,6 +6,27 @@ import { getAuthUrl, isDiscordIdAllowed } from "@/lib/env";
 
 export const MCP_RESOURCE = `${getAuthUrl()}/mcp`;
 
+/** Better Auth route paths are relative to its `/api/auth` base path. */
+export const MCP_OAUTH_RATE_LIMITS = {
+  default: { window: 10, max: 100 },
+  register: { path: "/oauth2/register", window: 60, max: 5 },
+  authorize: { path: "/oauth2/authorize", window: 60, max: 30 },
+  token: { path: "/oauth2/token", window: 60, max: 30 },
+} as const;
+
+/** These caps match (and explicitly pin) the CIMD resolver's security bounds. */
+export const MCP_CIMD_LIMITS = {
+  responseBytes: 5 * 1024,
+  timeoutMs: 5_000,
+  cacheSeconds: 15 * 60,
+  failedFetchRetrySeconds: 60,
+  maxCacheEntries: 1000,
+  maxConcurrentFetches: 16,
+  maxConcurrentFetchesPerOrigin: 4,
+  maxFetchesPerMinute: 120,
+  maxFetchesPerOriginPerMinute: 30,
+} as const;
+
 const AUTH_PATH_PREFIX = "/api/auth/";
 const MCP_AUTH_PATH_PREFIXES = [
   "/api/auth/oauth2/",
@@ -42,6 +63,13 @@ export async function hasAllowedMcpRegistrationRedirects(request: Request): Prom
   }
 }
 
+/** Applies the DCR redirect policy to every client type, including CIMD. */
+export function hasAllowedMcpAuthorizeRedirect(request: Request): boolean {
+  const url = new URL(request.url);
+  if (url.pathname !== `${AUTH_PATH_PREFIX}oauth2/authorize`) return true;
+  return isAllowedMcpRedirectUri(url.searchParams.get("redirect_uri"));
+}
+
 async function formBody(request: Request): Promise<URLSearchParams | null> {
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.includes("application/x-www-form-urlencoded")) return null;
@@ -52,7 +80,8 @@ async function formBody(request: Request): Promise<URLSearchParams | null> {
   }
 }
 
-function hashStoredOAuthToken(token: string): string {
+/** Shared with Better Auth so grant-owner checks cannot drift from token storage. */
+export function hashStoredOAuthToken(token: string): string {
   return createHash("sha256").update(token).digest("base64url");
 }
 
@@ -97,7 +126,10 @@ export async function mcpTokenGrantFailure(request: Request): Promise<"access_de
   const token = grantType === "authorization_code" ? form.get("code") : grantType === "refresh_token" ? form.get("refresh_token") : null;
   if (!token) return null;
   const owner = grantType === "authorization_code" ? await ownerForAuthorizationCode(token) : await ownerForRefreshToken(token);
-  if (!owner) return null;
+  if (!owner) {
+    console.warn(JSON.stringify({ event: "mcp_oauth_grant_owner_not_found", grant_type: grantType }));
+    return null;
+  }
   if (!isDiscordIdAllowed(owner.discordId)) return grantType === "refresh_token" ? "invalid_grant" : "access_denied";
   if (grantType === "refresh_token") {
     const [membership] = await db

@@ -1,7 +1,12 @@
 import { toNextJsHandler } from "better-auth/next-js";
 import { auth } from "@/lib/auth";
 import { isDiscordIdAllowed, isMcpEnabled } from "@/lib/env";
-import { hasAllowedMcpRegistrationRedirects, isMcpAuthPath, mcpTokenGrantFailure } from "@/lib/mcp-oauth";
+import {
+  hasAllowedMcpAuthorizeRedirect,
+  hasAllowedMcpRegistrationRedirects,
+  isMcpAuthPath,
+  mcpTokenGrantFailure,
+} from "@/lib/mcp-oauth";
 import { logMcpOAuthException, logMcpOAuthResponse } from "@/lib/mcp/oauth-observability";
 
 const handlers = toNextJsHandler(auth);
@@ -16,6 +21,12 @@ async function handle(request: Request, method: "GET" | "POST") {
   try {
     let response: Response;
     if (isMcpOAuthRequest && !isMcpEnabled()) response = mcpUnavailable();
+    else if (!hasAllowedMcpAuthorizeRedirect(request)) {
+      response = Response.json(
+        { error: "invalid_request", error_description: "Redirect-URIs müssen HTTPS oder lokale Loopback-Adressen sein." },
+        { status: 400 },
+      );
+    }
     else if (pathname === "/api/auth/oauth2/register" && !(await hasAllowedMcpRegistrationRedirects(request))) {
       response = Response.json(
         { error: "invalid_redirect_uri", error_description: "Redirect-URIs müssen HTTPS oder lokale Loopback-Adressen sein." },

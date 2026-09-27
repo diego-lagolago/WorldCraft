@@ -200,7 +200,7 @@ async function main() {
     `;
     const [guild] = await sql`
       INSERT INTO articles (world_id, title, template_type, title_image_id, body_json, body_plain, visibility, owner_id, first_edited_at, created_by, updated_by)
-      VALUES (${worldId}, 'Archiv der Spielleitung', 'organization', ${gmOnlyImageId}, ${JSON.stringify(doc("GEHEIMTEST darf nie über MCP erscheinen."))}::jsonb, 'GEHEIMTEST darf nie über MCP erscheinen.', 'gm_only', ${GM}, now(), ${GM}, ${GM}) RETURNING id
+      VALUES (${worldId}, 'Archiv der Spielleitung', 'organization', ${gmOnlyImageId}, ${JSON.stringify(doc("SLTEST darf nur für die Spielleitung erscheinen."))}::jsonb, 'SLTEST darf nur für die Spielleitung erscheinen.', 'gm_only', ${GM}, now(), ${GM}, ${GM}) RETURNING id
     `;
     const [questItem] = await sql`
       INSERT INTO articles (world_id, title, template_type, template_fields, body_json, body_plain, visibility, owner_id, first_edited_at, created_by, updated_by)
@@ -220,7 +220,7 @@ async function main() {
     `;
     const [masterSecret] = await sql`
       INSERT INTO articles (world_id, title, template_type, body_json, body_plain, visibility, owner_id, first_edited_at, created_by, updated_by)
-      VALUES (${worldId}, 'Private Notiz des Masters', 'none', ${JSON.stringify(doc("Nur der Master darf diesen Text sehen."))}::jsonb, 'Nur der Master darf diesen Text sehen.', 'owner_only', ${MASTER}, now(), ${MASTER}, ${MASTER}) RETURNING id
+      VALUES (${worldId}, 'Private Notiz des Masters', 'none', ${JSON.stringify(doc("NURICHTEST: Nur der Master darf diesen Text sehen."))}::jsonb, 'NURICHTEST: Nur der Master darf diesen Text sehen.', 'owner_only', ${MASTER}, now(), ${MASTER}, ${MASTER}) RETURNING id
     `;
 
     const [character] = await sql`
@@ -247,7 +247,7 @@ async function main() {
     await sql`
       INSERT INTO quest_chapters (quest_id, title, body_json, body_plain, position, status, visibility, owner_id, created_by, updated_by) VALUES
       (${activeQuest.id}, 'Ankunft', ${JSON.stringify(doc("Öffentliches Kapitel."))}::jsonb, 'Öffentliches Kapitel.', 0, 'active', 'published', ${GM}, ${GM}, ${GM}),
-      (${activeQuest.id}, 'Geheimer Plan', ${JSON.stringify(doc("GEHEIMTEST im SL-Kapitel."))}::jsonb, 'GEHEIMTEST im SL-Kapitel.', 1, 'open', 'gm_only', ${GM}, ${GM}, ${GM})
+      (${activeQuest.id}, 'Geheimer Plan', ${JSON.stringify(doc("SLTEST im SL-Kapitel."))}::jsonb, 'SLTEST im SL-Kapitel.', 1, 'open', 'gm_only', ${GM}, ${GM}, ${GM})
     `;
     await sql`
       INSERT INTO quest_notes (quest_id, body_json, body_plain, version, updated_by)
@@ -260,7 +260,7 @@ async function main() {
     `;
     await sql`
       INSERT INTO monsters (world_id, name, kind, rarity, danger, size, visibility, owner_id, bio_json, bio_plain, created_by, updated_by)
-      VALUES (${worldId}, 'Schattenrabe', 'undead', 'rare', 'deadly', 'small', 'gm_only', ${GM}, ${JSON.stringify(doc("GEHEIMTEST Monster."))}::jsonb, 'GEHEIMTEST Monster.', ${GM}, ${GM}) RETURNING id
+      VALUES (${worldId}, 'Schattenrabe', 'undead', 'rare', 'deadly', 'small', 'gm_only', ${GM}, ${JSON.stringify(doc("SLTEST Monster."))}::jsonb, 'SLTEST Monster.', ${GM}, ${GM}) RETURNING id
     `;
     await sql`
       INSERT INTO monsters (world_id, name, kind, rarity, danger, size, visibility, owner_id, bio_json, bio_plain, created_by, updated_by)
@@ -295,11 +295,15 @@ async function main() {
     `;
 
     await addRelation(sql, { worldId, actorId: GM, from: { kind: "article", id: burg.id }, to: { kind: "article", id: guild.id }, origin: "mention" });
+    await addRelation(sql, { worldId, actorId: GM, from: { kind: "article", id: burg.id }, to: { kind: "article", id: guild.id }, origin: "manual", label: "wird bewacht von", counterLabel: "bewacht" });
+    await addRelation(sql, { worldId, actorId: GM, from: { kind: "article", id: person.id }, to: { kind: "article", id: race.id }, origin: "template_field", templateFieldKey: "race" });
     await addRelation(sql, { worldId, actorId: GM, from: { kind: "article", id: burg.id }, to: { kind: "article", id: person.id }, origin: "template_field", templateFieldKey: "ruler" });
     await addRelation(sql, { worldId, actorId: GM, from: { kind: "article", id: burg.id }, to: { kind: "article", id: questItem.id }, origin: "manual", label: "bewacht", counterLabel: "wird bewacht von" });
     await addRelation(sql, { worldId, actorId: GM, from: { kind: "article", id: questItem.id }, to: { kind: "article", id: race.id }, origin: "manual", label: "gehört zu", counterLabel: "enthält" });
     await addRelation(sql, { worldId, actorId: GM, from: { kind: "article", id: burg.id }, to: { kind: "article", id: masterSecret.id }, origin: "manual", label: "verbirgt", counterLabel: "ist verborgen in" });
     await addRelation(sql, { worldId, actorId: GM, from: { kind: "article", id: guild.id }, to: { kind: "article", id: plainArticle.id }, origin: "manual", label: "verwaltet", counterLabel: "wird verwaltet von" });
+    await addRelation(sql, { worldId, actorId: GM, from: { kind: "monster", id: visibleMonster.id }, to: { kind: "article", id: burg.id }, origin: "template_field", templateFieldKey: "habitat" });
+    await addRelation(sql, { worldId, actorId: GM, from: { kind: "quest", id: activeQuest.id }, to: { kind: "character", id: character.id }, origin: "participation" });
     await addRelation(sql, { worldId, actorId: GM, from: { kind: "pin", id: pinRows[0].id }, to: { kind: "article", id: burg.id }, origin: "mention" });
     await addRelation(sql, { worldId, actorId: GM, from: { kind: "pin", id: pinRows[1].id }, to: { kind: "quest", id: activeQuest.id }, origin: "mention" });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { authorizeImageWrite } from "./authorize";
-import { inspectImage, isImageError, maxBytesFor, OTHER_IMAGE_MAX_BYTES, MAP_IMAGE_MAX_BYTES } from "./inspect";
+import { IMAGE_MAX_PIXELS, inspectImage, isImageError, maxBytesFor, OTHER_IMAGE_MAX_BYTES, MAP_IMAGE_MAX_BYTES } from "./inspect";
 
 const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
@@ -42,6 +42,17 @@ describe("inspectImage", () => {
     expect(inspectImage(huge, 10 * 1024 * 1024)).toEqual({
       error: "Das Bild darf höchstens 10 MB groß sein.",
     });
+  });
+
+  it("rejects images over 25 megapixels but accepts the exact limit", () => {
+    const png = Buffer.from(PNG);
+    png.writeUInt32BE(5001, 16);
+    png.writeUInt32BE(5000, 20);
+    expect(IMAGE_MAX_PIXELS).toBe(25_000_000);
+    expect(inspectImage(png, OTHER_IMAGE_MAX_BYTES)).toEqual({ error: "Das Bild darf höchstens 25 Megapixel haben." });
+
+    png.writeUInt32BE(5000, 16);
+    expect(isImageError(inspectImage(png, OTHER_IMAGE_MAX_BYTES))).toBe(false);
   });
 });
 

@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/db/client";
 import { users } from "@/db/schema";
+import packageJson from "../../../package.json";
+import { hasActiveMcpConsent } from "@/lib/domain/connected-applications";
 import { isDiscordIdAllowed, isMcpEnabled, isProductionAppEnv } from "@/lib/env";
 import { MCP_RESOURCE } from "@/lib/mcp-oauth";
 import { consumeMcpCall, McpRateLimitError, writeMcpAuditLog } from "@/lib/mcp/audit";
@@ -14,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 const mcpHandler = createMcpHandler(
   (context) => {
-    const server = new McpServer({ name: "WorldCraft", version: "0.1.6.3" });
+    const server = new McpServer({ name: "WorldCraft", version: packageJson.version });
     if (!isProductionAppEnv()) {
       const userName = typeof context.authInfo?.extra?.userName === "string" ? context.authInfo.extra.userName : "Unbekannt";
       server.registerTool("whoami", {
@@ -22,7 +24,8 @@ const mcpHandler = createMcpHandler(
         description: "Gibt den Anzeigenamen des angemeldeten WorldCraft-Benutzers zurück.",
       }, async () => ({ content: [{ type: "text", text: userName }] }));
     }
-    const userId = typeof context.authInfo?.extra?.userId === "string" ? context.authInfo.extra.userId : "";
+    const userId = context.authInfo?.extra?.userId;
+    if (typeof userId !== "string" || !userId) throw new Error("MCP authentication context has no user ID.");
     registerMcpReadTools(server, {
       userId,
       clientId: typeof context.authInfo?.clientId === "string" ? context.authInfo.clientId : "",
@@ -44,9 +47,14 @@ async function isToolCall(request: Request): Promise<boolean> {
 }
 
 const protectedMcpHandler = requireMcpAuth(auth, async (request, claims) => {
-  if (typeof claims.sub !== "string") return new Response(null, { status: 401 });
+  const resourceMetadataUrl = `${new URL(MCP_RESOURCE).origin}/.well-known/oauth-protected-resource/mcp`;
+  const unauthorized = () => new Response(null, {
+    status: 401,
+    headers: { "WWW-Authenticate": `Bearer resource_metadata="${resourceMetadataUrl}"` },
+  });
+  if (typeof claims.sub !== "string" || typeof claims.client_id !== "string") return unauthorized();
   const [user] = await db.select({ name: users.name, discordId: users.discordId }).from(users).where(eq(users.id, claims.sub)).limit(1);
-  if (!user || !isDiscordIdAllowed(user.discordId)) return new Response(null, { status: 401 });
+  if (!user || !isDiscordIdAllowed(user.discordId) || !(await hasActiveMcpConsent(claims.sub, claims.client_id))) return unauthorized();
   if (await isToolCall(request)) {
     const clientId = typeof claims.client_id === "string" ? claims.client_id : "";
     try {
@@ -59,7 +67,7 @@ const protectedMcpHandler = requireMcpAuth(auth, async (request, claims) => {
         toolName: request.headers.get("mcp-name")?.slice(0, 120) || "tools/call",
         durationMs: 0,
         result: "rate_limited",
-      }).catch(() => undefined);
+      }).catch((auditError: unknown) => console.error(JSON.stringify({ event: "mcp_audit_error", tool: "tools/call", error: auditError instanceof Error ? auditError.name : "unknown" })));
       return new Response(null, { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } });
     }
   }
@@ -72,7 +80,7 @@ const protectedMcpHandler = requireMcpAuth(auth, async (request, claims) => {
       scopes: scope,
       expiresAt: typeof claims.exp === "number" ? claims.exp : undefined,
       resource: new URL(MCP_RESOURCE),
-      resourceMetadataUrl: `${new URL(MCP_RESOURCE).origin}/.well-known/oauth-protected-resource`,
+      resourceMetadataUrl,
       extra: { userId: claims.sub, userName: user.name },
     },
   });
@@ -87,3 +95,7 @@ export async function POST(request: Request) {
 export async function GET() {
   return new Response(null, { status: isMcpEnabled() ? 405 : 404, headers: isMcpEnabled() ? { Allow: "POST" } : undefined });
 }
+
+export async function DELETE() { return GET(); }
+export async function PATCH() { return GET(); }
+export async function PUT() { return GET(); }

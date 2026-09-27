@@ -22,10 +22,10 @@ export default function McpHelpPage() {
           In Claude Code kannst du die Verbindung mit <code>claude mcp add --transport http worldcraft {endpoint}</code> anlegen und anschließend den Browser-Login abschließen.
         </p>
         <p className="small muted">
-          Beim ersten Verbinden sieht die KI nur Weltname, deine Rolle und deine eigenen Charaktere. Nicht freigegebene Welten, unveröffentlichte Inhalte, Kartenbilder und Koordinaten bleiben ausgeschlossen.
+          Die KI sieht genau das, was du in der App siehst, in Welten, die der Game Master freigegeben hat. Als Spielleitung schließt das auch Inhalte „nur Spielleitung“ sowie eigene Inhalte „nur ich“ ein. Nicht freigegebene Welten, Kartenbilder und Koordinaten bleiben ausgeschlossen.
         </p>
         <p className="small muted">
-          Chat und Tagebücher werden nie über MCP übertragen. Du kannst die Verbindung jederzeit in den WorldCraft-Kontoeinstellungen unter „Verbundene Anwendungen“ widerrufen; die KI kann danach nicht mehr auf deine Welt zugreifen.
+          Chat und Tagebücher werden nie über MCP übertragen. Du kannst die Verbindung jederzeit im Weltmenü deiner Welt unter „Verbundene Anwendungen“ widerrufen; die KI kann danach nicht mehr auf deine Welt zugreifen.
         </p>
         {!enabled ? <p className="error-text">Die MCP-Schnittstelle ist auf diesem Server momentan nicht aktiviert. Bitte wende dich an die Administration.</p> : null}
       </div>

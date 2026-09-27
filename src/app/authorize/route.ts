@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthUrl } from "@/lib/env";
+import { getAuthUrl, isMcpEnabled } from "@/lib/env";
 import { logMcpOAuthMilestone } from "@/lib/mcp/oauth-observability";
 
 /**
@@ -10,6 +10,7 @@ import { logMcpOAuthMilestone } from "@/lib/mcp/oauth-observability";
  * alias prevents those clients from losing the PKCE request to a 404.
  */
 export function GET(request: Request) {
+  if (!isMcpEnabled()) return new Response(null, { status: 404 });
   logMcpOAuthMilestone("mcp_oauth_compat_authorize", {
     clientId: new URL(request.url).searchParams.get("client_id"),
   });

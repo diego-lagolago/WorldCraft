@@ -24,13 +24,17 @@ import {
   isTestLoginEnabled,
 } from "@/lib/env";
 import { testLoginPlugin } from "@/lib/test-login-plugin";
+import {
+  hashStoredOAuthToken,
+  MCP_CIMD_LIMITS,
+  MCP_OAUTH_RATE_LIMITS,
+  MCP_RESOURCE,
+} from "@/lib/mcp-oauth";
 
 assertTestLoginNotInProduction();
 assertDiscordAllowlistConfigured();
 
 const APP_URL = getAuthUrl();
-const MCP_RESOURCE = `${APP_URL}/mcp`;
-
 export const auth = betterAuth({
   baseURL: APP_URL,
   secret: process.env.BETTER_AUTH_SECRET,
@@ -52,6 +56,16 @@ export const auth = betterAuth({
     },
   }),
   trustedOrigins: getTrustedOrigins(),
+  rateLimit: {
+    enabled: true,
+    storage: "memory",
+    ...MCP_OAUTH_RATE_LIMITS.default,
+    customRules: {
+      [MCP_OAUTH_RATE_LIMITS.register.path]: MCP_OAUTH_RATE_LIMITS.register,
+      [MCP_OAUTH_RATE_LIMITS.authorize.path]: MCP_OAUTH_RATE_LIMITS.authorize,
+      [MCP_OAUTH_RATE_LIMITS.token.path]: MCP_OAUTH_RATE_LIMITS.token,
+    },
+  },
   emailAndPassword: {
     enabled: false,
   },
@@ -158,10 +172,20 @@ export const auth = betterAuth({
       allowUnauthenticatedClientRegistration: true,
       clientRegistrationRequirePKCE: true,
       clientRegistrationDefaultScopes: ["worlds:read", "offline_access"],
+      storeTokens: { hash: hashStoredOAuthToken },
     }),
     cimd({
       fetchClientMetadataResource,
       metadataProfile: "mcp-2026-07-28",
+      metadataRevalidationInterval: MCP_CIMD_LIMITS.cacheSeconds,
+      maxCacheEntries: MCP_CIMD_LIMITS.maxCacheEntries,
+      metadataFetchPolicy: {
+        minimumFetchInterval: MCP_CIMD_LIMITS.failedFetchRetrySeconds,
+        maximumConcurrentFetches: MCP_CIMD_LIMITS.maxConcurrentFetches,
+        maximumConcurrentFetchesPerOrigin: MCP_CIMD_LIMITS.maxConcurrentFetchesPerOrigin,
+        maximumFetchesPerMinute: MCP_CIMD_LIMITS.maxFetchesPerMinute,
+        maximumFetchesPerOriginPerMinute: MCP_CIMD_LIMITS.maxFetchesPerOriginPerMinute,
+      },
     }),
     nextCookies(),
   ],
