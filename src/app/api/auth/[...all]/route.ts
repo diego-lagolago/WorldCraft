@@ -3,8 +3,8 @@ import { auth } from "@/lib/auth";
 import { isDiscordIdAllowed, isMcpEnabled } from "@/lib/env";
 import {
   hasAllowedMcpAuthorizeRedirect,
-  hasAllowedMcpRegistrationRedirects,
   isMcpAuthPath,
+  mcpRegistrationValidationError,
   mcpTokenGrantFailure,
 } from "@/lib/mcp-oauth";
 import { logMcpOAuthException, logMcpOAuthResponse } from "@/lib/mcp/oauth-observability";
@@ -27,11 +27,18 @@ async function handle(request: Request, method: "GET" | "POST") {
         { status: 400 },
       );
     }
-    else if (pathname === "/api/auth/oauth2/register" && !(await hasAllowedMcpRegistrationRedirects(request))) {
-      response = Response.json(
-        { error: "invalid_redirect_uri", error_description: "Redirect-URIs müssen HTTPS oder lokale Loopback-Adressen sein." },
-        { status: 400 },
-      );
+    else if (pathname === "/api/auth/oauth2/register") {
+      const registrationError = await mcpRegistrationValidationError(request);
+      if (registrationError) {
+        response = Response.json(
+          registrationError === "invalid_redirect_uri"
+            ? { error: registrationError, error_description: "Redirect-URIs müssen HTTPS für öffentliche Hosts oder HTTP auf lokalen Loopback-Adressen sein." }
+            : { error: registrationError, error_description: "DCR akzeptiert nur öffentliche native Clients ohne Client-Secret und mit Authorization-Code-Grant." },
+          { status: 400 },
+        );
+      } else {
+        response = await handlers[method](request);
+      }
     } else {
       if (isMcpOAuthRequest) {
         const session = await auth.api.getSession({ headers: request.headers });

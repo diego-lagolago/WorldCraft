@@ -43,23 +43,48 @@ export function isAllowedMcpRedirectUri(value: unknown): boolean {
   if (typeof value !== "string") return false;
   try {
     const url = new URL(value);
-    if (url.protocol === "https:") return true;
+    const isLoopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
+    if (url.protocol === "https:") return !isLoopback;
     if (url.protocol !== "http:") return false;
-    return url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
+    return isLoopback;
   } catch {
     return false;
   }
 }
 
-export async function hasAllowedMcpRegistrationRedirects(request: Request): Promise<boolean> {
-  if (new URL(request.url).pathname !== `${AUTH_PATH_PREFIX}oauth2/register`) return true;
+export type McpRegistrationError = "invalid_redirect_uri" | "invalid_client_metadata";
+
+/**
+ * WorldCraft supports only public native DCR clients. Better Auth validates
+ * the remaining registration schema; this guard rejects client secrets and
+ * grants the MCP server never offers before a client record is created.
+ */
+export async function mcpRegistrationValidationError(request: Request): Promise<McpRegistrationError | null> {
+  if (new URL(request.url).pathname !== `${AUTH_PATH_PREFIX}oauth2/register`) return null;
   try {
     const body: unknown = await request.clone().json();
-    if (!body || typeof body !== "object" || !("redirect_uris" in body)) return false;
-    const redirects = (body as { redirect_uris?: unknown }).redirect_uris;
-    return Array.isArray(redirects) && redirects.length > 0 && redirects.every(isAllowedMcpRedirectUri);
+    if (!body || typeof body !== "object" || !("redirect_uris" in body)) return "invalid_redirect_uri";
+    const registration = body as {
+      redirect_uris?: unknown;
+      application_type?: unknown;
+      token_endpoint_auth_method?: unknown;
+      grant_types?: unknown;
+    };
+    const redirects = registration.redirect_uris;
+    if (!Array.isArray(redirects) || redirects.length === 0 || !redirects.every(isAllowedMcpRedirectUri)) {
+      return "invalid_redirect_uri";
+    }
+    if (registration.application_type !== undefined && registration.application_type !== "native") return "invalid_client_metadata";
+    if (registration.token_endpoint_auth_method !== "none") return "invalid_client_metadata";
+    if (registration.grant_types !== undefined) {
+      const grants = registration.grant_types;
+      if (!Array.isArray(grants) || !grants.includes("authorization_code") || !grants.every((grant) => grant === "authorization_code" || grant === "refresh_token")) {
+        return "invalid_client_metadata";
+      }
+    }
+    return null;
   } catch {
-    return false;
+    return "invalid_client_metadata";
   }
 }
 

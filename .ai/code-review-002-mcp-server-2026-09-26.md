@@ -44,11 +44,26 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 | CR-020 | Runtime-Risiken | niedrig | offen | Leerer `userId`-Fallback im MCP-Handler; Aufruflimit-Map wird nie aufgeräumt |
 | CR-021 | Aufgaben-Abgleich | niedrig | verworfen | Demowelt-Skript nicht atomar und inhaltlich abweichend von T-014 |
 | CR-022 | Duplizierung & Modularisierung | niedrig | offen | Universum-Sichtbarkeitslabel hart kodiert; `inhalt_lesen` für Universum lädt alle Universen |
-| CR-023 | Aufgaben-Abgleich | mittel | offen | Zusatzauftrag OAuth: Ist-Flow und Codex-Fehler `invalid_redirect` erfassen |
-| CR-024 | Sicherheit | mittel | offen | Zusatzauftrag OAuth: Discovery, 401-Challenge, Loopback-Redirects mit dynamischem Port, PKCE S256 |
-| CR-025 | Sicherheit | mittel | offen | Zusatzauftrag OAuth: öffentliche DCR absichern (Validierung, Fehlerantworten, Rate-Limit) |
-| CR-026 | Sicherheit | mittel | offen | Zusatzauftrag OAuth: CIMD sicher abrufen und validieren |
+| CR-023 | Aufgaben-Abgleich | mittel | teilweise behoben | Ist-Flow und Codex-CIMD-Weg dokumentiert; realer Codex-/Claude-Quest-Abruf noch ausstehend |
+| CR-024 | Sicherheit | mittel | behoben | Discovery, 401-Challenge, PKCE S256 und dynamischer HTTP-Loopback getestet; HTTPS-Loopback wird abgelehnt |
+| CR-025 | Sicherheit | mittel | behoben | DCR-Redirect-Policy, PKCE, 5/min-IP-Limit sowie Ablehnung vertraulicher Clients und nicht unterstützter Grants getestet |
+| CR-026 | Sicherheit | mittel | teilweise behoben | Sichere CIMD-Transport-/Cache-Konfiguration und Validierung getestet; positiver 15-Minuten-Cache-Nachweis noch offen |
 | CR-027 | Testabdeckung | mittel | offen | Zusatzauftrag OAuth: Kompatibilitätsmatrix Codex/Claude für feste Client-ID, DCR und CIMD |
+
+---
+
+## Review-Check 2026-09-27 — CR-023 bis CR-027
+
+**Prüfgrundlage:** ausgelieferte Revision `83d093c` sowie der Umsetzungsstand für Release 0.1.9. Der Produktionsendpunkt liefert für ein nicht authentifiziertes `POST /mcp` die erwartete `401`-Challenge mit `resource_metadata`; Codex erkennt den Server als OAuth.
+
+| Ergebnis | Anzahl |
+|---|---:|
+| behoben | 2 |
+| teilweise behoben | 2 |
+| offen | 1 |
+| nicht mehr zuordenbar | 0 |
+
+CR-024 ist mit der zusätzlichen Ablehnung von HTTPS-Loopback sowie den vorhandenen Discovery-, PKCE- und DCR-Tests abgeschlossen. CR-025 ist nach der zusätzlichen Ablehnung vertraulicher Client-Authentifizierung und nicht unterstützter Grants ebenfalls abgeschlossen. CR-023 benötigt noch die reale Codex-/Claude-Client-Abnahme. Bei CR-026 fehlt nur der positive 15-Minuten-Cache-Test; die Negativfälle für Ziel-URL, Metadaten, Redirect, 5-KB-Grenze, Timeout und Retry-Drosselung sind automatisiert geprüft. CR-027 bleibt offen, bis Codex und Claude den Browser-Login durchlaufen und die sichtbarkeitskonforme Quest-Abfrage erfolgreich dokumentiert ist.
 
 ---
 
@@ -93,7 +108,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 - **Status:** behoben (2026-09-27). `withAudit` protokolliert unerwartete Fehler strukturiert und gibt nur die generische Meldung zurück; `src/lib/mcp/tools.test.ts` prüft den vollständigen Fall ohne interne Datenbankmeldung im Werkzeugergebnis.
 
 ### CR-004
-- **Fundstelle:** `src/lib/auth.ts` (`cimd({...})`), `src/lib/mcp-oauth.ts` (`hasAllowedMcpRegistrationRedirects`), `src/app/api/auth/[...all]/route.ts`
+- **Fundstelle:** `src/lib/auth.ts` (`cimd({...})`), `src/lib/mcp-oauth.ts` (`mcpRegistrationValidationError`), `src/app/api/auth/[...all]/route.ts`
 - **Kategorie:** Sicherheit
 - **Schweregrad:** mittel
 - **Bezug (Task-ID):** T-003 (Punkt 3), D8
@@ -348,7 +363,7 @@ Vom Projektinhaber nachträglich als Aufgaben an dieses Review angehängt. Die P
 
 **Ist-Stand im Code (Baseline `ff09c34`), damit nichts doppelt gebaut wird:**
 - **Discovery:** `src/app/.well-known/oauth-protected-resource/route.ts` (+ `/mcp`-Suffix), `src/app/.well-known/oauth-authorization-server/route.ts` (+ `/api/auth`-Pfad). Die 401-Challenge mit `WWW-Authenticate` liefert `requireMcpAuth` in `src/app/mcp/route.ts`.
-- **DCR:** In `src/lib/auth.ts` sind `allowDynamicClientRegistration` und `allowUnauthenticatedClientRegistration` aktiv. Die Redirect-Prüfung `hasAllowedMcpRegistrationRedirects` sitzt in `src/app/api/auth/[...all]/route.ts`.
+- **DCR:** In `src/lib/auth.ts` sind `allowDynamicClientRegistration` und `allowUnauthenticatedClientRegistration` aktiv. Die DCR-Policy `mcpRegistrationValidationError` sitzt in `src/app/api/auth/[...all]/route.ts`.
 - **CIMD:** `cimd({ fetchClientMetadataResource, metadataProfile: "mcp-2026-07-28" })` in `src/lib/auth.ts`, Abruf über `@better-auth/cimd/node`.
 - **Loopback-Port-Matching:** `@better-auth/oauth-provider` bringt ein portunabhängiges Loopback-Matching mit (`stripLoopbackRedirectPort`, nach node-oidc-provider). Ob es für DCR- und CIMD-Clients greift, ist in OAUTH-T-001 zu belegen.
 
@@ -376,7 +391,7 @@ Vom Projektinhaber nachträglich als Aufgaben an dieses Review angehängt. Die P
 - **Zusätzliches Abnahmekriterium (K3):** Die sechste DCR-Registrierung von derselben IP innerhalb von 60 s erhält HTTP 429 (Test in `npm run test:mcp`). Die Grenzwerte stehen als Konstanten in `src/lib/mcp-oauth.ts` und sind in `.ai/architecture/mcp.md` dokumentiert.
 
 ### CR-025
-- **Fundstelle:** `/api/auth/oauth2/register` (Better Auth), `src/lib/mcp-oauth.ts` (`hasAllowedMcpRegistrationRedirects`), `src/app/api/auth/[...all]/route.ts`
+- **Fundstelle:** `/api/auth/oauth2/register` (Better Auth), `src/lib/mcp-oauth.ts` (`mcpRegistrationValidationError`), `src/app/api/auth/[...all]/route.ts`
 - **Kategorie:** Sicherheit
 - **Schweregrad:** mittel
 - **Bezug (Task-ID):** OAUTH-T-003 (Plan `002` T-003, D8, D13)

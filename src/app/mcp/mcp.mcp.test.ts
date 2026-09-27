@@ -171,6 +171,26 @@ describe("MCP OAuth and protected resource", () => {
     });
     expect(unsafe.status).toBe(400);
 
+    const confidential = await fetch(`${BASE}/api/auth/oauth2/register`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        redirect_uris: ["http://127.0.0.1:9876/callback"], application_type: "native",
+        token_endpoint_auth_method: "client_secret_basic", grant_types: ["authorization_code"],
+      }),
+    });
+    expect(confidential.status).toBe(400);
+    expect((await json(confidential)).error).toBe("invalid_client_metadata");
+
+    const unsupportedGrant = await fetch(`${BASE}/api/auth/oauth2/register`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        redirect_uris: ["http://127.0.0.1:9876/callback"], application_type: "native",
+        token_endpoint_auth_method: "none", grant_types: ["client_credentials"],
+      }),
+    });
+    expect(unsupportedGrant.status).toBe(400);
+    expect((await json(unsupportedGrant)).error).toBe("invalid_client_metadata");
+
     const client = await registerMcpClient(9876, "MCP Integration Test");
     const session = await login("test-player-a");
     const unsafeAuthorize = new URL(`${BASE}/api/auth/oauth2/authorize`);

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createCimdClientDiscovery, validateCimdMetadata, validateClientIdUrl } from "@better-auth/cimd";
 
 const mocks = vi.hoisted(() => ({ select: vi.fn(), isDiscordIdAllowed: vi.fn(() => true) }));
 
@@ -13,6 +14,7 @@ import {
   hasAllowedMcpAuthorizeRedirect,
   hashStoredOAuthToken,
   isAllowedMcpRedirectUri,
+  mcpRegistrationValidationError,
   MCP_CIMD_LIMITS,
   MCP_OAUTH_RATE_LIMITS,
   mcpTokenGrantFailure,
@@ -34,6 +36,7 @@ describe("MCP OAuth redirect policy", () => {
     expect(isAllowedMcpRedirectUri("http://127.0.0.1:9876/callback")).toBe(true);
     expect(isAllowedMcpRedirectUri("http://[::1]:9876/callback")).toBe(true);
     expect(isAllowedMcpRedirectUri("http://localhost:9876/callback")).toBe(true);
+    expect(isAllowedMcpRedirectUri("https://127.0.0.1:9876/callback")).toBe(false);
     expect(isAllowedMcpRedirectUri("http://evil.example/callback")).toBe(false);
     expect(isAllowedMcpRedirectUri("myapp://callback")).toBe(false);
   });
@@ -47,6 +50,33 @@ describe("MCP OAuth redirect policy", () => {
     expect(hasAllowedMcpAuthorizeRedirect(privateUse)).toBe(false);
     expect(hasAllowedMcpAuthorizeRedirect(https)).toBe(true);
     expect(hasAllowedMcpAuthorizeRedirect(accepted)).toBe(true);
+  });
+
+  it("accepts only public native DCR metadata", async () => {
+    const valid = new Request("http://localhost:3000/api/auth/oauth2/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        redirect_uris: ["http://127.0.0.1:9876/callback"],
+        application_type: "native",
+        token_endpoint_auth_method: "none",
+        grant_types: ["authorization_code", "refresh_token"],
+      }),
+    });
+    const confidential = new Request("http://localhost:3000/api/auth/oauth2/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ redirect_uris: ["http://127.0.0.1:9876/callback"], application_type: "native", token_endpoint_auth_method: "client_secret_basic" }),
+    });
+    const unsupportedGrant = new Request("http://localhost:3000/api/auth/oauth2/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ redirect_uris: ["http://127.0.0.1:9876/callback"], application_type: "native", token_endpoint_auth_method: "none", grant_types: ["client_credentials"] }),
+    });
+
+    await expect(mcpRegistrationValidationError(valid)).resolves.toBeNull();
+    await expect(mcpRegistrationValidationError(confidential)).resolves.toBe("invalid_client_metadata");
+    await expect(mcpRegistrationValidationError(unsupportedGrant)).resolves.toBe("invalid_client_metadata");
   });
 });
 
@@ -83,5 +113,80 @@ describe("MCP OAuth storage and abuse limits", () => {
     expect(code).toBe("access_denied");
     expect(refresh).toBe("invalid_grant");
     mocks.isDiscordIdAllowed.mockReturnValue(true);
+  });
+});
+
+describe("CIMD validation contract", () => {
+  const clientId = "https://client.example.com/.well-known/mcp-client.json";
+
+  function resolverFor(fetchClientMetadataResource: unknown, metadataFetchPolicy = {}) {
+    const discovery = createCimdClientDiscovery({
+      fetchClientMetadataResource: fetchClientMetadataResource as never,
+      metadataProfile: "mcp-2026-07-28",
+      metadataRevalidationInterval: MCP_CIMD_LIMITS.cacheSeconds,
+      metadataFetchPolicy,
+    });
+    const context = {
+      context: { getPlugin: () => ({ options: {} }), logger: { warn: vi.fn() } },
+    } as never;
+    return () => discovery.resolve(context, clientId);
+  }
+
+  it("accepts a public HTTPS metadata URL and rejects private or non-HTTPS targets", () => {
+    expect(validateClientIdUrl(clientId)).toBeNull();
+    expect(validateClientIdUrl("http://client.example.com/metadata.json")).toContain("HTTPS");
+    expect(validateClientIdUrl("https://127.0.0.1/metadata.json")).toContain("private or reserved");
+    expect(validateClientIdUrl("https://[::1]/metadata.json")).toContain("private or reserved");
+    expect(validateClientIdUrl("https://169.254.169.254/metadata.json")).toContain("private or reserved");
+  });
+
+  it("requires MCP metadata to identify itself exactly and to use public-client authentication", () => {
+    const validMetadata = {
+      client_id: clientId,
+      client_name: "WorldCraft CIMD test client",
+      redirect_uris: ["https://client.example.com/oauth/callback"],
+      token_endpoint_auth_method: "none",
+    };
+    expect(validateCimdMetadata(clientId, validMetadata, { metadataProfile: "mcp-2026-07-28" }).valid).toBe(true);
+    expect(validateCimdMetadata(clientId, { ...validMetadata, client_id: "https://other.example.com/client.json" }, { metadataProfile: "mcp-2026-07-28" }))
+      .toMatchObject({ valid: false, error: expect.stringContaining("does not match") });
+    expect(validateCimdMetadata(clientId, { ...validMetadata, token_endpoint_auth_method: "client_secret_basic" }, { metadataProfile: "mcp-2026-07-28" }))
+      .toMatchObject({ valid: false, error: expect.stringContaining("prohibited") });
+  });
+
+  it("rejects CIMD redirects and responses larger than the reviewed 5 KB cap before registration", async () => {
+    const redirect = resolverFor(async () => new Response(null, { status: 302 }));
+    const oversized = resolverFor(async () => new Response("x".repeat(MCP_CIMD_LIMITS.responseBytes + 1), {
+      headers: { "content-type": "application/json" },
+    }));
+
+    await expect(redirect()).rejects.toMatchObject({ body: { error: "invalid_client" } });
+    await expect(oversized()).rejects.toMatchObject({ body: { error: "invalid_client" } });
+  });
+
+  it("aborts a stalled CIMD fetch at the reviewed five-second timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchClientMetadataResource = vi.fn((_url: unknown, init: { signal: AbortSignal }) => new Promise<never>((_resolve, reject) => {
+        init.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+      }));
+      const resolve = resolverFor(fetchClientMetadataResource);
+      const pending = resolve();
+      const timeoutAssertion = expect(pending).rejects.toMatchObject({ body: { error: "invalid_client" } });
+
+      await vi.advanceTimersByTimeAsync(MCP_CIMD_LIMITS.timeoutMs);
+      await timeoutAssertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("paces failed CIMD fetches for the reviewed one-minute retry interval", async () => {
+    const fetchClientMetadataResource = vi.fn(async () => new Response(null, { status: 503 }));
+    const resolve = resolverFor(fetchClientMetadataResource, { minimumFetchInterval: MCP_CIMD_LIMITS.failedFetchRetrySeconds });
+
+    await expect(resolve()).rejects.toMatchObject({ body: { error: "invalid_client" } });
+    await expect(resolve()).rejects.toMatchObject({ body: { error: "temporarily_unavailable" } });
+    expect(fetchClientMetadataResource).toHaveBeenCalledTimes(1);
   });
 });
