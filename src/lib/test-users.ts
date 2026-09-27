@@ -3,6 +3,7 @@ export const TEST_USER_IDS = [
   "test-master",
   "test-player-a",
   "test-player-b",
+  "test-rate-limit",
 ] as const;
 
 export type TestUserId = (typeof TEST_USER_IDS)[number];
@@ -29,6 +30,11 @@ export const TEST_USERS: readonly TestUserSeed[] = [
     discordId: "test-player-b",
     email: "test-player-b@localhost",
     name: "Test Player B",
+  },
+  {
+    discordId: "test-rate-limit",
+    email: "test-rate-limit@localhost",
+    name: "Test Rate Limit",
   },
 ];
 

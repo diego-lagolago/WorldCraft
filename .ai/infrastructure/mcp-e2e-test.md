@@ -17,8 +17,8 @@
 
 | Client / Weg | OAuth-Anmeldung | Tool-Aufruf `quests_auflisten` | Status | Notiz |
 |---|---|---|---|---|
-| Codex, CIMD | Browser gestartet | ausstehend | läuft | `codex mcp list` meldet `OAuth`; Codex verwendet CIMD, `S256` und dynamischen HTTP-Loopback. Abschluss braucht einen Discord-Login. |
-| Claude, CIMD | ausstehend | ausstehend | offen | Neue Connector-Verbindung ohne wiederverwendete Altregistrierung testen. |
+| Codex, CIMD | bestanden | vom Client nicht ausgelöst | bestanden (Entscheidung Projektinhaber) | `worldcraft` ist als aktivierter OAuth-Server konfiguriert. Der verwendete Codex-Client wählt trotz expliziter Aufforderung keine MCP-Werkzeuge; dies wird als Abo-/Client-Verhalten akzeptiert. |
+| Claude, CIMD | bestanden | bestanden | bestanden | Claude wurde real mit WorldCraft verbunden und führt die sichtbarkeitskonforme Quest-Abfrage erfolgreich aus. |
 | Öffentliche DCR | automatisiert bestanden | lokal bestanden | bestanden | Integrationstest registriert einen Public Client, tauscht PKCE-Code und ruft ein Lese-Tool auf; unsichere Redirects, vertrauliche Client-Authentifizierung und nicht unterstützte Grants werden abgelehnt. |
 | Fest registrierter Client | ausstehend | ausstehend | offen | Nur durchführen, falls ein solcher Client betrieblich noch unterstützt wird; Redirect muss exakt registriert sein. |
 
@@ -45,3 +45,6 @@
 | Datum | Client / Weg | Ergebnis | Verantwortlich |
 |---|---|---|---|
 | 2026-09-27 | Codex CIMD | Login gestartet, Abschluss und Quest-Abfrage ausstehend | Codex / Projektinhaber |
+| 2026-09-27 | Codex CIMD | OAuth-Request bis zur Discord-Anmeldeseite bestätigt; kein Login oder Consent ohne Projektinhaber durchgeführt | Codex / Projektinhaber |
+| 2026-09-27 | Claude CIMD | Reale Verbindung und sichtbarkeitskonforme Quest-Abfrage bestanden | Projektinhaber |
+| 2026-09-27 | Codex CIMD | Server ist als OAuth aktiv; Werkzeugwahl wird durch den Client nicht ausgelöst und auf Entscheidung des Projektinhabers als bestanden akzeptiert | Projektinhaber |

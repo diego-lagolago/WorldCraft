@@ -55,6 +55,7 @@ const protectedMcpHandler = requireMcpAuth(auth, async (request, claims) => {
   if (typeof claims.sub !== "string" || typeof claims.client_id !== "string") return unauthorized();
   const [user] = await db.select({ name: users.name, discordId: users.discordId }).from(users).where(eq(users.id, claims.sub)).limit(1);
   if (!user || !isDiscordIdAllowed(user.discordId) || !(await hasActiveMcpConsent(claims.sub, claims.client_id))) return unauthorized();
+  if (typeof claims.scope !== "string" || !claims.scope.split(" ").includes("worlds:read")) return unauthorized();
   if (await isToolCall(request)) {
     const clientId = typeof claims.client_id === "string" ? claims.client_id : "";
     try {
@@ -84,7 +85,7 @@ const protectedMcpHandler = requireMcpAuth(auth, async (request, claims) => {
       extra: { userId: claims.sub, userName: user.name },
     },
   });
-}, { resource: MCP_RESOURCE, requiredScopes: ["worlds:read"] });
+}, { resource: MCP_RESOURCE });
 
 export async function POST(request: Request) {
   if (!isMcpEnabled()) return new Response(null, { status: 404 });

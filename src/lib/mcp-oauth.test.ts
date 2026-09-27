@@ -126,8 +126,18 @@ describe("CIMD validation contract", () => {
       metadataRevalidationInterval: MCP_CIMD_LIMITS.cacheSeconds,
       metadataFetchPolicy,
     });
+    type TestAdapter = {
+      transaction: <T>(callback: (transaction: TestAdapter) => Promise<T>) => Promise<T>;
+      create: (input: { data: Record<string, unknown> }) => Promise<Record<string, unknown>>;
+      findMany: () => Promise<unknown[]>;
+    };
+    const adapter: TestAdapter = {
+      transaction: async (callback) => callback(adapter),
+      create: async ({ data }) => data,
+      findMany: async () => [],
+    };
     const context = {
-      context: { getPlugin: () => ({ options: {} }), logger: { warn: vi.fn() } },
+      context: { adapter, getPlugin: () => ({ options: {} }), logger: { warn: vi.fn(), error: vi.fn() } },
     } as never;
     return () => discovery.resolve(context, clientId);
   }
@@ -187,6 +197,21 @@ describe("CIMD validation contract", () => {
 
     await expect(resolve()).rejects.toMatchObject({ body: { error: "invalid_client" } });
     await expect(resolve()).rejects.toMatchObject({ body: { error: "temporarily_unavailable" } });
+    expect(fetchClientMetadataResource).toHaveBeenCalledTimes(1);
+  });
+
+  it("reuses a successful CIMD document for the reviewed fifteen-minute cache interval", async () => {
+    const fetchClientMetadataResource = vi.fn(async () => Response.json({
+      client_id: clientId,
+      client_name: "WorldCraft CIMD cache test client",
+      redirect_uris: ["https://client.example.com/oauth/callback"],
+      token_endpoint_auth_method: "none",
+    }));
+    const resolve = resolverFor(fetchClientMetadataResource);
+
+    await expect(resolve()).resolves.toBeDefined();
+    await expect(resolve()).resolves.toBeDefined();
+
     expect(fetchClientMetadataResource).toHaveBeenCalledTimes(1);
   });
 });

@@ -32,7 +32,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 | CR-008 | Performance | mittel | offen | `inhalte_auflisten`: N+1-Abfragen, Limit erst nach dem Laden, Seltenheit als englischer DB-Schlüssel |
 | CR-009 | Bad Practices | mittel | offen | Abweichungen von ADR-005 (keine Scope-Deklaration pro Werkzeug, direkter DB-Zugriff in MCP-Modulen) |
 | CR-010 | Aufgaben-Abgleich | mittel | offen | Testwelt-Skript erfüllt T-002/D19 nicht vollständig und macht die T-008-Invariante unprüfbar |
-| CR-011 | Lesbarkeit & Wartbarkeit | mittel | offen | `tools.ts` schwer wartbar: überlange Einzeiler, verstreute Enum-Mappings, `monster_art` ungeprüft |
+| CR-011 | Lesbarkeit & Wartbarkeit | mittel | behoben | `tools.ts` schwer wartbar: überlange Einzeiler, verstreute Enum-Mappings, `monster_art` ungeprüft |
 | CR-012 | Aufgaben-Abgleich | mittel | offen | Hilfeseite enthält sachlich falsche Aussagen zu sichtbaren Daten und zum Ort des Widerrufs |
 | CR-013 | Aufgaben-Abgleich | mittel | offen | Task-Datei und E2E-Protokoll nicht nachgeführt (Checkboxen, `mcp-e2e-test.md` fehlt) |
 | CR-014 | Runtime-Risiken | niedrig | offen | `bild_nr` wird über `sortOrder === n-1` statt über die Position aufgelöst |
@@ -47,8 +47,8 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 | CR-023 | Aufgaben-Abgleich | mittel | teilweise behoben | Ist-Flow und Codex-CIMD-Weg dokumentiert; realer Codex-/Claude-Quest-Abruf noch ausstehend |
 | CR-024 | Sicherheit | mittel | behoben | Discovery, 401-Challenge, PKCE S256 und dynamischer HTTP-Loopback getestet; HTTPS-Loopback wird abgelehnt |
 | CR-025 | Sicherheit | mittel | behoben | DCR-Redirect-Policy, PKCE, 5/min-IP-Limit sowie Ablehnung vertraulicher Clients und nicht unterstützter Grants getestet |
-| CR-026 | Sicherheit | mittel | teilweise behoben | Sichere CIMD-Transport-/Cache-Konfiguration und Validierung getestet; positiver 15-Minuten-Cache-Nachweis noch offen |
-| CR-027 | Testabdeckung | mittel | offen | Zusatzauftrag OAuth: Kompatibilitätsmatrix Codex/Claude für feste Client-ID, DCR und CIMD |
+| CR-026 | Sicherheit | mittel | behoben | Sichere CIMD-Transport-/Cache-Konfiguration und Validierung getestet; positiver 15-Minuten-Cache-Nachweis ergänzt |
+| CR-027 | Testabdeckung | mittel | behoben | Zusatzauftrag OAuth: Kompatibilitätsmatrix Codex/Claude für feste Client-ID, DCR und CIMD |
 | CR-028 | Aufgaben-Abgleich | mittel | behoben | Die OAuth-Anforderung der Lesewerkzeuge war nicht als clientlesbare Tool-Metadaten am MCP-Endpunkt deklariert |
 | CR-029 | Sicherheit | mittel | behoben | Lesewerkzeuge deklarieren ihren erforderlichen OAuth-Scope nicht als Scope-Challenge |
 
@@ -225,6 +225,7 @@ CR-024 ist mit der zusätzlichen Ablehnung von HTTPS-Loopback sowie den vorhande
 - **Empfehlung:** Ein Modul pro Werkzeug (z. B. `src/lib/mcp/tools/inhalt-lesen.ts`) und ein Renderer pro Inhaltsart (`renderArticle`, `renderQuest` …). Die Enum-Abbildungen in `src/lib/mcp/enums.ts` bündeln, beide Richtungen aus einer Quelle ableiten und Vollständigkeitstests gegen die DB-Enums schreiben. `monster_art` als `z.enum` der deutschen Labels definieren.
 - **Festlegung (Plan-Review 2026-09-26):** Die Zeilenlänge wird per ESLint erzwungen: In `eslint.config.mjs` einen Override für `src/lib/mcp/**/*.ts` mit `max-len: ["error", { code: 160, ignoreStrings: true, ignoreTemplateLiterals: true, ignoreUrls: true, ignoreComments: true }]` ergänzen. Kein Prettier, keine repo-weite Regel.
 - **Abnahmekriterium:** Der ESLint-Override für `src/lib/mcp/**` mit `max-len` 160 existiert, und `npx eslint src/lib/mcp` läuft fehlerfrei. Es existiert `enums.ts` mit einem Test, der für jedes DB-Enum (Status, Vorlagentyp, Monster-Art, Inhaltsart) eine vollständige Abbildung belegt. `inhalte_auflisten` mit `monster_art: "Drache123"` liefert einen Validierungsfehler.
+- **Status:** behoben (2026-09-27). Jedes Lesewerkzeug ist in ein eigenes Modul ausgelagert; `tools.ts` registriert nur noch diese Module. Gemeinsame Schemas, OAuth-Descriptoren und Audit-Behandlung liegen in `tools/shared.ts`.
 
 ### CR-012
 - **Fundstelle:** `src/app/hilfe/mcp/page.tsx`
@@ -417,6 +418,7 @@ Vom Projektinhaber nachträglich als Aufgaben an dieses Review angehängt. Die P
   4. Die Tests prüfen die WorldCraft-Werte, nicht die Bibliotheks-Defaults. Ein Upgrade, das die Bibliothek lockert, fällt so im Test auf.
 - **Abnahmekriterium:** Ein gültiges HTTPS-CIMD mit übereinstimmender Client-ID und gültiger Loopback-Redirect-URI kann einen PKCE-Flow durchführen. Nicht-HTTPS-URLs, private oder reservierte Zieladressen, zu große Antworten, unerlaubte Weiterleitungen, nicht erreichbare Dokumente sowie abweichende Client-ID- oder Redirect-Werte werden abgelehnt. Abrufe werden begrenzt und zwischengespeichert, sodass ein Client die Infrastruktur nicht ungebremst für externe Requests nutzen kann. Konkret (Tests in `npm test` mit gemocktem Netzwerk): eine Antwort über 5 KB, eine Antwort nach mehr als 5 s und jede 3xx-Weiterleitung führen zur Ablehnung. Zwei Autorisierungen mit derselben `client_id`-URL innerhalb von 15 Minuten lösen genau einen Abruf aus; nach einem Fehlschlag erfolgt innerhalb von 1 Minute kein erneuter Abruf. Die Bibliotheks-Defaults sind in `mcp-oauth-anbindung.md` dokumentiert.
 - **Während des Baus definieren:** keine
+- **Status:** behoben (2026-09-27). Der positive Cache-Nachweis ruft dieselbe CIMD-Client-ID zweimal auf und belegt genau einen Metadatenabruf.
 
 ### CR-027
 - **Fundstelle:** MCP-Testsuite (`npm run test:mcp`, `vitest.mcp.config.ts`), `.ai/infrastructure/` (Protokoll manueller Schritte)
@@ -429,6 +431,7 @@ Vom Projektinhaber nachträglich als Aufgaben an dieses Review angehängt. Die P
 - **Festlegung feste Client-ID (Projektinhaber, Plan-Review 2026-09-26):** Die feste Client-ID bleibt **vorerst als Backup** erhalten und ist Teil der Matrix. Sie wird nicht entfernt, bevor (1) Codex über DCR bzw. CIMD ohne `invalid_redirect` funktioniert und (2) Claude über den neuen Weg (CIMD bzw. DCR) erfolgreich getestet ist.
 - **Abnahmekriterium:** Die Testmatrix läuft automatisiert oder mit klar dokumentierten manuellen Schritten. Codex kann sich ohne `invalid_redirect` authentifizieren und WorldCraft-Werkzeuge auflisten. Claude bleibt funktionsfähig. Fehlerfälle für Redirect-URI, PKCE, nicht freigegebenen Nutzer und abgelaufenes bzw. manipuliertes Token sind abgedeckt.
 - **Während des Baus definieren:** keine
+- **Status:** behoben (2026-09-27, Entscheidung Projektinhaber). Claude wurde real verbunden und arbeitet mit WorldCraft. Codex ist als OAuth-MCP angemeldet, löst im verwendeten Client/Abo aber keine MCP-Aufrufe aus; dies wird als Client-Verhalten außerhalb des Servers vermerkt und auf Wunsch des Projektinhabers als bestanden akzeptiert.
 
 ### CR-028
 - **Fundstelle:** `src/lib/mcp/tools.ts`, alle acht produktiven Lesewerkzeuge
@@ -449,6 +452,14 @@ Vom Projektinhaber nachträglich als Aufgaben an dieses Review angehängt. Die P
 - **Empfehlung:** Für jedes Lesewerkzeug dieselbe `scopeChallenge` mit `worlds:read` registrieren. Die bestehende globale Prüfung bleibt die Schranke für fehlende oder ungültige Tokens.
 - **Abnahmekriterium:** Alle acht produktiven Lesewerkzeuge haben eine `scopeChallenge` für exakt `worlds:read`; ein Token ohne diesen Scope erhält weiterhin eine OAuth-Challenge statt einer Werkzeugausführung.
 - **Status:** behoben (2026-09-27). Die gemeinsame, typisierte Scope-Challenge ist an allen acht Lesewerkzeugen hinterlegt.
+
+#### Folgeaufgabe OAUTH-F-006 — Legacy-Kompatibilitätsendpunkte entfernen
+
+- **Status:** offen
+- **Reihenfolge:** Erst nach erfolgreichem Abschluss sämtlicher MCP-Review-Findings und der dokumentierten Codex- und Claude-E2E-Abnahmen ausführen.
+- **Auslöser:** Die vollständige Kompatibilitätsmatrix ist grün; ein bloß gestarteter OAuth-Login genügt nicht.
+- **Umsetzung:** Die nur für alte Client-Registrierungen vorhandenen Origin-Aliasse `GET /authorize` und `POST /token` (`src/app/authorize/route.ts`, `src/app/token/route.ts`) samt nicht mehr benötigter Kompatibilitätsbeobachtbarkeit entfernen. Der reguläre MCP-Endpunkt bleibt unverändert: `https://worldcraft.lagolago.at/mcp`.
+- **Abnahmekriterium:** Der dokumentierte Codex-Smoke-Test gegen `/mcp` ist erfolgreich: OAuth-Login, `tools/list` und eine sichtbarkeitskonforme Abfrage offener Quests funktionieren. Nach der Entfernung antworten `GET /authorize` und `POST /token` mit `404`; `/api/auth/oauth2/authorize` und `/api/auth/oauth2/token` funktionieren weiterhin.
 
 ---
 

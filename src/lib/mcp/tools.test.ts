@@ -63,7 +63,8 @@ describe("registerMcpReadTools", () => {
 
     expect(registerTool).toHaveBeenCalledTimes(8);
     for (const [, definition] of registerTool.mock.calls) {
-      expect(definition.scopeChallenge()).toEqual({ scopes: ["worlds:read"] });
+      expect(definition.scopeChallenge({ authInfo: { scopes: ["worlds:read"] } })).toBeUndefined();
+      expect(definition.scopeChallenge({ authInfo: { scopes: [] } })).toEqual({ scopes: ["worlds:read"] });
       expect(definition._meta).toEqual({ securitySchemes: [{ type: "oauth2", scopes: ["worlds:read"] }] });
     }
   });

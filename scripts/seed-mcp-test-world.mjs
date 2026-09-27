@@ -19,8 +19,9 @@ const TEST_USERS = [
   ["test-master", "Test Master", "test-master@localhost"],
   ["test-player-a", "Test Player A", "test-player-a@localhost"],
   ["test-player-b", "Test Player B", "test-player-b@localhost"],
+  ["test-rate-limit", "Test Rate Limit", "test-rate-limit@localhost"],
 ];
-const [GM, MASTER, PLAYER_A, PLAYER_B] = TEST_USERS.map(([id]) => id);
+const [GM, MASTER, PLAYER_A, PLAYER_B, RATE_LIMIT_USER] = TEST_USERS.map(([id]) => id);
 const fixturePng = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL1xQAAAABJRU5ErkJggg==",
   "base64",
@@ -164,6 +165,7 @@ async function main() {
       (${worldId}, ${MASTER}, 'master', ${GM}, ${GM}),
       (${worldId}, ${PLAYER_A}, 'player', ${GM}, ${GM}),
       (${worldId}, ${PLAYER_B}, 'player', ${GM}, ${GM}),
+      (${worldId}, ${RATE_LIMIT_USER}, 'player', ${GM}, ${GM}),
       (${secondWorld.id}, ${PLAYER_B}, 'game_master', ${PLAYER_B}, ${PLAYER_B})
     `;
 
