@@ -35,15 +35,15 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 | CR-011 | Lesbarkeit & Wartbarkeit | mittel | offen | `tools.ts` schwer wartbar: überlange Einzeiler, verstreute Enum-Mappings, `monster_art` ungeprüft |
 | CR-012 | Aufgaben-Abgleich | mittel | offen | Hilfeseite enthält sachlich falsche Aussagen zu sichtbaren Daten und zum Ort des Widerrufs |
 | CR-013 | Aufgaben-Abgleich | mittel | offen | Task-Datei und E2E-Protokoll nicht nachgeführt (Checkboxen, `mcp-e2e-test.md` fehlt) |
-| CR-014 | Runtime-Risiken | niedrig | offen | `bild_nr` wird über `sortOrder === n-1` statt über die Position aufgelöst |
-| CR-015 | Bad Practices | niedrig | offen | MCP-Serverversion hart kodiert (`0.1.6.3`), weicht von `package.json` ab |
-| CR-016 | Aufgaben-Abgleich | niedrig | offen | Hauptschalter-Lücken: `/authorize` antwortet 307, `/mcp` mit anderen Methoden 405 statt 404 |
-| CR-017 | Fehlerbehandlung & Validierung | niedrig | offen | Audit- und Purge-Fehler werden ohne Log verschluckt; kein Runtime-Guard in `instrumentation.ts` |
-| CR-018 | Aufgaben-Abgleich | niedrig | offen | Verbundene Anwendungen: „Letzte Nutzung“ ungenau, N+1-Abfrage, Karte nicht in Kontoeinstellungen |
-| CR-019 | Duplizierung & Modularisierung | niedrig | offen | `MCP_RESOURCE` und Protected-Resource-Metadaten doppelt gepflegt, inkonsistente Metadaten-URL |
-| CR-020 | Runtime-Risiken | niedrig | offen | Leerer `userId`-Fallback im MCP-Handler; Aufruflimit-Map wird nie aufgeräumt |
+| CR-014 | Runtime-Risiken | niedrig | behoben | `bild_nr` wird über die Position der bereits sortierten Bildliste aufgelöst |
+| CR-015 | Bad Practices | niedrig | behoben | MCP-Serverversion wird aus `package.json` bezogen |
+| CR-016 | Aufgaben-Abgleich | niedrig | behoben | Hauptschalter verbirgt `/authorize`, `/token` und alle `/mcp`-Methoden konsistent mit 404 |
+| CR-017 | Fehlerbehandlung & Validierung | niedrig | behoben | Audit-/Purge-Fehler werden strukturiert geloggt; Purge läuft nur in der Node-Runtime |
+| CR-018 | Aufgaben-Abgleich | niedrig | behoben | Verbundene Anwendungen zeigt echte letzte Nutzung ohne N+1; bestätigter Ort ist das Weltmenü |
+| CR-019 | Duplizierung & Modularisierung | niedrig | behoben | MCP-Ressource und Protected-Resource-Metadaten sind zentral bzw. delegiert |
+| CR-020 | Runtime-Risiken | niedrig | behoben | Fehlender `userId` bricht den Handler ab; inaktive Rate-Limit-Fenster werden entfernt |
 | CR-021 | Aufgaben-Abgleich | niedrig | verworfen | Demowelt-Skript nicht atomar und inhaltlich abweichend von T-014 |
-| CR-022 | Duplizierung & Modularisierung | niedrig | offen | Universum-Sichtbarkeitslabel hart kodiert; `inhalt_lesen` für Universum lädt alle Universen |
+| CR-022 | Duplizierung & Modularisierung | niedrig | behoben | Sichtbarkeitslabel ist zentral; Universumsabfrage ist auf das angeforderte Universum begrenzt |
 | CR-023 | Aufgaben-Abgleich | mittel | offen | Zusatzauftrag OAuth: Ist-Flow und Codex-Fehler `invalid_redirect` erfassen |
 | CR-024 | Sicherheit | mittel | offen | Zusatzauftrag OAuth: Discovery, 401-Challenge, Loopback-Redirects mit dynamischem Port, PKCE S256 |
 | CR-025 | Sicherheit | mittel | offen | Zusatzauftrag OAuth: öffentliche DCR absichern (Validierung, Fehlerantworten, Rate-Limit) |
@@ -240,6 +240,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 - **Beschreibung:** `images.find((image) => image.sortOrder === bild_nr - 1)` setzt voraus, dass `sort_order` lückenlos bei 0 beginnt. Nach dem Löschen oder Umsortieren von Bildanhängen ist das nicht garantiert. `bild_nr: 1` findet dann kein Bild, obwohl `inhalt_lesen` Bilder meldet. Die Tabelle *MCP-Werkzeuge* verlangt „`bild_nr` nach `sort_order`“, also die Position in der sortierten Liste.
 - **Empfehlung:** `character.images[bild_nr - 1]` verwenden; `loadSheet` sortiert bereits nach `sortOrder`.
 - **Abnahmekriterium:** Ein Test mit Bildanhängen mit `sort_order` 2 und 5 liefert für `bild_nr: 1` das Bild mit `sort_order` 2 und für `bild_nr: 2` das mit `sort_order` 5.
+- **Status:** behoben (2026-09-28). `bild_lesen` verwendet die Positionsindizierung (`images[bild_nr - 1]`); `loadSheet` liefert die Anhänge bereits nach `sortOrder` sortiert.
 
 ### CR-015
 - **Fundstelle:** `src/app/mcp/route.ts` (`new McpServer({ name: "WorldCraft", version: "0.1.6.3" })`)
@@ -249,6 +250,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 - **Beschreibung:** Die Version wird bei jedem Release per Hand im Code gepflegt (Commits „label MCP 0.1.6.x“) und weicht bereits von `package.json` (`0.1.6`) ab. T-005 fordert „die App-Version“.
 - **Empfehlung (entschieden 2026-09-26, Plan-Review):** **`package.json` ist die einzige Versionsquelle, jede Auslieferung erhöht die Patch-Version** (0.1.6 → 0.1.7 …). Die vierstellige Zwischennummerierung (`0.1.6.x`) entfällt. In `src/app/mcp/route.ts` die Version per JSON-Import lesen (`import packageJson from "../../../package.json"`, `resolveJsonModule` ist in `tsconfig.json` aktiv) und `new McpServer({ name: "WorldCraft", version: packageJson.version })` setzen. Nicht `process.env.npm_package_version` verwenden, weil die Variable im Container-Start ohne npm fehlt. Nicht gewählt: Semver-Build-Metadaten; eigene Versionskonstante.
 - **Abnahmekriterium:** `route.ts` enthält kein Versionsliteral. Die `initialize`-Antwort von `/mcp` meldet dieselbe Version wie `package.json`.
+- **Status:** behoben (2026-09-28). Die Server-Fabrik importiert `package.json` direkt und verwendet `packageJson.version` als einzige Versionsquelle.
 
 ### CR-016
 - **Fundstelle:** `src/app/authorize/route.ts`, `src/app/mcp/route.ts`
@@ -258,6 +260,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 - **Beschreibung:** D2 verlangt 404 für alle MCP- und OAuth-Endpunkte bei `MCP_ENABLED ≠ true`. Die Kompatibilitätsroute `/authorize` leitet dann trotzdem mit 307 weiter (das Ziel antwortet erst dort mit 404). `/token` ist über das Delegat korrekt. `/mcp` exportiert nur `GET`/`POST`, andere Methoden (z. B. `DELETE`) liefern von Next.js 405 statt 404. Das ist ein kleiner Existenzhinweis bei abgeschaltetem Server.
 - **Empfehlung:** In `/authorize` zuerst `isMcpEnabled()` prüfen. In `/mcp` die übrigen Methoden (`DELETE`, `PUT`, `PATCH`) mit derselben Schalterlogik wie `GET` exportieren.
 - **Abnahmekriterium:** Mit `MCP_ENABLED` aus liefern `GET /authorize`, `POST /token` sowie `DELETE /mcp` jeweils 404 (Unit-Tests analog `src/app/authorize/route.test.ts`).
+- **Status:** behoben (2026-09-28). `/authorize` prüft den Hauptschalter vor der Weiterleitung, `/token` delegiert an den bereits geschützten OAuth-Handler und `DELETE`/`PATCH`/`PUT` von `/mcp` teilen sich die 404-/405-Logik mit `GET`.
 
 ### CR-017
 - **Fundstelle:** `src/lib/mcp/tools.ts` (`withAudit`, `.catch(() => undefined)`), `src/app/mcp/route.ts` (Rate-Limit-Audit), `src/instrumentation.ts`
@@ -267,6 +270,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 - **Beschreibung:** Fehler beim Schreiben des Audit-Logs und beim täglichen `purgeMcpAuditLog` werden kommentarlos verschluckt. Ein dauerhaft fehlschlagender Löschjob (30-Tage-Aufbewahrung) oder ein fehlendes Audit fällt niemandem auf. `register()` hat außerdem keinen Guard auf `process.env.NEXT_RUNTIME === "nodejs"`: Timer und DB-Zugriff würden auch in einer Edge-Runtime-Instanz angestoßen.
 - **Empfehlung:** In den `catch`-Zweigen strukturiert loggen (`console.error(JSON.stringify({ event: "mcp_audit_error", … }))`, ohne Inhalte). Die Purge-Registrierung in `if (process.env.NEXT_RUNTIME === "nodejs")` kapseln.
 - **Abnahmekriterium:** Ein Unit-Test mit einer fehlschlagenden DB-Einfügung belegt einen `console.error`-Aufruf mit `event: "mcp_audit_error"`. `instrumentation.ts` registriert den Timer nur für die Node-Runtime.
+- **Status:** behoben (2026-09-28). Werkzeug-, Rate-Limit- und Purge-Auditfehler schreiben strukturierte `mcp_audit_error`-Events; `register()` beendet sich außerhalb der Node-Runtime vor DB-Zugriff und Timer-Registrierung.
 
 ### CR-018
 - **Fundstelle:** `src/lib/domain/connected-applications.ts` (`listConnectedApplications`), `src/app/w/[worldId]/menu/page.tsx`
@@ -279,6 +283,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
   3. T-004 verlangt die Seite in den **Kontoeinstellungen**. Sie ist als Karte im Weltmenü jeder Welt eingebaut und zeigt dort weltübergreifende Daten.
 - **Empfehlung (Ort entschieden 2026-09-26, Plan-Review):** Die letzte Nutzung aus `mcp_audit_logs` (`max(created_at)` je `user_id`/`client_id`) in **einer** gruppierten Abfrage ermitteln und per `clientId` den Zustimmungen zuordnen. **Die Karte bleibt im Weltmenü** (`/w/[worldId]/menu`). Die Abweichung von T-004 („Kontoeinstellungen“) wird in `.ai/feature-tasks/002-mcp-server.md` bei T-004 und in `.ai/features.md` vermerkt: „Verbundene Anwendungen liegt im Weltmenü jeder Welt und zeigt dort die weltunabhängigen Zustimmungen des Benutzers.“ Die Hilfeseite verweist darauf (siehe CR-012). Nicht gewählt: neue Kontoseite `/konto`; bestehende Profilseite.
 - **Abnahmekriterium:** `listConnectedApplications` setzt genau eine bzw. eine konstante Zahl an Abfragen ab. „Letzte Nutzung“ entspricht dem letzten Audit-Eintrag des Clients. T-004 in der Task-Datei und `features.md` enthalten den oben genannten Satz zum Ort der Karte.
+- **Status:** behoben (2026-09-28). Eine gruppierte `mcp_audit_logs`-Abfrage liefert die letzte tatsächliche Nutzung pro Client; Task-Datei, Karte, Hilfeseite und `features.md` vermerken konsistent das Weltmenü als Ort.
 
 ### CR-019
 - **Fundstelle:** `src/lib/auth.ts` (`MCP_RESOURCE`), `src/lib/mcp-oauth.ts` (`MCP_RESOURCE`), `src/app/.well-known/oauth-protected-resource/route.ts`, `src/app/mcp/route.ts` (`resourceMetadataUrl`)
@@ -288,6 +293,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 - **Beschreibung:** Die Ressourcen-URL wird zweimal unabhängig berechnet. Die Protected-Resource-Metadaten sind handgeschrieben (Scopes, DPoP-Algorithmen), obwohl `mcp()` dasselbe Dokument unter `/api/auth/.well-known/…` erzeugt. Beide können auseinanderlaufen. `authInfo.resourceMetadataUrl` zeigt auf das Origin-Dokument, `WWW-Authenticate` auf das pfadsuffigierte (`…/oauth-protected-resource/mcp`).
 - **Empfehlung:** `MCP_RESOURCE` nur in `mcp-oauth.ts` definieren und in `auth.ts` importieren. Die Root-Route als Delegat auf die Plugin-Metadaten umsetzen (wie bei `oauth-authorization-server`). `resourceMetadataUrl` auf die pfadsuffigierte URL setzen.
 - **Abnahmekriterium:** `grep -rn '/mcp`' src/lib` findet die Ressourcen-URL-Berechnung nur einmal. Das Root-Metadatendokument ist inhaltlich identisch mit `/api/auth/.well-known/oauth-protected-resource/mcp` (Test).
+- **Status:** behoben (2026-09-28). `MCP_RESOURCE` ist ausschließlich in `mcp-oauth.ts` definiert; die Root-Metadatenroute delegiert an die vom MCP-Plugin erzeugte pfadsuffigierte Route, und der Auth-Kontext verweist auf dieselbe Metadaten-URL wie der `WWW-Authenticate`-Header.
 
 ### CR-020
 - **Fundstelle:** `src/app/mcp/route.ts` (`const userId = … : ""`), `src/lib/mcp/audit.ts` (`callsByUser`)
@@ -297,6 +303,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 - **Beschreibung:** Fehlt `extra.userId`, laufen die Werkzeuge mit `userId = ""` weiter, statt abzubrechen. Das ist heute harmlos (keine Mitgliedschaften), verschleiert aber einen Integrationsfehler. Die Map `callsByUser` behält Einträge inaktiver Benutzer dauerhaft; bei der kleinen Allowlist ist das unkritisch, aber unnötig.
 - **Empfehlung:** Ohne `userId` im Server-Factory eine Exception werfen bzw. 401 liefern. In `consumeMcpCall` leere Fenster löschen (`if (recent.length === 0) callsByUser.delete(userId)`).
 - **Abnahmekriterium:** Ein Unit-Test belegt, dass ein Handler-Aufruf ohne `userId` keinen Werkzeugaufruf ausführt. Nach Ablauf des Fensters enthält `callsByUser` für den Benutzer keinen Eintrag mehr (Test mit Testhook).
+- **Status:** behoben (2026-09-28). Die Server-Fabrik verwirft Auth-Kontexte ohne nichtleere `userId`; `consumeMcpCall` entfernt abgelaufene Fenster, nachgewiesen mit dem Testhook in `src/lib/mcp/audit.test.ts`.
 
 ### CR-021
 - **Fundstelle:** `scripts/seed-demo-world.mjs`
@@ -315,6 +322,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 - **Beschreibung:** Das Sichtbarkeitslabel wird per Ternary hart kodiert (`"nur Spielleitung" : "veröffentlicht"`) statt über `CONTENT_VISIBILITY_LABEL` wie bei allen anderen Arten. Um die Karten eines einzelnen Universums zu finden, lädt `listMcpUniverseMaps` alle Universen und Karten der Welt.
 - **Empfehlung:** `CONTENT_VISIBILITY_LABEL[row.visibility]` verwenden. `listMcpUniverseMaps` um einen optionalen `universeId`-Filter ergänzen.
 - **Abnahmekriterium:** Im Zweig `universum` steht kein Sichtbarkeitsliteral mehr. `inhalt_lesen` für ein Universum setzt eine auf dieses Universum gefilterte Kartenabfrage ab.
+- **Status:** behoben (2026-09-28). Der Universumszweig nutzt `CONTENT_VISIBILITY_LABEL[row.visibility]` und übergibt `row.id` als Filter an `listMcpUniverseMaps`.
 
 ---
 
