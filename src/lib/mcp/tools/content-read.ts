@@ -46,7 +46,8 @@ type ReadContentInput = {
 
 async function readContent({ world, viewerId, art, id }: ReadContentInput) {
   const role = world.role;
-  if (art === "artikel") {
+  switch (art) {
+  case "artikel": {
     const row = await getArticle(world.id, id, role, viewerId);
     if (!row) throw new McpToolError("Inhalt nicht gefunden.");
     return [
@@ -58,7 +59,7 @@ async function readContent({ world, viewerId, art, id }: ReadContentInput) {
       tiptapJsonToMcpMarkdown(row.bodyJson),
     ].filter(Boolean).join("\n\n");
   }
-  if (art === "quest") {
+  case "quest": {
     const row = await getQuest(world.id, id, role, viewerId);
     if (!row) throw new McpToolError("Inhalt nicht gefunden.");
     const note = await getQuestNote({ worldId: world.id, questId: row.id, role, viewerId });
@@ -77,7 +78,7 @@ async function readContent({ world, viewerId, art, id }: ReadContentInput) {
       note.ok ? `## Notizblock\nStand: ${note.data.version}\n${tiptapJsonToMcpMarkdown(note.data.bodyJson)}` : "",
     ].filter(Boolean).join("\n\n");
   }
-  if (art === "charakter") {
+  case "charakter": {
     const row = await getWorldCharacter(world.id, id);
     if (!row) throw new McpToolError("Inhalt nicht gefunden.");
     const imageCount = (row.portraitId ? 1 : 0) + row.images.length;
@@ -88,7 +89,7 @@ async function readContent({ world, viewerId, art, id }: ReadContentInput) {
       renderSheet(row),
     ].join("\n\n");
   }
-  if (art === "monster") {
+  case "monster": {
     const row = await getMonster(world.id, id, role, viewerId);
     if (!row) throw new McpToolError("Inhalt nicht gefunden.");
     const habitat = row.habitatArticleId
@@ -108,7 +109,7 @@ async function readContent({ world, viewerId, art, id }: ReadContentInput) {
       renderSheet(row),
     ].filter(Boolean).join("\n\n");
   }
-  if (art === "universum") {
+  case "universum": {
     const row = await getUniverse(world.id, id, role, viewerId);
     if (!row) throw new McpToolError("Inhalt nicht gefunden.");
     const maps = await listMcpUniverseMaps(world.id, { role, userId: viewerId }, row.id);
@@ -121,16 +122,22 @@ async function readContent({ world, viewerId, art, id }: ReadContentInput) {
       tiptapJsonToMcpMarkdown(row.descriptionJson),
     ].filter(Boolean).join("\n\n");
   }
-
-  const row = await getMcpPin(world.id, id, { role, userId: viewerId });
-  if (!row) throw new McpToolError("Inhalt nicht gefunden.");
-  return [
-    `# ${row.title}`,
-    `Sichtbarkeit: ${CONTENT_VISIBILITY_LABEL[row.visibility]}`,
-    `Stand: ${row.updatedAt.toISOString()}`,
-    `Pin-Typ: ${pinTypeMeta(row.pinType as Parameters<typeof pinTypeMeta>[0]).label}`,
-    `Karte: ${row.mapName}`,
-    `Universum: ${row.universeName} (${row.universeId})`,
-    tiptapJsonToMcpMarkdown(row.descriptionJson),
-  ].filter(Boolean).join("\n\n");
+  case "pin": {
+    const row = await getMcpPin(world.id, id, { role, userId: viewerId });
+    if (!row) throw new McpToolError("Inhalt nicht gefunden.");
+    return [
+      `# ${row.title}`,
+      `Sichtbarkeit: ${CONTENT_VISIBILITY_LABEL[row.visibility]}`,
+      `Stand: ${row.updatedAt.toISOString()}`,
+      `Pin-Typ: ${pinTypeMeta(row.pinType as Parameters<typeof pinTypeMeta>[0]).label}`,
+      `Karte: ${row.mapName}`,
+      `Universum: ${row.universeName} (${row.universeId})`,
+      tiptapJsonToMcpMarkdown(row.descriptionJson),
+    ].filter(Boolean).join("\n\n");
+  }
+  default: {
+    const unreachable: never = art;
+    throw new McpToolError(`Diese Inhaltsart wird noch nicht unterstützt: ${unreachable}`);
+  }
+  }
 }

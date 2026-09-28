@@ -9,9 +9,6 @@ import { type ToolContext } from "./tools/shared";
 import { registerUniversesListTool } from "./tools/universes-list";
 import { registerWorldsListTool } from "./tools/worlds-list";
 
-export { asError, text, withAudit } from "./tools/shared";
-export type { ToolContext } from "./tools/shared";
-
 /** Registers the read-only MCP tool set. Each tool stays isolated in its own module. */
 export function registerMcpReadTools(server: McpServer, ctx: ToolContext) {
   registerWorldsListTool(server, ctx);

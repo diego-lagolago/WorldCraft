@@ -91,6 +91,10 @@ Die Aliasse `/authorize` und `/token` bleiben für Clients mit alter Registrieru
 
 ## Technische Bestandsaufnahme (Review CR-023–CR-026)
 
+### Authorize-Methode
+
+`/api/auth/oauth2/authorize` wird für MCP nur per GET unterstützt; POST liefert `405 Method Not Allowed` mit `Allow: GET` (CR-007, 2026-09-28).
+
 | Baustein | Implementierung | Erwartetes Verhalten |
 |---|---|---|
 | MCP Resource | `src/app/mcp/route.ts` | `POST /mcp` ohne Bearer-Token → `401` mit `WWW-Authenticate: Bearer resource_metadata="…/oauth-protected-resource/mcp"`; gültige JWTs brauchen Audience `/mcp` und `worlds:read`. |

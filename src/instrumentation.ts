@@ -4,8 +4,10 @@ import {
   assertTestLoginNotInProduction,
 } from "@/lib/env";
 import { purgeMcpAuditLog } from "@/lib/mcp/audit";
+import { configureZodLocale } from "@/lib/zod-locale";
 
 export async function register() {
+  configureZodLocale();
   assertServerEnv();
   assertTestLoginNotInProduction();
   assertDiscordAllowlistConfigured();

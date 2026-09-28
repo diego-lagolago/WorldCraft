@@ -215,6 +215,8 @@ Vor Beginn zu lesen (alle vorhanden):
   4. „Welche Quest-Gegenstände gibt es?“ – genau der Quest-Gegenstand der Demowelt (über `inhalte_auflisten`).
   5. „Beschreibe das Titelbild von Burg Rabenstein.“ – Claude ruft `bild_lesen` auf und beschreibt das Bild.
 
+  Abnahme mit akzeptierten Abweichungen, siehe `.ai/infrastructure/mcp-e2e-test.md` und CR-003 (2026-09-28).
+
   Die Hilfeseite ist in der App verlinkt und enthält alle genannten Punkte.
 
 ### T-014: Demowelt-Skript für Produktion

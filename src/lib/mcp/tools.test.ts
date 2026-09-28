@@ -30,7 +30,7 @@ vi.mock("./context", () => ({
   McpToolError: class McpToolError extends Error {},
 }));
 
-const { withAudit } = await import("./tools");
+const { withAudit } = await import("./tools/shared");
 
 describe("withAudit", () => {
   it("CR-003: hides unexpected failures from the MCP client and logs the tool name", async () => {

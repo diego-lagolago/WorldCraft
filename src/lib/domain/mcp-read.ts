@@ -53,8 +53,15 @@ export async function encodeMcpImage(input: Buffer): Promise<{ data: string; mim
     }
     const fallback = await sharp(input, { limitInputPixels: IMAGE_MAX_PIXELS }).rotate().resize({ width: 1024, height: 1024, fit: "inside", withoutEnlargement: true }).webp({ quality: 46 }).toBuffer();
     if (fallback.byteLength <= 1024 * 1024) return { data: fallback.toString("base64"), mimeType: "image/webp" };
-  } catch {
-    throw new McpToolError("Bild zu groß für die Ausgabe.");
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Input image exceeds pixel limit")) {
+      throw new McpToolError("Bild zu groß für die Ausgabe.");
+    }
+    console.error(JSON.stringify({
+      event: "mcp_image_decode_error",
+      error: error instanceof Error ? error.name : "unknown",
+    }));
+    throw new McpToolError("Bild kann nicht gelesen werden.");
   }
   throw new McpToolError("Bild zu groß für die Ausgabe.");
 }

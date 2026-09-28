@@ -63,14 +63,14 @@ export async function hasAllowedMcpRegistrationRedirects(request: Request): Prom
   }
 }
 
-/** Applies the DCR redirect policy to every client type, including CIMD. */
+/** Applies the DCR redirect policy to every client type, including CIMD. Authorize is GET-only (see CR-007); POST is rejected earlier with 405. */
 export function hasAllowedMcpAuthorizeRedirect(request: Request): boolean {
   const url = new URL(request.url);
   if (url.pathname !== `${AUTH_PATH_PREFIX}oauth2/authorize`) return true;
   return isAllowedMcpRedirectUri(url.searchParams.get("redirect_uri"));
 }
 
-/** OAuth 2.1 requires PKCE; the MCP integration accepts only S256. */
+/** OAuth 2.1 requires PKCE; the MCP integration accepts only S256. Authorize is GET-only (see CR-007); POST is rejected earlier with 405. */
 export function hasRequiredMcpPkce(request: Request): boolean {
   const url = new URL(request.url);
   if (url.pathname !== `${AUTH_PATH_PREFIX}oauth2/authorize`) return true;

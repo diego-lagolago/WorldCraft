@@ -4,6 +4,18 @@ WorldCraft stellt unter `/mcp` einen ausschließlich lesenden Streamable-HTTP-MC
 
 Fehleranalyse der Claude-Anbindung, Discovery-Pfade und Checkliste für künftige MCP-Server: [mcp-oauth-anbindung.md](mcp-oauth-anbindung.md).
 
+## Client-Plugins (OpenAI)
+
+Die Dateien unter `plugins/worldcraft/` ermöglichen die Ein-Klick-Einbindung in ChatGPT und Codex. Für Claude sind sie nicht nötig; Claude verbindet sich per MCP-URL (in claude.ai/Desktop als Custom Connector, in Claude Code per `claude mcp add --transport http`).
+
+| Datei | Zweck |
+|---|---|
+| `plugins/worldcraft/mcp.json` | MCP-Endpunkt |
+| `plugins/worldcraft/plugin.json` | Manifest nach agent-plugins.org-Schema mit Erweiterung `com.openai` |
+| `plugins/worldcraft/.codex-plugin/plugin.json` | Codex-Manifest |
+
+Die Texte `displayName`, `shortDescription`, `longDescription` und `defaultPrompt` stehen bewusst in beiden Manifesten und werden gemeinsam geändert. Die Plugin-Version folgt eigenem SemVer und ist von der App-Version unabhängig: Bei geänderten Texten oder Fähigkeiten steigt die Minor-Version, bei Korrekturen die Patch-Version.
+
 ## Ablauf
 
 ```mermaid

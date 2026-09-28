@@ -283,6 +283,23 @@ describe("MCP OAuth and protected resource", () => {
     const missing = await fetch(missingPkce, { headers: { cookie: session.cookie }, redirect: "manual" });
     expect(missing.status).toBe(400);
 
+    const postAuthorize = await fetch(`${BASE}/api/auth/oauth2/authorize`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", cookie: session.cookie },
+      body: new URLSearchParams({
+        response_type: "code",
+        client_id: client.clientId,
+        redirect_uri: client.redirectUri,
+        scope: "worlds:read",
+        resource: `${BASE}/mcp`,
+        code_challenge_method: "S256",
+        code_challenge: "valid-s256-challenge",
+      }),
+    });
+    expect(postAuthorize.status).toBe(405);
+    expect(postAuthorize.headers.get("allow")).toBe("GET");
+    expect((await json(postAuthorize)).error).toBe("invalid_request");
+
     const credentials = await authorizeMcpClient("test-player-a", client);
     const refresh = await fetch(`${BASE}/api/auth/oauth2/token`, {
       method: "POST",
@@ -383,7 +400,7 @@ describe("MCP OAuth and protected resource", () => {
   });
 
   it("T-008: keeps journals, chat, hidden content, and disabled worlds inaccessible by role", async () => {
-    const client = await registerMcpClient(9880, "MCP Authorization Matrix Test");
+    const [data, client] = await Promise.all([fixture(), registerMcpClient(9880, "MCP Authorization Matrix Test")]);
     const [gameMaster, master, playerA, playerB] = await Promise.all([
       authorizeMcpClient("test-gm", client),
       authorizeMcpClient("test-master", client),
@@ -391,16 +408,24 @@ describe("MCP OAuth and protected resource", () => {
       authorizeMcpClient("test-player-b", client),
     ]);
 
-    const [gmHidden, playerHidden, masterPrivate, gmPrivate] = await Promise.all([
+    const [gmHidden, playerHidden, masterPrivate, gmPrivate, gmContent, masterSearch, masterContent, masterRelations] = await Promise.all([
       callTool(gameMaster.accessToken, "suchen", { welt: "MCP-Testwelt", suchbegriff: "SLTEST" }),
       callTool(playerA.accessToken, "suchen", { welt: "MCP-Testwelt", suchbegriff: "SLTEST" }),
       callTool(master.accessToken, "suchen", { welt: "MCP-Testwelt", suchbegriff: "NURICHTEST" }),
       callTool(gameMaster.accessToken, "suchen", { welt: "MCP-Testwelt", suchbegriff: "NURICHTEST" }),
+      callTool(gameMaster.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "artikel", id: data.guildId }),
+      callTool(master.accessToken, "suchen", { welt: "MCP-Testwelt", suchbegriff: "Archiv" }),
+      callTool(master.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "artikel", id: data.guildId }),
+      callTool(master.accessToken, "relationen_abrufen", { welt: "MCP-Testwelt", art: "artikel", id: data.burgId, tiefe: 2 }),
     ]);
     expect(toolText(gmHidden)).toContain("Archiv der Spielleitung");
     expect(toolText(playerHidden)).not.toContain("Archiv der Spielleitung");
     expect(toolText(masterPrivate)).toContain("Private Notiz des Masters");
     expect(toolText(gmPrivate)).not.toContain("Private Notiz des Masters");
+    expect(toolText(gmContent)).toContain("Archiv der Spielleitung");
+    expect(toolText(masterSearch)).toContain("Archiv der Spielleitung");
+    expect(toolText(masterContent)).toContain("Archiv der Spielleitung");
+    expect(toolText(masterRelations)).toContain("Archiv der Spielleitung");
 
     for (const credentials of [gameMaster, master, playerA, playerB]) {
       const [journal, chat] = await Promise.all([
@@ -474,7 +499,9 @@ describe("MCP OAuth and protected resource", () => {
     expect(toolText(invalidWorld)).toContain("Welt nicht gefunden.");
     expect(toolText(foreignWorld)).toContain("Welt nicht gefunden.");
     expect(toolText(foreignWorld)).not.toContain("MCP-Zweite-Welt");
-    expect(toolText(largeLimit)).toContain("Too big");
+    expect(toolText(searchByName)).toContain("– Ort");
+    expect(toolText(searchByName)).not.toContain("– place");
+    expect(toolText(largeLimit)).toContain("Zu groß");
   });
 
   it("T-007(1–4): applies the role matrix to relations, quests, and universes", async () => {
@@ -544,7 +571,7 @@ describe("MCP OAuth and protected resource", () => {
     expect(Buffer.from(image.data, "base64").byteLength).toBeLessThanOrEqual(1024 * 1024);
     expect(imageContent(hiddenImage).mimeType).toBe("image/webp");
     expect(toolText(missingImage)).toContain("Bild nicht gefunden.");
-    expect(toolText(mapImage)).toContain("Invalid option: expected one of");
+    expect(toolText(mapImage)).toContain("Ungültige Option");
     for (const result of [articleImage, hiddenImage, missingImage, mapImage]) {
       expect(toolText(result)).not.toMatch(/data\/uploads|https?:\/\//);
     }

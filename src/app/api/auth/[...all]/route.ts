@@ -22,6 +22,12 @@ async function handle(request: Request, method: "GET" | "POST") {
   try {
     let response: Response;
     if (isMcpOAuthRequest && !isMcpEnabled()) response = mcpUnavailable();
+    else if (method === "POST" && pathname === "/api/auth/oauth2/authorize") {
+      response = Response.json(
+        { error: "invalid_request", error_description: "Die Autorisierung ist nur per GET möglich." },
+        { status: 405, headers: { Allow: "GET" } },
+      );
+    }
     else if (!hasAllowedMcpAuthorizeRedirect(request)) {
       response = Response.json(
         { error: "invalid_request", error_description: "Redirect-URIs müssen HTTPS oder lokale Loopback-Adressen sein." },

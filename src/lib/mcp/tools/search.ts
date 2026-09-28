@@ -1,6 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { searchWorld } from "@/lib/domain/search";
+import type { SearchHit } from "@/lib/search";
+import { templateOf } from "@/lib/templates/registry";
 import {
   MCP_CONTENT_KIND,
   MCP_CONTENT_KIND_FROM_INTERNAL,
@@ -33,14 +35,16 @@ export function registerSearchTool(server: McpServer, ctx: ToolContext) {
         kind: art ? MCP_CONTENT_KIND[art] : "all",
       });
       const value = hits.length
-        ? hits.map((hit) => {
-            const kind = MCP_CONTENT_KIND_FROM_INTERNAL[hit.kind];
-            const template = hit.templateType ? ` – ${hit.templateType}` : "";
-            const snippet = hit.snippet ? `\n  ${hit.snippet}` : "";
-            return `- ${hit.title} (${MCP_CONTENT_KIND_LABEL[kind]}, ${hit.id})${template}${snippet}`;
-          }).join("\n")
+        ? hits.map(renderSearchHit).join("\n")
         : "Keine Treffer.";
       return { worldId: world.id, value };
     }),
   );
+}
+
+export function renderSearchHit(hit: SearchHit) {
+  const kind = MCP_CONTENT_KIND_FROM_INTERNAL[hit.kind];
+  const template = hit.templateType ? ` – ${templateOf(hit.templateType).label}` : "";
+  const snippet = hit.snippet ? `\n  ${hit.snippet}` : "";
+  return `- ${hit.title} (${MCP_CONTENT_KIND_LABEL[kind]}, ${hit.id})${template}${snippet}`;
 }
