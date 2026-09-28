@@ -79,6 +79,30 @@ Die Weltfreigabe ist `worlds.mcp_enabled`. Die zentrale Weltauflösung für jede
 
 Als konservatives, Client-unabhängiges Budget setzen wir **maximal 1568 px an der langen Kante und 1 MB nach Kodierung**. Anthropic dokumentiert dafür keine kleinere harte Ergebnisgrenze. T-013 prüft deshalb Format, Abmessungen, Größe und die Verarbeitung eines zulässigen 10-MB-Uploads; ein manueller E2E-Test in T-010 bestätigt die tatsächliche Modellweitergabe.
 
+### 10. Schreibende Werkzeuge
+
+Plan `011` erweitert diesen Server um schreibende Werkzeuge. Die folgenden Entscheidungen gelten zusätzlich zu den vorigen Punkten.
+
+| Punkt | Entscheidung | Begründung |
+|---|---|---|
+| Scope `worlds:write` | `worlds:write` schließt `worlds:read` ein. Die OAuth-Metadaten, DCR-Standardscope und Zustimmungsseite führen beide Scopes; eine bestehende reine Lese-Zustimmung wird bei `worlds:write` erneut eingeholt. Der globale Route-Handler akzeptiert einen der beiden Scopes, jedes Schreibwerkzeug erzwingt zusätzlich `worlds:write`. | Ein schreibender Client muss Inhalte vor einer Änderung lesen können, aber eine bestehende Zustimmung darf nicht unbemerkt erweitert werden. |
+| Bestätigungsablauf | Jede bestätigungspflichtige Änderung wird als gehashter Datensatz gespeichert, gebunden an Benutzer, Client, Ziel, Stand und Änderungs-Hash. Das zufällige Klartext-Token wird nur an den Client zurückgegeben, läuft nach zehn Minuten ab und kann genau einmal eingelöst werden; ein täglicher Job entfernt abgelaufene Einträge. | Die Bindung verhindert Wiederverwendung, Weitergabe und Time-of-check/time-of-use-Fehler, ohne Inhalte oder Tokens im Klartext zu persistieren. |
+| Client-Rückfragen | Die MCP-Annotationen werden als zusätzliche Hinweise gesetzt (`readOnlyHint: false`, bei bestätigungspflichtigen Werkzeugen `destructiveHint: true`), aber WorldCraft setzt **nicht** auf clientseitige Tool-Freigaben oder Elicitation. Claude.ai, Claude Desktop und Claude Code zeigen zwar allgemeine Tool-Freigaben, dokumentieren aber keine verlässliche Unterstützung dieser Annotationen oder serverinitiierter Elicitation für Remote-Connectoren. | Tool-Annotationen sind laut MCP nur unverbindliche Hinweise; Elicitation ist eine optionale, vom Client beim Start deklarierte Fähigkeit. Das explizite Bestätigungs-Token ist daher die einheitliche, durch den Server erzwungene Sicherheit für alle Clients. |
+| Markdown zu TipTap | WorldCraft implementiert einen kleinen eigenen, reinen Markdown-Parser unter `src/lib/editor/`. Er unterstützt ausschließlich die erlaubten Editorformatierungen, erfasst Erwähnungen getrennt, löst sie über die Rechteschicht auf und gibt das Ergebnis stets durch `sanitizeRichDoc`. | Die vorhandene TipTap-Struktur ist begrenzt und sicherheitsrelevant; eine schlanke explizite Abbildung ist prüfbarer als eine zusätzliche allgemeine Markdown-Bibliothek. |
+| Stand | Stände sind opake Revisionswerte aus `updated_at`; der Quest-Notizblock nutzt seine bestehende `version`. Jede schreibende Domänenoperation prüft den Stand atomar in ihrer Update-Bedingung. | Der Server darf zwischen Vorschau und Speicherung kein Zeitfenster für eine fremde Änderung lassen. |
+| Upload-Tickets | Upload-Tickets liegen gehasht in einer eigenen Tabelle, sind an Benutzer, Welt, Ziel und Bildart gebunden, 15 Minuten gültig und einmal einlösbar. `/upload/<ticket>` erlaubt GET für eine Upload-Seite und Cookie-loses Multipart-POST; der POST übernimmt die bestehende Größen- und Typprüfung und ist zusätzlich pro Ticket-Besitzer limitiert. | Der Link ist ein kurzlebiges Bearer-Credential, ohne Cookies weder CSRF-anfällig noch an eine Browser-Sitzung gebunden, und funktioniert auch für Agenten mit Datei- und Netzwerkzugriff. |
+| Audit-Log | Jeder Schreibversuch, jede Bestätigung und jede Upload-Einlösung protokolliert Ziel-Art, Ziel-ID, Bestätigungsstatus und Herkunft `mcp`; Titel, Texte, Suchbegriffe, Bilddaten und Tokens bleiben ausgeschlossen. | Die Nachvollziehbarkeit muss Schreibvorgänge zuordnen können, ohne Weltinhalte oder Credentials preiszugeben. |
+
+**Client-Recherche, abgerufen am 2026-09-28:**
+
+| Client | Annotationen als dokumentierte Freigabelogik | Elicitation dokumentiert/zugesichert |
+|---|---|---|
+| claude.ai | nein | nein |
+| Claude Desktop | nein | nein |
+| Claude Code | nein | nein |
+
+Claude dokumentiert für Custom Connectors nur allgemeine Tool-Freigaben und weist bei schreibenden Tools auf die Prüfung der Freigabe hin. Die MCP-Spezifikation beschreibt Annotationen ausdrücklich als unverbindliche Hinweise und Elicitation als optionale Client-Fähigkeit. Quellen: [Claude Custom Connectors](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp), [MCP Tool Annotations](https://blog.modelcontextprotocol.io/posts/2026-03-16-tool-annotations/), [MCP Client Capabilities](https://csharp.sdk.modelcontextprotocol.io/concepts/capabilities/capabilities.html).
+
 ## Anforderungen der Claude-Clients
 
 **Abgerufen am 2026-09-26.**
