@@ -11,4 +11,10 @@ describe("tiptapJsonToMcpMarkdown", () => {
       ] },
     ] })).toBe("## Titel\n\nSiehe @[Burg](artikel:abc)");
   });
+
+  it("keeps underline in the Markdown subset used for MCP writes", () => {
+    expect(tiptapJsonToMcpMarkdown({ type: "doc", content: [
+      { type: "paragraph", content: [{ type: "text", text: "Wichtig", marks: [{ type: "underline" }] }] },
+    ] })).toBe("<u>Wichtig</u>");
+  });
 });

@@ -10,6 +10,7 @@ function textWithMarks(text: string, marks: Mark[]): string {
   for (const mark of marks) {
     if (mark.type === "bold") value = `**${value}**`;
     else if (mark.type === "italic") value = `*${value}*`;
+    else if (mark.type === "underline") value = `<u>${value}</u>`;
     else if (mark.type === "strike") value = `~~${value}~~`;
     else if (mark.type === "code") value = `\`${value.replace(/`/g, "\\`")}\``;
     else if (mark.type === "link" && mark.attrs && typeof mark.attrs === "object") {
