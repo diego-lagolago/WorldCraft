@@ -1083,6 +1083,27 @@ export const mcpAuditLogs = pgTable(
   (t) => [index("mcp_audit_logs_created_at").on(t.createdAt), index("mcp_audit_logs_user_created").on(t.userId, t.createdAt)],
 );
 
+/** One-time, server-side confirmation handles for MCP write previews (Plan 011 T-004). */
+export const mcpChangeConfirmations = pgTable(
+  "mcp_change_confirmations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tokenHash: text("token_hash").notNull().unique(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    clientId: text("client_id").notNull(),
+    worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" }),
+    targetKind: text("target_kind").notNull(),
+    targetId: text("target_id").notNull(),
+    expectedStand: text("expected_stand").notNull(),
+    changeHash: text("change_hash").notNull(),
+    payload: jsonb("payload").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("mcp_change_confirmations_expires_at").on(t.expiresAt)],
+);
+
 /**
  * Columns that reference `files.id`. APP-FILE-GC must check every entry here
  * before deleting a file (see `src/lib/files/gc.ts`).

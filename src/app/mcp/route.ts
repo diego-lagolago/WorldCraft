@@ -29,6 +29,7 @@ const mcpHandler = createMcpHandler(
     registerMcpReadTools(server, {
       userId,
       clientId: typeof context.authInfo?.clientId === "string" ? context.authInfo.clientId : "",
+      scopes: context.authInfo?.scopes ?? [],
     });
     return server;
   },

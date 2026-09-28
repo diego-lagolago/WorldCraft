@@ -5,7 +5,12 @@ import { writeMcpAuditLog } from "../audit";
 export type ToolContext = {
   userId: string;
   clientId: string;
+  scopes: readonly string[];
 };
+
+export function requireMcpWriteScope(ctx: ToolContext) {
+  if (!ctx.scopes.includes("worlds:write")) throw new McpToolError("Für dieses Werkzeug wird die Berechtigung worlds:write benötigt.");
+}
 
 export type ToolImage = {
   data: string;

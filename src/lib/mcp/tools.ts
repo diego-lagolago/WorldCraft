@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { registerContentReadTool } from "./tools/content-read";
+import { registerChangeConfirmTool } from "./tools/change-confirm";
 import { registerContentsListTool } from "./tools/contents-list";
 import { registerImageReadTool } from "./tools/image-read";
 import { registerQuestsListTool } from "./tools/quests-list";
@@ -19,4 +20,5 @@ export function registerMcpReadTools(server: McpServer, ctx: ToolContext) {
   registerQuestsListTool(server, ctx);
   registerUniversesListTool(server, ctx);
   registerImageReadTool(server, ctx);
+  registerChangeConfirmTool(server, ctx);
 }
