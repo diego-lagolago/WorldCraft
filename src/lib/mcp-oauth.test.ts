@@ -11,6 +11,7 @@ vi.mock("@/lib/env", () => ({
 
 import {
   hasAllowedMcpAuthorizeRedirect,
+  hasRequiredMcpPkce,
   hashStoredOAuthToken,
   isAllowedMcpRedirectUri,
   MCP_CIMD_LIMITS,
@@ -47,6 +48,15 @@ describe("MCP OAuth redirect policy", () => {
     expect(hasAllowedMcpAuthorizeRedirect(privateUse)).toBe(false);
     expect(hasAllowedMcpAuthorizeRedirect(https)).toBe(true);
     expect(hasAllowedMcpAuthorizeRedirect(accepted)).toBe(true);
+  });
+
+  it("requires an S256 PKCE challenge at the authorization endpoint", () => {
+    const valid = new Request("http://localhost:3000/api/auth/oauth2/authorize?code_challenge_method=S256&code_challenge=challenge");
+    const plain = new Request("http://localhost:3000/api/auth/oauth2/authorize?code_challenge_method=plain&code_challenge=challenge");
+    const missing = new Request("http://localhost:3000/api/auth/oauth2/authorize");
+    expect(hasRequiredMcpPkce(valid)).toBe(true);
+    expect(hasRequiredMcpPkce(plain)).toBe(false);
+    expect(hasRequiredMcpPkce(missing)).toBe(false);
   });
 });
 

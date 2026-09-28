@@ -41,6 +41,11 @@ export async function readMcpImage(userId: string, fileId: string): Promise<{ da
   const [file] = await db.select({ storageKey: files.storageKey }).from(files).where(eq(files.id, fileId)).limit(1);
   if (!file) return null;
   const input = await readFile(storedFilePath(file.storageKey));
+  return encodeMcpImage(input);
+}
+
+/** Re-encodes one already-authorized image into the bounded MCP response format. */
+export async function encodeMcpImage(input: Buffer): Promise<{ data: string; mimeType: "image/webp" }> {
   try {
     for (const quality of [82, 70, 58, 46]) {
       const output = await sharp(input, { limitInputPixels: IMAGE_MAX_PIXELS }).rotate().resize({ width: 1568, height: 1568, fit: "inside", withoutEnlargement: true }).webp({ quality }).toBuffer();

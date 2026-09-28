@@ -23,18 +23,18 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 | ID | Kategorie | Schweregrad | Status | Kurzbeschreibung |
 |----|-----------|-------------|--------|-------------------|
 | CR-001 | Sicherheit | kritisch | behoben | „Zugriff widerrufen“ macht Access-Tokens nicht ungültig (JWT wird nur per JWKS geprüft) |
-| CR-002 | Testabdeckung | kritisch | offen | Rechte-/Ausschlusssuite T-008 und fast alle automatisierten Abnahmetests fehlen, obwohl Produktion aktiv ist |
+| CR-002 | Testabdeckung | kritisch | behoben | Rechte-/Ausschlusssuite und automatisierte MCP-Abnahmen decken die umgesetzten Lesefunktionen ab |
 | CR-003 | Sicherheit | mittel | behoben | Unerwartete Exceptions werden mit interner Fehlermeldung an den MCP-Client zurückgegeben |
 | CR-004 | Sicherheit | mittel | behoben | CIMD-Clients umgehen die Redirect-URI-Policy (HTTP auf Fremdhosts, private-use URIs) |
 | CR-005 | Sicherheit | mittel | behoben | Allowlist-Prüfung beim Token-Tausch baut internes Token-Hashing nach, schlägt still offen fehl und ist ungetestet |
-| CR-006 | Runtime-Risiken | mittel | offen | `bild_lesen`: `limitInputPixels: false` (Dekompressionsbombe) und 1-MB-Grenze nicht garantiert |
-| CR-007 | Sicherheit | mittel | offen | Referenz-Vorlagenfelder geben rohe IDs aus, ohne Titel und ohne Sichtbarkeitsprüfung |
-| CR-008 | Performance | mittel | offen | `inhalte_auflisten`: N+1-Abfragen, Limit erst nach dem Laden, Seltenheit als englischer DB-Schlüssel |
-| CR-009 | Bad Practices | mittel | offen | Abweichungen von ADR-005 (keine Scope-Deklaration pro Werkzeug, direkter DB-Zugriff in MCP-Modulen) |
-| CR-010 | Aufgaben-Abgleich | mittel | offen | Testwelt-Skript erfüllt T-002/D19 nicht vollständig und macht die T-008-Invariante unprüfbar |
-| CR-011 | Lesbarkeit & Wartbarkeit | mittel | offen | `tools.ts` schwer wartbar: überlange Einzeiler, verstreute Enum-Mappings, `monster_art` ungeprüft |
-| CR-012 | Aufgaben-Abgleich | mittel | offen | Hilfeseite enthält sachlich falsche Aussagen zu sichtbaren Daten und zum Ort des Widerrufs |
-| CR-013 | Aufgaben-Abgleich | mittel | offen | Task-Datei und E2E-Protokoll nicht nachgeführt (Checkboxen, `mcp-e2e-test.md` fehlt) |
+| CR-006 | Runtime-Risiken | mittel | behoben | `bild_lesen` begrenzt Eingabepixel und Ausgabegröße verlässlich |
+| CR-007 | Sicherheit | mittel | behoben | Referenz-Vorlagenfelder lösen nur sichtbare Titel auf |
+| CR-008 | Performance | mittel | behoben | `inhalte_auflisten` vermeidet N+1-Abfragen und validiert Filter |
+| CR-009 | Bad Practices | mittel | behoben | ADR-005 entspricht der Scope- und DB-Zugriffsarchitektur |
+| CR-010 | Aufgaben-Abgleich | mittel | behoben | Testwelt erfüllt T-002/D19 und erlaubt die T-008-Invariante |
+| CR-011 | Lesbarkeit & Wartbarkeit | mittel | behoben | MCP-Werkzeuge sind modular, Enums zentral und Eingaben validiert |
+| CR-012 | Aufgaben-Abgleich | mittel | behoben | Hilfeseite beschreibt Sichtbarkeit und Widerruf korrekt |
+| CR-013 | Aufgaben-Abgleich | mittel | offen | E2E-Protokoll vorhanden, aber T-010/T-011 und der Abnahmestand sind noch nicht vollständig |
 | CR-014 | Runtime-Risiken | niedrig | behoben | `bild_nr` wird über die Position der bereits sortierten Bildliste aufgelöst |
 | CR-015 | Bad Practices | niedrig | behoben | MCP-Serverversion wird aus `package.json` bezogen |
 | CR-016 | Aufgaben-Abgleich | niedrig | behoben | Hauptschalter verbirgt `/authorize`, `/token` und alle `/mcp`-Methoden konsistent mit 404 |
@@ -44,11 +44,11 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 | CR-020 | Runtime-Risiken | niedrig | behoben | Fehlender `userId` bricht den Handler ab; inaktive Rate-Limit-Fenster werden entfernt |
 | CR-021 | Aufgaben-Abgleich | niedrig | verworfen | Demowelt-Skript nicht atomar und inhaltlich abweichend von T-014 |
 | CR-022 | Duplizierung & Modularisierung | niedrig | behoben | Sichtbarkeitslabel ist zentral; Universumsabfrage ist auf das angeforderte Universum begrenzt |
-| CR-023 | Aufgaben-Abgleich | mittel | offen | Zusatzauftrag OAuth: Ist-Flow und Codex-Fehler `invalid_redirect` erfassen |
-| CR-024 | Sicherheit | mittel | offen | Zusatzauftrag OAuth: Discovery, 401-Challenge, Loopback-Redirects mit dynamischem Port, PKCE S256 |
-| CR-025 | Sicherheit | mittel | offen | Zusatzauftrag OAuth: öffentliche DCR absichern (Validierung, Fehlerantworten, Rate-Limit) |
-| CR-026 | Sicherheit | mittel | offen | Zusatzauftrag OAuth: CIMD sicher abrufen und validieren |
-| CR-027 | Testabdeckung | mittel | offen | Zusatzauftrag OAuth: Kompatibilitätsmatrix Codex/Claude für feste Client-ID, DCR und CIMD |
+| CR-023 | Aufgaben-Abgleich | mittel | verworfen (Wont Do) | Zusatzauftrag OAuth: Ist-Flow und Codex-Fehler `invalid_redirect` erfassen |
+| CR-024 | Sicherheit | mittel | verworfen (Wont Do) | Zusatzauftrag OAuth: Discovery, 401-Challenge, Loopback-Redirects mit dynamischem Port, PKCE S256 |
+| CR-025 | Sicherheit | mittel | verworfen (Wont Do) | Zusatzauftrag OAuth: öffentliche DCR absichern (Validierung, Fehlerantworten, Rate-Limit) |
+| CR-026 | Sicherheit | mittel | verworfen (Wont Do) | Zusatzauftrag OAuth: CIMD sicher abrufen und validieren |
+| CR-027 | Testabdeckung | mittel | verworfen (Wont Do) | Zusatzauftrag OAuth: Kompatibilitätsmatrix Codex/Claude für feste Client-ID, DCR und CIMD |
 
 ---
 
@@ -81,6 +81,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 - **Empfehlung:** Die Suite gemäß der Abnahmekriterien ergänzen, sinnvoll aufgeteilt in je eine Datei pro Aufgabe (`oauth.mcp.test.ts`, `tools-read.mcp.test.ts`, `authz-matrix.mcp.test.ts`, `audit.mcp.test.ts`, `switches.mcp.test.ts`). Dazu einen Test-Helper, der für jeden der vier Testbenutzer ein MCP-Token erzeugt und `callTool(user, name, args)` bereitstellt. Die heutige Happy-Path-Logik enthält ihn bereits inline und kann extrahiert werden.
 - **Festlegung D13-Tests (Plan-Review 2026-09-26):** Weil `isDiscordIdAllowed` `test-*`-IDs immer erlaubt, werden alle Allowlist-Fälle (T-003 Abnahme 5, T-005 Abnahme 2 „nicht mehr auf der Allowlist“) als Unit-Tests in `npm test` mit gemocktem `isDiscordIdAllowed` geprüft, nicht in `npm run test:mcp`. Betroffen sind `mcpTokenGrantFailure` (siehe CR-005) und der `/mcp`-Handler: Er liefert 401, wenn `isDiscordIdAllowed` `false` liefert. Dafür wird `protectedMcpHandler` bzw. dessen Innenfunktion so exportiert, dass sie ohne `requireMcpAuth` mit Claims testbar ist.
 - **Abnahmekriterium:** `npm run test:mcp` ist grün und enthält für jeden Unterpunkt der Abnahmekriterien von T-003, T-005–T-009, T-012 und T-013 mindestens einen benannten Test (Testname nennt Task-ID und Punkt, z. B. `T-008: GEHEIMTEST erscheint für keinen Benutzer`). Ausnahme: Die Allowlist-Fälle (D13) liegen als Unit-Tests in `npm test` (siehe Festlegung oben) und sind dort ebenfalls nach Task-ID und Punkt benannt.
+- **Status:** behoben (2026-09-28). Die lokale MCP-Suite deckt OAuth-/PKCE-Fehler, Widerruf, Weltauflösung, Rollen- und Sichtbarkeitsmatrix, Ausschlüsse, Scope, Lese-Werkzeuge, Bildausgabe sowie Audit/Purge ab. Jeder OAuth-Test verwendet eine eigene weitergeleitete Test-IP, damit die echten OAuth-Rate-Limits die unabhängigen Testfälle nicht gegenseitig beeinflussen. D13 bleibt gemäß Plan-Review als Unit-Test in `src/lib/mcp-oauth.test.ts` abgedeckt; `src/app/mcp/route.test.ts` prüft HTTP 429 samt `Retry-After` beim 61. Werkzeugaufruf.
 
 ### CR-003
 - **Fundstelle:** `src/lib/mcp/tools.ts`, `asError()` / `withAudit()`
@@ -133,6 +134,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 
   Nicht gewählt: 50 MP nur in `bild_lesen`; sharp-Standard (ca. 268 MP).
 - **Abnahmekriterium:** Ein Unit-Test in `src/lib/files/files.test.ts` belegt, dass `inspectImage` ein PNG mit 5001×5000 Pixeln (Header genügt) mit der Meldung „Das Bild darf höchstens 25 Megapixel haben.“ ablehnt und 5000×5000 akzeptiert. `readMcpImage` verwendet `limitInputPixels: IMAGE_MAX_PIXELS` (kein `false`). Ein Unit-Test mit einem schwer komprimierbaren Rauschbild (z. B. 4000×4000, per `sharp` erzeugt) liefert entweder ≤ 1 MB oder den Werkzeugfehler „Bild zu groß für die Ausgabe.“, nie mehr als 1 MB.
+- **Status:** behoben (2026-09-28). Upload und MCP-Ausgabe verwenden dieselbe 25-MP-Grenze. Die WebP-Kodierung versucht vier Qualitätsstufen und einen kleineren letzten Durchlauf; andernfalls liefert sie den definierten Werkzeugfehler. Tests decken Pixelgrenze sowie ein 4000×4000-Rauschbild ab.
 
 ### CR-007
 - **Fundstelle:** `src/lib/mcp/tools.ts`, `renderTemplateFields` (Zweig `field.type === "ref"`)
@@ -142,6 +144,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 - **Beschreibung:** Referenzfelder (z. B. `ruler`, `race`, `seat`, `location`) werden als rohe UUID ausgegeben. Es gibt keine Sichtbarkeitsprüfung und keinen Titel. Verweist ein veröffentlichter Artikel auf einen `nur Spielleitung`- oder fremden `nur ich`-Artikel, erhält ein Player dessen ID. Das verrät die Existenz eines verdeckten Inhalts, den `relationen_abrufen` bewusst weglässt. Außerdem entspricht die Ausgabe weder der Erwähnungssyntax aus D18 noch ist sie für Claude verständlich.
 - **Empfehlung:** Referenzen über die Domänenschicht auflösen (sichtbare Titel für die referenzierten IDs mit Rolle und Viewer). Sichtbare Referenzen als `@[Titel](art:id)` ausgeben, nicht sichtbare vollständig weglassen, so wie in der App-Anzeige der Vorlagenfelder.
 - **Abnahmekriterium:** `inhalt_lesen` für einen Artikel, dessen Referenzfeld auf den `nur Spielleitung`-Artikel zeigt, enthält für Player A weder Feld noch ID. Für den Game Master enthält es `@[<Titel>](artikel:<id>)` (Test in der T-008-Suite).
+- **Status:** behoben (2026-09-28). Referenzfelder werden mit dem sichtbarkeitsgeprüften Artikel-Loader aufgelöst und nur als `@[Titel](artikel:id)` ausgegeben; unsichtbare Referenzen fehlen vollständig. Unit-Tests belegen beide Fälle.
 
 ### CR-008
 - **Fundstelle:** `src/lib/mcp/tools.ts`, Werkzeug `inhalte_auflisten`
@@ -154,6 +157,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
   3. `quest_gegenstand` ohne `vorlagentyp: gegenstand` wird nicht als ungültige Kombination abgelehnt, obwohl die Tabelle *MCP-Werkzeuge* das vorsieht.
 - **Empfehlung:** Ein Feld `isQuestItem: boolean` in `ArticleSummary` bzw. `summaryColumns` von `src/lib/domain/articles.ts` aufnehmen (SQL: `(template_fields->>'quest')::boolean IS TRUE`), damit `inhalte_auflisten` kein `getArticle` mehr braucht (Festlegung Plan-Review 2026-09-26: kleinster Eingriff, keine neue Domänenfunktion). `limit` vor Detailabfragen anwenden. Seltenheit über das Label aus der Vorlagen-Registry ausgeben. `quest_gegenstand` nur bei `vorlagentyp: gegenstand` zulassen, sonst `McpToolError`.
 - **Abnahmekriterium:** `inhalte_auflisten` führt unabhängig von der Artikelanzahl eine konstante Zahl an DB-Abfragen aus (per Code-Review oder Query-Zählung im Test). Die Ausgabe für den Quest-Gegenstand enthält „Selten“ statt `rare`. `quest_gegenstand: true` mit `vorlagentyp: person` liefert einen Werkzeugfehler.
+- **Status:** behoben (2026-09-28). `ArticleSummary` liefert `isQuestItem` direkt aus der Listenabfrage; der Filter begrenzt vor weiteren Verarbeitungsschritten, Seltenheit nutzt die deutsche Vorlagenbezeichnung und ungültige Filterkombinationen liefern Werkzeugfehler.
 
 ### CR-009
 - **Fundstelle:** `src/lib/mcp/tools.ts` (`registerMcpReadTools`), `src/lib/mcp/context.ts`, `src/lib/mcp/audit.ts`, `.ai/decisions/005-mcp-server.md` (Punkte 4 und 5)
@@ -172,6 +176,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 
   Nicht gewählt: Scope-Registry für alle Werkzeuge jetzt bauen; Weltauflösung und Audit in die Domänenschicht verschieben.
 - **Abnahmekriterium:** ADR-005 Punkt 4 beschreibt die Hierarchie `worlds:write` ⊇ `worlds:read` und dass nur Schreibwerkzeuge (Plan `011`) einen eigenen Scope-Check haben. ADR-005 Punkt 5 nennt `context.ts` und `audit.ts` als einzige zulässige DB-Zugriffe in `src/lib/mcp/`. `grep -rln "@/db" src/lib/mcp/` liefert nur diese beiden Dateien. Plan `011` enthält keine Anforderung mehr, dass ein reines `worlds:write`-Token nicht lesen darf.
+- **Status:** behoben (2026-09-28). ADR-005 dokumentiert die Scope-Hierarchie sowie die beiden ausdrücklich erlaubten Infrastrukturzugriffe; außer `context.ts` und `audit.ts` importiert kein MCP-Produktmodul die Datenbank.
 
 ### CR-010
 - **Fundstelle:** `scripts/seed-mcp-test-world.mjs`
@@ -193,6 +198,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 
   Nicht gewählt: Domain-Sync per TypeScript aufrufen; Seed über die HTTP-API.
 - **Abnahmekriterium:** `grep -n GEHEIMTEST scripts/seed-mcp-test-world.mjs` findet nur Zeilen der `journal_entries`-Einfügung. `SLTEST` und `NURICHTEST` kommen je mindestens einmal vor. Nach dem Seed existieren in `relations` für die Testwelt: Burg → SL-Artikel mit `mention` **und** `manual`; Burg → `nur ich`-Artikel `manual`; Person → Rasse `template_field`/`race`; Monster „Rabenwolf“ → Burg `template_field`/`habitat`; Quest „Die Rückkehr des Rabens“ → Charakter „Liora“ `participation`. Zweimaliges Ausführen ergibt identische Zählungen.
+- **Status:** behoben (2026-09-28). Der Seed verwendet getrennte `GEHEIMTEST`-, `SLTEST`- und `NURICHTEST`-Marker, legt alle D19-Relationen an und bereinigt die Fixture vor jedem Neuaufbau. Die lokale MCP-Suite bestätigt die Sichtbarkeits- und Ausschlussinvarianten.
 
 ### CR-011
 - **Fundstelle:** `src/lib/mcp/tools.ts` (gesamt)
@@ -208,6 +214,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 - **Empfehlung:** Ein Modul pro Werkzeug (z. B. `src/lib/mcp/tools/inhalt-lesen.ts`) und ein Renderer pro Inhaltsart (`renderArticle`, `renderQuest` …). Die Enum-Abbildungen in `src/lib/mcp/enums.ts` bündeln, beide Richtungen aus einer Quelle ableiten und Vollständigkeitstests gegen die DB-Enums schreiben. `monster_art` als `z.enum` der deutschen Labels definieren.
 - **Festlegung (Plan-Review 2026-09-26):** Die Zeilenlänge wird per ESLint erzwungen: In `eslint.config.mjs` einen Override für `src/lib/mcp/**/*.ts` mit `max-len: ["error", { code: 160, ignoreStrings: true, ignoreTemplateLiterals: true, ignoreUrls: true, ignoreComments: true }]` ergänzen. Kein Prettier, keine repo-weite Regel.
 - **Abnahmekriterium:** Der ESLint-Override für `src/lib/mcp/**` mit `max-len` 160 existiert, und `npx eslint src/lib/mcp` läuft fehlerfrei. Es existiert `enums.ts` mit einem Test, der für jedes DB-Enum (Status, Vorlagentyp, Monster-Art, Inhaltsart) eine vollständige Abbildung belegt. `inhalte_auflisten` mit `monster_art: "Drache123"` liefert einen Validierungsfehler.
+- **Status:** behoben (2026-09-28). Die Registrierung ist nur noch ein schlanker Zusammenschluss; jedes Lesewerkzeug und die Renderer liegen in eigenen MCP-Modulen. `enums.ts` bündelt die Abbildungen mit Vollständigkeitstest, und `monster_art` ist ein Zod-Enum. Der 160-Zeichen-Override ist aktiv und lintet fehlerfrei.
 
 ### CR-012
 - **Fundstelle:** `src/app/hilfe/mcp/page.tsx`
@@ -222,14 +229,15 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
   Da der Plan die Transparenz gegenüber dem KI-Anbieter betont (D8), sind falsche Datenschutzaussagen besonders heikel.
 - **Empfehlung:** Die Texte an die tatsächliche Rechtelogik anpassen: „Die KI sieht genau das, was du in der App siehst, in Welten, die der Game Master freigegeben hat. Das schließt als Spielleitung auch `nur Spielleitung`- und eigene `nur ich`-Inhalte ein.“ Den Widerrufsort korrekt benennen: „im Weltmenü deiner Welt unter ‚Verbundene Anwendungen‘“ (Ort entschieden in CR-018).
 - **Abnahmekriterium:** Die Hilfeseite enthält keine der drei zitierten Aussagen mehr. Sie nennt ausdrücklich, dass Spielleitung auch nicht veröffentlichte Inhalte überträgt, und nennt als Ort von „Verbundene Anwendungen“ das Weltmenü.
+- **Status:** behoben (2026-09-28). Die Hilfeseite beschreibt die tatsächliche Sichtbarkeit inklusive Spielleitungsinhalten und verweist für den Widerruf auf „Verbundene Anwendungen“ im Weltmenü.
 
 ### CR-013
-- **Fundstelle:** `.ai/feature-tasks/002-mcp-server.md`, `.ai/infrastructure/` (fehlend: `mcp-e2e-test.md`), `.ai/architecture/mcp.md`
+- **Fundstelle:** `.ai/feature-tasks/002-mcp-server.md`, `.ai/infrastructure/mcp-e2e-test.md`, `.ai/architecture/mcp.md`
 - **Kategorie:** Aufgaben-Abgleich
 - **Schweregrad:** mittel
 - **Bezug (Task-ID):** T-003–T-014
-- **Beschreibung:** T-003 bis T-014 sind umgesetzt und produktiv, in der Task-Datei aber als offen (`- [ ]`) markiert. Die in T-010 und T-014 geforderte Protokolldatei `.ai/infrastructure/mcp-e2e-test.md` existiert nicht, die Abnahme von T-010 (fünf Fragen in claude.ai **und** Claude Code) ist damit nicht belegt. Die T-011-Dokumentation ist teilweise uncommittet (`mcp.md` geändert, `mcp-oauth-anbindung.md` unversioniert).
-- **Empfehlung:** Pro Aufgabe den tatsächlichen Stand eintragen und nur Aufgaben mit erfüllter Abnahme abhaken; offene Punkte (etwa aus CR-001/CR-002) als Rest vermerken. Bei T-014 die akzeptierten Abweichungen des Demowelt-Skripts vermerken (siehe CR-021, verworfen): kein `scripts/demo-assets/`, 1×1-px-Bilder, 2 Pins je Universum statt 4 im ersten, keine manuelle 2-Stufen-Relation. Bei T-004 den Ort der Karte vermerken (siehe CR-018). `mcp-e2e-test.md` mit Protokoll der Demowelt-Erstellung und der fünf E2E-Fragen anlegen. Die Doku committen.
+- **Beschreibung:** Der Abnahmestand wird in der Task-Datei gepflegt. T-003 bis T-005 sind durch den manuellen lokalen Inspector-Nachweis vollständig abgenommen. Das E2E-Protokoll liegt vor, belegt für T-010 aber nur ein Teilergebnis: Die Quest-Gegenstand-Abfrage wurde in beiden Clients nicht unmittelbar gefiltert. Die Meldung zur Übertragungsgröße beim Titelbild von Burg Rabenstein ist akzeptiert; ein alternatives Charakterbild wurde erfolgreich beschrieben und angezeigt. T-010 und die abhängige T-011 bleiben wegen der Quest-Gegenstand-Abfrage offen. Die MCP-Dokumentation ist weiterhin uncommittet.
+- **Empfehlung:** Pro Aufgabe den tatsächlichen Stand eintragen und nur Aufgaben mit erfüllter Abnahme abhaken. Für T-010 die Quest-Gegenstand-Abfrage nach der jetzt expliziten Werkzeuganleitung erneut erfolgreich in beiden Clients nachweisen. Bei T-014 die Produktionserstellung der Demowelt im Protokoll ergänzen. Danach den E2E-Status und die Dokumentation final prüfen und committen.
 - **Abnahmekriterium:** Die Checkboxen der Task-Datei stimmen mit dem Stand der Abnahmekriterien überein. `.ai/infrastructure/mcp-e2e-test.md` existiert mit Datum, Client (claude.ai, Claude Code), aufgerufenen Werkzeugen und Ergebnis je Frage. `git status` zeigt keine uncommitteten MCP-Dokumente.
 
 ### CR-014
@@ -370,6 +378,7 @@ Vom Projektinhaber nachträglich als Aufgaben an dieses Review angehängt. Die P
 - **Empfehlung:** Die Bestandsaufnahme in `.ai/architecture/mcp-oauth-anbindung.md` ergänzen (existiert bereits mit Claude-Fehleranalyse), nicht in einer neuen Datei. Dazu die Stelle belegen, an der Better Auth die Redirect-URI vergleicht, sowie das Loopback-Port-Matching (siehe Ist-Stand). Zusätzlich die **feste Client-ID** dokumentieren: wo und wie sie registriert wurde (DCR-Aufruf, Datenbankeintrag in `oauth_clients`, Eintrag in Codex bzw. im Claude-Connector), welche Redirect-URIs sie hat und warum Codex damit `invalid_redirect` erhält.
 - **Abnahmekriterium:** Eine technische Bestandsaufnahme benennt Quellmodule, Endpunkte, erwartete HTTP-Statuscodes und Header sowie die genaue Stelle der Redirect-URI-Prüfung. Ein reproduzierbarer Testfall für Codex und einer für Claude sind dokumentiert.
 - **Während des Baus definieren:** keine
+- **Status:** verworfen (Wont Do, 2026-09-28). Aufgrund von Problemen bei früheren Versuchen wird der Zusatzauftrag vorerst nicht weiterverfolgt.
 
 ### CR-024
 - **Fundstelle:** `src/app/.well-known/**`, `src/app/mcp/route.ts`, `src/lib/mcp-oauth.ts` (`isAllowedMcpRedirectUri`), `src/lib/auth.ts`
@@ -382,6 +391,7 @@ Vom Projektinhaber nachträglich als Aufgaben an dieses Review angehängt. Die P
 - **Abnahmekriterium:** Eine nicht authentifizierte Anfrage an den MCP-Endpunkt liefert HTTP 401 einschließlich Verweis auf die Protected Resource Metadata. Die Metadaten verweisen auf den Authorization Server. Ein gültiger Authorization Request mit `http://127.0.0.1:<beliebiger-freier-port>/callback` wird angenommen, ebenso mit `http://[::1]:<port>/callback` und `http://localhost:<port>/callback` (K2). Der gleiche Request mit verändertem Host (z. B. `127.0.0.2`, `evil.example`), Schema (`https` statt `http` auf Loopback) oder Pfad (`/callback2`) wird abgelehnt. Ein Authorization-Code-Flow ohne gültige PKCE-Verifikation kann kein Token ausstellen.
 - **Während des Baus definieren:** keine
 - **Zusätzliches Abnahmekriterium (K3):** Die sechste DCR-Registrierung von derselben IP innerhalb von 60 s erhält HTTP 429 (Test in `npm run test:mcp`). Die Grenzwerte stehen als Konstanten in `src/lib/mcp-oauth.ts` und sind in `.ai/architecture/mcp.md` dokumentiert.
+- **Status:** verworfen (Wont Do, 2026-09-28). Aufgrund von Problemen bei früheren Versuchen wird der Zusatzauftrag vorerst nicht weiterverfolgt.
 
 ### CR-025
 - **Fundstelle:** `/api/auth/oauth2/register` (Better Auth), `src/lib/mcp-oauth.ts` (`hasAllowedMcpRegistrationRedirects`), `src/app/api/auth/[...all]/route.ts`
@@ -393,6 +403,7 @@ Vom Projektinhaber nachträglich als Aufgaben an dieses Review angehängt. Die P
 - **Empfehlung:** Den bestehenden Endpunkt härten statt neu bauen. Die heutige Fehlerantwort `invalid_redirect_uri` aus `[...all]/route.ts` auf RFC-7591-Fehlercodes prüfen (`invalid_redirect_uri`, `invalid_client_metadata`). Das Rate-Limit gemäß K3 (`/oauth2/register`: 5 pro 60 s und IP) wird mit der Umsetzung von CR-024 konfiguriert; CR-025 belegt es nur per Test.
 - **Abnahmekriterium:** Ein DCR-`POST` mit gültigen Metadaten liefert eine eindeutige Client-ID; ein anschließender PKCE-Flow für einen Whitelist-Nutzer funktioniert. Ungültige Redirect-URIs, nicht unterstützte Grant-Typen und vertrauliche Client-Authentifizierungsformen werden mit OAuth-konformen Fehlerantworten abgelehnt. Ein dynamisch registrierter Client kann ohne freigegebenen Nutzer keine Tokens erhalten und keine MCP-Werkzeuge aufrufen.
 - **Während des Baus definieren:** keine
+- **Status:** verworfen (Wont Do, 2026-09-28). Aufgrund von Problemen bei früheren Versuchen wird der Zusatzauftrag vorerst nicht weiterverfolgt.
 
 ### CR-026
 - **Fundstelle:** `src/lib/auth.ts` (`cimd(...)`, `fetchClientMetadataResource` aus `@better-auth/cimd/node`)
@@ -408,6 +419,7 @@ Vom Projektinhaber nachträglich als Aufgaben an dieses Review angehängt. Die P
   4. Die Tests prüfen die WorldCraft-Werte, nicht die Bibliotheks-Defaults. Ein Upgrade, das die Bibliothek lockert, fällt so im Test auf.
 - **Abnahmekriterium:** Ein gültiges HTTPS-CIMD mit übereinstimmender Client-ID und gültiger Loopback-Redirect-URI kann einen PKCE-Flow durchführen. Nicht-HTTPS-URLs, private oder reservierte Zieladressen, zu große Antworten, unerlaubte Weiterleitungen, nicht erreichbare Dokumente sowie abweichende Client-ID- oder Redirect-Werte werden abgelehnt. Abrufe werden begrenzt und zwischengespeichert, sodass ein Client die Infrastruktur nicht ungebremst für externe Requests nutzen kann. Konkret (Tests in `npm test` mit gemocktem Netzwerk): eine Antwort über 5 KB, eine Antwort nach mehr als 5 s und jede 3xx-Weiterleitung führen zur Ablehnung. Zwei Autorisierungen mit derselben `client_id`-URL innerhalb von 15 Minuten lösen genau einen Abruf aus; nach einem Fehlschlag erfolgt innerhalb von 1 Minute kein erneuter Abruf. Die Bibliotheks-Defaults sind in `mcp-oauth-anbindung.md` dokumentiert.
 - **Während des Baus definieren:** keine
+- **Status:** verworfen (Wont Do, 2026-09-28). Aufgrund von Problemen bei früheren Versuchen wird der Zusatzauftrag vorerst nicht weiterverfolgt.
 
 ### CR-027
 - **Fundstelle:** MCP-Testsuite (`npm run test:mcp`, `vitest.mcp.config.ts`), `.ai/infrastructure/` (Protokoll manueller Schritte)
@@ -420,6 +432,7 @@ Vom Projektinhaber nachträglich als Aufgaben an dieses Review angehängt. Die P
 - **Festlegung feste Client-ID (Projektinhaber, Plan-Review 2026-09-26):** Die feste Client-ID bleibt **vorerst als Backup** erhalten und ist Teil der Matrix. Sie wird nicht entfernt, bevor (1) Codex über DCR bzw. CIMD ohne `invalid_redirect` funktioniert und (2) Claude über den neuen Weg (CIMD bzw. DCR) erfolgreich getestet ist.
 - **Abnahmekriterium:** Die Testmatrix läuft automatisiert oder mit klar dokumentierten manuellen Schritten. Codex kann sich ohne `invalid_redirect` authentifizieren und WorldCraft-Werkzeuge auflisten. Claude bleibt funktionsfähig. Fehlerfälle für Redirect-URI, PKCE, nicht freigegebenen Nutzer und abgelaufenes bzw. manipuliertes Token sind abgedeckt.
 - **Während des Baus definieren:** keine
+- **Status:** verworfen (Wont Do, 2026-09-28). Aufgrund von Problemen bei früheren Versuchen wird der Zusatzauftrag vorerst nicht weiterverfolgt.
 
 ---
 

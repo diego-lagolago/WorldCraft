@@ -70,6 +70,16 @@ export function hasAllowedMcpAuthorizeRedirect(request: Request): boolean {
   return isAllowedMcpRedirectUri(url.searchParams.get("redirect_uri"));
 }
 
+/** OAuth 2.1 requires PKCE; the MCP integration accepts only S256. */
+export function hasRequiredMcpPkce(request: Request): boolean {
+  const url = new URL(request.url);
+  if (url.pathname !== `${AUTH_PATH_PREFIX}oauth2/authorize`) return true;
+  return (
+    url.searchParams.get("code_challenge_method") === "S256"
+    && Boolean(url.searchParams.get("code_challenge")?.trim())
+  );
+}
+
 async function formBody(request: Request): Promise<URLSearchParams | null> {
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.includes("application/x-www-form-urlencoded")) return null;

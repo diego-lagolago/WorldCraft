@@ -1,0 +1,36 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "worldcraft",
+  "version": "0.1.0",
+  "description": "Connect ChatGPT to a WorldCraft campaign and read the worlds, quests, characters, lore, maps, and monsters you are allowed to access.",
+  "author": {
+    "name": "WorldCraft"
+  },
+  "homepage": "https://worldcraft.lagolago.at",
+  "keywords": [
+    "dnd",
+    "tabletop-rpg",
+    "campaign",
+    "worldbuilding",
+    "lore"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "WorldCraft",
+        "shortDescription": "Deine D&D-Welt direkt in ChatGPT",
+        "longDescription": "Verbinde dein WorldCraft-Konto, damit ChatGPT die Welten, Quests, Charaktere, Artikel, Monster und Karten lesen kann, für die du in WorldCraft berechtigt bist. Der Zugriff ist schreibgeschützt und wird per WorldCraft-Anmeldung freigegeben.",
+        "developerName": "WorldCraft",
+        "category": "Productivity",
+        "capabilities": [
+          "Interactive"
+        ],
+        "defaultPrompt": [
+          "Verbinde WorldCraft und liste meine Welten auf.",
+          "Fasse die aktiven Quests meiner WorldCraft-Welt zusammen.",
+          "Suche in meiner WorldCraft-Welt nach wichtigen NSCs und Orten."
+        ]
+      }
+    }
+  }
+}

@@ -22,7 +22,7 @@ const TEST_USERS = [
 ];
 const [GM, MASTER, PLAYER_A, PLAYER_B] = TEST_USERS.map(([id]) => id);
 const fixturePng = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL1xQAAAABJRU5ErkJggg==",
+  "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEUlEQVQImWOI0hXBihiGlgQANikmwYfPAzoAAAAASUVORK5CYII=",
   "base64",
 );
 
@@ -124,6 +124,31 @@ async function addRelation(sql, { worldId, actorId, from, to, origin, templateFi
       ${origin}, ${templateFieldKey}, ${label}, ${counterLabel}, ${actorId}, ${actorId}
     )
   `;
+}
+
+/**
+ * postgres serializes string parameters again for jsonb columns. The fixture
+ * uses JSON.stringify in its SQL literals for readability, so normalize those
+ * scalar JSON strings before the MCP suite reads them. Product writes use the
+ * Drizzle jsonb mapper and already store JSON objects directly.
+ */
+async function normalizeJsonFixture(sql) {
+  const columns = [
+    ["worlds", "description_json"],
+    ["universes", "description_json"],
+    ["articles", "template_fields"],
+    ["articles", "body_json"],
+    ["characters", "bio_json"],
+    ["quests", "description_json"],
+    ["quest_chapters", "body_json"],
+    ["quest_notes", "body_json"],
+    ["monsters", "bio_json"],
+    ["pins", "description_json"],
+    ["journal_entries", "body_json"],
+  ];
+  for (const [table, column] of columns) {
+    await sql.unsafe(`UPDATE ${table} SET ${column} = (${column} #>> '{}')::jsonb WHERE jsonb_typeof(${column}) = 'string'`);
+  }
 }
 
 async function main() {
@@ -306,6 +331,7 @@ async function main() {
     await addRelation(sql, { worldId, actorId: GM, from: { kind: "quest", id: activeQuest.id }, to: { kind: "character", id: character.id }, origin: "participation" });
     await addRelation(sql, { worldId, actorId: GM, from: { kind: "pin", id: pinRows[0].id }, to: { kind: "article", id: burg.id }, origin: "mention" });
     await addRelation(sql, { worldId, actorId: GM, from: { kind: "pin", id: pinRows[1].id }, to: { kind: "quest", id: activeQuest.id }, origin: "mention" });
+    await normalizeJsonFixture(sql);
 
     const counts = await sql`
       SELECT

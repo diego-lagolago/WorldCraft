@@ -95,7 +95,7 @@ async function main() {
       title: "Schattenhand",
       templateType: "organization",
       templateFields: { kind: "cult", size: "up_to_50", danger: "deadly", seat: { kind: "article", id: burg.article.id } },
-      visibility: "published",
+      visibility: "gm_only",
       body: rich("Eine verschlossene Bruderschaft, die nach dem Amulett sucht."),
     }),
   });
@@ -120,17 +120,7 @@ async function main() {
       body: rich("Das Amulett ist der Schlüssel zu den Katakomben von Rabenstein.", { id: burg.article.id, kind: "article", label: "Burg Rabenstein" }),
     }),
   });
-  const geheim = await request(baseUrl, session, `/api/worlds/${worldId}/articles`, {
-    method: "POST",
-    body: JSON.stringify({
-      title: "Geheimer Plan der Schattenhand",
-      templateType: "organization",
-      visibility: "gm_only",
-      body: rich("Dieser Artikel ist bewusst nur für die Spielleitung sichtbar.", { id: burg.article.id, kind: "article", label: "Burg Rabenstein" }),
-    }),
-  });
-
-  await request(baseUrl, session, `/api/worlds/${worldId}/articles`, {
+  const wegzehrung = await request(baseUrl, session, `/api/worlds/${worldId}/articles`, {
     method: "POST",
     body: JSON.stringify({ title: "Wegzehrung", templateType: "item", templateFields: { kind: "mundane", rarity: "common", quest: false }, visibility: "published", body: rich("Praktische Vorräte für den Marsch durch die Nebelmark.") }),
   });
@@ -144,7 +134,11 @@ async function main() {
   });
   await request(baseUrl, session, `/api/worlds/${worldId}/relations`, {
     method: "POST",
-    body: JSON.stringify({ sourceKind: "article", sourceId: burg.article.id, targetKind: "article", targetId: geheim.article.id, label: "birgt Hinweise auf", counterLabel: "hat Hinweise bei" }),
+    body: JSON.stringify({ sourceKind: "article", sourceId: burg.article.id, targetKind: "article", targetId: organisation.article.id, label: "birgt Hinweise auf", counterLabel: "hat Hinweise bei" }),
+  });
+  await request(baseUrl, session, `/api/worlds/${worldId}/relations`, {
+    method: "POST",
+    body: JSON.stringify({ sourceKind: "article", sourceId: person.article.id, targetKind: "article", targetId: wegzehrung.article.id, label: "führt Vorräte", counterLabel: "wird getragen von" }),
   });
 
   const quest = await request(baseUrl, session, `/api/worlds/${worldId}/quests`, {

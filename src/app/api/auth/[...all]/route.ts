@@ -4,6 +4,7 @@ import { isDiscordIdAllowed, isMcpEnabled } from "@/lib/env";
 import {
   hasAllowedMcpAuthorizeRedirect,
   hasAllowedMcpRegistrationRedirects,
+  hasRequiredMcpPkce,
   isMcpAuthPath,
   mcpTokenGrantFailure,
 } from "@/lib/mcp-oauth";
@@ -24,6 +25,12 @@ async function handle(request: Request, method: "GET" | "POST") {
     else if (!hasAllowedMcpAuthorizeRedirect(request)) {
       response = Response.json(
         { error: "invalid_request", error_description: "Redirect-URIs müssen HTTPS oder lokale Loopback-Adressen sein." },
+        { status: 400 },
+      );
+    }
+    else if (!hasRequiredMcpPkce(request)) {
+      response = Response.json(
+        { error: "invalid_request", error_description: "PKCE mit der Methode S256 ist erforderlich." },
         { status: 400 },
       );
     }
