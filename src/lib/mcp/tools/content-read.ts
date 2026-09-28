@@ -72,7 +72,9 @@ async function readContent({ world, viewerId, art, id }: ReadContentInput) {
       tiptapJsonToMcpMarkdown(row.descriptionJson),
       ...row.chapters.map((chapter) => [
         `## ${chapter.title}`,
+        `ID: ${chapter.id}`,
         `Status: ${MCP_QUEST_STATUS_LABEL[chapter.status]}`,
+        `Stand: ${chapter.updatedAt.toISOString()}`,
         tiptapJsonToMcpMarkdown(chapter.bodyJson),
       ].join("\n")),
       note.ok ? `## Notizblock\nStand: ${note.data.version}\n${tiptapJsonToMcpMarkdown(note.data.bodyJson)}` : "",

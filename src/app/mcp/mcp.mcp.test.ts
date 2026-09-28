@@ -135,6 +135,17 @@ function toolText(result: Record<string, unknown>): string {
   return JSON.stringify(result);
 }
 
+function firstToolText(result: Record<string, unknown>): string {
+  const content = (result.result as { content?: unknown[] } | undefined)?.content;
+  const text = content?.find((entry): entry is { type: string; text: string } => (
+    typeof entry === "object" && entry !== null
+    && (entry as { type?: unknown }).type === "text"
+    && typeof (entry as { text?: unknown }).text === "string"
+  ));
+  expect(text).toBeDefined();
+  return text!.text;
+}
+
 function imageContent(result: Record<string, unknown>) {
   const content = (result.result as { content?: unknown[] } | undefined)?.content;
   const image = content?.find((entry): entry is { type: string; data: string; mimeType: string } => (
@@ -487,6 +498,8 @@ describe("MCP OAuth and protected resource", () => {
     expect(toolText(content)).toContain(`@[Hauptmann Arin](artikel:${data.personId})`);
     expect(toolText(content)).not.toContain('"type":"doc"');
     expect(toolText(quest)).toContain("Öffentliches Kapitel");
+    expect(toolText(quest)).toContain("Spur im Regen");
+    expect(toolText(quest)).toMatch(/ID: [0-9a-f-]{36}/);
     expect(toolText(quest)).toContain("Notizblock zur aktiven Quest");
     expect(toolText(quest)).not.toContain("SLTEST im SL-Kapitel.");
     expect(toolText(pin)).toContain("Karte: Rabenmark-Karte");
@@ -502,6 +515,53 @@ describe("MCP OAuth and protected resource", () => {
     expect(toolText(searchByName)).toContain("– Ort");
     expect(toolText(searchByName)).not.toContain("– place");
     expect(toolText(largeLimit)).toContain("Zu groß");
+  });
+
+  it("T-013: exposes only visible nested revision tokens and updates each target independently", async () => {
+    const [data, client] = await Promise.all([fixture(), registerMcpClient(9888, "MCP Nested Revision Test")]);
+    const credentials = await authorizeMcpClient("test-player-a", client);
+    const sql = testSql();
+    try {
+      const chapters = await sql.unsafe(
+        "SELECT id FROM quest_chapters WHERE quest_id = $1 AND visibility = 'published' ORDER BY position",
+        [data.activeQuestId],
+      );
+      expect(chapters).toHaveLength(2);
+      const hidden = await sql.unsafe(
+        "SELECT id FROM quest_chapters WHERE quest_id = $1 AND visibility = 'gm_only' LIMIT 1",
+        [data.activeQuestId],
+      );
+      const [beforeQuest, beforeWorlds] = await Promise.all([
+        callTool(credentials.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "quest", id: data.activeQuestId }),
+        callTool(credentials.accessToken, "welten_auflisten"),
+      ]);
+      const beforeQuestText = firstToolText(beforeQuest);
+      const beforeWorldsText = firstToolText(beforeWorlds);
+      const standFor = (value: string, id: string) => value.match(new RegExp(`ID: ${id}\\nStatus: [^\\n]+\\nStand: ([^\\n]+)`))?.[1];
+      const firstBefore = standFor(beforeQuestText, chapters[0].id);
+      const secondBefore = standFor(beforeQuestText, chapters[1].id);
+      const worldBefore = beforeWorldsText.match(new RegExp(`## MCP-Testwelt\\nID: ${data.worldId}\\nStand: ([^\\n]+)`))?.[1];
+      expect(firstBefore).toBeTruthy();
+      expect(secondBefore).toBeTruthy();
+      expect(worldBefore).toBeTruthy();
+      expect(beforeQuestText).not.toContain(hidden[0].id);
+
+      await Promise.all([
+        sql.unsafe("UPDATE quest_chapters SET updated_at = updated_at + interval '1 second' WHERE id = $1", [chapters[0].id]),
+        sql.unsafe("UPDATE worlds SET updated_at = updated_at + interval '1 second' WHERE id = $1", [data.worldId]),
+      ]);
+      const [afterQuest, afterWorlds] = await Promise.all([
+        callTool(credentials.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "quest", id: data.activeQuestId }),
+        callTool(credentials.accessToken, "welten_auflisten"),
+      ]);
+      const afterQuestText = firstToolText(afterQuest);
+      const afterWorldsText = firstToolText(afterWorlds);
+      expect(standFor(afterQuestText, chapters[0].id)).not.toBe(firstBefore);
+      expect(standFor(afterQuestText, chapters[1].id)).toBe(secondBefore);
+      expect(afterWorldsText.match(new RegExp(`## MCP-Testwelt\\nID: ${data.worldId}\\nStand: ([^\\n]+)`))?.[1]).not.toBe(worldBefore);
+    } finally {
+      await sql.end();
+    }
   });
 
   it("T-007(1–4): applies the role matrix to relations, quests, and universes", async () => {

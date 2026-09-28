@@ -10,7 +10,7 @@ export type McpWorldContext = {
   userId: string;
 };
 
-export type McpWorldSummary = McpWorldContext & { mcpEnabled: boolean };
+export type McpWorldSummary = McpWorldContext & { mcpEnabled: boolean; updatedAt: Date };
 
 export class McpToolError extends Error {}
 
@@ -25,7 +25,7 @@ async function enabledWorlds(userId: string) {
 
 export async function listMcpWorldMemberships(userId: string): Promise<McpWorldSummary[]> {
   const rows = await db
-    .select({ id: worlds.id, name: worlds.name, role: memberships.role, mcpEnabled: worlds.mcpEnabled })
+    .select({ id: worlds.id, name: worlds.name, role: memberships.role, mcpEnabled: worlds.mcpEnabled, updatedAt: worlds.updatedAt })
     .from(memberships)
     .innerJoin(worlds, eq(worlds.id, memberships.worldId))
     .where(and(eq(memberships.userId, userId), isNull(memberships.archivedAt)))

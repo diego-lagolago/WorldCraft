@@ -247,7 +247,8 @@ async function main() {
     await sql`
       INSERT INTO quest_chapters (quest_id, title, body_json, body_plain, position, status, visibility, owner_id, created_by, updated_by) VALUES
       (${activeQuest.id}, 'Ankunft', ${sql.json(doc("Öffentliches Kapitel."))}::jsonb, 'Öffentliches Kapitel.', 0, 'active', 'published', ${GM}, ${GM}, ${GM}),
-      (${activeQuest.id}, 'Geheimer Plan', ${sql.json(doc("SLTEST im SL-Kapitel."))}::jsonb, 'SLTEST im SL-Kapitel.', 1, 'open', 'gm_only', ${GM}, ${GM}, ${GM})
+      (${activeQuest.id}, 'Spur im Regen', ${sql.json(doc("Zweites öffentliches Kapitel."))}::jsonb, 'Zweites öffentliches Kapitel.', 1, 'open', 'published', ${GM}, ${GM}, ${GM}),
+      (${activeQuest.id}, 'Geheimer Plan', ${sql.json(doc("SLTEST im SL-Kapitel."))}::jsonb, 'SLTEST im SL-Kapitel.', 2, 'open', 'gm_only', ${GM}, ${GM}, ${GM})
     `;
     await sql`
       INSERT INTO quest_notes (quest_id, body_json, body_plain, version, updated_by)

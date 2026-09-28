@@ -28,6 +28,7 @@ export function registerWorldsListTool(server: McpServer, ctx: ToolContext) {
         return [
           `## ${world.name}`,
           `ID: ${world.id}`,
+          `Stand: ${world.updatedAt.toISOString()}`,
           details?.descriptionJson ? tiptapJsonToMcpMarkdown(details.descriptionJson) : "",
           `Eigene Rolle: ${world.role}`,
           mine.length ? `Eigene Charaktere: ${mine.map((character) => `${character.name} (${character.id})`).join(", ")}` : "",

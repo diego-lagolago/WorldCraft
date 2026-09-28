@@ -65,6 +65,7 @@ export type ChapterSummary = {
   visibility: ContentVisibility;
   ownerId: string;
   position: number;
+  updatedAt: Date;
 };
 
 type ChapterRow = {
@@ -76,6 +77,7 @@ type ChapterRow = {
   visibility: ContentVisibility;
   ownerId: string;
   position: number;
+  updatedAt: Date;
 };
 
 type WritableChapterRow = {
@@ -93,6 +95,7 @@ function toSummary(row: ChapterRow): ChapterSummary {
     visibility: row.visibility,
     ownerId: row.ownerId,
     position: row.position,
+    updatedAt: row.updatedAt,
   };
 }
 
@@ -123,6 +126,7 @@ async function loadChapters(questId: string): Promise<ChapterRow[]> {
       visibility: questChapters.visibility,
       ownerId: questChapters.ownerId,
       position: questChapters.position,
+      updatedAt: questChapters.updatedAt,
     })
     .from(questChapters)
     .where(eq(questChapters.questId, questId))
@@ -279,6 +283,7 @@ export async function createChapter(input: {
           visibility: questChapters.visibility,
           ownerId: questChapters.ownerId,
           position: questChapters.position,
+          updatedAt: questChapters.updatedAt,
         });
       await recalcQuestMentions(input.worldId, input.actorId, quest.id, tx);
       return created;
