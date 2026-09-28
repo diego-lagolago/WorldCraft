@@ -211,6 +211,7 @@ describe("MCP OAuth and protected resource", () => {
     expect(resourceMetadata.authorization_servers).toEqual([`${BASE}/api/auth`]);
     expect(issuerMetadata.client_id_metadata_document_supported).toBe(true);
     expect(issuerMetadata.code_challenge_methods_supported).toContain("S256");
+    expect(issuerMetadata.scopes_supported).toEqual(expect.arrayContaining(["worlds:read", "worlds:write"]));
   });
 
   it("CR-024 / CR-025: limits public DCR to five registrations per minute and IP", async () => {
@@ -349,6 +350,13 @@ describe("MCP OAuth and protected resource", () => {
     });
     expect(codeReuse.status).toBe(400);
     expect((await json(codeReuse)).error).toBe("invalid_grant");
+  });
+
+  it("T-003: a write token can use read tools", async () => {
+    const client = await registerMcpClient(9889, "MCP Write Scope Read Test");
+    const credentials = await authorizeMcpClient("test-player-a", client, "worlds:write offline_access");
+    const result = await callTool(credentials.accessToken, "welten_auflisten");
+    expect(toolText(result)).toContain("MCP-Testwelt");
   });
 
   it("T-003(3): declining consent redirects the client with access_denied", async () => {

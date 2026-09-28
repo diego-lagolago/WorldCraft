@@ -163,7 +163,7 @@ export const auth = betterAuth({
       resource: MCP_RESOURCE,
       loginPage: "/",
       consentPage: "/oauth/consent",
-      scopes: ["worlds:read", "offline_access"],
+      scopes: ["worlds:read", "worlds:write", "offline_access"],
       grantTypes: ["authorization_code", "refresh_token"],
       accessTokenExpiresIn: 60 * 60,
       refreshTokenExpiresIn: 60 * 60 * 24 * 30,
@@ -171,7 +171,9 @@ export const auth = betterAuth({
       allowDynamicClientRegistration: true,
       allowUnauthenticatedClientRegistration: true,
       clientRegistrationRequirePKCE: true,
-      clientRegistrationDefaultScopes: ["worlds:read", "offline_access"],
+      // DCR clients may request either permission; the authorization request
+      // still decides which one is consented to and included in a token.
+      clientRegistrationDefaultScopes: ["worlds:read", "worlds:write", "offline_access"],
       storeTokens: { hash: hashStoredOAuthToken },
     }),
     cimd({

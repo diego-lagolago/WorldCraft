@@ -77,7 +77,9 @@ export function OAuthConsent({ clientName, redirectDomain, oauthQuery, scopes, a
         <p className="small muted">Der Anwendungsname wird vom verbundenen Client selbst angegeben.</p>
         <p className="small">Weiterleitung an: <strong>{redirectDomain}</strong></p>
         <p className="muted">
-          {scopes.includes("worlds:read")
+          {scopes.includes("worlds:write")
+            ? "Lesen und Schreiben auf deine Welten; Tagebücher, Chat, Karten, Pins und Charaktere sind vom Schreiben ausgeschlossen. Gelöscht wird nie."
+            : scopes.includes("worlds:read")
             ? "Lesezugriff auf deine Welten; Tagebücher und Chat sind ausgeschlossen."
             : `Berechtigungen: ${scopes.join(", ")}`}
         </p>

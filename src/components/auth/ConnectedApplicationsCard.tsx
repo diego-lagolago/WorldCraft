@@ -24,13 +24,14 @@ export function ConnectedApplicationsCard({ applications }: { applications: Conn
   return (
     <section className="card stack" aria-labelledby="connected-applications-title">
       <h2 id="connected-applications-title" style={{ margin: 0 }}>Verbundene Anwendungen</h2>
-      <p className="small muted">Diese Anwendungen dürfen WorldCraft-Daten im Rahmen deiner Freigabe lesen.</p>
+      <p className="small muted">Diese Anwendungen dürfen WorldCraft-Daten im Rahmen deiner Freigabe lesen oder schreiben.</p>
       {applications.length === 0 ? <p className="small muted">Noch keine Anwendung verbunden.</p> : null}
       {applications.map((application) => (
         <div className="item" key={application.clientId}>
           <div className="grow stack" style={{ gap: 3 }}>
             <strong>{application.name}</strong>
             <span className="small muted">Weiterleitung: {application.redirectDomain}</span>
+            <span className="small muted">Berechtigungen: {application.scopes.includes("worlds:write") ? "Lesen und Schreiben" : "Lesen"}</span>
             <span className="small muted">Freigegeben: {formatDate(application.consentedAt)} · Letzte Nutzung: {formatDate(application.lastUsedAt)}</span>
           </div>
           <button type="button" className="btn danger" onClick={() => revoke(application.clientId)} disabled={pending !== null}>

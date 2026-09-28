@@ -6,6 +6,7 @@ export type ConnectedApplication = {
   clientId: string;
   name: string;
   redirectDomain: string;
+  scopes: string[];
   consentedAt: Date;
   lastUsedAt: Date | null;
 };
@@ -13,7 +14,7 @@ export type ConnectedApplication = {
 export async function listConnectedApplications(userId: string): Promise<ConnectedApplication[]> {
   const [consents, lastUsage] = await Promise.all([
     db
-    .select({ clientId: oauthConsents.clientId, name: oauthClients.name, redirectUris: oauthClients.redirectUris, consentedAt: oauthConsents.createdAt })
+    .select({ clientId: oauthConsents.clientId, name: oauthClients.name, redirectUris: oauthClients.redirectUris, scopes: oauthConsents.scopes, consentedAt: oauthConsents.createdAt })
     .from(oauthConsents)
     .innerJoin(oauthClients, eq(oauthClients.clientId, oauthConsents.clientId))
     .where(eq(oauthConsents.userId, userId))
@@ -25,7 +26,7 @@ export async function listConnectedApplications(userId: string): Promise<Connect
   return consents.map((consent) => {
     let redirectDomain = "Unbekannt";
     try { redirectDomain = new URL(consent.redirectUris[0] ?? "").host || "Unbekannt"; } catch { /* valid registration has a URI */ }
-    return { clientId: consent.clientId, name: consent.name?.trim() || "Unbenannte Anwendung", redirectDomain, consentedAt: consent.consentedAt, lastUsedAt: lastUsageByClient.get(consent.clientId) ?? null };
+    return { clientId: consent.clientId, name: consent.name?.trim() || "Unbenannte Anwendung", redirectDomain, scopes: consent.scopes, consentedAt: consent.consentedAt, lastUsedAt: lastUsageByClient.get(consent.clientId) ?? null };
   });
 }
 

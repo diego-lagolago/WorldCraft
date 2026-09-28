@@ -84,7 +84,14 @@ const protectedMcpHandler = requireMcpAuth(auth, async (request, claims) => {
       extra: { userId: claims.sub, userName: user.name },
     },
   });
-}, { resource: MCP_RESOURCE, requiredScopes: ["worlds:read"] });
+}, {
+  resource: MCP_RESOURCE,
+  requiredScopes: ["worlds:read"],
+  // `worlds:write` deliberately includes reading (Plan 011 S1).
+  isScopeSatisfied: (required, granted) => required === "worlds:read"
+    ? granted.has("worlds:read") || granted.has("worlds:write")
+    : granted.has(required),
+});
 
 export async function POST(request: Request) {
   if (!isMcpEnabled()) return new Response(null, { status: 404 });
