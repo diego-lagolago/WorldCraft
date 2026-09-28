@@ -34,7 +34,7 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 | CR-010 | Aufgaben-Abgleich | mittel | behoben | Testwelt erfüllt T-002/D19 und erlaubt die T-008-Invariante |
 | CR-011 | Lesbarkeit & Wartbarkeit | mittel | behoben | MCP-Werkzeuge sind modular, Enums zentral und Eingaben validiert |
 | CR-012 | Aufgaben-Abgleich | mittel | behoben | Hilfeseite beschreibt Sichtbarkeit und Widerruf korrekt |
-| CR-013 | Aufgaben-Abgleich | mittel | offen | E2E-Protokoll vorhanden, aber T-010/T-011 und der Abnahmestand sind noch nicht vollständig |
+| CR-013 | Aufgaben-Abgleich | mittel | behoben | Plan-Checkboxen und E2E-Protokoll bilden den vollständigen Abnahmestand ab |
 | CR-014 | Runtime-Risiken | niedrig | behoben | `bild_nr` wird über die Position der bereits sortierten Bildliste aufgelöst |
 | CR-015 | Bad Practices | niedrig | behoben | MCP-Serverversion wird aus `package.json` bezogen |
 | CR-016 | Aufgaben-Abgleich | niedrig | behoben | Hauptschalter verbirgt `/authorize`, `/token` und alle `/mcp`-Methoden konsistent mit 404 |
@@ -236,9 +236,10 @@ Es gelten die Begriffe aus `.ai/feature-tasks/002-mcp-server.md` (Abschnitt *Beg
 - **Kategorie:** Aufgaben-Abgleich
 - **Schweregrad:** mittel
 - **Bezug (Task-ID):** T-003–T-014
-- **Beschreibung:** Der Abnahmestand wird in der Task-Datei gepflegt. T-003 bis T-005 sind durch den manuellen lokalen Inspector-Nachweis vollständig abgenommen. Das E2E-Protokoll liegt vor, belegt für T-010 aber nur ein Teilergebnis: Die Quest-Gegenstand-Abfrage wurde in beiden Clients nicht unmittelbar gefiltert. Die Meldung zur Übertragungsgröße beim Titelbild von Burg Rabenstein ist akzeptiert; ein alternatives Charakterbild wurde erfolgreich beschrieben und angezeigt. T-010 und die abhängige T-011 bleiben wegen der Quest-Gegenstand-Abfrage offen. Die MCP-Dokumentation ist weiterhin uncommittet.
-- **Empfehlung:** Pro Aufgabe den tatsächlichen Stand eintragen und nur Aufgaben mit erfüllter Abnahme abhaken. Für T-010 die Quest-Gegenstand-Abfrage nach der jetzt expliziten Werkzeuganleitung erneut erfolgreich in beiden Clients nachweisen. Bei T-014 die Produktionserstellung der Demowelt im Protokoll ergänzen. Danach den E2E-Status und die Dokumentation final prüfen und committen.
+- **Beschreibung:** Der Abnahmestand wird in der Task-Datei gepflegt. T-003 bis T-005 sind durch den manuellen lokalen Inspector-Nachweis vollständig abgenommen. Nach der expliziten Werkzeuganleitung wurde die Quest-Gegenstand-Abfrage in beiden Clients direkt im ersten Aufruf gefiltert; T-010 und die abhängige T-011 sind damit vollständig abgenommen. Die Meldung zur Übertragungsgröße beim Titelbild von Burg Rabenstein ist akzeptiert; ein alternatives Charakterbild wurde erfolgreich beschrieben und angezeigt.
+- **Empfehlung:** Keine – Abnahmestand und E2E-Protokoll sind vollständig nachgeführt.
 - **Abnahmekriterium:** Die Checkboxen der Task-Datei stimmen mit dem Stand der Abnahmekriterien überein. `.ai/infrastructure/mcp-e2e-test.md` existiert mit Datum, Client (claude.ai, Claude Code), aufgerufenen Werkzeugen und Ergebnis je Frage. `git status` zeigt keine uncommitteten MCP-Dokumente.
+- **Status:** behoben (2026-09-28). Alle Plan-002-Checkboxen sind erfüllt; das Protokoll enthält die erfolgreichen Prüfungen mit claude.ai und Claude Code. Die Dokumentationsaktualisierung wurde committed.
 
 ### CR-014
 - **Fundstelle:** `src/lib/mcp/tools.ts`, `bild_lesen` (Zweig `charakter`)
