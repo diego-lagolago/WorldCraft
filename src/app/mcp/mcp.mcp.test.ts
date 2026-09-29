@@ -1900,6 +1900,40 @@ describe("MCP write tools", () => {
     expect(staleStand.toLowerCase()).toMatch(/geändert|stand|neu lesen/);
   });
 
+  it("CR-018: revoking the application invalidates previously issued upload links", async () => {
+    const client = await registerMcpClient(9905, "MCP Upload Revocation Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const created = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP Upload Widerruf ${Date.now().toString(36)}`, text: "Ohne Bild." },
+    }));
+    const articleId = extractId(created);
+    const read = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: articleId,
+    }));
+    const link = extractUploadLink(firstToolText(await callTool(gm.accessToken, "bild_hochladen", {
+      welt: "MCP-Testwelt", ziel: "artikel", id: articleId, stand: extractStand(read),
+    })));
+
+    const revoked = await fetch(`${BASE}/api/connected-applications/${encodeURIComponent(client.clientId)}`, {
+      method: "DELETE",
+      headers: { origin: BASE, cookie: gm.session.cookie },
+    });
+    expect(revoked.status).toBe(200);
+
+    expect((await fetch(link, { headers: { accept: "text/html" } })).status).toBe(404);
+    const upload = await postUpload(link, TINY_PNG, "tiny.png", "image/png");
+    expect(upload.status).toBe(404);
+    const sql = testSql();
+    try {
+      const [article] = await sql.unsafe("SELECT title_image_id FROM articles WHERE id = $1", [articleId]);
+      expect(article.title_image_id).toBeNull();
+    } finally {
+      await sql.end();
+    }
+  });
+
   it("T-009: write audit fields omit titles and upload rate-limits", async () => {
     const client = await registerMcpClient(9894, "MCP Write Audit Test");
     const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
