@@ -20,12 +20,12 @@
 | CR-010 | Aufgaben-Abgleich | mittel | behoben | Die Änderungsvorschau zeigt englische Schlüssel, rohe IDs und keinen alten Charakterblatt-Wert (S11, Begriff „Änderungsvorschau“) |
 | CR-011 | Duplizierung | mittel | behoben | Große Duplikate zwischen `content-create`, `content-update`, `visibility-set` und `image-upload` |
 | CR-012 | Bad Practices | mittel | behoben | `content-update.ts` (1 163 Zeilen) steuert alles über zwei riesige Verzweigungsketten je `art` |
-| CR-013 | Testabdeckung | mittel | offen | Für T-004 (2) Ablauf nach 10 Minuten und (5) Rechteverlust zwischen Vorschau und Bestätigung fehlen Tests |
+| CR-013 | Testabdeckung | mittel | behoben | Für T-004 (2) Ablauf nach 10 Minuten und (5) Rechteverlust zwischen Vorschau und Bestätigung fehlen Tests |
 | CR-014 | Runtime-Risiken | niedrig | behoben | Explizite Erwähnungs-IDs werden direkt sichtbarkeitsgeprüft geladen und nutzen den DB-Titel |
 | CR-015 | Performance | niedrig | behoben | Gleiche Erwähnungen werden einmal aufgelöst; Kapitelsuche startet direkt bei der Kapitel-ID |
 | CR-016 | Bad Practices | niedrig | behoben | Die Audit-ID wird strukturiert aus dem Anlegeergebnis übernommen |
 | CR-017 | Fehlerbehandlung | niedrig | behoben | Unbekannte Felder werden strikt validiert und erzeugen keine Vorschau |
-| CR-018 | Sicherheit | niedrig | offen | Upload-Tickets sind nicht an den OAuth-Client gebunden, das Audit schreibt `clientId: "upload-ticket"` |
+| CR-018 | Sicherheit | niedrig | behoben | Upload-Tickets sind nicht an den OAuth-Client gebunden, das Audit schreibt `clientId: "upload-ticket"` |
 | CR-019 | Toter Code | niedrig | behoben | Der Änderungs-Hash wird beim Einlösen gegen den normalisierten Payload geprüft |
 | CR-020 | Lesbarkeit | niedrig | behoben | `registerMcpTools` beschreibt den vollständigen Werkzeugsatz; Purge-Operationen sind getrennt geloggt |
 | CR-021 | Sicherheit | niedrig | behoben | Der Upload-POST liest den ganzen Body vor der Größenprüfung, GET antwortet bei Stand-Drift mit 404 statt mit einer Erklärung |
@@ -164,6 +164,7 @@
 - **Abnahmekriterium:** Keine Funktion unter `src/lib/mcp/tools/` ist länger als 80 Zeilen. `content-update.ts` enthält keine `if (input.art === …)`-Kette mehr, sondern einen Lookup in einer Handler-Tabelle. `npm run test:mcp` bleibt grün.
 
 ### CR-013 – Fehlende Tests für Ablauf und Rechteverlust bei Bestätigungen
+- **Status:** behoben – Die MCP-Suite enthält „T-004(2)“ (Ablauf) und „T-004(5)“ für Rollenverlust, abgeschaltete Weltfreigabe und Allowlist-Verlust, jeweils mit Prüfung des unveränderten Zielinhalts.
 - **Fundstelle:** `src/lib/mcp/confirmations.integration.test.ts`, `src/app/mcp/mcp.mcp.test.ts` (Blöcke T-004/T-006/T-010)
 - **Kategorie:** Testabdeckung
 - **Schweregrad:** mittel
@@ -214,6 +215,7 @@
 - **Abnahmekriterium:** MCP-Test: `inhalt_aendern` mit `felder: { unbekannt: "x" }` liefert einen Validierungsfehler, der das Feld nennt, und kein Bestätigungs-Token.
 
 ### CR-018 – Upload-Tickets ohne Client-Bindung
+- **Status:** behoben – Migration 0032 bindet Tickets an `client_id`; die Einlösung prüft die Zustimmung und schreibt die echte Client-ID ins Audit. Die MCP-Suite prüft 404 nach Widerruf und `client_id` im Audit.
 - **Fundstelle:** `src/db/migrations/0029_mcp_upload_tickets.sql`, `src/lib/mcp/upload-tickets.ts`, `src/app/upload/[ticket]/route.ts` Z. 251 (`clientId: "upload-ticket"`)
 - **Kategorie:** Sicherheit / Fehlerbehandlung (Audit)
 - **Schweregrad:** niedrig
