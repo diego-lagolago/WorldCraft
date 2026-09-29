@@ -3,6 +3,7 @@ import { getWorldCharacter } from "@/lib/domain/characters";
 import { tiptapJsonToMcpMarkdown } from "@/lib/editor/tiptap-mcp-markdown";
 import { attributeModifier, skillBonus, SKILL_LEVEL_LABEL } from "@/lib/characters/sheet";
 import { templateOf } from "@/lib/templates/registry";
+import { isPendingStubRef } from "../pending-stub-ref";
 
 type VisibleWorld = {
   id: string;
@@ -54,6 +55,10 @@ export async function renderTemplateFields(
     if (field.type === "select") {
       const label = field.options.find((option) => option.value === raw)?.label ?? String(raw);
       lines.push(`${field.label}: ${label}`);
+      continue;
+    }
+    if (field.type === "ref" && isPendingStubRef(raw)) {
+      lines.push(`${field.label}: @[${raw.__stubTitle}] (neuer Stub)`);
       continue;
     }
     if (field.type === "ref" && raw && typeof raw === "object") {

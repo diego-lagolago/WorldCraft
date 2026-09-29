@@ -1,15 +1,17 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import type { ContentVisibility, VisibilityStatus } from "@/lib/authz";
-import { getArticle, updateArticle } from "@/lib/domain/articles";
-import { getMonster, updateMonster } from "@/lib/domain/monsters";
-import { getVisibleChapter, updateChapter } from "@/lib/domain/quest-chapters";
-import { getQuest, updateQuest } from "@/lib/domain/quests";
-import { getUniverse, updateUniverse } from "@/lib/domain/universes";
+import type { ContentVisibility, MembershipRow, VisibilityStatus } from "@/lib/authz";
+import { updateArticle } from "@/lib/domain/articles";
+import { updateMonster } from "@/lib/domain/monsters";
+import { updateChapter } from "@/lib/domain/quest-chapters";
+import { updateQuest } from "@/lib/domain/quests";
+import { updateUniverse } from "@/lib/domain/universes";
 import { createMcpConfirmation, registerMcpConfirmationHandler } from "../confirmations";
 import { McpToolError, resolveMcpWorld, type McpWorldContext } from "../context";
+import { findVisibleChapter, visibleArticle, visibleMonster, visibleQuest, visibleUniverse } from "../write-shared";
 import {
   assertStand,
+  formatConfirmationPreview,
   formatCreateResult,
   mcpMembership,
   standOf,
@@ -21,262 +23,153 @@ import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "
 const visibilityArt = z.enum(["artikel", "quest", "kapitel", "monster", "universum"]);
 const visibilityLabelInput = z.enum(["nur ich", "nur Spielleitung", "veröffentlicht"]);
 
+type VisibilityArt = z.infer<typeof visibilityArt>;
+
 const VISIBILITY_MAP = {
   "nur ich": "owner_only",
   "nur Spielleitung": "gm_only",
   veröffentlicht: "published",
 } as const satisfies Record<z.infer<typeof visibilityLabelInput>, ContentVisibility>;
 
+const VISIBILITY_CONSEQUENCE: Record<ContentVisibility, string> = {
+  owner_only: "Danach sieht nur noch der Owner den Inhalt; alle anderen Mitglieder, auch die Spielleitung, verlieren den Zugriff.",
+  gm_only: "Danach sehen nur Game Master und Master den Inhalt; Player sehen ihn nicht.",
+  published: "Danach sehen alle Mitglieder der Welt den Inhalt, auch alle Player.",
+};
+
 type VisibilityPayload = {
   operation: "sichtbarkeit_setzen";
-  art: z.infer<typeof visibilityArt>;
+  art: VisibilityArt;
   id: string;
   stand: string;
   sichtbarkeit: ContentVisibility;
 };
 
-async function findVisibleChapter(world: McpWorldContext, chapterId: string) {
-  const found = await getVisibleChapter(world.id, chapterId, world.role, world.userId);
-  if (!found) throw new McpToolError("Inhalt nicht gefunden.");
-  return found;
-}
+type VisibilityTarget = { id: string; title: string; updatedAt: Date; current: ContentVisibility | VisibilityStatus };
 
-async function loadVisibilityTarget(input: {
+type WriteInput = {
+  membership: MembershipRow;
+  actorId: string;
   world: McpWorldContext;
-  art: z.infer<typeof visibilityArt>;
   id: string;
-  stand: string;
-}): Promise<{ title: string; current: ContentVisibility | VisibilityStatus }> {
-  if (input.art === "artikel") {
-    const row = await getArticle(input.world.id, input.id, input.world.role, input.world.userId);
-    if (!row) throw new McpToolError("Inhalt nicht gefunden.");
-    assertStand(row.updatedAt, input.stand);
-    return { title: row.title, current: row.visibility };
-  }
-  if (input.art === "quest") {
-    const row = await getQuest(input.world.id, input.id, input.world.role, input.world.userId);
-    if (!row) throw new McpToolError("Inhalt nicht gefunden.");
-    assertStand(row.updatedAt, input.stand);
-    return { title: row.title, current: row.visibility };
-  }
-  if (input.art === "kapitel") {
-    const found = await findVisibleChapter(input.world, input.id);
-    assertStand(found.chapter.updatedAt, input.stand);
-    return { title: found.chapter.title, current: found.chapter.visibility };
-  }
-  if (input.art === "monster") {
-    const row = await getMonster(input.world.id, input.id, input.world.role, input.world.userId);
-    if (!row) throw new McpToolError("Inhalt nicht gefunden.");
-    assertStand(row.updatedAt, input.stand);
-    return { title: row.name, current: row.visibility };
-  }
-  const row = await getUniverse(input.world.id, input.id, input.world.role, input.world.userId);
-  if (!row) throw new McpToolError("Inhalt nicht gefunden.");
-  assertStand(row.updatedAt, input.stand);
-  return { title: row.name, current: row.visibility };
+  visibility: ContentVisibility;
+  expectedUpdatedAt: Date;
+};
+
+type VisibilityHandler = {
+  load: (world: McpWorldContext, id: string) => Promise<VisibilityTarget>;
+  write: (input: WriteInput) => Promise<{ ok: true } | { ok: false; error: string }>;
+};
+
+function target(row: { id: string; updatedAt: Date; visibility: ContentVisibility | VisibilityStatus }, title: string) {
+  return { id: row.id, title, updatedAt: row.updatedAt, current: row.visibility };
 }
 
-async function executeVisibilitySet(input: {
+const HANDLERS: Record<VisibilityArt, VisibilityHandler> = {
+  artikel: {
+    load: async (world, id) => { const row = await visibleArticle(world, id); return target(row, row.title); },
+    write: ({ world, id, ...input }) => updateArticle({ ...input, worldId: world.id, articleId: id }),
+  },
+  quest: {
+    load: async (world, id) => { const row = await visibleQuest(world, id); return target(row, row.title); },
+    write: ({ world, id, ...input }) => updateQuest({ ...input, worldId: world.id, questId: id }),
+  },
+  kapitel: {
+    load: async (world, id) => {
+      const { chapter } = await findVisibleChapter(world, id);
+      return target(chapter, chapter.title);
+    },
+    write: async ({ world, id, ...input }) => {
+      const { questId } = await findVisibleChapter(world, id);
+      return updateChapter({ ...input, worldId: world.id, questId, chapterId: id });
+    },
+  },
+  monster: {
+    load: async (world, id) => { const row = await visibleMonster(world, id); return target(row, row.name); },
+    write: ({ world, id, ...input }) => updateMonster({ ...input, worldId: world.id, monsterId: id }),
+  },
+  universum: {
+    load: async (world, id) => { const row = await visibleUniverse(world, id); return target(row, row.name); },
+    write: async ({ world, id, ...input }) => {
+      if (input.visibility === "owner_only") throw new McpToolError("Universen unterstützen die Sichtbarkeit „nur ich“ nicht.");
+      return updateUniverse({ ...input, visibility: input.visibility, worldId: world.id, universeId: id });
+    },
+  },
+};
+
+async function loadCurrentTarget(world: McpWorldContext, art: VisibilityArt, id: string, stand: string) {
+  const loaded = await HANDLERS[art].load(world, id);
+  assertStand(loaded.updatedAt, stand);
+  return loaded;
+}
+
+async function executeVisibilitySet(input: Omit<VisibilityPayload, "operation"> & {
   ctx: ToolContext;
   world: McpWorldContext;
-  art: z.infer<typeof visibilityArt>;
-  id: string;
-  stand: string;
-  sichtbarkeit: ContentVisibility;
 }): Promise<{ worldId: string; value: string }> {
-  const membership = mcpMembership(input.world);
-  await loadVisibilityTarget({
-    world: input.world,
-    art: input.art,
-    id: input.id,
-    stand: input.stand,
-  });
-
-  if (input.art === "artikel") {
-    const result = await updateArticle({
-      membership,
-      actorId: input.ctx.userId,
-      worldId: input.world.id,
-      articleId: input.id,
-      visibility: input.sichtbarkeit,
-      expectedUpdatedAt: new Date(input.stand),
-    });
-    if (!result.ok) throwAuthz(result);
-    const row = await getArticle(input.world.id, input.id, input.world.role, input.world.userId);
-    if (!row) throw new McpToolError("Inhalt nicht gefunden.");
-    return {
-      worldId: input.world.id,
-      value: formatCreateResult({
-        art: "artikel",
-        id: row.id,
-        title: row.title,
-        stand: standOf(row.updatedAt),
-        visibility: visibilityLabel(row.visibility),
-      }),
-    };
-  }
-
-  if (input.art === "quest") {
-    const result = await updateQuest({
-      membership,
-      actorId: input.ctx.userId,
-      worldId: input.world.id,
-      questId: input.id,
-      visibility: input.sichtbarkeit,
-      expectedUpdatedAt: new Date(input.stand),
-    });
-    if (!result.ok) throwAuthz(result);
-    const row = await getQuest(input.world.id, input.id, input.world.role, input.world.userId);
-    if (!row) throw new McpToolError("Inhalt nicht gefunden.");
-    return {
-      worldId: input.world.id,
-      value: formatCreateResult({
-        art: "quest",
-        id: row.id,
-        title: row.title,
-        stand: standOf(row.updatedAt),
-        visibility: visibilityLabel(row.visibility),
-      }),
-    };
-  }
-
-  if (input.art === "kapitel") {
-    const found = await findVisibleChapter(input.world, input.id);
-    const result = await updateChapter({
-      membership,
-      actorId: input.ctx.userId,
-      worldId: input.world.id,
-      questId: found.questId,
-      chapterId: input.id,
-      visibility: input.sichtbarkeit,
-      expectedUpdatedAt: new Date(input.stand),
-    });
-    if (!result.ok) throwAuthz(result);
-    const refreshed = await findVisibleChapter(input.world, input.id);
-    return {
-      worldId: input.world.id,
-      value: formatCreateResult({
-        art: "kapitel",
-        id: refreshed.chapter.id,
-        title: refreshed.chapter.title,
-        stand: standOf(refreshed.chapter.updatedAt),
-        visibility: visibilityLabel(refreshed.chapter.visibility),
-      }),
-    };
-  }
-
-  if (input.art === "monster") {
-    const result = await updateMonster({
-      membership,
-      actorId: input.ctx.userId,
-      worldId: input.world.id,
-      monsterId: input.id,
-      visibility: input.sichtbarkeit,
-      expectedUpdatedAt: new Date(input.stand),
-    });
-    if (!result.ok) throwAuthz(result);
-    const row = await getMonster(input.world.id, input.id, input.world.role, input.world.userId);
-    if (!row) throw new McpToolError("Inhalt nicht gefunden.");
-    return {
-      worldId: input.world.id,
-      value: formatCreateResult({
-        art: "monster",
-        id: row.id,
-        title: row.name,
-        stand: standOf(row.updatedAt),
-        visibility: visibilityLabel(row.visibility),
-      }),
-    };
-  }
-
-  if (input.sichtbarkeit === "owner_only") {
-    throw new McpToolError("Universen unterstützen die Sichtbarkeit „nur ich“ nicht.");
-  }
-  const result = await updateUniverse({
-    membership,
+  await loadCurrentTarget(input.world, input.art, input.id, input.stand);
+  const result = await HANDLERS[input.art].write({
+    membership: mcpMembership(input.world),
     actorId: input.ctx.userId,
-    worldId: input.world.id,
-    universeId: input.id,
+    world: input.world,
+    id: input.id,
     visibility: input.sichtbarkeit,
     expectedUpdatedAt: new Date(input.stand),
   });
   if (!result.ok) throwAuthz(result);
-  const row = await getUniverse(input.world.id, input.id, input.world.role, input.world.userId);
-  if (!row) throw new McpToolError("Inhalt nicht gefunden.");
+  const updated = await HANDLERS[input.art].load(input.world, input.id);
   return {
     worldId: input.world.id,
     value: formatCreateResult({
-      art: "universum",
-      id: row.id,
-      title: row.name,
-      stand: standOf(row.updatedAt),
-      visibility: visibilityLabel(row.visibility),
+      art: input.art,
+      id: updated.id,
+      title: updated.title,
+      stand: standOf(updated.updatedAt),
+      visibility: visibilityLabel(updated.current),
     }),
   };
 }
 
 registerMcpConfirmationHandler("sichtbarkeit_setzen", async (row) => {
   const payload = row.payload as VisibilityPayload;
-  const world = await resolveMcpWorld(row.userId, row.worldId);
   return executeVisibilitySet({
+    ...payload,
     ctx: { userId: row.userId, clientId: row.clientId, scopes: ["worlds:write"] },
-    world,
-    art: payload.art,
-    id: payload.id,
-    stand: payload.stand,
-    sichtbarkeit: payload.sichtbarkeit,
+    world: await resolveMcpWorld(row.userId, row.worldId),
   });
 });
 
-function formatVisibilityPreview(input: {
-  art: string;
-  title: string;
-  from: string;
-  to: string;
-  token: string;
-  expiresAt: Date;
-}): string {
-  return [
-    "Änderung noch nicht ausgeführt. Bitte mit aenderung_bestaetigen bestätigen.",
-    `Art: ${input.art}`,
-    `Titel: ${input.title}`,
-    `Sichtbarkeit: ${input.from} → ${input.to}`,
-    "Folge: Wer den Inhalt danach sieht, hängt von der neuen Stufe ab (nur ich = nur Owner; nur Spielleitung = Spielleitung; veröffentlicht = alle Mitglieder).",
-    `Bestätigungs-Token: ${input.token}`,
-    `Gültig bis: ${input.expiresAt.toISOString()}`,
-  ].join("\n");
-}
+const TOOL_DESCRIPTION = [
+  "Ändert die Sichtbarkeit eines Inhalts. Nur auf ausdrückliche Anweisung des Benutzers verwenden und vorher die Folgen nennen (wer den Inhalt danach sieht).",
+  "Immer mit Bestätigung (aenderung_bestaetigen). stand ist Pflicht.",
+  "Universen akzeptieren nur „nur Spielleitung“ und „veröffentlicht“.",
+  "Gelöscht wird nie.",
+].join(" ");
+
+const inputSchema = z.object({
+  welt: worldSchema,
+  art: visibilityArt,
+  id: z.string().uuid(),
+  stand: z.string().min(1),
+  sichtbarkeit: visibilityLabelInput,
+}).superRefine((value, ctx) => {
+  if (value.art === "universum" && value.sichtbarkeit === "nur ich") {
+    ctx.addIssue({ code: "custom", path: ["sichtbarkeit"], message: "Universen unterstützen die Sichtbarkeit „nur ich“ nicht." });
+  }
+});
 
 export function registerVisibilitySetTool(server: McpServer, ctx: ToolContext) {
   server.registerTool("sichtbarkeit_setzen", {
     title: "Sichtbarkeit setzen",
-    description: [
-      "Ändert die Sichtbarkeit eines Inhalts. Nur auf ausdrückliche Anweisung des Benutzers verwenden und vorher die Folgen nennen (wer den Inhalt danach sieht).",
-      "Immer mit Bestätigung (aenderung_bestaetigen). stand ist Pflicht.",
-      "Universen akzeptieren nur „nur Spielleitung“ und „veröffentlicht“.",
-      "Gelöscht wird nie.",
-    ].join(" "),
-    inputSchema: z.object({
-      welt: worldSchema,
-      art: visibilityArt,
-      id: z.string().uuid(),
-      stand: z.string().min(1),
-      sichtbarkeit: visibilityLabelInput,
-    }).superRefine((value, ctx) => {
-      if (value.art === "universum" && value.sichtbarkeit === "nur ich") {
-        ctx.addIssue({
-          code: "custom",
-          path: ["sichtbarkeit"],
-          message: "Universen unterstützen die Sichtbarkeit „nur ich“ nicht.",
-        });
-      }
-    }),
+    description: TOOL_DESCRIPTION,
+    inputSchema,
     annotations: { readOnlyHint: false, destructiveHint: true },
   }, async ({ welt, art, id, stand, sichtbarkeit }) => withAudit(ctx, "sichtbarkeit_setzen", async () => {
     requireMcpWriteScope(ctx);
     const world = await resolveMcpWorld(ctx.userId, welt);
     const next = VISIBILITY_MAP[sichtbarkeit];
-    const loaded = await loadVisibilityTarget({ world, art, id, stand });
+    const loaded = await loadCurrentTarget(world, art, id, stand);
+    const payload = { operation: "sichtbarkeit_setzen", art, id, stand, sichtbarkeit: next } satisfies VisibilityPayload;
     const confirmation = await createMcpConfirmation({
       userId: ctx.userId,
       clientId: ctx.clientId,
@@ -284,21 +177,17 @@ export function registerVisibilitySetTool(server: McpServer, ctx: ToolContext) {
       targetKind: art,
       targetId: id,
       expectedStand: stand,
-      payload: {
-        operation: "sichtbarkeit_setzen",
-        art,
-        id,
-        stand,
-        sichtbarkeit: next,
-      } satisfies VisibilityPayload,
+      payload,
     });
     return {
       worldId: world.id,
-      value: formatVisibilityPreview({
-        art,
-        title: loaded.title,
-        from: visibilityLabel(loaded.current),
-        to: sichtbarkeit,
+      value: formatConfirmationPreview({
+        lines: [
+          `Art: ${art}`,
+          `Titel: ${loaded.title}`,
+          `Sichtbarkeit: ${visibilityLabel(loaded.current)} → ${sichtbarkeit}`,
+          `Folge: ${VISIBILITY_CONSEQUENCE[next]}`,
+        ],
         token: confirmation.token,
         expiresAt: confirmation.expiresAt,
       }),

@@ -146,20 +146,22 @@ export function formatCreateResult(input: {
   return lines.join("\n");
 }
 
+/** Wraps preview lines in the shared header and the confirmation footer of every write tool. */
 export function formatConfirmationPreview(input: {
-  art: string;
-  title: string;
-  stubTitles: string[];
+  lines: string[];
   token: string;
   expiresAt: Date;
 }): string {
   return [
     "Änderung noch nicht ausgeführt. Bitte mit aenderung_bestaetigen bestätigen.",
-    `Art: ${input.art}`,
-    `Titel: ${input.title}`,
-    "Geplante Stub-Artikel:",
-    ...input.stubTitles.map((title) => `- ${title}`),
+    ...input.lines,
     `Bestätigungs-Token: ${input.token}`,
     `Gültig bis: ${input.expiresAt.toISOString()}`,
   ].join("\n");
+}
+
+/** Preview lines listing the stub articles a confirmation would create. */
+export function formatStubLines(stubTitles: string[]): string[] {
+  if (!stubTitles.length) return [];
+  return ["Geplante Stub-Artikel:", ...stubTitles.map((title) => `- ${title}`)];
 }

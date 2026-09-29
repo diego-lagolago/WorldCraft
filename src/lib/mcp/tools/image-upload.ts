@@ -1,14 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { getArticle } from "@/lib/domain/articles";
-import { getMonster } from "@/lib/domain/monsters";
 import { getWorldDetails } from "@/lib/domain/worlds";
 import { getAuthUrl } from "@/lib/env";
 import type { ImageKind } from "@/lib/files/kinds";
 import { createMcpConfirmation, registerMcpConfirmationHandler } from "../confirmations";
-import { listMcpWorldMemberships, McpToolError, resolveMcpWorld, type McpWorldContext } from "../context";
+import { McpToolError, resolveMcpWorld, type McpWorldContext } from "../context";
 import { createMcpUploadTicket } from "../upload-tickets";
-import { assertStand, standOf } from "../write-rich";
+import { visibleArticle, visibleMonster, worldStand } from "../write-shared";
+import { assertStand, formatConfirmationPreview } from "../write-rich";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 
 const uploadZiel = z.enum(["welt", "artikel", "monster"]);
@@ -31,13 +30,6 @@ type UploadPayload = {
   id: string;
   stand: string;
 };
-
-async function worldStand(userId: string, worldId: string): Promise<string> {
-  const worlds = await listMcpWorldMemberships(userId);
-  const row = worlds.find((entry) => entry.id === worldId);
-  if (!row) throw new McpToolError("Inhalt nicht gefunden.");
-  return standOf(row.updatedAt);
-}
 
 async function loadUploadTarget(input: {
   world: McpWorldContext;
@@ -62,8 +54,7 @@ async function loadUploadTarget(input: {
     };
   }
   if (input.ziel === "artikel") {
-    const row = await getArticle(input.world.id, input.id, input.world.role, input.world.userId);
-    if (!row) throw new McpToolError("Inhalt nicht gefunden.");
+    const row = await visibleArticle(input.world, input.id);
     assertStand(row.updatedAt, input.stand);
     return {
       title: row.title,
@@ -71,8 +62,7 @@ async function loadUploadTarget(input: {
       targetId: row.id,
     };
   }
-  const row = await getMonster(input.world.id, input.id, input.world.role, input.world.userId);
-  if (!row) throw new McpToolError("Inhalt nicht gefunden.");
+  const row = await visibleMonster(input.world, input.id);
   assertStand(row.updatedAt, input.stand);
   return {
     title: row.name,
@@ -182,13 +172,14 @@ export function registerImageUploadTool(server: McpServer, ctx: ToolContext) {
       });
       return {
         worldId: world.id,
-        value: [
-          "Änderung noch nicht ausgeführt. Bitte mit aenderung_bestaetigen bestätigen.",
-          `Ziel: ${ZIEL_LABEL[ziel]} – ${target.title}`,
-          "Folge: Das vorhandene Bild wird durch den späteren Upload ersetzt.",
-          `Bestätigungs-Token: ${confirmation.token}`,
-          `Gültig bis: ${confirmation.expiresAt.toISOString()}`,
-        ].join("\n"),
+        value: formatConfirmationPreview({
+          lines: [
+            `Ziel: ${ZIEL_LABEL[ziel]} – ${target.title}`,
+            "Folge: Das vorhandene Bild wird durch den späteren Upload ersetzt.",
+          ],
+          token: confirmation.token,
+          expiresAt: confirmation.expiresAt,
+        }),
         audit: { targetKind: ziel, targetId: target.targetId, confirmed: false },
       };
     }

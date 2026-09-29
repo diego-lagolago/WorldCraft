@@ -1057,6 +1057,62 @@ describe("MCP write tools", () => {
     expect(preview).not.toContain("inzwischen geändert");
   });
 
+  it("CR-010: previews template fields, sheet, habitat, and visibility in readable German", async () => {
+    const client = await registerMcpClient(9906, "MCP Readable Preview Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const suffix = Date.now().toString(36);
+
+    const article = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP Vorschau Person ${suffix}`, vorlagentyp: "person", text: "Schon befüllt." },
+    }));
+    const articleId = extractId(article);
+    const articleRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: articleId,
+    }));
+    const templatePreview = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      id: articleId,
+      stand: extractStand(articleRead),
+      felder: { vorlagenfelder: { Rasse: `@[Rabenblut](artikel:${data.raceId})` } },
+    }));
+    expect(templatePreview).toContain("Bestätigungs-Token:");
+    expect(templatePreview).toContain("Rasse:");
+    expect(templatePreview).toContain(`@[Rabenblut](artikel:${data.raceId})`);
+    expect(templatePreview).not.toContain('"race"');
+
+    const monster = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "monster",
+      felder: { name: `MCP Vorschau Monster ${suffix}`, monster_art: "Bestie", charakterblatt: { klasse: "Späher" } },
+    }));
+    const monsterId = extractId(monster);
+    const monsterRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "monster", id: monsterId,
+    }));
+    const monsterPreview = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "monster",
+      id: monsterId,
+      stand: extractStand(monsterRead),
+      felder: {
+        charakterblatt: { klasse: "Wächter" },
+        lebensraum: `@[Burg Rabenstein](artikel:${data.burgId})`,
+      },
+    }));
+    expect(monsterPreview).not.toContain("(bisheriges Blatt)");
+    expect(monsterPreview).toContain("alt: Klasse: Späher");
+    expect(monsterPreview).toContain("neu: Klasse: Wächter");
+    expect(monsterPreview).toContain(`Burg Rabenstein (${data.burgId})`);
+
+    const visibilityPreview = firstToolText(await callTool(gm.accessToken, "sichtbarkeit_setzen", {
+      welt: "MCP-Testwelt", art: "monster", id: monsterId, stand: extractStand(monsterRead), sichtbarkeit: "veröffentlicht",
+    }));
+    expect(visibilityPreview).toContain("Folge: Danach sehen alle Mitglieder der Welt den Inhalt");
+  });
+
   it("CR-005: rejects object references without revealing their target", async () => {
     const client = await registerMcpClient(9896, "MCP Object Reference Test");
     const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
