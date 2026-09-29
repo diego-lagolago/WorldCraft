@@ -14,7 +14,7 @@
 | CR-004 | Aufgaben-Abgleich | mittel | behoben | Die Plausibilitätsprüfung sucht Wortpräfixe und wird in der MCP-Suite geprüft |
 | CR-005 | Sicherheit | mittel | behoben | Vorlagenverweise in Objektform `{kind,id}` umgehen die Sichtbarkeitsprüfung, Objektform wird verboten |
 | CR-006 | Aufgaben-Abgleich | mittel | behoben | Der Upload-Endpunkt antwortet für Nicht-Browser standardmäßig mit JSON |
-| CR-007 | Runtime-Risiken | mittel | offen | Kapitel mit Status/Position: veralteter Stand und nicht-atomare Folgeschritte, Status und Position kommen direkt in `createChapter`/`updateChapter` |
+| CR-007 | Runtime-Risiken | mittel | behoben | Kapitel-Status und -Position werden atomar gesetzt; der gemeldete Stand ist direkt weiterverwendbar |
 | CR-008 | Fehlerbehandlung | mittel | behoben | Im Bestätigungspfad werden Fehler zur generischen Meldung „Die Anfrage konnte nicht verarbeitet werden“ |
 | CR-009 | Runtime-Risiken | mittel | behoben | Der Markdown-Parser erhält harte Umbrüche, verschachtelte Marks und mehrzeilige Zitate verlustfrei |
 | CR-010 | Aufgaben-Abgleich | mittel | offen | Die Änderungsvorschau zeigt englische Schlüssel, rohe IDs und keinen alten Charakterblatt-Wert (S11, Begriff „Änderungsvorschau“) |
@@ -102,6 +102,7 @@
 - **Abnahmekriterium:** Ein Test ruft den Upload-Link per `fetch` **ohne** Accept-Header (bzw. mit `*/*`) auf und erhält `201` mit `Content-Type: application/json`. Ein Aufruf mit `Accept: text/html,…` erhält weiter die Erfolgsseite.
 
 ### CR-007 – Kapitel: veralteter Stand und nicht-atomare Mehrschritt-Schreibvorgänge
+- **Status:** behoben – Anlage, Status und Position laufen in einer Transaktion. Die Domänen- und MCP-Suiten prüfen Position, Sichtbarkeit, Rückgabestand und die unmittelbar folgende Änderung; das E2E-Protokoll enthält den Produktionsschritt.
 - **Fundstelle:** `src/lib/mcp/tools/content-create.ts` Z. 268–319 (`createChapter` → `updateChapter` → `reorderChapters`, Stand aus `result.data.updatedAt` Z. 307); `src/lib/mcp/tools/content-update.ts` Kapitel-Zweig in `executeUpdate` (`updateChapter` → `reorderChapters`)
 - **Kategorie:** Runtime-Risiken
 - **Schweregrad:** mittel

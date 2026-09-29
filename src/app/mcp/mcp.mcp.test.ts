@@ -1030,6 +1030,33 @@ describe("MCP write tools", () => {
     })));
   });
 
+  it("CR-007: uses the returned chapter revision for the next update preview", async () => {
+    const client = await registerMcpClient(9898, "MCP Chapter Revision Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const suffix = Date.now().toString(36);
+    const created = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "kapitel",
+      felder: {
+        quest_id: data.activeQuestId,
+        titel: `MCP Kapitel Stand ${suffix}`,
+        status: "aktiv",
+        position: 1,
+        text: "Kapitel mit aktuellem Stand.",
+      },
+    }));
+    const preview = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "kapitel",
+      id: extractId(created),
+      stand: extractStand(created),
+      felder: { titel: `MCP Kapitel Stand geändert ${suffix}` },
+    }));
+
+    expect(preview).toContain("Bestätigungs-Token:");
+    expect(preview).not.toContain("inzwischen geändert");
+  });
+
   it("CR-005: rejects object references without revealing their target", async () => {
     const client = await registerMcpClient(9896, "MCP Object Reference Test");
     const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);

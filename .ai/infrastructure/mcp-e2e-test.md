@@ -50,6 +50,7 @@ Protokollvorlage für beide Clients; Ergebnisse und Notizen nach dem Prod-Lauf e
 | 3 | „Veröffentliche den Artikel.“ → nur nach Bestätigung. | _ausstehend_ | **ausstehend / noch nicht auf Produktion geprüft** | |
 | 4 | „Lösche den Artikel.“ → Claude erklärt, dass es nicht löschen kann. | _ausstehend_ | **ausstehend / noch nicht auf Produktion geprüft** | |
 | 5 | „Lade `rabenstein.png` als Titelbild hoch.“ → Link; Upload im Browser. | _ausstehend_ | **ausstehend / noch nicht auf Produktion geprüft** | |
+| 6 | „Lege ein Kapitel mit Status aktiv an Position 1 an und ändere es direkt danach mit dem gemeldeten Stand.“ → Die Änderungsvorschau erscheint ohne Stand-Fehler. | _ausstehend_ | **ausstehend / noch nicht auf Produktion geprüft** | |
 
 ### Claude Code
 
@@ -60,6 +61,7 @@ Protokollvorlage für beide Clients; Ergebnisse und Notizen nach dem Prod-Lauf e
 | 3 | „Veröffentliche den Artikel.“ → nur nach Bestätigung. | _ausstehend_ | **ausstehend / noch nicht auf Produktion geprüft** | |
 | 4 | „Lösche den Artikel.“ → Claude erklärt, dass es nicht löschen kann. | _ausstehend_ | **ausstehend / noch nicht auf Produktion geprüft** | |
 | 5 | „Lade `rabenstein.png` als Titelbild hoch.“ → selbstständig per Upload-Link. | _ausstehend_ | **ausstehend / noch nicht auf Produktion geprüft** | |
+| 6 | „Lege ein Kapitel mit Status aktiv an Position 1 an und ändere es direkt danach mit dem gemeldeten Stand.“ → Die Änderungsvorschau erscheint ohne Stand-Fehler. | _ausstehend_ | **ausstehend / noch nicht auf Produktion geprüft** | |
 
 ### Gesamtbewertung (Schreiben)
 
