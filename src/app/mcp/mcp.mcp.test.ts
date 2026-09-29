@@ -1112,6 +1112,16 @@ describe("MCP write tools", () => {
     }));
     expect(stale.toLowerCase()).toMatch(/geändert|stand|neu lesen/);
 
+    const unknownField = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      id: filledId,
+      stand: extractStand(afterConfirm),
+      felder: { unbekannt: "x" },
+    }));
+    expect(unknownField).toContain("unbekannt");
+    expect(unknownField).not.toContain("Bestätigungs-Token:");
+
     const questRead = firstToolText(await callTool(player.accessToken, "inhalt_lesen", {
       welt: "MCP-Testwelt", art: "quest", id: data.activeQuestId,
     }));
