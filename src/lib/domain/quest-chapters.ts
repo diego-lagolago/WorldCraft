@@ -159,6 +159,26 @@ export async function listVisibleChapters(
   return listVisibleChaptersForQuest(quest, role, viewerId);
 }
 
+/** Finds one visible chapter without enumerating every quest of the world. */
+export async function getVisibleChapter(
+  worldId: string,
+  chapterId: string,
+  role: MembershipRole,
+  viewerId: string,
+): Promise<{ questId: string; questTitle: string; chapter: ChapterSummary } | null> {
+  const [row] = await db.select({ questId: questChapters.questId, questTitle: quests.title })
+    .from(questChapters)
+    .innerJoin(quests, eq(quests.id, questChapters.questId))
+    .where(and(eq(questChapters.id, chapterId), eq(quests.worldId, worldId)))
+    .limit(1);
+  if (!row) return null;
+  const quest = await loadVisibleQuest(worldId, row.questId, { role, userId: viewerId });
+  if (!quest) return null;
+  const chapters = await listVisibleChaptersForQuest(quest, role, viewerId);
+  const chapter = chapters.find((entry) => entry.id === chapterId);
+  return chapter ? { questId: quest.id, questTitle: row.questTitle, chapter } : null;
+}
+
 type ChapterPatch = Partial<typeof questChapters.$inferInsert>;
 
 function toPatch(input: {

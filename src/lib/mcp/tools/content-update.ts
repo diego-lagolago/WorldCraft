@@ -2,8 +2,8 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { getArticle, updateArticle, createArticleStub } from "@/lib/domain/articles";
 import { getMonster, updateMonster } from "@/lib/domain/monsters";
-import { listVisibleChapters, updateChapter, type ChapterSummary } from "@/lib/domain/quest-chapters";
-import { getQuest, listQuests, updateQuest } from "@/lib/domain/quests";
+import { getVisibleChapter, updateChapter } from "@/lib/domain/quest-chapters";
+import { getQuest, updateQuest } from "@/lib/domain/quests";
 import { getQuestNote, saveQuestNote } from "@/lib/domain/quest-notes";
 import { getUniverse, updateUniverse } from "@/lib/domain/universes";
 import { getWorldDetails, updateWorld } from "@/lib/domain/worlds";
@@ -252,18 +252,10 @@ async function resolveHabitat(input: {
   return { habitatArticleId: resolved.ref.id, stubTitles: [] };
 }
 
-async function findVisibleChapter(
-  world: McpWorldContext,
-  chapterId: string,
-): Promise<{ questId: string; questTitle: string; chapter: ChapterSummary }> {
-  const quests = await listQuests(world.id, world.role, world.userId);
-  for (const quest of quests) {
-    const chapters = await listVisibleChapters(world.id, quest.id, world.role, world.userId);
-    if (!chapters) continue;
-    const chapter = chapters.find((entry) => entry.id === chapterId);
-    if (chapter) return { questId: quest.id, questTitle: quest.title, chapter };
-  }
-  throw new McpToolError("Inhalt nicht gefunden.");
+async function findVisibleChapter(world: McpWorldContext, chapterId: string) {
+  const found = await getVisibleChapter(world.id, chapterId, world.role, world.userId);
+  if (!found) throw new McpToolError("Inhalt nicht gefunden.");
+  return found;
 }
 
 async function worldStand(userId: string, worldId: string): Promise<string> {

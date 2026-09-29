@@ -3,8 +3,8 @@ import { z } from "zod";
 import type { ContentVisibility, VisibilityStatus } from "@/lib/authz";
 import { getArticle, updateArticle } from "@/lib/domain/articles";
 import { getMonster, updateMonster } from "@/lib/domain/monsters";
-import { listVisibleChapters, updateChapter, type ChapterSummary } from "@/lib/domain/quest-chapters";
-import { getQuest, listQuests, updateQuest } from "@/lib/domain/quests";
+import { getVisibleChapter, updateChapter } from "@/lib/domain/quest-chapters";
+import { getQuest, updateQuest } from "@/lib/domain/quests";
 import { getUniverse, updateUniverse } from "@/lib/domain/universes";
 import { createMcpConfirmation, registerMcpConfirmationHandler } from "../confirmations";
 import { McpToolError, resolveMcpWorld, type McpWorldContext } from "../context";
@@ -35,18 +35,10 @@ type VisibilityPayload = {
   sichtbarkeit: ContentVisibility;
 };
 
-async function findVisibleChapter(
-  world: McpWorldContext,
-  chapterId: string,
-): Promise<{ questId: string; questTitle: string; chapter: ChapterSummary }> {
-  const quests = await listQuests(world.id, world.role, world.userId);
-  for (const quest of quests) {
-    const chapters = await listVisibleChapters(world.id, quest.id, world.role, world.userId);
-    if (!chapters) continue;
-    const chapter = chapters.find((entry) => entry.id === chapterId);
-    if (chapter) return { questId: quest.id, questTitle: quest.title, chapter };
-  }
-  throw new McpToolError("Inhalt nicht gefunden.");
+async function findVisibleChapter(world: McpWorldContext, chapterId: string) {
+  const found = await getVisibleChapter(world.id, chapterId, world.role, world.userId);
+  if (!found) throw new McpToolError("Inhalt nicht gefunden.");
+  return found;
 }
 
 async function loadVisibilityTarget(input: {
