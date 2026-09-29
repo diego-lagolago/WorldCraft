@@ -152,7 +152,7 @@ const inputSchema = z.object({
   id: z.string().uuid(),
   stand: z.string().min(1),
   sichtbarkeit: visibilityLabelInput,
-}).superRefine((value, ctx) => {
+}).strict().superRefine((value, ctx) => {
   if (value.art === "universum" && value.sichtbarkeit === "nur ich") {
     ctx.addIssue({ code: "custom", path: ["sichtbarkeit"], message: "Universen unterstützen die Sichtbarkeit „nur ich“ nicht." });
   }

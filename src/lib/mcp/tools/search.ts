@@ -22,7 +22,7 @@ export function registerSearchTool(server: McpServer, ctx: ToolContext) {
         suchbegriff: z.string().trim().min(2).max(200),
         art: contentKind.optional(),
         limit: z.number().int().min(1).max(50).optional(),
-      }),
+      }).strict(),
     },
     async ({ welt, suchbegriff, art, limit }) => withAudit(ctx, "suchen", async () => {
       const world = await resolveMcpWorld(ctx.userId, welt);

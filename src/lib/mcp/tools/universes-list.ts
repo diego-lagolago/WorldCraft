@@ -11,7 +11,7 @@ export function registerUniversesListTool(server: McpServer, ctx: ToolContext) {
     {
       title: "Universen auflisten",
       description: "Liste sichtbare Universen einer freigegebenen Welt und ihre Karten. Pins, Marker, Kartenbilder und Koordinaten werden nicht geliefert.",
-      inputSchema: z.object({ welt: worldSchema }),
+      inputSchema: z.object({ welt: worldSchema }).strict(),
     },
     async ({ welt }) => withAudit(ctx, "universen_auflisten", async () => {
       const world = await resolveMcpWorld(ctx.userId, welt);

@@ -19,7 +19,7 @@ export function registerImageReadTool(server: McpServer, ctx: ToolContext) {
         art: z.enum(["welt", "artikel", "charakter", "monster"]),
         id: z.string().uuid().optional(),
         bild_nr: z.number().int().min(1).max(10).optional(),
-      }),
+      }).strict(),
     },
     async ({ welt, art, id, bild_nr }) => withAudit(ctx, "bild_lesen", async () => {
       const world = await resolveMcpWorld(ctx.userId, welt);

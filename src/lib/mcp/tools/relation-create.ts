@@ -11,7 +11,7 @@ const relationArt = z.enum(["artikel", "quest", "monster", "universum"]);
 const endpoint = z.object({
   art: relationArt,
   id: z.string().uuid(),
-});
+}).strict();
 
 export function registerRelationCreateTool(server: McpServer, ctx: ToolContext) {
   server.registerTool("relation_anlegen", {
@@ -27,7 +27,7 @@ export function registerRelationCreateTool(server: McpServer, ctx: ToolContext) 
       ziel: endpoint,
       bezeichnung: z.string().trim().min(1).max(120),
       gegenbezeichnung: z.string().trim().min(1).max(120).optional(),
-    }),
+    }).strict(),
     annotations: { readOnlyHint: false, destructiveHint: false },
   }, async ({ welt, quelle, ziel, bezeichnung, gegenbezeichnung }) => withAudit(ctx, "relation_anlegen", async () => {
     requireMcpWriteScope(ctx);

@@ -7,7 +7,7 @@ import { createStubPlan, materializeStubs } from "../write-shared";
 import { formatConfirmationPreview, formatCreateResult, formatStubLines, mcpMembership } from "../write-rich";
 import { CREATE_HANDLERS } from "./create";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
-import { createArt, parseFelder, type CreateArt } from "./write-schemas";
+import { createArt, createFieldsInput, parseFelder, type CreateArt } from "./write-schemas";
 
 type CreateRequest = {
   world: McpWorldContext;
@@ -94,7 +94,7 @@ const TOOL_DESCRIPTION = [
   "Erwähnungen als @[Titel] oder @[Titel](artikel:id); auch Verweise in vorlagenfelder und lebensraum nur in dieser Erwähnungssyntax.",
   "Unbekannte Namen vorher per suchen prüfen.",
   "Würden Stub-Artikel entstehen, liefert das Werkzeug zuerst eine Vorschau und ein Bestätigungs-Token.",
-  "Pins und Charaktere können nicht angelegt werden. Gelöscht wird nie.",
+  "Pins und Charaktere können nicht angelegt werden. Gültige Felder je art stehen im Schema von felder; Vorlagenfelder nutzen deutsche Labels, etwa vorlagenfelder: { \"Seltenheit\": \"Gewöhnlich\" }. Gelöscht wird nie.",
 ].join(" ");
 
 export function registerContentCreateTool(server: McpServer, ctx: ToolContext) {
@@ -104,8 +104,8 @@ export function registerContentCreateTool(server: McpServer, ctx: ToolContext) {
     inputSchema: z.object({
       welt: worldSchema,
       art: createArt,
-      felder: z.record(z.string(), z.unknown()),
-    }),
+      felder: createFieldsInput,
+    }).strict(),
     annotations: { readOnlyHint: false, destructiveHint: true },
   }, async ({ welt, art, felder }) => withAudit(ctx, "inhalt_anlegen", async () => {
     requireMcpWriteScope(ctx);

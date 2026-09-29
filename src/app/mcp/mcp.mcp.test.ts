@@ -2175,4 +2175,79 @@ describe("MCP write tools", () => {
     }));
     expect(stillPrivate).toMatch(/nur ich/);
   });
+
+  it("012 T-004(1–5): publishes strict felder schemas and rejects unknown keys without a token", async () => {
+    const client = await registerMcpClient(9907, "MCP Strict Schema Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const suffix = Date.now().toString(36);
+
+    const listed = await json(await fetch(`${BASE}/mcp`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${gm.accessToken}`,
+        "content-type": "application/json",
+        "mcp-protocol-version": "2026-07-28",
+        "mcp-method": "tools/list",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: { _meta: protocolMeta } }),
+    }));
+    const tools = (listed.result as { tools: { name: string; inputSchema: Record<string, unknown> }[] }).tools;
+    const updateSchema = JSON.stringify(tools.find((tool) => tool.name === "inhalt_aendern")?.inputSchema);
+    expect(updateSchema).toContain("Felder für art = notizblock.");
+    expect(updateSchema).toContain("Vorlagenfelder für vorlagentyp = gegenstand.");
+    expect(updateSchema).toMatch(/"Seltenheit":\{[^}]*Erlaubte Werte: Gewöhnlich/);
+
+    const questRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "quest", id: data.activeQuestId,
+    }));
+    const noteError = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "notizblock", id: data.activeQuestId, stand: extractNoteStand(questRead),
+      felder: { inhalt: "Darf nicht landen." },
+    }));
+    expect(noteError).toContain("notizblock: text");
+    expect(noteError).not.toContain("Bestätigungs-Token:");
+
+    const item = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP Gegenstand ${suffix}`, vorlagentyp: "gegenstand", text: "Schon befüllt.", sichtbarkeit: "veröffentlicht" },
+    }));
+    expect(item).toContain("Sichtbarkeit wurde ignoriert");
+    const itemId = extractId(item);
+    const itemRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: itemId,
+    }));
+    const wrongKey = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "artikel", id: itemId, stand: extractStand(itemRead),
+      felder: { seltenheit: "Gewöhnlich" },
+    }));
+    expect(wrongKey).toContain("vorlagenfelder");
+    expect(wrongKey).not.toContain("Bestätigungs-Token:");
+
+    const preview = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "artikel", id: itemId, stand: extractStand(itemRead),
+      felder: { vorlagenfelder: { Seltenheit: "Gewöhnlich" } },
+    }));
+    expect(preview).toContain("Seltenheit: Gewöhnlich");
+    await callTool(gm.accessToken, "aenderung_bestaetigen", { token: extractToken(preview) });
+    const afterConfirm = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: itemId,
+    }));
+    expect(afterConfirm).toContain("Seltenheit: Gewöhnlich");
+
+    const unchanged = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "artikel", id: itemId, stand: extractStand(afterConfirm),
+      felder: { titel: `MCP Gegenstand ${suffix}` },
+    }));
+    expect(unchanged).toContain("Keine Änderung: Die übergebenen Werte entsprechen dem aktuellen Stand.");
+    expect(unchanged).not.toContain("Bestätigungs-Token:");
+
+    schemaError(firstToolText(await callTool(gm.accessToken, "relation_anlegen", {
+      welt: "MCP-Testwelt",
+      quelle: { art: "artikel", id: itemId },
+      ziel: { art: "artikel", id: data.burgId },
+      bezeichnung: "liegt in",
+      beschreibung: "zusätzlicher Parameter",
+    })));
+  });
 });

@@ -22,7 +22,7 @@ export function registerContentReadTool(server: McpServer, ctx: ToolContext) {
     {
       title: "Inhalt lesen",
       description: "Lies einen sichtbaren Inhalt einer freigegebenen Welt vollständig. Bilder werden nie hier, sondern nur mit bild_lesen geliefert.",
-      inputSchema: z.object({ welt: worldSchema, art: contentKind, id: z.string().uuid() }),
+      inputSchema: z.object({ welt: worldSchema, art: contentKind, id: z.string().uuid() }).strict(),
     },
     async ({ welt, art, id }) => withAudit(ctx, "inhalt_lesen", async () => {
       const world = await resolveMcpWorld(ctx.userId, welt);

@@ -148,7 +148,7 @@ export function registerImageUploadTool(server: McpServer, ctx: ToolContext) {
       ziel: uploadZiel,
       id: z.string().uuid(),
       stand: z.string().min(1),
-    }),
+    }).strict(),
     annotations: { readOnlyHint: false, destructiveHint: true },
   }, async ({ welt, ziel, id, stand }) => withAudit(ctx, "bild_hochladen", async () => {
     requireMcpWriteScope(ctx);

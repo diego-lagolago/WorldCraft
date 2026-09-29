@@ -11,7 +11,7 @@ export function registerQuestsListTool(server: McpServer, ctx: ToolContext) {
     {
       title: "Quests auflisten",
       description: "Liste sichtbare Quests einer freigegebenen Welt, optional gefiltert nach Status.",
-      inputSchema: z.object({ welt: worldSchema, status: questStatus.optional() }),
+      inputSchema: z.object({ welt: worldSchema, status: questStatus.optional() }).strict(),
     },
     async ({ welt, status: requestedStatus }) => withAudit(ctx, "quests_auflisten", async () => {
       const world = await resolveMcpWorld(ctx.userId, welt);

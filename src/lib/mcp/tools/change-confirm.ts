@@ -8,7 +8,7 @@ export function registerChangeConfirmTool(server: McpServer, ctx: ToolContext) {
   server.registerTool("aenderung_bestaetigen", {
     title: "Änderung bestätigen",
     description: "Führt eine zuvor angezeigte Änderung mit ihrem Bestätigungs-Token aus.",
-    inputSchema: z.object({ token: z.string().min(20) }),
+    inputSchema: z.object({ token: z.string().min(20) }).strict(),
     annotations: { readOnlyHint: false, destructiveHint: true },
   }, async ({ token }) => withAudit(ctx, "aenderung_bestaetigen", async () => {
     requireMcpWriteScope(ctx);

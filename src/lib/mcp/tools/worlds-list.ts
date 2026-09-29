@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/server";
+import { z } from "zod";
 import { listWorldCharacters } from "@/lib/domain/characters";
 import { listMembers } from "@/lib/domain/members";
 import { getWorldDetails } from "@/lib/domain/worlds";
@@ -12,6 +13,7 @@ export function registerWorldsListTool(server: McpServer, ctx: ToolContext) {
     {
       title: "Welten auflisten",
       description: "Liste die Welten des angemeldeten Benutzers. Vor einer Anfrage ohne bekannte Welt zuerst dieses Werkzeug nutzen.",
+      inputSchema: z.object({}).strict(),
     },
     async () => withAudit(ctx, "welten_auflisten", async () => {
       const worlds = await listMcpWorldMemberships(ctx.userId);

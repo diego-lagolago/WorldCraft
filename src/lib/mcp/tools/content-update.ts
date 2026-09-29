@@ -8,7 +8,7 @@ import { formatConfirmationPreview, formatCreateResult, formatStubLines, mcpMemb
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 import type { FieldChange, PreviewContext, RichModus } from "./update/common";
 import { UPDATE_HANDLERS } from "./update";
-import { parseFelder, updateArt, type UpdateArt } from "./write-schemas";
+import { parseFelder, updateArt, updateFieldsInput, type UpdateArt } from "./write-schemas";
 
 type UpdateRequest = {
   world: McpWorldContext;
@@ -103,6 +103,9 @@ registerMcpConfirmationHandler("inhalt_aendern", async (row) => {
 async function previewOrExecute(ctx: ToolContext, request: UpdateRequest) {
   const audit = { targetKind: request.art, targetId: request.id, confirmed: false };
   const prepared = await prepareUpdate(request);
+  if (!prepared.changes.length) {
+    throw new McpToolError("Keine Änderung: Die übergebenen Werte entsprechen dem aktuellen Stand.");
+  }
   if (prepared.executeImmediately) {
     return { ...await executeUpdate({ ...request, ctx, stubTitles: [] }), audit };
   }
@@ -139,7 +142,7 @@ const TOOL_DESCRIPTION = [
   "Änderungen an bestehendem Inhalt brauchen eine Bestätigung (aenderung_bestaetigen), außer bei leeren Artikeln ohne Stub-Anlage.",
   "Erwähnungen als @[Titel] oder @[Titel](artikel:id); auch Verweise in vorlagenfelder und lebensraum nur in dieser Erwähnungssyntax.",
   "Notizblock und Weltbeschreibung legen keine Stubs an.",
-  "Pins und Charaktere können nicht geändert werden. Gelöscht wird nie.",
+  "Pins und Charaktere können nicht geändert werden. Gültige Felder je art stehen im Schema von felder; Vorlagenfelder nutzen deutsche Labels, etwa vorlagenfelder: { \"Seltenheit\": \"Gewöhnlich\" }. Gelöscht wird nie.",
 ].join(" ");
 
 export function registerContentUpdateTool(server: McpServer, ctx: ToolContext) {
@@ -151,9 +154,9 @@ export function registerContentUpdateTool(server: McpServer, ctx: ToolContext) {
       art: updateArt,
       id: z.string().uuid(),
       stand: z.string().min(1),
-      felder: z.record(z.string(), z.unknown()),
+      felder: updateFieldsInput,
       modus: z.enum(["anhaengen", "ersetzen"]).optional(),
-    }),
+    }).strict(),
     annotations: { readOnlyHint: false, destructiveHint: true },
   }, async ({ welt, art, id, stand, felder, modus }) => withAudit(ctx, "inhalt_aendern", async () => {
     requireMcpWriteScope(ctx);

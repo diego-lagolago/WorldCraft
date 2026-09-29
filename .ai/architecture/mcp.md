@@ -74,6 +74,18 @@ sequenceDiagram
 - OAuth/DCR nutzt zusätzlich Better Auths In-Memory-Limiter pro Client-IP: `POST /oauth2/register` 5 pro 60 s, `/oauth2/authorize` und `/oauth2/token` je 30 pro 60 s; sonst 100 pro 10 s. Er ist auch lokal aktiv, damit die Integrationstests die Grenzen belegen. Coolify muss einen einzelnen vertrauenswürdigen `x-forwarded-for`-Wert weiterreichen; ein direkter Zugriff auf den Container ist nicht zulässig.
 - CIMD verwendet den Node-Transport von `@better-auth/cimd`: HTTPS-only, DNS-Auflösung genau einmal, ausschließlich öffentlich routbare Adressen, gepinnte Verbindung und keine Redirects. Better Auth begrenzt den Dokumentabruf zusätzlich auf 5 KB und 5 s. WorldCraft pinnt die Revalidierung auf höchstens 15 Minuten und erneute Fehlversuche auf frühestens eine Minute.
 
+## Schema von `felder` (Plan 012 T-004)
+
+**Entscheidung (2026-09-29): `anyOf`-Union, kein Fallback.** `felder` von `inhalt_anlegen` und `inhalt_aendern` ist eine `anyOf`-Union aus einem strikten Objekt je `art` (`additionalProperties: false`, Beschreibung „Felder für art = <art>.“), erzeugt aus dem Feldkatalog (`src/lib/mcp/field-catalog.ts`) in `src/lib/mcp/tools/write-schemas.ts`. `vorlagenfelder` ist ebenso eine Union aus einem strikten Objekt je Vorlagentyp mit den deutschen Labels als Schlüssel; `charakterblatt` ein striktes Objekt mit den MCP-Schlüsseln.
+
+- **Begründung:** Der Plan-Fallback (ein einzelnes Objekt mit allen Schlüsseln aller Arten) war nur für den Fall vorgesehen, dass Clients die Union nicht darstellen. Der Test mit dem echten Client (Claude Code gegen den lokalen Server) wurde auf Wunsch des Projektinhabers übersprungen; die Prüfung mit echten Clients holt E2E-Lauf 2 (Plan 012 T-013) in claude.ai und Claude Code nach. Scheitert ein Client dort an der Union, wird auf den Fallback umgestellt.
+- **Pflichtfelder:** Beim Anlegen sind nur die Katalogfelder mit „Pflicht beim Anlegen“ `required`, beim Ändern ist jedes Feld optional.
+- **Feste Enums (E5):** `vorlagentyp` und Quest-/Kapitel-`status` sind im Schema `enum`; übrige Auswahlwerte nennen die erlaubten Werte nur in der Beschreibung und werden im Handler geprüft.
+- **Englische Schlüssel (E5):** Registry-Schlüssel der Vorlagenfelder (z. B. `rarity`), abweichende Groß-/Kleinschreibung der Labels und englische Charakterblatt-Schlüssel werden vor der strikten Prüfung per `z.preprocess` auf den beworbenen Schlüssel abgebildet. Sie erscheinen deshalb nicht im veröffentlichten Schema, werden beim Schreiben aber weiter angenommen.
+- **Fehler:** Das SDK prüft `felder` vor dem Handler, ohne `art` zu kennen. Passt `felder` zu keiner Art, nennt der Fehler die gültigen Schlüssel je `art`. Passt `felder` zu einer anderen Art (z. B. `seltenheit` am Artikel), lehnt der Handler strikt ab und nennt die gültigen Felder der angefragten Art. Feinere Meldungen je Feld folgen mit T-005.
+- **Keine Änderung:** Ergibt eine Änderung gegenüber dem gelesenen Stand kein Delta, antwortet `inhalt_aendern` mit „Keine Änderung: Die übergebenen Werte entsprechen dem aktuellen Stand.“ und erzeugt kein Bestätigungs-Token.
+- Alle `inputSchema` aller Werkzeuge sind strikt, auch verschachtelte Objekte (`quelle`, `ziel`) und `welten_auflisten` (leeres striktes Objekt).
+
 ## Neues MCP-Werkzeug hinzufügen
 
 1. Scope festlegen: Lesewerkzeuge akzeptieren `worlds:read` oder `worlds:write`; Schreibwerkzeuge verlangen zusätzlich `worlds:write` und setzen `readOnlyHint: false` (bei Bestätigungspflicht auch `destructiveHint: true`).

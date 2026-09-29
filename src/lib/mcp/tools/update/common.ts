@@ -73,7 +73,7 @@ export function staleError(): McpToolError {
 }
 
 export function pushChange(context: PreviewContext, label: string, oldValue: string, newValue: string) {
-  context.changes.push({ label, oldValue, newValue });
+  if (oldValue !== newValue) context.changes.push({ label, oldValue, newValue });
 }
 
 export function pushRenamed(context: PreviewContext, label: string, current: string, next: string | undefined) {

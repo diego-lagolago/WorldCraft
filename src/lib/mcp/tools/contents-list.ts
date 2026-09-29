@@ -27,7 +27,7 @@ export function registerContentsListTool(server: McpServer, ctx: ToolContext) {
         monster_art: monsterKindLabel.optional(),
         quest_gegenstand: z.boolean().optional().describe(QUEST_ITEM_FILTER_GUIDANCE),
         limit: z.number().int().min(1).max(200).optional(),
-      }),
+      }).strict(),
     },
     async ({ welt, art, vorlagentyp, monster_art, quest_gegenstand, limit }) => withAudit(
       ctx,

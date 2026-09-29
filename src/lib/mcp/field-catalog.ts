@@ -103,7 +103,7 @@ const baseFields: Record<FieldArt, readonly FieldDefinition[]> = {
 
 export function fieldsFor(operation: FieldOperation, art: FieldArt): readonly FieldDefinition[] {
   const fields = baseFields[art];
-  if (operation === "aendern") return fields;
+  if (operation === "aendern") return fields.filter((field) => field.key !== "quest_id");
   return art === "welt" || art === "notizblock" ? fields : [...fields, VISIBILITY];
 }
 

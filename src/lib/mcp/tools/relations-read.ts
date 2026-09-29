@@ -20,7 +20,7 @@ export function registerRelationsReadTool(server: McpServer, ctx: ToolContext) {
         art: contentKind,
         id: z.string().uuid(),
         tiefe: z.union([z.literal(1), z.literal(2)]).optional(),
-      }),
+      }).strict(),
     },
     async ({ welt, art, id, tiefe }) => withAudit(ctx, "relationen_abrufen", async () => {
       const world = await resolveMcpWorld(ctx.userId, welt);
