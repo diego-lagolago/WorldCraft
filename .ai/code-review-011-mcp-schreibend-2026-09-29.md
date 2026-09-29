@@ -12,7 +12,7 @@
 | CR-002 | Lesbarkeit (Doku) | niedrig | behoben | Verhalten bleibt (Entscheidung 2026-09-29): S1, ADR-005 und Hilfeseite an „jede Verbindung ist Lesen und Schreiben“ anpassen |
 | CR-003 | Runtime-Risiken | mittel | offen | Die Stand-Prüfung ist nicht atomar mit dem Schreiben (ADR-005 „Stand“), daher sind Lost Updates möglich |
 | CR-004 | Aufgaben-Abgleich | mittel | behoben | Die Plausibilitätsprüfung sucht Wortpräfixe und wird in der MCP-Suite geprüft |
-| CR-005 | Sicherheit | mittel | offen | Vorlagenverweise in Objektform `{kind,id}` umgehen die Sichtbarkeitsprüfung, Objektform wird verboten |
+| CR-005 | Sicherheit | mittel | behoben | Vorlagenverweise in Objektform `{kind,id}` umgehen die Sichtbarkeitsprüfung, Objektform wird verboten |
 | CR-006 | Aufgaben-Abgleich | mittel | behoben | Der Upload-Endpunkt antwortet für Nicht-Browser standardmäßig mit JSON |
 | CR-007 | Runtime-Risiken | mittel | offen | Kapitel mit Status/Position: veralteter Stand und nicht-atomare Folgeschritte, Status und Position kommen direkt in `createChapter`/`updateChapter` |
 | CR-008 | Fehlerbehandlung | mittel | offen | Im Bestätigungspfad werden Fehler zur generischen Meldung „Die Anfrage konnte nicht verarbeitet werden“ |
@@ -79,6 +79,7 @@
 - **Abnahmekriterium:** MCP-Integrationstest gegen die Testwelt: Mit vorhandenem Artikel „Gegenstand Y“ liefert `inhalt_anlegen` mit `@[Gegenstand Y und noch viele andere seltene Gegenstände]` einen Fehler mit Vorschlag „Gegenstand Y“ und kein Bestätigungs-Token. Mit vorhandenem „Burg Rabenstein“ liefert `@[Burg]` ebenfalls einen Fehler mit Vorschlag.
 
 ### CR-005 – Vorlagenverweise in Objektform umgehen die Sichtbarkeit
+- **Status:** behoben – Objektwerte werden einheitlich abgelehnt; die MCP-Suite prüft sichtbare, fremde und nicht existierende IDs ohne Folgeobjekte oder Beziehungen.
 - **Fundstelle:** `src/lib/mcp/write-rich.ts` `resolveMentionRef` Z. 91–96; `src/lib/domain/articles.ts` `assertRefTargets` (prüft nur Existenz in der Welt)
 - **Kategorie:** Sicherheit
 - **Schweregrad:** mittel

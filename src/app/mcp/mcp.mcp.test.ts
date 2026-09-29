@@ -918,18 +918,6 @@ describe("MCP write tools", () => {
     expect(articleText).toMatch(/Art: artikel/);
     const articleId = extractId(articleText);
 
-    const objectReference = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
-      welt: "MCP-Testwelt",
-      art: "artikel",
-      felder: {
-        titel: `Objektverweis ${suffix}`,
-        vorlagentyp: "person",
-        vorlagenfelder: { Rasse: { kind: "article", id: data.raceId } },
-      },
-    }));
-    expect(objectReference).toContain("Erwähnungssyntax");
-    expect(objectReference).not.toContain("Bestätigungs-Token:");
-
     const readArticle = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
       welt: "MCP-Testwelt", art: "artikel", id: articleId,
     }));
@@ -1040,6 +1028,52 @@ describe("MCP write tools", () => {
       art: "kapitel",
       felder: { quest_id: hiddenQuest, titel: `Hidden Chapter ${suffix}` },
     })));
+  });
+
+  it("CR-005: rejects object references without revealing their target", async () => {
+    const client = await registerMcpClient(9896, "MCP Object Reference Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const objectReferenceSql = testSql();
+    try {
+      const [articleCountBefore] = await objectReferenceSql.unsafe(
+        "SELECT count(*)::int AS count FROM articles WHERE world_id = $1",
+        [data.worldId],
+      );
+      const [relationCountBefore] = await objectReferenceSql.unsafe(
+        "SELECT count(*)::int AS count FROM relations WHERE source_id IN (SELECT id FROM articles WHERE world_id = $1) OR target_id IN (SELECT id FROM articles WHERE world_id = $1)",
+        [data.worldId],
+      );
+      const objectReferenceErrors = await Promise.all([
+        data.raceId,
+        data.masterSecretId,
+        "00000000-0000-0000-0000-000000000000",
+      ].map(async (id) => firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+        welt: "MCP-Testwelt",
+        art: "artikel",
+        felder: {
+          titel: `Objektverweis ${id}`,
+          vorlagentyp: "person",
+          vorlagenfelder: { Rasse: { kind: "article", id } },
+        },
+      }))));
+      expect(objectReferenceErrors).toHaveLength(3);
+      expect(new Set(objectReferenceErrors).size).toBe(1);
+      expect(objectReferenceErrors[0]).toContain("Erwähnungssyntax");
+      expect(objectReferenceErrors[0]).not.toContain("Bestätigungs-Token:");
+
+      const [articleCountAfter] = await objectReferenceSql.unsafe(
+        "SELECT count(*)::int AS count FROM articles WHERE world_id = $1",
+        [data.worldId],
+      );
+      const [relationCountAfter] = await objectReferenceSql.unsafe(
+        "SELECT count(*)::int AS count FROM relations WHERE source_id IN (SELECT id FROM articles WHERE world_id = $1) OR target_id IN (SELECT id FROM articles WHERE world_id = $1)",
+        [data.worldId],
+      );
+      expect(articleCountAfter.count).toBe(articleCountBefore.count);
+      expect(relationCountAfter.count).toBe(relationCountBefore.count);
+    } finally {
+      await objectReferenceSql.end();
+    }
   });
 
   it("T-006: updates content with confirmation, stubs, modes, stand, and rights", async () => {
