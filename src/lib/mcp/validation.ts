@@ -52,27 +52,22 @@ const TYPE_TEXT: Record<string, string> = {
   object: "ein Objekt",
 };
 
+/** All texts produced here start with one of these; Zod's own texts never do (Review 012 CR-003). */
+const OWN_PREFIXES = ["Feld „", "Unbekanntes Feld „", "Die Schlüssel in „"];
+
 function isOwnMessage(issue: Issue) {
-  return !issue.message.startsWith("Invalid") && !issue.message.startsWith("Unrecognized") && !issue.message.startsWith("Too");
+  return OWN_PREFIXES.some((prefix) => issue.message.startsWith(prefix));
 }
 
-/** Formats one Zod issue as a German tool error part with field path and allowed values. */
-export function issueMessage(issue: Issue, context: IssueContext): string {
-  const path = joinPath(context.base, issue.path);
-  if (issue.code !== "unrecognized_keys" && isOwnMessage(issue)) return issue.message;
+const NO_INPUT = Symbol("no input");
+
+/** German text for one value issue; `input` is only known inside a schema's error function. */
+function valueIssueText(issue: Issue, path: string, input: unknown): string {
   switch (issue.code) {
-  case "unrecognized_keys": {
-    const unknown = issue.keys
-      .map((key) => `Unbekanntes Feld „${joinPath(path, [key])}“.${writeKeyHint(key, context.arts ?? [])}`)
-      .join(" ");
-    return context.validKeys?.length && !issue.path.length
-      ? `${unknown} Gültige Felder: ${context.validKeys.join(", ")}.`
-      : unknown;
-  }
   case "invalid_type":
-    // Final issues carry no input; Zod's default text says whether the value was missing.
-    return issue.message.endsWith("received undefined")
-      ? `Feld „${path}“ fehlt.`
+    if (input === undefined) return `Feld „${path}“ fehlt.`;
+    return input === NO_INPUT
+      ? `Feld „${path}“ fehlt oder ist nicht ${TYPE_TEXT[issue.expected] ?? issue.expected}.`
       : `Feld „${path}“ muss ${TYPE_TEXT[issue.expected] ?? issue.expected} sein.`;
   case "invalid_value":
     return `Feld „${path}“ hat einen ungültigen Wert. Erlaubte Werte: ${allowedList(issue.values.map(String))}.`;
@@ -89,6 +84,31 @@ export function issueMessage(issue: Issue, context: IssueContext): string {
   default:
     return `Feld „${path}“ ist ungültig.`;
   }
+}
+
+/**
+ * Zod `error` option for a catalog field: Zod passes the raw issue including the input, so
+ * „fehlt“ and type errors are told apart without relying on Zod's English texts.
+ */
+export function germanError(path: string) {
+  return (raw: unknown) => {
+    const issue = raw as Issue & RawIssue;
+    // The raw issue's path may already contain the field key; the given path is authoritative.
+    return valueIssueText(issue, path, "input" in issue ? issue.input : NO_INPUT);
+  };
+}
+
+/** Formats one Zod issue as a German tool error part with field path and allowed values. */
+export function issueMessage(issue: Issue, context: IssueContext): string {
+  const path = joinPath(context.base, issue.path);
+  if (issue.code !== "unrecognized_keys" && isOwnMessage(issue)) return issue.message;
+  if (issue.code !== "unrecognized_keys") return valueIssueText(issue, path, NO_INPUT);
+  const unknown = issue.keys
+    .map((key) => `Unbekanntes Feld „${joinPath(path, [key])}“.${writeKeyHint(key, context.arts ?? [])}`)
+    .join(" ");
+  return context.validKeys?.length && !issue.path.length
+    ? `${unknown} Gültige Felder: ${context.validKeys.join(", ")}.`
+    : unknown;
 }
 
 export function issuesMessage(issues: readonly Issue[], context: IssueContext): string {

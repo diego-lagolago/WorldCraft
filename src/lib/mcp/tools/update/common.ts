@@ -6,6 +6,7 @@ import { McpToolError, type McpWorldContext } from "../../context";
 import { MCP_NOT_SET } from "../../enums";
 import { fieldFor, type FieldArt } from "../../field-catalog";
 import type { MaterializedStubs, StubPlan } from "../../write-shared";
+import { headExcerpt, parseEntries, RICH_EXCERPT, tailExcerpt } from "../../change-format";
 import { resolveRichText, type FieldChange } from "../../write-rich";
 import type { ToolContext } from "../shared";
 
@@ -84,17 +85,6 @@ export function pushChange(context: PreviewContext, key: string, oldValue: strin
   if (oldValue !== newValue) context.changes.push({ label: displayLabel(context.art, key), oldValue, newValue });
 }
 
-/** Splits rendered „Label: Wert“ entries into a map; multi-line entries keep their continuation. */
-function entriesOf(text: string, separator: string): Map<string, string> {
-  const entries = new Map<string, string>();
-  for (const entry of text.split(separator).filter(Boolean)) {
-    const index = entry.indexOf(":");
-    if (index < 0) continue;
-    entries.set(entry.slice(0, index).trim(), entry.slice(index + 1).trim() || MCP_NOT_SET);
-  }
-  return entries;
-}
-
 /** Pushes one delta row per changed rendered entry (template fields, sheet sub-fields). */
 export function pushEntryChanges(context: PreviewContext, input: {
   prefix: string;
@@ -103,8 +93,8 @@ export function pushEntryChanges(context: PreviewContext, input: {
   separator: string;
   skip?: readonly string[];
 }) {
-  const before = entriesOf(input.oldText, input.separator);
-  const after = entriesOf(input.newText, input.separator);
+  const before = parseEntries(input.oldText, input.separator);
+  const after = parseEntries(input.newText, input.separator);
   for (const label of new Set([...after.keys(), ...before.keys()])) {
     if (input.skip?.includes(label)) continue;
     const oldValue = before.get(label) ?? MCP_NOT_SET;
@@ -126,8 +116,6 @@ export function isEmptyRichText(json: unknown): boolean {
   return !plainOfJson(json);
 }
 
-const RICH_EXCERPT = 500;
-
 /** Rich-text delta (T-007): the existing text shortened to 500 characters, the new text in full. */
 function richChange(label: string, oldJson: unknown, markdown: string, modus: RichModus): FieldChange {
   const old = tiptapJsonToMcpMarkdown(oldJson).trim();
@@ -136,7 +124,7 @@ function richChange(label: string, oldJson: unknown, markdown: string, modus: Ri
   if (modus === "anhaengen") {
     return {
       label: `${label} (anhängen)`,
-      oldValue: old ? `${cut ? "…" : ""}${old.slice(-RICH_EXCERPT)}` : "(leer)",
+      oldValue: old ? tailExcerpt(old) : "(leer)",
       oldCaption: cut ? "bisher (letzte 500 Zeichen)" : "bisher",
       newValue: next,
       newCaption: "wird angehängt",
@@ -144,7 +132,7 @@ function richChange(label: string, oldJson: unknown, markdown: string, modus: Ri
   }
   return {
     label: `${label} (ersetzen)`,
-    oldValue: old ? `${old.slice(0, RICH_EXCERPT)}${cut ? "…" : ""}` : "(leer)",
+    oldValue: old ? headExcerpt(old) : "(leer)",
     oldCaption: cut ? "bisher (erste 500 Zeichen)" : "bisher",
     newValue: next,
     newCaption: "neu",

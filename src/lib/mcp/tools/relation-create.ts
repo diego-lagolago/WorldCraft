@@ -4,7 +4,7 @@ import { mcpEnum } from "../validation";
 import { createManualRelation } from "@/lib/domain/relations";
 import { resolveMcpWorld } from "../context";
 import { MCP_CONTENT_KIND, MCP_CONTENT_KIND_LABEL } from "../enums";
-import { RECEIPT_INSTRUCTION, snapshotContent } from "../receipt";
+import { contentTitle, RECEIPT_INSTRUCTION } from "../receipt";
 import { mcpMembership, throwAuthz } from "../write-rich";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 
@@ -44,9 +44,9 @@ export function registerRelationCreateTool(server: McpServer, ctx: ToolContext) 
       counterLabel: gegenbezeichnung,
     });
     if (!result.ok) throwAuthz(result);
-    const [source, target] = await Promise.all([
-      snapshotContent(world, quelle.art, quelle.id),
-      snapshotContent(world, ziel.art, ziel.id),
+    const [sourceTitle, targetTitle] = await Promise.all([
+      contentTitle(world, quelle.art, quelle.id),
+      contentTitle(world, ziel.art, ziel.id),
     ]);
     return {
       worldId: world.id,
@@ -54,10 +54,10 @@ export function registerRelationCreateTool(server: McpServer, ctx: ToolContext) 
         RECEIPT_INSTRUCTION,
         "Relation angelegt.",
         `ID: ${result.data.id}`,
-        `Quelle: ${MCP_CONTENT_KIND_LABEL[quelle.art]} „${source.title}“ (${quelle.id})`,
-        `Ziel: ${MCP_CONTENT_KIND_LABEL[ziel.art]} „${target.title}“ (${ziel.id})`,
-        `Bezeichnung: ${bezeichnung}`,
-        `Gegenbezeichnung: ${gegenbezeichnung ?? "–"}`,
+        `Quelle: ${MCP_CONTENT_KIND_LABEL[quelle.art]} „${sourceTitle}“ (${quelle.id})`,
+        `Ziel: ${MCP_CONTENT_KIND_LABEL[ziel.art]} „${targetTitle}“ (${ziel.id})`,
+        `Bezeichnung: ${result.data.label ?? bezeichnung}`,
+        `Gegenbezeichnung: ${result.data.counterLabel ?? "–"}`,
       ].join("\n"),
       audit: { targetKind: "relation", targetId: result.data.id, confirmed: false },
     };

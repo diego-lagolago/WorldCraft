@@ -8,14 +8,14 @@
 
 | ID | Kategorie | Schweregrad | Status | Kurzbeschreibung |
 |----|-----------|-------------|--------|-------------------|
-| CR-001 | Runtime-Risiken | mittel | offen | Quittungs-Snapshot läuft innerhalb der Stub-Kompensation; ein Lesefehler nach erfolgreichem Schreiben löscht referenzierte Stubs und meldet einen Fehler |
+| CR-001 | Runtime-Risiken | mittel | behoben | Quittungs-Snapshot läuft innerhalb der Stub-Kompensation; ein Lesefehler nach erfolgreichem Schreiben löscht referenzierte Stubs und meldet einen Fehler |
 | CR-002 | Testabdeckung | mittel | offen | Die Abnahmetests von T-004–T-009 in `npm run test:mcp` wurden nie ausgeführt |
-| CR-003 | Bad Practices | mittel | offen | `validation.ts` erkennt eigene Meldungen und fehlende Werte an englischen Zod-Standardtexten |
-| CR-004 | Duplizierung & Modularisierung | niedrig | offen | „Label: Wert“-Parser, Rich-Text-Kürzung und `RICH_EXCERPT` doppelt in Vorschau (`update/common.ts`) und Quittung (`receipt.ts`) |
-| CR-005 | Duplizierung & Modularisierung | niedrig | offen | Handtypen `ArticleFields` … `WorldFields` in `write-schemas.ts` spiegeln den Feldkatalog per `as unknown as` |
-| CR-006 | Aufgaben-Abgleich | niedrig | offen | Nicht im Plan entschiedene Erweiterungen: Vorlagenfelder werden beim Ändern zusammengeführt, `@[Name](teilnahme:id)`, „Ja“/„Nein“ als Schreibwerte |
-| CR-007 | Performance | niedrig | offen | `relation_anlegen` baut zwei vollständige Snapshots (inkl. Vorlagenfeld-Verweisen) nur für zwei Titel |
-| CR-008 | Aufgaben-Abgleich | niedrig | offen | Relations-Quittung nennt Bezeichnungen aus der Eingabe statt aus dem gespeicherten Datensatz |
+| CR-003 | Bad Practices | mittel | behoben | `validation.ts` erkennt eigene Meldungen und fehlende Werte an englischen Zod-Standardtexten |
+| CR-004 | Duplizierung & Modularisierung | niedrig | behoben | „Label: Wert“-Parser, Rich-Text-Kürzung und `RICH_EXCERPT` doppelt in Vorschau (`update/common.ts`) und Quittung (`receipt.ts`) |
+| CR-005 | Duplizierung & Modularisierung | niedrig | behoben | Handtypen `ArticleFields` … `WorldFields` in `write-schemas.ts` spiegeln den Feldkatalog per `as unknown as` |
+| CR-006 | Aufgaben-Abgleich | niedrig | behoben | Nicht im Plan entschiedene Erweiterungen: Vorlagenfelder werden beim Ändern zusammengeführt, `@[Name](teilnahme:id)`, „Ja“/„Nein“ als Schreibwerte |
+| CR-007 | Performance | niedrig | behoben | `relation_anlegen` baut zwei vollständige Snapshots (inkl. Vorlagenfeld-Verweisen) nur für zwei Titel |
+| CR-008 | Aufgaben-Abgleich | niedrig | behoben | Relations-Quittung nennt Bezeichnungen aus der Eingabe statt aus dem gespeicherten Datensatz |
 
 ---
 
@@ -100,3 +100,20 @@
 3. CR-003 – robuste Fehlertexte.
 4. CR-006 – Entscheidungen dokumentieren und bestätigen lassen.
 5. CR-004, CR-005, CR-007, CR-008 – Aufräumen.
+
+---
+
+## Umsetzung und Review-Check (2026-09-29)
+
+| ID | Umsetzung | Nachweis |
+|---|---|---|
+| CR-001 | `receiptAfterWrite` (`src/lib/mcp/receipt.ts`) läuft nach `withMcpStubCompensation`; scheitert das erneute Lesen, meldet die Quittung „gespeichert“ ohne Delta und protokolliert `mcp_receipt_error` | `receipt-fallback.test.ts` |
+| CR-002 | **offen** – `npm run test:mcp` / `test:rechte` brauchen lokale Datenbank und Dev-Server; auf Wunsch des Projektinhabers nicht ausgeführt | – |
+| CR-003 | `germanError(path)` als Zod-`error` an jedem Katalogfeld; eigene Meldungen an festen deutschen Präfixen erkannt; keine Abfrage englischer Zod-Texte mehr | Test „Review 012 CR-003“ in `tool-schemas.test.ts` |
+| CR-004 | `parseEntries`, `RICH_EXCERPT`, `headExcerpt`/`tailExcerpt` in `src/lib/mcp/change-format.ts`, genutzt von Vorschau und Quittung | Vorschau- und Quittungstests grün |
+| CR-005 | `FIELD_TYPE_KEYS` mit Compile-Zeit-Prüfung gegen die Handtypen, Test gegen `fieldsFor` | Test „Review 012 CR-005“ |
+| CR-006 | E7–E9 im Plan `012` nachgetragen (zur Bestätigung); `teilnahme:` in der Beschreibung von `beteiligte` | Plan `012`, `field-catalog.ts` |
+| CR-007 | `contentTitle` statt `snapshotContent` in `relation_anlegen` | – |
+| CR-008 | `createManualRelation` liefert gespeicherte `label`/`counterLabel`; die Quittung nutzt sie | – |
+
+Review-Check: CR-001, CR-003–CR-008 am Code behoben, keine Drift. CR-002 bleibt offen bis zum lokalen Lauf der Integrationssuiten.

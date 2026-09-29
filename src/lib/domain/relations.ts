@@ -714,7 +714,7 @@ export async function createManualRelation(input: {
   targetId: string;
   label: string;
   counterLabel?: string;
-}): Promise<AuthzResult<{ id: string }>> {
+}): Promise<AuthzResult<{ id: string; label: string | null; counterLabel: string | null }>> {
   const staff = requireStaff(input.membership);
   if (!staff.ok) return staff;
   if (input.sourceKind === input.targetKind && input.sourceId === input.targetId) {
@@ -744,8 +744,8 @@ export async function createManualRelation(input: {
         createdBy: input.actorId,
         updatedBy: input.actorId,
       })
-      .returning({ id: relations.id });
-    return ok({ id: row.id });
+      .returning({ id: relations.id, label: relations.label, counterLabel: relations.counterLabel });
+    return ok(row);
   } catch (error) {
     const mapped = mapDbError(error, { unique: "Diese Verknüpfung gibt es schon." });
     if (mapped) return mapped;

@@ -29,3 +29,30 @@ export function formatDelta(changes: readonly FieldChange[], heading = "Änderun
       ];
   })];
 }
+
+/** Rich text in previews and receipts: the existing text is shortened to this many characters. */
+export const RICH_EXCERPT = 500;
+
+/** Placeholder for empty values, as in inhalt_lesen (002 D18). */
+const EMPTY = "–";
+
+/** Splits rendered „Label: Wert“ entries (template fields, sheet blocks) into a map. */
+export function parseEntries(text: string, separator: string, prefix = ""): Map<string, string> {
+  const entries = new Map<string, string>();
+  for (const entry of text.split(separator).filter(Boolean)) {
+    const index = entry.indexOf(":");
+    if (index > 0) entries.set(`${prefix}${entry.slice(0, index).trim()}`, entry.slice(index + 1).trim() || EMPTY);
+  }
+  return entries;
+}
+
+/** The last `RICH_EXCERPT` characters, marked with „…“ when shortened. */
+export function tailExcerpt(value: string) {
+  return value.length > RICH_EXCERPT ? `…${value.slice(-RICH_EXCERPT)}` : value;
+}
+
+/** The first `RICH_EXCERPT` characters, marked with „…“ when shortened. */
+export function headExcerpt(value: string) {
+  return value.length > RICH_EXCERPT ? `${value.slice(0, RICH_EXCERPT)}…` : value;
+}
+

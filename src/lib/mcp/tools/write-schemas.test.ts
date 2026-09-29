@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/db/client", () => ({ db: {} }));
 
-import { createFieldSchemas, createFieldsInput, parseFelder, updateFieldSchemas } from "./write-schemas";
+import { fieldsFor, type FieldArt } from "../field-catalog";
+import { createFieldSchemas, createFieldsInput, FIELD_TYPE_KEYS, parseFelder, updateFieldSchemas } from "./write-schemas";
 
 describe("MCP write field schemas", () => {
   it("CR-011: derived create and update schemas stay strict", () => {
@@ -38,5 +39,12 @@ describe("MCP write field schemas", () => {
     expect(json.anyOf).toHaveLength(5);
     expect(json.anyOf.every((entry) => entry.additionalProperties === false)).toBe(true);
     expect(json.anyOf.map((entry) => entry.description)).toContain("Felder für art = artikel.");
+  });
+
+  it("Review 012 CR-005: hand-written field types match the field catalog", () => {
+    for (const [art, keys] of Object.entries(FIELD_TYPE_KEYS) as [FieldArt, readonly string[]][]) {
+      const catalog = new Set([...fieldsFor("anlegen", art), ...fieldsFor("aendern", art)].map((field) => field.key));
+      expect(new Set(keys), art).toEqual(catalog);
+    }
   });
 });

@@ -5,7 +5,7 @@ import { createMcpConfirmation, registerMcpConfirmationHandler } from "../confir
 import { McpToolError, resolveMcpWorld, type McpWorldContext } from "../context";
 import { withMcpStubCompensation } from "../stub-compensation";
 import { createStubPlan, materializeStubs } from "../write-shared";
-import { formatReceipt, snapshotContent, snapshotDelta } from "../receipt";
+import { receiptAfterWrite, snapshotContent } from "../receipt";
 import { formatConfirmationPreview, mcpMembership } from "../write-rich";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 import type { FieldChange, PreviewContext, RichModus } from "./update/common";
@@ -60,34 +60,27 @@ async function executeUpdate(input: UpdateRequest & { ctx: ToolContext; stubTitl
     actorId: input.ctx.userId,
     titles: handler.allowStubs ? input.stubTitles : [],
   });
-  return withMcpStubCompensation({
+  const result = await withMcpStubCompensation({
     membership,
     actorId: input.ctx.userId,
     worldId: input.world.id,
     stubs: stubs.articles,
-    write: async () => {
-      const result = await target.execute(input.felder, {
-        ctx: input.ctx,
-        world: input.world,
-        membership,
-        modus: input.modus,
-        stand: input.stand,
-        expectedUpdatedAt: new Date(input.stand),
-        stubs,
-      });
-      const after = await snapshotContent(input.world, input.art, input.id);
-      return {
-        worldId: input.world.id,
-        value: formatReceipt({
-          art: input.art,
-          id: result.id,
-          after: { ...after, stand: result.stand },
-          changes: snapshotDelta(before, after),
-          stubs: stubs.articles,
-        }),
-      };
-    },
+    write: () => target.execute(input.felder, {
+      ctx: input.ctx,
+      world: input.world,
+      membership,
+      modus: input.modus,
+      stand: input.stand,
+      expectedUpdatedAt: new Date(input.stand),
+      stubs,
+    }),
   });
+  return {
+    worldId: input.world.id,
+    value: await receiptAfterWrite({
+      world: input.world, art: input.art, id: input.id, before, result, stubs: stubs.articles,
+    }),
+  };
 }
 
 registerMcpConfirmationHandler("inhalt_aendern", async (row) => {

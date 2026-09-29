@@ -17,7 +17,7 @@ import {
   throwAuthz,
   visibilityLabel,
 } from "../write-rich";
-import { formatReceipt, snapshotContent, snapshotDelta } from "../receipt";
+import { receiptAfterWrite, snapshotContent } from "../receipt";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 
 const visibilityArt = mcpEnum(["artikel", "quest", "kapitel", "monster", "universum"], "art");
@@ -121,10 +121,15 @@ async function executeVisibilitySet(input: Omit<VisibilityPayload, "operation"> 
     expectedUpdatedAt: new Date(input.stand),
   });
   if (!result.ok) throwAuthz(result);
-  const after = await snapshotContent(input.world, input.art, input.id);
   return {
     worldId: input.world.id,
-    value: formatReceipt({ art: input.art, id: input.id, after, changes: snapshotDelta(before, after) }),
+    value: await receiptAfterWrite({
+      world: input.world,
+      art: input.art,
+      id: input.id,
+      before,
+      result: { title: before.title, visibility: visibilityLabel(input.sichtbarkeit) },
+    }),
   };
 }
 

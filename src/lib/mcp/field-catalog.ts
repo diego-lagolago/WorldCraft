@@ -66,7 +66,7 @@ const questFields = [
   field("titel", "Titel", "text", "Anzeige: Titel.", { requiredOnCreate: true }),
   field("status", "Status", "select", "Anzeige: Status.", { allowedValues: questStatuses }),
   field("beschreibung", "Beschreibung", "markdown", "Anzeige: Beschreibung."),
-  field("beteiligte", "Beteiligte Charaktere", "list", "Anzeige: Beteiligte Charaktere. Liste aus Charakter-IDs oder @[Name](charakter:id) wie von inhalt_lesen ausgegeben; nur in die Welt mitgebrachte Charaktere.", { referenceTargets: ["charakter"] }),
+  field("beteiligte", "Beteiligte Charaktere", "list", "Anzeige: Beteiligte Charaktere. Liste aus Charakter-IDs oder @[Name](charakter:id) wie von inhalt_lesen ausgegeben; nur in die Welt mitgebrachte Charaktere. Gelöschte Charaktere erscheinen als @[Name](teilnahme:id) und bleiben beteiligt, solange sie mitgeschickt werden.", { referenceTargets: ["charakter"] }),
 ];
 const chapterFields = [
   field("quest_id", "Quest", "reference", "Anzeige: Quest.", { requiredOnCreate: true, referenceTargets: ["quest"] }),

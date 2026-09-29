@@ -15,6 +15,7 @@ import {
   visibleUniverse,
   worldStand,
 } from "./write-shared";
+import { parseEntries, RICH_EXCERPT, tailExcerpt } from "./change-format";
 import { formatDelta, RECEIPT_INSTRUCTION, standOf, visibilityLabel, type FieldChange } from "./write-rich";
 
 export { RECEIPT_INSTRUCTION };
@@ -29,8 +30,6 @@ export type Snapshot = {
   richLabels: Set<string>;
 };
 
-const RICH_EXCERPT = 500;
-
 function label(art: FieldArt, key: string) {
   return fieldFor(art, key)?.label ?? key;
 }
@@ -39,12 +38,8 @@ function markdown(json: unknown) {
   return tiptapJsonToMcpMarkdown(json).trim() || MCP_NOT_SET;
 }
 
-/** Parses rendered „Label: Wert“ entries (template fields, sheet blocks). */
 function addEntries(entries: Map<string, string>, text: string, separator: string, prefix = "") {
-  for (const entry of text.split(separator).filter(Boolean)) {
-    const index = entry.indexOf(":");
-    if (index > 0) entries.set(`${prefix}${entry.slice(0, index).trim()}`, entry.slice(index + 1).trim() || MCP_NOT_SET);
-  }
+  for (const [label, value] of parseEntries(text, separator, prefix)) entries.set(label, value);
 }
 
 function snapshot(input: Omit<Snapshot, "entries" | "richLabels">, rows: [string, string][], rich: string[]): Snapshot {
@@ -147,6 +142,14 @@ async function worldSnapshot(world: McpWorldContext) {
   );
 }
 
+/** Title of a visible item without rendering its fields (relation receipts, Review 012 CR-007). */
+export async function contentTitle(world: McpWorldContext, art: "artikel" | "quest" | "monster" | "universum", id: string) {
+  if (art === "artikel") return (await visibleArticle(world, id)).title;
+  if (art === "quest") return (await visibleQuest(world, id)).title;
+  if (art === "monster") return (await visibleMonster(world, id)).name;
+  return (await visibleUniverse(world, id)).name;
+}
+
 /** Reads the stored state through the same visibility-aware loaders as the write tools. */
 export async function snapshotContent(world: McpWorldContext, art: FieldArt, id: string): Promise<Snapshot> {
   switch (art) {
@@ -163,7 +166,7 @@ export async function snapshotContent(world: McpWorldContext, art: FieldArt, id:
 function richDelta(entry: string, before: string, after: string): FieldChange {
   const old = before === MCP_NOT_SET ? "" : before;
   const cut = old.length > RICH_EXCERPT;
-  const oldValue = old ? `${cut ? "…" : ""}${old.slice(-RICH_EXCERPT)}` : MCP_NOT_SET;
+  const oldValue = old ? tailExcerpt(old) : MCP_NOT_SET;
   const oldCaption = cut ? "vorher (letzte 500 Zeichen)" : "vorher";
   if (old && after.startsWith(old)) {
     return { label: entry, oldValue, oldCaption, newValue: after.slice(old.length).trim(), newCaption: "angehängt" };
@@ -188,12 +191,39 @@ export function snapshotDelta(before: Snapshot | null, after: Snapshot): FieldCh
   return changes;
 }
 
+const RECEIPT_UNAVAILABLE = "Die Änderungsübersicht konnte nach dem Speichern nicht geladen werden; die Änderung ist gespeichert.";
+
+/**
+ * Receipt after a successful write. Runs outside the stub compensation: a failed re-read must
+ * never report the saved write as failed or remove referenced stubs (Review 012 CR-001).
+ */
+export async function receiptAfterWrite(input: {
+  world: McpWorldContext;
+  art: FieldArt;
+  id: string;
+  before: Snapshot | null;
+  /** Domain result; without `stand` the re-read stand is used. */
+  result: { title: string; stand?: string; visibility?: string };
+  stubs?: readonly { id: string; title: string }[];
+  notes?: readonly string[];
+}): Promise<string> {
+  const base = { art: input.art, id: input.id, stubs: input.stubs, notes: input.notes };
+  try {
+    const after = await snapshotContent(input.world, input.art, input.id);
+    return formatReceipt({ ...base, after: { ...after, stand: input.result.stand ?? after.stand }, changes: snapshotDelta(input.before, after) });
+  } catch (error) {
+    console.error(JSON.stringify({ event: "mcp_receipt_error", art: input.art, error: error instanceof Error ? error.name : "unknown" }));
+    return formatReceipt({ ...base, after: { ...input.result, stand: input.result.stand ?? MCP_NOT_SET }, changes: null });
+  }
+}
+
 /** Receipt after an executed write (Begriffe „Quittung“, E2). */
 export function formatReceipt(input: {
   art: string;
   id: string;
   after: Pick<Snapshot, "title" | "stand" | "visibility">;
-  changes: readonly FieldChange[];
+  /** `null` when the stored state could not be read back after the write. */
+  changes: readonly FieldChange[] | null;
   stubs?: readonly { id: string; title: string }[];
   notes?: readonly string[];
 }): string {
@@ -205,7 +235,11 @@ export function formatReceipt(input: {
     `Titel: ${input.after.title}`,
     `Stand: ${input.after.stand}`,
     ...(input.after.visibility ? [`Sichtbarkeit: ${input.after.visibility}`] : []),
-    ...(input.changes.length ? formatDelta(input.changes, "Gespeicherte Änderungen (vorher → nachher):") : ["Keine Feldänderung gespeichert."]),
+    ...(input.changes === null
+      ? [RECEIPT_UNAVAILABLE]
+      : input.changes.length
+        ? formatDelta(input.changes, "Gespeicherte Änderungen (vorher → nachher):")
+        : ["Keine Feldänderung gespeichert."]),
     ...(input.stubs?.length ? ["Neu angelegte Stub-Artikel:", ...input.stubs.map((stub) => `- ${stub.title} (${stub.id})`)] : []),
     ...(input.notes ?? []),
   ].join("\n");

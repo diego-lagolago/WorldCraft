@@ -153,4 +153,12 @@ describe("SDK validation errors (012 T-005)", () => {
       ...updateArgs, art: "artikel", felder: { vorlagenfelder: { "Quest-Gegenstand": "Nein" } },
     })).toBeNull();
   });
+
+  it("Review 012 CR-003: tells a missing value from a wrong type without Zod's English texts", async () => {
+    const missing = await sdkValidation("inhalt_anlegen", { welt: "MCP-Testwelt", art: "artikel", felder: {} });
+    expect(missing).toContain("Feld „felder.titel“ fehlt.");
+    const wrongType = await sdkValidation("inhalt_anlegen", { welt: "MCP-Testwelt", art: "artikel", felder: { titel: 5 } });
+    expect(wrongType).toContain("Feld „felder.titel“ muss Text sein.");
+    expect(`${missing}${wrongType}`).not.toMatch(/Invalid|expected/);
+  });
 });

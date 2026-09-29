@@ -4,23 +4,33 @@ import { TEMPLATE_TYPES, templateOf } from "@/lib/templates/registry";
 import { MCP_TEMPLATE_TYPE } from "../enums";
 import { fieldsFor, templateFieldsFor, type FieldArt, type FieldDefinition } from "../field-catalog";
 import { MCP_SHEET_FIELDS, SHEET_KEY_MAP } from "../write-fields";
-import { issuesMessage, mcpEnum, unionError } from "../validation";
+import { germanError, issuesMessage, mcpEnum, unionError } from "../validation";
 
 export type CreateArt = Exclude<FieldArt, "notizblock" | "welt">;
 export type UpdateArt = FieldArt;
 
-const title = z.string().trim().min(1).max(200);
-const shortName = z.string().trim().min(1).max(120);
-const uuid = z.string().uuid();
+/** Every catalog field carries a German error function with its path (Review 012 CR-003). */
+const text = (path: string, max?: number) => {
+  const error = germanError(path);
+  const schema = z.string({ error }).trim().min(1, { error });
+  return max ? schema.max(max, { error }) : schema;
+};
+const uuid = (path: string) => z.string({ error: germanError(path) }).uuid({ error: germanError(path) });
 /** Mention syntax or an already resolved reference; `null` clears the reference. */
-const reference = z.union([z.string(), z.object({ kind: z.string(), id: uuid }).strict()]).nullable();
+const reference = (path: string) => z.union(
+  [z.string(), z.object({ kind: z.string(), id: z.string().uuid() }).strict()],
+  { error: germanError(path) },
+).nullable();
 
 const MCP_TEMPLATE_TYPE_LABEL = Object.fromEntries(
   Object.entries(MCP_TEMPLATE_TYPE).map(([label, value]) => [value, label]),
 ) as Record<string, string>;
 
 /** inhalt_lesen shows Ja/Nein; written back unchanged it maps onto true/false (002 D18, 012 T-009). */
-const yesNo = () => z.preprocess((value) => (value === "Ja" ? true : value === "Nein" ? false : value), z.boolean());
+const yesNo = (path: string) => z.preprocess(
+  (value) => (value === "Ja" ? true : value === "Nein" ? false : value),
+  z.boolean({ error: germanError(path) }),
+);
 
 /** Fixed MCP enums without an English alternative stay enums in the schema (E5). */
 const FIXED_ENUM_KEYS = new Set(["vorlagentyp", "status"]);
@@ -32,30 +42,34 @@ function describe(schema: z.ZodType, field: FieldDefinition) {
 
 /** The field catalog is the single source for the public write-schema. */
 function schemaFor(art: FieldArt, field: FieldDefinition): z.ZodType {
+  const path = `felder.${field.key}`;
+  const error = germanError(path);
   switch (field.type) {
   case "text":
-    if (field.key === "titel") return title;
-    return field.key === "name" && art !== "universum" ? shortName : field.key === "name" ? title : z.string();
-  case "markdown": return z.string();
-  case "boolean": return yesNo();
-  case "number": return field.key === "position" ? z.number().int().min(1) : z.number();
+    if (field.key === "titel") return text(path, 200);
+    if (field.key === "name") return text(path, art === "universum" ? 200 : 120);
+    return z.string({ error });
+  case "markdown": return z.string({ error });
+  case "boolean": return yesNo(path);
+  case "number": return field.key === "position" ? z.number({ error }).int({ error }).min(1, { error }) : z.number({ error });
   case "select": {
     const labels = field.allowedValues?.map((value) => value.label);
     return FIXED_ENUM_KEYS.has(field.key) && labels?.length
-      ? mcpEnum(labels as [string, ...string[]], `felder.${field.key}`)
-      : z.string();
+      ? mcpEnum(labels as [string, ...string[]], path)
+      : z.string({ error });
   }
-  case "reference": return field.key === "quest_id" ? uuid : reference;
-  case "list": return z.array(z.string().trim().min(1));
+  case "reference": return field.key === "quest_id" ? uuid(path) : reference(path);
+  case "list": return z.array(z.string({ error }).trim().min(1, { error }), { error });
   case "object": return field.key === "vorlagenfelder" ? templateFieldsSchema() : monsterSheetSchema();
   }
 }
 
 /** Template values are checked by `normalizeTemplateFieldsInput`; `null` clears a field. */
 function templateValueSchema(field: FieldDefinition): z.ZodType {
-  if (field.type === "boolean") return yesNo().nullable();
-  if (field.type === "reference") return reference;
-  return z.string().nullable();
+  const path = `felder.vorlagenfelder.${field.key}`;
+  if (field.type === "boolean") return yesNo(path).nullable();
+  if (field.type === "reference") return reference(path);
+  return z.string({ error: germanError(path) }).nullable();
 }
 
 /**
@@ -131,6 +145,26 @@ type MonsterFields = {
 type UniverseFields = { name: string; beschreibung?: string; sichtbarkeit?: string };
 type NoteFields = { text?: string };
 type WorldFields = { name?: string; beschreibung?: string };
+
+/** Compile-time check: the list names exactly the keys of T. */
+type ExactKeys<T, K extends readonly PropertyKey[]> = [Exclude<keyof T, K[number]>] extends [never] ? K : never;
+const keysOf = <T>() => <const K extends readonly (keyof T)[]>(keys: ExactKeys<T, K>) => keys;
+
+/**
+ * Keys of the hand-written field types above; a unit test keeps them equal to the field catalog,
+ * so schema (from the catalog) and types cannot drift apart (Review 012 CR-005).
+ */
+export const FIELD_TYPE_KEYS = {
+  artikel: keysOf<ArticleFields>()(["titel", "vorlagentyp", "vorlagenfelder", "text", "sichtbarkeit"]),
+  quest: keysOf<QuestFields>()(["titel", "status", "beschreibung", "beteiligte", "sichtbarkeit"]),
+  kapitel: keysOf<ChapterCreateFields>()(["quest_id", "titel", "status", "text", "position", "sichtbarkeit"]),
+  notizblock: keysOf<NoteFields>()(["text"]),
+  monster: keysOf<MonsterFields>()([
+    "name", "monster_art", "seltenheit", "boss", "gefahr", "groesse", "lebensraum", "charakterblatt", "bio", "sichtbarkeit",
+  ]),
+  universum: keysOf<UniverseFields>()(["name", "beschreibung", "sichtbarkeit"]),
+  welt: keysOf<WorldFields>()(["name", "beschreibung"]),
+} satisfies Record<FieldArt, readonly string[]>;
 
 const createFieldSchemaDefinitions = {
   artikel: fieldObject("anlegen", "artikel"),

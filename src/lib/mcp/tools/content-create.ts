@@ -4,7 +4,7 @@ import { createMcpConfirmation, registerMcpConfirmationHandler } from "../confir
 import { resolveMcpWorld, type McpWorldContext } from "../context";
 import { withMcpStubCompensation } from "../stub-compensation";
 import { createStubPlan, materializeStubs } from "../write-shared";
-import { formatReceipt, snapshotContent, snapshotDelta } from "../receipt";
+import { receiptAfterWrite } from "../receipt";
 import { formatConfirmationPreview, IGNORED_VISIBILITY, mcpMembership } from "../write-rich";
 import { CREATE_HANDLERS } from "./create";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
@@ -28,28 +28,26 @@ async function executeCreate(input: CreateRequest & { ctx: ToolContext; stubTitl
   await handler.check(input.felder, input.world);
   const membership = mcpMembership(input.world);
   const stubs = await materializeStubs({ world: input.world, actorId: input.ctx.userId, titles: input.stubTitles });
-  return withMcpStubCompensation({
+  const result = await withMcpStubCompensation({
     membership,
     actorId: input.ctx.userId,
     worldId: input.world.id,
     stubs: stubs.articles,
-    write: async () => {
-      const result = await handler.execute(input.felder, { ctx: input.ctx, world: input.world, membership, stubs });
-      const after = await snapshotContent(input.world, input.art, result.id);
-      return {
-        worldId: input.world.id,
-        id: result.id,
-        value: formatReceipt({
-          art: input.art,
-          id: result.id,
-          after: { ...after, stand: result.stand },
-          changes: snapshotDelta(null, after),
-          stubs: stubs.articles,
-          notes: input.ignoredVisibility ? [IGNORED_VISIBILITY] : [],
-        }),
-      };
-    },
+    write: () => handler.execute(input.felder, { ctx: input.ctx, world: input.world, membership, stubs }),
   });
+  return {
+    worldId: input.world.id,
+    id: result.id,
+    value: await receiptAfterWrite({
+      world: input.world,
+      art: input.art,
+      id: result.id,
+      before: null,
+      result,
+      stubs: stubs.articles,
+      notes: input.ignoredVisibility ? [IGNORED_VISIBILITY] : [],
+    }),
+  };
 }
 
 registerMcpConfirmationHandler("inhalt_anlegen", async (row) => {
