@@ -10,7 +10,7 @@
 |----|-----------|-------------|--------|-------------------|
 | CR-001 | Runtime-Risiken | kritisch | behoben | Stub-Artikel entstehen erst nach Ziel- und Standprüfung; fehlgeschlagene Schreibvorgänge werden kompensiert |
 | CR-002 | Lesbarkeit (Doku) | niedrig | behoben | Verhalten bleibt (Entscheidung 2026-09-29): S1, ADR-005 und Hilfeseite an „jede Verbindung ist Lesen und Schreiben“ anpassen |
-| CR-003 | Runtime-Risiken | mittel | offen | Die Stand-Prüfung ist nicht atomar mit dem Schreiben (ADR-005 „Stand“), daher sind Lost Updates möglich |
+| CR-003 | Runtime-Risiken | mittel | behoben | Die Domänen-Updates prüfen den erwarteten Stand atomar; eine Integrationssuite deckt alle MCP-Ziele ab |
 | CR-004 | Aufgaben-Abgleich | mittel | behoben | Die Plausibilitätsprüfung sucht Wortpräfixe und wird in der MCP-Suite geprüft |
 | CR-005 | Sicherheit | mittel | behoben | Vorlagenverweise in Objektform `{kind,id}` umgehen die Sichtbarkeitsprüfung, Objektform wird verboten |
 | CR-006 | Aufgaben-Abgleich | mittel | behoben | Der Upload-Endpunkt antwortet für Nicht-Browser standardmäßig mit JSON |
@@ -60,6 +60,7 @@
 - **Abnahmekriterium:** S1 in `.ai/feature-tasks/011-mcp-schreibend.md` und ADR-005 enthalten den datierten Hinweis auf die Erweiterung und keine gegenteilige Aussage mehr. `grep -n "nur lesend verbinden" .ai src/app/hilfe` liefert keinen Treffer, der dem widerspricht. Am Code ändert sich nichts.
 
 ### CR-003 – Stand-Prüfung nicht atomar
+- **Status:** behoben – Alle MCP-Schreibwege übergeben den erwarteten Stand an die Domänenfunktion. Die `WHERE`-Bedingung schützt das Update atomar; der Domänen-Integrationstest prüft Stale- und Erfolgsfall für alle sechs Entitätstypen.
 - **Fundstelle:** `src/lib/mcp/write-rich.ts` `assertStand` (Z. 33–37) und alle Aufrufer in `content-update.ts`, `visibility-set.ts`; Domänen-Updates `updateArticle`, `updateQuest`, `updateChapter`, `updateMonster`, `updateUniverse`, `updateWorld` ohne erwarteten Stand
 - **Kategorie:** Runtime-Risiken
 - **Schweregrad:** mittel
