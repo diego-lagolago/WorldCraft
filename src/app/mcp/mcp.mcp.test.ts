@@ -1076,6 +1076,35 @@ describe("MCP write tools", () => {
     }
   });
 
+  it("CR-023: creates one stub for case-insensitive duplicate mentions", async () => {
+    const client = await registerMcpClient(9897, "MCP Stub Deduplication Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const stubTitle = `MCP Stub Doppel ${Date.now().toString(36)}`;
+    const lowerCaseTitle = stubTitle.toLocaleLowerCase("de");
+    const preview = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: {
+        titel: `MCP Stub Träger ${Date.now().toString(36)}`,
+        text: `@[${stubTitle}] und @[${lowerCaseTitle}]`,
+      },
+    }));
+    expect(preview).toContain("Bestätigungs-Token:");
+    expect(preview.match(new RegExp(stubTitle, "g"))?.length).toBe(1);
+
+    await callTool(gm.accessToken, "aenderung_bestaetigen", { token: extractToken(preview) });
+    const sql = testSql();
+    try {
+      const stubs = await sql.unsafe(
+        "SELECT title FROM articles WHERE world_id = $1 AND lower(title) = lower($2)",
+        [data.worldId, stubTitle],
+      );
+      expect(stubs).toEqual([{ title: stubTitle }]);
+    } finally {
+      await sql.end();
+    }
+  });
+
   it("T-006: updates content with confirmation, stubs, modes, stand, and rights", async () => {
     const client = await registerMcpClient(9891, "MCP Write Update Test");
     const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);

@@ -30,7 +30,7 @@
 | CR-020 | Lesbarkeit | niedrig | behoben | `registerMcpTools` beschreibt den vollständigen Werkzeugsatz; Purge-Operationen sind getrennt geloggt |
 | CR-021 | Sicherheit | niedrig | offen | Der Upload-POST liest den ganzen Body vor der Größenprüfung, GET antwortet bei Stand-Drift mit 404 statt mit einer Erklärung |
 | CR-022 | Testabdeckung | niedrig | behoben | Bestätigungs-Integrationstest ist nur noch Teil der MCP-Suite |
-| CR-023 | Runtime-Risiken | niedrig | offen | Stub-Titel, die sich nur in Groß-/Kleinschreibung unterscheiden, erzeugen doppelte Stubs |
+| CR-023 | Runtime-Risiken | niedrig | behoben | Stub-Titel, die sich nur in Groß-/Kleinschreibung unterscheiden, erzeugen doppelte Stubs |
 | CR-024 | Bad Practices | niedrig | offen | T-005 bis T-010 wurden in einem einzigen Release-Commit ausgeliefert statt als ein Commit pro Task |
 
 ---
@@ -254,6 +254,7 @@
 - **Abnahmekriterium:** Die Datei wird von genau einer Vitest-Config erfasst (`vitest list` bzw. Glob-Abgleich). `vitest.mcp.config.ts` enthält keinen Einzeldatei-Sondereintrag mehr.
 
 ### CR-023 – Doppelte Stubs bei unterschiedlicher Groß-/Kleinschreibung
+- **Status:** behoben – Stub-Titel werden fallunabhängig dedupliziert; die MCP-Suite prüft Vorschau und bestätigten Bestand.
 - **Fundstelle:** `content-create.ts` `collectCreateStubs` (`Set<string>` Z. 392), `content-update.ts` `prepareUpdate` (`Set`, Z. 388); Zuordnung per `toLocaleLowerCase` in `stubIdByTitle`
 - **Kategorie:** Runtime-Risiken
 - **Schweregrad:** niedrig
