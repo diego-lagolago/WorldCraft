@@ -950,6 +950,17 @@ describe("MCP write tools", () => {
     }
 
     const stubTitle = `Gräfin Mirelda MCP ${suffix}`;
+    const plausibleBase = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "artikel", felder: { titel: `Gegenstand Y ${suffix}` },
+    }));
+    expect(extractId(plausibleBase)).toBeTruthy();
+    const plausible = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `Plausibilität ${suffix}`, text: `@[Gegenstand Y ${suffix} und noch viele andere seltene Gegenstände]` },
+    }));
+    expect(plausible).toContain(`Gegenstand Y ${suffix}`);
+    expect(plausible).not.toContain("Bestätigungs-Token:");
     const stubPreview = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
       welt: "MCP-Testwelt",
       art: "artikel",
