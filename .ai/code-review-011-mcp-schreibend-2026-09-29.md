@@ -114,6 +114,7 @@
 
 ### CR-008 – Generische Fehlermeldungen im Bestätigungspfad
 - **Status:** behoben – Erwähnungsfehler bleiben Werkzeugfehler; die MCP-Suite prüft Mehrdeutigkeit zwischen Vorschau und Bestätigung samt Audit-Ergebnis `tool_error`.
+- **Review-Check 2026-09-29:** Status `behoben` bestätigt (beide Abnahmekriterien erfüllt: `McpMentionError extends McpToolError`, MCP-Test zur Mehrdeutigkeit nach der Vorschau). Offen ist ein Rest aus Empfehlungspunkt 2: `src/lib/editor/mcp-markdown.ts` wirft weiterhin `new Error(...)` (Z. 96, 106, 109). Im Ausführungspfad (`write-shared.ts` `richDocWithStubs`/`richDoc`) erreicht ein Sanitize-Fehler den Client daher als generische Meldung. Das betrifft nur den Fall mit Stubs, weil dort die Vorschau `resolveMcpMarkdown` nicht durchläuft. Siehe „Nicht abgedeckte Änderungen“ unten.
 - **Fundstelle:** `src/lib/domain/mcp-mentions.ts` Z. 9 (`McpMentionError extends Error`); `content-create.ts` `executeCreate` (`rich`, `articleFields.parse`); `content-update.ts` `materializeUpdateDocs.rich`, `executeUpdate` (`*.parse`); `src/lib/editor/mcp-markdown.ts` Z. 84 (`throw new Error`); `src/lib/mcp/tools/shared.ts` `asError`
 - **Kategorie:** Fehlerbehandlung & Validierung
 - **Schweregrad:** mittel
@@ -298,3 +299,52 @@
 7. **CR-011**, **CR-012** – Duplizierung und Handler-Struktur. Am besten zusammen umsetzen, nachdem 1.–6. mit Tests abgesichert sind.
 8. **CR-002** (nur Doku) sowie **CR-014** bis **CR-023** – Aufräumarbeiten mit geringem Risiko.
 9. **CR-024** – Prozesshinweis für künftige Pläne.
+
+---
+
+## Review-Check 2026-09-29
+
+**Geprüfter Stand:** Commit `4fffc0c123290d2bc51394c841b08ab0a70856a8` (`main`), verglichen mit der Baseline `19c98a0`. Seit der Baseline gibt es 46 Commits, davon 44 mit Bezug auf CR-IDs, sowie 61 geänderte Dateien.
+
+**Ergebnis:** Alle 24 Findings standen bereits auf `behoben` (gesetzt während `/plan-run`). Die Prüfung am Code bestätigt jeden dieser Status. Es gibt keine Regression und keinen `drift`.
+
+| Status | Anzahl |
+|---|---|
+| behoben (bestätigt) | 24 |
+| offen | 0 |
+| drift | 0 |
+| Regression | 0 |
+
+Kurzbelege je Finding:
+- **CR-001:** `content-update.ts`/`content-create.ts` laden das Ziel und prüfen den Stand (`handler.load`) vor `materializeStubs`. `withMcpStubCompensation` bzw. `compensateMcpStubArticles` (`stub-compensation.ts`) löschen nur die Stubs dieses Aufrufs, dazu gibt es Unit- und MCP-Tests.
+- **CR-002:** ADR-005 (Zeile „Scope `worlds:write`“) und S1 in Plan 011 enthalten die datierte Entscheidung, der Code ist unverändert.
+- **CR-003:** `matchesExpectedUpdatedAt` (`src/lib/domain/expected-updated-at.ts`) steht in der `WHERE`-Bedingung von `updateArticle`, `updateQuest`, `updateChapter`, `updateMonster`, `updateUniverse` und `updateWorld`. Belegt durch `expected-updated-at.integration.test.ts`.
+- **CR-004:** `plausibleTarget` in `mcp-mentions.ts` sucht nach Wortpräfixen, dazu gibt es einen MCP-Test.
+- **CR-005:** `resolveMentionRef` lehnt Objekte mit der Meldung zur Erwähnungssyntax ab.
+- **CR-006:** `wantsJson` liefert JSON, außer `Accept` enthält `text/html`.
+- **CR-007:** `createChapter`/`updateChapter` nehmen Status und Position direkt. MCP ruft `reorderChapters` nicht mehr auf. Belegt durch `chapter-write.integration.test.ts`.
+- **CR-008:** siehe Vermerk im Finding (Rest in `mcp-markdown.ts`).
+- **CR-009:** Parser-Anpassungen plus Rundreise-Tests in `mcp-markdown.test.ts`.
+- **CR-010:** Die Vorschau nutzt `renderTemplateFields`, `renderSheet`, Titel für Lebensraum und Beteiligte sowie einen konkreten Sichtbarkeits-Folgetext.
+- **CR-011:** Helfer liegen einmalig in `write-shared.ts`, Schemas in `write-schemas.ts`. Das Quest-Status-Enum gibt es nur noch in `shared.ts`.
+- **CR-012:** Handler-Tabellen `tools/create/*` und `tools/update/*`. `content-update.ts` hat 165 Zeilen ohne `art`-Kette, keine Funktion ist länger als 80 Zeilen.
+- **CR-013:** Tests „T-004(2)“ und dreimal „T-004(5)“ (Rolle, Welt-Freigabe, Allowlist) in `mcp.mcp.test.ts`.
+- **CR-014/CR-015:** `explicitTarget` lädt per ID mit Sichtbarkeitsprüfung, Erwähnungen werden per Schlüssel dedupliziert. `getVisibleChapter` ersetzt den Quest-Scan.
+- **CR-016:** Keine Regex-Auswertung von Antworttext mehr.
+- **CR-017:** Alle Feld-Schemas sind `.strict()`.
+- **CR-018:** Migration `0032` ergänzt `client_id`, die Einlösung prüft `hasActiveMcpConsent`, und das Audit enthält die echte Client-ID.
+- **CR-019:** `stableJson` plus Hash-Prüfung in `executeMcpConfirmation`.
+- **CR-020:** `registerMcpTools`, getrennte Purge-`operation`s.
+- **CR-021:** Die `Content-Length`-Prüfung (413) liegt vor `formData()`, GET antwortet bei Stand-Drift mit 409.
+- **CR-022:** `confirmations.mcp.test.ts`, kein Sondereintrag mehr in `vitest.mcp.config.ts`.
+- **CR-023:** `createStubPlan` dedupliziert ohne Rücksicht auf Groß-/Kleinschreibung.
+- **CR-024:** Die Commits nach der Baseline nennen ihre CR-IDs, keiner bündelt mehr als drei.
+
+**Nicht abgedeckte Änderungen** (keinem Finding zugeordnet, keine neuen IDs vergeben):
+1. `src/lib/mcp/tools/content-read.ts`: Das Lesewerkzeug aus Plan 002 wurde in Funktionen je `art` (`readArticle`, `readQuest`, …) zerlegt (+105/−91), im Commit `62cd737` zusammen mit CR-010–CR-012. Nach Stichprobe ist das eine reine Umstrukturierung ohne erkennbare Verhaltensänderung, ein eigenes Review hat es aber nicht bekommen.
+2. `src/lib/editor/mcp-markdown.ts`: Die verbleibenden `throw new Error(...)` (siehe CR-008) führen im Ausführungspfad mit Stubs zu einer generischen Fehlermeldung.
+3. `src/db/migrations/0032_mcp_upload_ticket_client.sql` enthält `DELETE FROM mcp_upload_tickets`. Das ist eine destruktive Migration, laut `conventions.md` nur mit expliziter Entscheidung zulässig. Fachlich ist sie harmlos, weil Tickets höchstens 15 Minuten leben. **Entscheidung (Projektinhaber, 2026-09-29): Migration 0032 ist so in Ordnung**, es besteht kein Handlungsbedarf.
+4. Neue Domänenparameter (`expectedUpdatedAt` in sechs Update-Funktionen, `status`/`position` in `createChapter`/`updateChapter`, `getVisibleChapter`) wirken auch auf die App-Pfade. Die Findings CR-003/CR-007/CR-015 decken sie ab, mit Tests für den MCP- und Domänenpfad.
+
+**Empfehlung:** Ein vollständiger erneuter `/code-review` ist **nicht nötig**: keine Drift, alle Findings bestätigt, die Umbauten sind durch die Findings motiviert. Punkt 2 lässt sich als kleine Folgeaufgabe erledigen (Punkt 3 ist entschieden), Punkt 1 kann beim nächsten Review der Lesewerkzeuge mitgeprüft werden.
+
