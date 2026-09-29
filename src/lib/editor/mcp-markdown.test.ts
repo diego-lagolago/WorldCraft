@@ -64,4 +64,11 @@ describe("mcpMarkdownToTiptap", () => {
     expect(parsed.doc.content.at(-1)?.attrs).toEqual({ level: 3 });
     expect(json).not.toContain("\\\\n");
   });
+
+  it("groups adjacent quote lines into one blockquote", () => {
+    const parsed = mcpMarkdownToTiptap("> erste Zeile\n> zweite Zeile", { mentions: true });
+    expect(parsed.doc.content).toHaveLength(1);
+    expect(parsed.doc.content[0].type).toBe("blockquote");
+    expect(JSON.stringify(parsed.doc)).toContain("erste Zeile zweite Zeile");
+  });
 });

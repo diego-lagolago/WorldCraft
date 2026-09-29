@@ -30,6 +30,7 @@ export function mcpMarkdownToTiptap(markdown: string, options: { mentions: boole
   let inCodeFence = false;
   let paragraph: { text: string; hardBreak: boolean }[] = [];
   let list: { ordered: boolean; items: RichNode[] } | null = null;
+  let quoteLines: string[] = [];
 
   const flushParagraph = () => {
     if (!paragraph.length) return;
@@ -42,6 +43,11 @@ export function mcpMarkdownToTiptap(markdown: string, options: { mentions: boole
     blocks.push({ type: list.ordered ? "orderedList" : "bulletList", content: list.items });
     list = null;
   };
+  const flushQuote = () => {
+    if (!quoteLines.length) return;
+    blocks.push({ type: "blockquote", content: [{ type: "paragraph", content: inline(quoteLines.join(" "), mentions, options.mentions) }] });
+    quoteLines = [];
+  };
 
   for (const rawLine of lines) {
     if (/^\s*```/.test(rawLine)) { inCodeFence = !inCodeFence; continue; }
@@ -52,10 +58,11 @@ export function mcpMarkdownToTiptap(markdown: string, options: { mentions: boole
     const quote = /^>\s?(.*)$/.exec(line);
     const bullet = /^\s*[-*+]\s+(.+)$/.exec(line);
     const ordered = /^\s*\d+[.)]\s+(.+)$/.exec(line);
+    if (quote) { flushParagraph(); flushList(); quoteLines.push(quote[1]); continue; }
+    flushQuote();
     if (!line.trim()) { flushParagraph(); flushList(); continue; }
     if (/^\s*(---|\*\*\*|___)\s*$/.test(line)) { flushParagraph(); flushList(); blocks.push({ type: "horizontalRule" }); continue; }
     if (heading) { flushParagraph(); flushList(); blocks.push({ type: "heading", attrs: { level: Math.min(3, Math.max(2, heading[1].length)) }, content: inline(heading[2], mentions, options.mentions) }); continue; }
-    if (quote) { flushParagraph(); flushList(); blocks.push({ type: "blockquote", content: [{ type: "paragraph", content: inline(quote[1], mentions, options.mentions) }] }); continue; }
     if (bullet || ordered) {
       flushParagraph();
       const isOrdered = Boolean(ordered);
@@ -66,7 +73,7 @@ export function mcpMarkdownToTiptap(markdown: string, options: { mentions: boole
     flushList();
     paragraph.push({ text: hardBreak ? line.replace(/(?: {2}|\\)$/, "") : line, hardBreak });
   }
-  flushParagraph(); flushList();
+  flushQuote(); flushParagraph(); flushList();
   return { doc: { type: "doc", content: blocks.length ? blocks : [{ type: "paragraph" }] }, mentions };
 }
 
