@@ -11,7 +11,7 @@
 | CR-001 | Runtime-Risiken | kritisch | offen | Stub-Artikel entstehen vor der Stand- und Zielprüfung; umstellen auf „prüfen → Stubs → schreiben“ mit Kompensation |
 | CR-002 | Lesbarkeit (Doku) | niedrig | behoben | Verhalten bleibt (Entscheidung 2026-09-29): S1, ADR-005 und Hilfeseite an „jede Verbindung ist Lesen und Schreiben“ anpassen |
 | CR-003 | Runtime-Risiken | mittel | offen | Die Stand-Prüfung ist nicht atomar mit dem Schreiben (ADR-005 „Stand“), daher sind Lost Updates möglich |
-| CR-004 | Aufgaben-Abgleich | mittel | offen | Die Plausibilitätsprüfung für Stubs (S7 Maßnahme 3) greift real nie, der Test ist durch einen Mock grün |
+| CR-004 | Aufgaben-Abgleich | mittel | behoben | Die Plausibilitätsprüfung sucht Wortpräfixe und wird in der MCP-Suite geprüft |
 | CR-005 | Sicherheit | mittel | offen | Vorlagenverweise in Objektform `{kind,id}` umgehen die Sichtbarkeitsprüfung, Objektform wird verboten |
 | CR-006 | Aufgaben-Abgleich | mittel | behoben | Der Upload-Endpunkt antwortet für Nicht-Browser standardmäßig mit JSON |
 | CR-007 | Runtime-Risiken | mittel | offen | Kapitel mit Status/Position: veralteter Stand und nicht-atomare Folgeschritte, Status und Position kommen direkt in `createChapter`/`updateChapter` |
@@ -69,6 +69,7 @@
 - **Abnahmekriterium:** (a) Jede MCP-Änderung (Artikel, Quest, Kapitel, Monster, Universum, Welt, Sichtbarkeit) übergibt den Stand an die Domänenfunktion, und diese prüft ihn in der `WHERE`-Bedingung des Updates (per Review nachvollziehbar). (b) Neue Datei `src/lib/domain/expected-updated-at.integration.test.ts`: Für `updateArticle`, `updateQuest`, `updateChapter`, `updateMonster`, `updateUniverse` und `updateWorld` gilt je: Ein Aufruf mit einem `expectedUpdatedAt`, der eine Millisekunde vom DB-Wert abweicht, liefert den Fehlercode „stale“, und `updated_at` sowie die geänderten Felder sind danach unverändert. Mit dem aktuellen Wert gelingt der Aufruf. Ohne `expectedUpdatedAt` (App-Pfad) verhält sich die Funktion wie bisher.
 
 ### CR-004 – Plausibilitätsprüfung für Stubs wirkungslos
+- **Status:** behoben – Die Auflösung prüft sichtbare Wortpräfixe; ein MCP-Test verifiziert Vorschlag statt Stub und Token.
 - **Fundstelle:** `src/lib/domain/mcp-mentions.ts` Z. 31–36 und 51–52; Test `src/lib/domain/mcp-mentions.test.ts` „does not create a plausible accidental stub“
 - **Kategorie:** Aufgaben-Abgleich / Testabdeckung
 - **Schweregrad:** mittel
