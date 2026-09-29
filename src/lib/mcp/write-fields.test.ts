@@ -7,6 +7,7 @@ import {
   mapMonsterSize,
   normalizeMonsterSheet,
   normalizeTemplateFieldsInput,
+  requiredMonsterEnum,
 } from "./write-fields";
 
 describe("MCP write field mapping", () => {
@@ -63,5 +64,9 @@ describe("MCP write field mapping", () => {
     expect(() => normalizeTemplateFieldsInput("item", { Seltenheit: "super selten" }))
       .toThrow(/Feld „felder\.vorlagenfelder\.Seltenheit“ hat den ungültigen Wert „super selten“\. Erlaubte Werte: Gewöhnlich, .*Legendär/);
     expect(() => mapMonsterDanger("ungefährlich-ish")).toThrow(/Feld „felder\.gefahr“ .* Erlaubte Werte:/);
+  });
+
+  it("011 Review 2 CR-001: an empty monster select value is an error with path and allowed values", () => {
+    expect(() => requiredMonsterEnum.gefahr("")).toThrow(/Feld „felder\.gefahr“ fehlt oder ist kein Text\. Erlaubte Werte: Harmlos/);
   });
 });

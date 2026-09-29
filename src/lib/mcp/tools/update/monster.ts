@@ -6,7 +6,7 @@ import {
   MONSTER_RARITY_LABEL,
   MONSTER_SIZE_LABEL,
 } from "@/lib/monsters/labels";
-import { McpToolError, type McpWorldContext } from "../../context";
+import type { McpWorldContext } from "../../context";
 import { MCP_NOT_SET } from "../../enums";
 import {
   mapMonsterDanger,
@@ -14,6 +14,7 @@ import {
   mapMonsterRarity,
   mapMonsterSize,
   normalizeMonsterSheet,
+  requiredMonsterEnum,
   type NormalizedMonsterSheet,
 } from "../../write-fields";
 import { resolveHabitat, visibleMonster, type ResolvedHabitat } from "../../write-shared";
@@ -33,29 +34,24 @@ import {
 type MonsterRow = Awaited<ReturnType<typeof visibleMonster>>;
 type MonsterFields = UpdateFields<"monster">;
 
-function required<T>(value: T | undefined, field: string): T {
-  if (value === undefined) throw new McpToolError(`„${field}“ fehlt oder ist ungültig.`);
-  return value;
-}
-
 function previewEnums(row: MonsterRow, felder: MonsterFields, context: PreviewContext) {
   if (felder.monster_art !== undefined) {
-    const kind = required(mapMonsterKind(felder.monster_art), "monster_art");
+    const kind = requiredMonsterEnum.monster_art(felder.monster_art);
     pushChange(context, "monster_art", MONSTER_KIND_LABEL[row.kind], MONSTER_KIND_LABEL[kind]);
   }
   if (felder.seltenheit !== undefined) {
-    const rarity = required(mapMonsterRarity(felder.seltenheit), "seltenheit");
+    const rarity = requiredMonsterEnum.seltenheit(felder.seltenheit);
     pushChange(context, "seltenheit", MONSTER_RARITY_LABEL[row.rarity], MONSTER_RARITY_LABEL[rarity]);
   }
   if (felder.boss !== undefined) {
     pushChange(context, "boss", row.isBoss ? "Ja" : "Nein", felder.boss ? "Ja" : "Nein");
   }
   if (felder.gefahr !== undefined) {
-    const danger = required(mapMonsterDanger(felder.gefahr), "gefahr");
+    const danger = requiredMonsterEnum.gefahr(felder.gefahr);
     pushChange(context, "gefahr", MONSTER_DANGER_LABEL[row.danger], MONSTER_DANGER_LABEL[danger]);
   }
   if (felder.groesse !== undefined) {
-    const size = required(mapMonsterSize(felder.groesse), "groesse");
+    const size = requiredMonsterEnum.groesse(felder.groesse);
     pushChange(context, "groesse", MONSTER_SIZE_LABEL[row.size], MONSTER_SIZE_LABEL[size]);
   }
 }

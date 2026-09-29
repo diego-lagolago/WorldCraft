@@ -31,6 +31,9 @@ const VISIBILITY_MAP = {
   veröffentlicht: "published",
 } as const satisfies Record<z.infer<typeof visibilityLabelInput>, ContentVisibility>;
 
+/** Checked in the schema and again for stored confirmation payloads. */
+const UNIVERSE_NOT_OWNER_ONLY = "Universen unterstützen die Sichtbarkeit „nur ich“ nicht.";
+
 const VISIBILITY_CONSEQUENCE: Record<ContentVisibility, string> = {
   owner_only: "Danach sieht nur noch der Owner den Inhalt; alle anderen Mitglieder, auch die Spielleitung, verlieren den Zugriff.",
   gm_only: "Danach sehen nur Game Master und Master den Inhalt; Player sehen ihn nicht.",
@@ -91,7 +94,7 @@ const HANDLERS: Record<VisibilityArt, VisibilityHandler> = {
   universum: {
     load: async (world, id) => { const row = await visibleUniverse(world, id); return target(row, row.name); },
     write: async ({ world, id, ...input }) => {
-      if (input.visibility === "owner_only") throw new McpToolError("Universen unterstützen die Sichtbarkeit „nur ich“ nicht.");
+      if (input.visibility === "owner_only") throw new McpToolError(UNIVERSE_NOT_OWNER_ONLY);
       return updateUniverse({ ...input, visibility: input.visibility, worldId: world.id, universeId: id });
     },
   },
@@ -149,7 +152,7 @@ const inputSchema = z.object({
   sichtbarkeit: visibilityLabelInput,
 }).strict().superRefine((value, ctx) => {
   if (value.art === "universum" && value.sichtbarkeit === "nur ich") {
-    ctx.addIssue({ code: "custom", path: ["sichtbarkeit"], message: "Universen unterstützen die Sichtbarkeit „nur ich“ nicht." });
+    ctx.addIssue({ code: "custom", path: ["sichtbarkeit"], message: UNIVERSE_NOT_OWNER_ONLY });
   }
 });
 

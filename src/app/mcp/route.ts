@@ -40,8 +40,10 @@ async function isToolCall(request: Request): Promise<boolean> {
   if (request.headers.get("mcp-method") === "tools/call") return true;
   if (!request.headers.get("content-type")?.includes("application/json")) return false;
   try {
-    const body = await request.clone().json() as { method?: unknown };
-    return body.method === "tools/call";
+    const body = await request.clone().json() as unknown;
+    // Batches are counted too, so a JSON array cannot bypass the tool-call limit (011 Review 2 CR-005).
+    const messages = Array.isArray(body) ? body : [body];
+    return messages.some((message) => (message as { method?: unknown } | null)?.method === "tools/call");
   } catch {
     return false;
   }

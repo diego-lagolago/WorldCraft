@@ -57,4 +57,16 @@ describe("MCP route", () => {
     expect(limited.status).toBe(429);
     expect(Number(limited.headers.get("Retry-After"))).toBeGreaterThan(0);
   });
+
+  it("011 Review 2 CR-005: counts a JSON batch containing tools/call", async () => {
+    const request = () => new Request("http://localhost:3000/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify([{ method: "tools/call" }]),
+    });
+    for (let index = 0; index < 60; index += 1) {
+      expect((await POST(request())).status).toBe(200);
+    }
+    expect((await POST(request())).status).toBe(429);
+  });
 });

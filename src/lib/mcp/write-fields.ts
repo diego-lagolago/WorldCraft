@@ -279,6 +279,17 @@ export function mapMonsterSize(raw: unknown): MonsterSize | undefined {
   return lookupEnum(SIZE_BY_LABEL, raw, "groesse", MONSTER_SIZE_LABEL);
 }
 
+/**
+ * Monster select fields always hold a value; when changing one, an empty value is an error with
+ * path and allowed values instead of „nicht gesetzt“ (011 Review 2 CR-001).
+ */
+export const requiredMonsterEnum = {
+  monster_art: (raw: unknown) => lookupEnum(KIND_BY_LABEL, raw, "monster_art", MONSTER_KIND_LABEL),
+  seltenheit: (raw: unknown) => lookupEnum(RARITY_BY_LABEL, raw, "seltenheit", MONSTER_RARITY_LABEL),
+  gefahr: (raw: unknown) => lookupEnum(DANGER_BY_LABEL, raw, "gefahr", MONSTER_DANGER_LABEL),
+  groesse: (raw: unknown) => lookupEnum(SIZE_BY_LABEL, raw, "groesse", MONSTER_SIZE_LABEL),
+};
+
 /** Completeness guard for S12 / D14-style enum coverage. */
 export const MCP_WRITE_ENUMS_COMPLETE = {
   kinds: MONSTER_KINDS.every((kind) => KIND_BY_LABEL.has(MONSTER_KIND_LABEL[kind].toLocaleLowerCase("de"))),

@@ -5,6 +5,7 @@
 **Anlass:** Plan `012` T-011 (1), Roadmap-Schritt 18. Das erste Review vom selben Tag (`.ai/code-review-011-mcp-schreibend-2026-09-29.md`, CR-001–CR-024, vollständige Kette inkl. `/review-check`) bleibt unverändert bestehen; dieses Dokument ist ein eigener Durchlauf mit eigener Nummerierung.
 **Geprüfte Aufgaben (erledigt `[x]`):** T-001–T-010, T-012, T-013. T-011 (E2E) ist offen und wird mit `012` T-013 abgeschlossen.
 **Review-Datum:** 2026-09-29
+**Plan-Review / Entscheidungen:** Auf Wunsch des Projektinhabers ohne Unterbrechung umgesetzt; die Empfehlungen wurden übernommen und sind vom Projektinhaber nachträglich zu bestätigen. CR-001: Variante „leerer Wert → Fehler mit Pfad und erlaubten Werten“ (nicht „Keine Änderung“).
 
 **Durch Plan `012` behoben (nicht erneut als Finding aufgenommen):**
 
@@ -21,11 +22,11 @@
 
 | ID | Kategorie | Schweregrad | Status | Kurzbeschreibung |
 |----|-----------|-------------|--------|-------------------|
-| CR-001 | Fehlerbehandlung & Validierung | mittel | offen | Monster-Änderung lehnt leere Auswahlwerte mit altem, pfadlosem Fehlertext ab; Anlegen akzeptiert sie als „nicht gesetzt“ |
-| CR-002 | Bad Practices | mittel | offen | Upload-Route fragt Tabellen direkt ab statt über die Domänenschicht |
-| CR-003 | Lesbarkeit & Wartbarkeit | niedrig | offen | Upload-Route mischt HTML-Seite, Prüf- und Schreiblogik in einer 336-Zeilen-Datei |
-| CR-004 | Duplizierung & Modularisierung | niedrig | offen | Universum-„nur ich“-Sperre doppelt in Schema und Handler von `sichtbarkeit_setzen` |
-| CR-005 | Sicherheit | niedrig | offen | Ratenbegrenzung erkennt Tool-Aufrufe nur an Header oder Einzel-JSON-Body |
+| CR-001 | Fehlerbehandlung & Validierung | mittel | behoben | Monster-Änderung lehnt leere Auswahlwerte mit altem, pfadlosem Fehlertext ab; Anlegen akzeptiert sie als „nicht gesetzt“ |
+| CR-002 | Bad Practices | mittel | behoben | Upload-Route fragt Tabellen direkt ab statt über die Domänenschicht |
+| CR-003 | Lesbarkeit & Wartbarkeit | niedrig | behoben | Upload-Route mischt HTML-Seite, Prüf- und Schreiblogik in einer 336-Zeilen-Datei |
+| CR-004 | Duplizierung & Modularisierung | niedrig | behoben | Universum-„nur ich“-Sperre doppelt in Schema und Handler von `sichtbarkeit_setzen` |
+| CR-005 | Sicherheit | niedrig | behoben | Ratenbegrenzung erkennt Tool-Aufrufe nur an Header oder Einzel-JSON-Body |
 
 ---
 
@@ -82,3 +83,17 @@
 2. CR-002 – Direktabfragen in der Upload-Route an die Domänenschicht angleichen.
 3. CR-005 – Ratenbegrenzung durch Test absichern.
 4. CR-003, CR-004 – Aufräumen.
+
+---
+
+## Umsetzung und Review-Check (2026-09-29)
+
+| ID | Umsetzung | Nachweis |
+|---|---|---|
+| CR-001 | `requiredMonsterEnum` in `src/lib/mcp/write-fields.ts` ersetzt `required()`; leere Werte → Fehler mit `felder.<feld>` und allen Labels | Unit-Test „011 Review 2 CR-001“ in `write-fields.test.ts` |
+| CR-002 | `loadUploadTargetState` (`src/app/upload/[ticket]/target-state.ts`) lädt Titel, Stand und Bild über `getArticle`/`getMonster`/`getWorldDetails`; `route.ts` importiert weder `@/db/client` noch `@/db/schema` (Discord-Allowlist-Abfrage liegt als Identitätsabfrage in `target-state.ts`) | Upload-Route-Tests grün |
+| CR-003 | HTML/CSS in `src/app/upload/[ticket]/page-html.ts`; `route.ts` 215 Zeilen | – |
+| CR-004 | Konstante `UNIVERSE_NOT_OWNER_ONLY` | Text einmal im Code |
+| CR-005 | `isToolCall` zählt JSON-Batches mit `tools/call` | Test „011 Review 2 CR-005“ in `src/app/mcp/route.test.ts` |
+
+Review-Check: Alle fünf Findings sind am Code behoben; keine Drift. MCP-Integrationssuite (`npm run test:mcp`) auf Wunsch des Projektinhabers nicht ausgeführt.

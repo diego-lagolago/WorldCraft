@@ -27,10 +27,11 @@ vi.mock("@/db/schema", () => ({
   articles: { id: "id", updatedAt: "updated_at" },
   monsters: { id: "id", updatedAt: "updated_at" },
   users: { id: "id", discordId: "discord_id" },
-  worlds: { id: "id", name: "name", titleImageId: "title_image_id" },
+  worlds: { id: "id", name: "name" },
 }));
 vi.mock("@/lib/domain/articles", () => ({ getArticle: vi.fn() }));
 vi.mock("@/lib/domain/monsters", () => ({ getMonster: vi.fn() }));
+vi.mock("@/lib/domain/worlds", () => ({ getWorldDetails: async () => ({ name: "Testwelt", titleImageId: null }) }));
 vi.mock("@/lib/domain/connected-applications", () => ({ hasActiveMcpConsent: async () => true }));
 vi.mock("@/lib/env", () => ({ isDiscordIdAllowed: () => true, isMcpEnabled: () => true }));
 vi.mock("@/lib/files/attach", () => ({ attachImage: mocks.attachImage }));
