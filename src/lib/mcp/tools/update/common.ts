@@ -3,15 +3,18 @@ import type { MembershipRow } from "@/lib/authz";
 import { asRichDoc, plainTextOf, type RichDoc } from "@/lib/editor/rich-text";
 import { tiptapJsonToMcpMarkdown } from "@/lib/editor/tiptap-mcp-markdown";
 import { McpToolError, type McpWorldContext } from "../../context";
+import { MCP_NOT_SET } from "../../enums";
+import { fieldFor, type FieldArt } from "../../field-catalog";
 import type { MaterializedStubs, StubPlan } from "../../write-shared";
-import { resolveRichText } from "../../write-rich";
+import { resolveRichText, type FieldChange } from "../../write-rich";
 import type { ToolContext } from "../shared";
 
 export type RichModus = "anhaengen" | "ersetzen";
 
-export type FieldChange = { label: string; oldValue: string; newValue: string };
+export type { FieldChange };
 
 export type PreviewContext = {
+  art: FieldArt;
   world: McpWorldContext;
   modus: RichModus;
   changes: FieldChange[];
@@ -30,7 +33,7 @@ export type ExecuteContext = {
 
 export type UpdateResult = { id: string; title: string; stand: string; visibility: string };
 
-export type PreviewSummary = { title: string; skipConfirmation?: boolean };
+export type PreviewSummary = { title: string; visibility?: string; skipConfirmation?: boolean };
 
 /** A loaded, visible target whose stand already matched (phase a). */
 export type UpdateTarget = {
@@ -72,8 +75,42 @@ export function staleError(): McpToolError {
   return new McpToolError("Inhalt wurde inzwischen geändert, bitte neu lesen.");
 }
 
-export function pushChange(context: PreviewContext, label: string, oldValue: string, newValue: string) {
-  if (oldValue !== newValue) context.changes.push({ label, oldValue, newValue });
+/** Display label of a `felder` key (E6); keys outside the catalog are already labels. */
+function displayLabel(art: FieldArt, key: string) {
+  return fieldFor(art, key)?.label ?? key;
+}
+
+export function pushChange(context: PreviewContext, key: string, oldValue: string, newValue: string) {
+  if (oldValue !== newValue) context.changes.push({ label: displayLabel(context.art, key), oldValue, newValue });
+}
+
+/** Splits rendered „Label: Wert“ entries into a map; multi-line entries keep their continuation. */
+function entriesOf(text: string, separator: string): Map<string, string> {
+  const entries = new Map<string, string>();
+  for (const entry of text.split(separator).filter(Boolean)) {
+    const index = entry.indexOf(":");
+    if (index < 0) continue;
+    entries.set(entry.slice(0, index).trim(), entry.slice(index + 1).trim() || MCP_NOT_SET);
+  }
+  return entries;
+}
+
+/** Pushes one delta row per changed rendered entry (template fields, sheet sub-fields). */
+export function pushEntryChanges(context: PreviewContext, input: {
+  prefix: string;
+  oldText: string;
+  newText: string;
+  separator: string;
+  skip?: readonly string[];
+}) {
+  const before = entriesOf(input.oldText, input.separator);
+  const after = entriesOf(input.newText, input.separator);
+  for (const label of new Set([...after.keys(), ...before.keys()])) {
+    if (input.skip?.includes(label)) continue;
+    const oldValue = before.get(label) ?? MCP_NOT_SET;
+    const newValue = after.get(label) ?? MCP_NOT_SET;
+    if (oldValue !== newValue) context.changes.push({ label: `${input.prefix}${label}`, oldValue, newValue });
+  }
 }
 
 export function pushRenamed(context: PreviewContext, label: string, current: string, next: string | undefined) {
@@ -89,15 +126,28 @@ export function isEmptyRichText(json: unknown): boolean {
   return !plainOfJson(json);
 }
 
+const RICH_EXCERPT = 500;
+
+/** Rich-text delta (T-007): the existing text shortened to 500 characters, the new text in full. */
 function richChange(label: string, oldJson: unknown, markdown: string, modus: RichModus): FieldChange {
-  const oldValue = tiptapJsonToMcpMarkdown(oldJson).trim() || "(leer)";
-  const next = markdown.trim();
-  if (modus === "anhaengen") return { label, oldValue, newValue: `Anhängen: ${next || "(leer)"}` };
-  const excerpt = `${next.slice(0, 120)}${next.length > 120 ? "…" : ""}`;
+  const old = tiptapJsonToMcpMarkdown(oldJson).trim();
+  const next = markdown.trim() || "(leer)";
+  const cut = old.length > RICH_EXCERPT;
+  if (modus === "anhaengen") {
+    return {
+      label: `${label} (anhängen)`,
+      oldValue: old ? `${cut ? "…" : ""}${old.slice(-RICH_EXCERPT)}` : "(leer)",
+      oldCaption: cut ? "bisher (letzte 500 Zeichen)" : "bisher",
+      newValue: next,
+      newCaption: "wird angehängt",
+    };
+  }
   return {
-    label,
-    oldValue,
-    newValue: `ersetzt ${plainOfJson(oldJson).length} Zeichen durch ${next.length} Zeichen: ${excerpt}`,
+    label: `${label} (ersetzen)`,
+    oldValue: old ? `${old.slice(0, RICH_EXCERPT)}${cut ? "…" : ""}` : "(leer)",
+    oldCaption: cut ? "bisher (erste 500 Zeichen)" : "bisher",
+    newValue: next,
+    newCaption: "neu",
   };
 }
 
@@ -121,7 +171,11 @@ export async function previewRich(context: PreviewContext, input: {
     throw new McpToolError(`Unbekannte Erwähnung: „${resolution.stubs[0]}“.`);
   }
   context.stubs.add(resolution.stubs);
-  context.changes.push(richChange(input.label, input.oldJson, input.markdown, context.modus));
+  const unchanged = context.modus === "ersetzen"
+    ? input.markdown.trim() === tiptapJsonToMcpMarkdown(input.oldJson).trim()
+    : !input.markdown.trim();
+  if (unchanged) return;
+  context.changes.push(richChange(displayLabel(context.art, input.label), input.oldJson, input.markdown, context.modus));
 }
 
 /** Builds the stored document for `anhaengen`/`ersetzen`; `undefined` keeps the field. */

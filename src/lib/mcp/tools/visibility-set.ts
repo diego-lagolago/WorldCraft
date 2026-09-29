@@ -183,12 +183,10 @@ export function registerVisibilitySetTool(server: McpServer, ctx: ToolContext) {
     return {
       worldId: world.id,
       value: formatConfirmationPreview({
-        lines: [
-          `Art: ${art}`,
-          `Titel: ${loaded.title}`,
-          `Sichtbarkeit: ${visibilityLabel(loaded.current)} → ${sichtbarkeit}`,
-          `Folge: ${VISIBILITY_CONSEQUENCE[next]}`,
-        ],
+        art,
+        title: loaded.title,
+        changes: [{ label: "Sichtbarkeit", oldValue: visibilityLabel(loaded.current), newValue: sichtbarkeit }],
+        lines: [`Folge: ${VISIBILITY_CONSEQUENCE[next]}`],
         token: confirmation.token,
         expiresAt: confirmation.expiresAt,
       }),

@@ -80,7 +80,11 @@ async function previewOrCreate(ctx: ToolContext, request: CreateRequest) {
   return {
     worldId: world.id,
     value: formatConfirmationPreview({
-      lines: [`Art: ${request.art}`, `Titel: ${handler.titleOf(request.felder)}`, ...formatStubLines(stubTitles)],
+      art: request.art,
+      title: handler.titleOf(request.felder),
+      visibility: request.art === "universum" ? "nur Spielleitung" : "nur ich",
+      lines: ["Folge: Der Inhalt und die geplanten Stub-Artikel werden angelegt."],
+      stubTitles,
       token: confirmation.token,
       expiresAt: confirmation.expiresAt,
     }),

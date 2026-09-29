@@ -174,10 +174,10 @@ export function registerImageUploadTool(server: McpServer, ctx: ToolContext) {
       return {
         worldId: world.id,
         value: formatConfirmationPreview({
-          lines: [
-            `Ziel: ${ZIEL_LABEL[ziel]} – ${target.title}`,
-            "Folge: Das vorhandene Bild wird durch den späteren Upload ersetzt.",
-          ],
+          art: ziel,
+          title: target.title,
+          changes: [{ label: ZIEL_LABEL[ziel], oldValue: "vorhanden", newValue: "wird durch den späteren Upload ersetzt" }],
+          lines: ["Folge: Nach der Bestätigung gibt es einen Upload-Link; erst der Upload ersetzt das Bild."],
           token: confirmation.token,
           expiresAt: confirmation.expiresAt,
         }),

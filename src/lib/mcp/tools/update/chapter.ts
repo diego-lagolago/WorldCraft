@@ -17,7 +17,7 @@ export const chapterUpdate = defineUpdateHandler({
     if (felder.status !== undefined) pushChange(context, "status", MCP_QUEST_STATUS_LABEL[chapter.status], felder.status);
     if (felder.position !== undefined) pushChange(context, "position", String(chapter.position + 1), String(felder.position));
     await previewRich(context, { label: "text", oldJson: chapter.bodyJson, markdown: felder.text });
-    return { title: felder.titel ?? chapter.title };
+    return { title: felder.titel ?? chapter.title, visibility: visibilityLabel(chapter.visibility) };
   },
   execute: async ({ chapter, questId }, felder, context) => {
     const result = await updateChapter({

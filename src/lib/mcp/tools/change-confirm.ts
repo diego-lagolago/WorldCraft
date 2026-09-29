@@ -7,7 +7,7 @@ import { requireMcpWriteScope, type ToolContext, withAudit } from "./shared";
 export function registerChangeConfirmTool(server: McpServer, ctx: ToolContext) {
   server.registerTool("aenderung_bestaetigen", {
     title: "Änderung bestätigen",
-    description: "Führt eine zuvor angezeigte Änderung mit ihrem Bestätigungs-Token aus.",
+    description: "Führt eine Änderung aus, deren Vorschau dem Benutzer gezeigt wurde und der er ausdrücklich zugestimmt hat. Niemals ohne diese Zustimmung aufrufen.",
     inputSchema: z.object({ token: z.string().min(20) }).strict(),
     annotations: { readOnlyHint: false, destructiveHint: true },
   }, async ({ token }) => withAudit(ctx, "aenderung_bestaetigen", async () => {

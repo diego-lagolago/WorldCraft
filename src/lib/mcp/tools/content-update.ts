@@ -5,7 +5,7 @@ import { createMcpConfirmation, registerMcpConfirmationHandler } from "../confir
 import { McpToolError, resolveMcpWorld, type McpWorldContext } from "../context";
 import { withMcpStubCompensation } from "../stub-compensation";
 import { createStubPlan, materializeStubs } from "../write-shared";
-import { formatConfirmationPreview, formatCreateResult, formatStubLines, mcpMembership } from "../write-rich";
+import { formatConfirmationPreview, formatCreateResult, mcpMembership } from "../write-rich";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 import type { FieldChange, PreviewContext, RichModus } from "./update/common";
 import { UPDATE_HANDLERS } from "./update";
@@ -27,32 +27,21 @@ type UpdatePayload = Omit<UpdateRequest, "world"> & {
 
 type PreparedUpdate = {
   title: string;
+  visibility?: string;
   changes: FieldChange[];
   stubTitles: string[];
   executeImmediately: boolean;
 };
 
-function valueLines(prefix: string, value: string): string[] {
-  const [first, ...rest] = value.split("\n");
-  return [`  ${prefix}: ${first}`, ...rest.map((line) => `    ${line}`)];
-}
-
-function formatChanges(changes: FieldChange[]): string[] {
-  return ["Geänderte Felder:", ...changes.flatMap((change) => [
-    `- ${change.label}:`,
-    ...valueLines("alt", change.oldValue),
-    ...valueLines("neu", change.newValue),
-  ])];
-}
-
 /** Phase a for previews: visibility, stand and field validation; nothing is written. */
 async function prepareUpdate(input: UpdateRequest): Promise<PreparedUpdate> {
   const target = await UPDATE_HANDLERS[input.art].load(input.world, input.id, input.stand);
-  const context: PreviewContext = { world: input.world, modus: input.modus, changes: [], stubs: createStubPlan() };
+  const context: PreviewContext = { art: input.art, world: input.world, modus: input.modus, changes: [], stubs: createStubPlan() };
   const summary = await target.preview(input.felder, context);
   const stubTitles = context.stubs.list();
   return {
     title: summary.title,
+    visibility: summary.visibility,
     changes: context.changes,
     stubTitles,
     executeImmediately: Boolean(summary.skipConfirmation) && stubTitles.length === 0,
@@ -123,12 +112,11 @@ async function previewOrExecute(ctx: ToolContext, request: UpdateRequest) {
   return {
     worldId: world.id,
     value: formatConfirmationPreview({
-      lines: [
-        `Art: ${request.art}`,
-        `Titel: ${prepared.title}`,
-        ...formatChanges(prepared.changes),
-        ...formatStubLines(prepared.stubTitles),
-      ],
+      art: request.art,
+      title: prepared.title,
+      visibility: prepared.visibility,
+      changes: prepared.changes,
+      stubTitles: prepared.stubTitles,
       token: confirmation.token,
       expiresAt: confirmation.expiresAt,
     }),

@@ -60,6 +60,28 @@ function lookupEnum<T extends string>(map: Map<string, T>, raw: unknown, key: st
   return value;
 }
 
+/**
+ * Registry keys a client explicitly cleared in `vorlagenfelder` (null, "", „–“, or false for Ja/Nein).
+ * `inhalt_aendern` changes only the named template fields and keeps the others (012 T-007).
+ */
+export function clearedTemplateFieldKeys(templateType: TemplateType, raw: unknown): Set<string> {
+  const cleared = new Set<string>();
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return cleared;
+  const definition = templateOf(templateType);
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!(value === null || value === "" || value === MCP_NOT_SET || value === false)) continue;
+    if (definition.type === "item" && QUEST_ITEM_ALIASES.has(key)) {
+      cleared.add("quest");
+      continue;
+    }
+    const field = definition.fields.find(
+      (candidate) => candidate.key === key || candidate.label.localeCompare(key, "de", { sensitivity: "accent" }) === 0,
+    );
+    if (field) cleared.add(field.key);
+  }
+  return cleared;
+}
+
 /** Accepts German labels or English registry keys; unknown keys are errors (S11). */
 export function normalizeTemplateFieldsInput(
   templateType: TemplateType,

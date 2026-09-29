@@ -59,7 +59,7 @@ const VISIBILITY = field("sichtbarkeit", "Sichtbarkeit", "select", "Wird beim An
 const articleFields = [
   field("titel", "Titel", "text", "Anzeige: Titel.", { requiredOnCreate: true }),
   field("vorlagentyp", "Vorlagentyp", "select", "Anzeige: Vorlagentyp.", { allowedValues: templateTypes }),
-  field("vorlagenfelder", "Vorlagenfelder", "object", "Anzeige: Vorlagenfelder."),
+  field("vorlagenfelder", "Vorlagenfelder", "object", "Anzeige: Vorlagenfelder. Schlüssel sind die deutschen Labels des Vorlagentyps. Beim Ändern werden nur die genannten Felder geändert; null oder „–“ leert ein Feld."),
   field("text", "Text", "markdown", "Anzeige: Text."),
 ];
 const questFields = [

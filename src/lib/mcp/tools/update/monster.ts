@@ -7,6 +7,7 @@ import {
   MONSTER_SIZE_LABEL,
 } from "@/lib/monsters/labels";
 import { McpToolError, type McpWorldContext } from "../../context";
+import { MCP_NOT_SET } from "../../enums";
 import {
   mapMonsterDanger,
   mapMonsterKind,
@@ -24,6 +25,7 @@ import {
   executeRich,
   previewRich,
   pushChange,
+  pushEntryChanges,
   pushRenamed,
   type PreviewContext,
 } from "./common";
@@ -59,14 +61,14 @@ function previewEnums(row: MonsterRow, felder: MonsterFields, context: PreviewCo
 }
 
 async function currentHabitatLabel(row: MonsterRow, world: McpWorldContext): Promise<string> {
-  if (!row.habitatArticleId) return "(keiner)";
+  if (!row.habitatArticleId) return MCP_NOT_SET;
   const article = await getArticle(world.id, row.habitatArticleId, world.role, world.userId);
   return article ? `${article.title} (${article.id})` : "(nicht sichtbar)";
 }
 
 function nextHabitatLabel(habitat: ResolvedHabitat): string {
   if (habitat.stubTitle) return `${habitat.stubTitle} (neuer Stub)`;
-  if (!habitat.habitatArticleId) return "(keiner)";
+  if (!habitat.habitatArticleId) return MCP_NOT_SET;
   return `${habitat.title ?? "Ort"} (${habitat.habitatArticleId})`;
 }
 
@@ -88,7 +90,12 @@ async function previewDetails(row: MonsterRow, felder: MonsterFields, context: P
   }
   if (felder.charakterblatt !== undefined) {
     const sheet = normalizeMonsterSheet(felder.charakterblatt);
-    pushChange(context, "charakterblatt", sheetText(row), sheetText(row, sheet));
+    pushEntryChanges(context, {
+      prefix: "Charakterblatt – ",
+      oldText: sheetText(row),
+      newText: sheetText(row, sheet),
+      separator: "\n\n",
+    });
   }
 }
 
@@ -104,7 +111,7 @@ export const monsterUpdate = defineUpdateHandler({
     previewEnums(row, felder, context);
     await previewDetails(row, felder, context);
     await previewRich(context, { label: "bio", oldJson: row.bioJson, markdown: felder.bio });
-    return { title: felder.name ?? row.name };
+    return { title: felder.name ?? row.name, visibility: visibilityLabel(row.visibility) };
   },
   execute: async (row, felder, context) => {
     const habitat = await resolveHabitat(felder.lebensraum, context.world);

@@ -14,7 +14,7 @@ export const universeUpdate = defineUpdateHandler({
   preview: async (row, felder, context) => {
     pushRenamed(context, "name", row.name, felder.name);
     await previewRich(context, { label: "beschreibung", oldJson: row.descriptionJson, markdown: felder.beschreibung });
-    return { title: felder.name ?? row.name };
+    return { title: felder.name ?? row.name, visibility: visibilityLabel(row.visibility) };
   },
   execute: async (row, felder, context) => {
     const result = await updateUniverse({

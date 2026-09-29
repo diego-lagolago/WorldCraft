@@ -35,7 +35,7 @@ export const questUpdate = defineUpdateHandler({
       pushChange(context, "beteiligte", current || "(keine)", await participantLabels(context.world, participantIds, row.participants));
     }
     await previewRich(context, { label: "beschreibung", oldJson: row.descriptionJson, markdown: felder.beschreibung });
-    return { title: felder.titel ?? row.title };
+    return { title: felder.titel ?? row.title, visibility: visibilityLabel(row.visibility) };
   },
   execute: async (row, felder, context) => {
     const result = await updateQuest({

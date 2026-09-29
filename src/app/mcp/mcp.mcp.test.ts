@@ -1079,8 +1079,11 @@ describe("MCP write tools", () => {
       felder: { vorlagenfelder: { Rasse: `@[Rabenblut](artikel:${data.raceId})` } },
     }));
     expect(templatePreview).toContain("Bestätigungs-Token:");
-    expect(templatePreview).toContain("Rasse:");
-    expect(templatePreview).toContain(`@[Rabenblut](artikel:${data.raceId})`);
+    expect(templatePreview).toContain(`- Rasse: – → @[Rabenblut](artikel:${data.raceId})`);
+    expect(templatePreview.split("\n")[0]).toBe(
+      "Zeige dem Benutzer diese Vorschau vollständig und unverändert. Rufe aenderung_bestaetigen erst auf, wenn der Benutzer ausdrücklich zugestimmt hat.",
+    );
+    expect(templatePreview).toContain("Sichtbarkeit: nur ich");
     expect(templatePreview).not.toContain('"race"');
 
     const monster = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
@@ -1103,8 +1106,7 @@ describe("MCP write tools", () => {
       },
     }));
     expect(monsterPreview).not.toContain("(bisheriges Blatt)");
-    expect(monsterPreview).toContain("alt: Klasse: Späher");
-    expect(monsterPreview).toContain("neu: Klasse: Wächter");
+    expect(monsterPreview).toContain("- Charakterblatt – Klasse: Späher → Wächter");
     expect(monsterPreview).toContain(`Burg Rabenstein (${data.burgId})`);
 
     const visibilityPreview = firstToolText(await callTool(gm.accessToken, "sichtbarkeit_setzen", {
@@ -2228,7 +2230,7 @@ describe("MCP write tools", () => {
       welt: "MCP-Testwelt", art: "artikel", id: itemId, stand: extractStand(itemRead),
       felder: { vorlagenfelder: { Seltenheit: "Gewöhnlich" } },
     }));
-    expect(preview).toContain("Seltenheit: Gewöhnlich");
+    expect(preview).toContain("- Seltenheit: – → Gewöhnlich");
     await callTool(gm.accessToken, "aenderung_bestaetigen", { token: extractToken(preview) });
     const afterConfirm = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
       welt: "MCP-Testwelt", art: "artikel", id: itemId,
