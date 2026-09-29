@@ -17,7 +17,7 @@
 | CR-007 | Runtime-Risiken | mittel | behoben | Kapitel-Status und -Position werden atomar gesetzt; der gemeldete Stand ist direkt weiterverwendbar |
 | CR-008 | Fehlerbehandlung | mittel | behoben | Im Bestätigungspfad werden Fehler zur generischen Meldung „Die Anfrage konnte nicht verarbeitet werden“ |
 | CR-009 | Runtime-Risiken | mittel | behoben | Der Markdown-Parser erhält harte Umbrüche, verschachtelte Marks und mehrzeilige Zitate verlustfrei |
-| CR-010 | Aufgaben-Abgleich | mittel | offen | Die Änderungsvorschau zeigt englische Schlüssel, rohe IDs und keinen alten Charakterblatt-Wert (S11, Begriff „Änderungsvorschau“) |
+| CR-010 | Aufgaben-Abgleich | mittel | behoben | Die Änderungsvorschau zeigt englische Schlüssel, rohe IDs und keinen alten Charakterblatt-Wert (S11, Begriff „Änderungsvorschau“) |
 | CR-011 | Duplizierung | mittel | offen | Große Duplikate zwischen `content-create`, `content-update`, `visibility-set` und `image-upload` |
 | CR-012 | Bad Practices | mittel | offen | `content-update.ts` (1 163 Zeilen) steuert alles über zwei riesige Verzweigungsketten je `art` |
 | CR-013 | Testabdeckung | mittel | offen | Für T-004 (2) Ablauf nach 10 Minuten und (5) Rechteverlust zwischen Vorschau und Bestätigung fehlen Tests |
@@ -60,7 +60,7 @@
 - **Abnahmekriterium:** S1 in `.ai/feature-tasks/011-mcp-schreibend.md` und ADR-005 enthalten den datierten Hinweis auf die Erweiterung und keine gegenteilige Aussage mehr. `grep -n "nur lesend verbinden" .ai src/app/hilfe` liefert keinen Treffer, der dem widerspricht. Am Code ändert sich nichts.
 
 ### CR-003 – Stand-Prüfung nicht atomar
-- **Status:** behoben – Alle MCP-Schreibwege übergeben den erwarteten Stand an die Domänenfunktion. Die `WHERE`-Bedingung schützt das Update atomar; der Domänen-Integrationstest prüft Stale- und Erfolgsfall für alle sechs Entitätstypen.
+- **Status:** behoben (Nachtrag 2026-09-29: Vergleich auf Millisekunden über `matchesExpectedUpdatedAt`, weil `defaultNow()` Mikrosekunden speichert; Regressionstest ergänzt) – Alle MCP-Schreibwege übergeben den erwarteten Stand an die Domänenfunktion. Die `WHERE`-Bedingung schützt das Update atomar; der Domänen-Integrationstest prüft Stale- und Erfolgsfall für alle sechs Entitätstypen.
 - **Fundstelle:** `src/lib/mcp/write-rich.ts` `assertStand` (Z. 33–37) und alle Aufrufer in `content-update.ts`, `visibility-set.ts`; Domänen-Updates `updateArticle`, `updateQuest`, `updateChapter`, `updateMonster`, `updateUniverse`, `updateWorld` ohne erwarteten Stand
 - **Kategorie:** Runtime-Risiken
 - **Schweregrad:** mittel
@@ -134,6 +134,7 @@
 - **Status:** behoben – Die kombinierte Rundreise ist mit harten Umbrüchen, verschachtelten Marks und mehrzeiligem Zitat abgedeckt; ergänzende Parser-Tests prüfen Zeichensetzung, Überschriftenebenen und fehlende literale Zeilenumbrüche.
 
 ### CR-010 – Änderungsvorschau unvollständig bzw. nicht lesbar
+- **Status:** behoben – Die Vorschau rendert Vorlagenfelder mit deutschem Label und Erwähnungssyntax, das Charakterblatt alt/neu, Lebensraum und Beteiligte als „Titel (id)“ und bei Sichtbarkeit die konkrete Zielgruppe; der MCP-Test „CR-010“ prüft das.
 - **Fundstelle:** `src/lib/mcp/tools/content-update.ts` Z. 418–420 (vorlagenfelder als JSON mit Registry-Schlüsseln), Z. 464–467 (beteiligte als IDs), Z. 628–631 (lebensraum als ID), Z. 637 (`"(bisheriges Blatt)"`); `src/lib/mcp/tools/visibility-set.ts` Z. 247 (generischer Folgetext)
 - **Kategorie:** Aufgaben-Abgleich / Lesbarkeit
 - **Schweregrad:** mittel
