@@ -22,9 +22,9 @@ Die Nummern der Pläne geben die Reihenfolge ihrer Entstehung an, nicht die Reih
 
 Offene Ideen außerhalb dieser Pläne stehen in [`backlog.md`](backlog.md).
 
-## Nächste Schritte (Stand 2026-09-25)
+## Nächste Schritte (Stand 2026-09-29)
 
-Alle Pläne außer `002` und `011` sind abgeschlossen und mit Version `0.1.5` auf Produktion. Offen ist als nächster Plan `002`, danach `011`. Reihenfolge der offenen Arbeit:
+Plan `002` ist abgeschlossen, Plan `011` ist mit Version `0.1.11` auf Produktion (E2E-Lauf 1 durchgeführt). Offen sind Code-Review und E2E-Abschluss von `011` sowie Plan `012` (Release v1.0). Reihenfolge der offenen Arbeit:
 
 | # | Schritt | Plan | Werkzeug | Voraussetzung | Wer |
 |---|---|---|---|---|---|
@@ -40,16 +40,18 @@ Alle Pläne außer `002` und `011` sind abgeschlossen und mit Version `0.1.5` au
 | 10 | ✅ erledigt (2026-09-25): Code-Review 010 (4 Findings behoben, 1 verworfen); Review-Check laut Projektinhaber erledigt, im Review-Dokument ohne eigenen Abschnitt | 010 | `/code-review 010`, `/review-check 010` | 9 | Claude + Projektinhaber |
 | 11 | ✅ erledigt (2026-09-25): Push als Version `0.1.5` (`aa90bda`), Migration `0023` auf Prod, Prod-Smoketest P5.1–P5.7 bestanden | 009, 010 | Push nach Freigabe | 7, 10 | Projektinhaber |
 | 12 | ✅ erledigt (2026-09-25): Plan-Review 002; Entscheidungen D1–D18 plus D19–D22 aus dem Review (Testdaten für Relationen, Aufruflimit/Löschjob, Produktion vor Code-Review, `npm run test:mcp`), offene Fragen aus den Abgleichen in `architecture.md` als beantwortet markiert | 002 | `/plan-review 002` | 4 ✅, 6, 9 | Claude + Projektinhaber |
-| 13 | Plan 002 umsetzen (Remote-MCP-Server mit OAuth, nur lesend), lokal: T-001–T-009, T-012, T-013, T-014 Abnahmen (1)–(4) | 002 | `/plan-run 002` | 12 | Claude |
-| 14 | Push nach Freigabe (D21), `MCP_ENABLED=true` auf Prod dauerhaft; Demowelt auf Prod (T-014 (5)), Ende-zu-Ende-Test mit Claude (T-010), Abschluss & Normen (T-011) | 002 | Push nach Freigabe, `/plan-run 002` | 13 | Projektinhaber + Claude |
-| 15 | Code-Review 002 auf dem aktiven Prod-Stand, Findings umsetzen (inkl. MCP-Fehler), Review-Check, Fix-Push nach Freigabe | 002 | `/code-review 002`, `/review-check 002` | 14 | Claude + Projektinhaber |
-| 16 | Plan 011 (MCP: Schreibend) prüfen; Stand nach 002 auf Produktion abgleichen | 011 | `/plan-review 011` | 15, Lesen auf Prod läuft wie erwartet | Claude + Projektinhaber |
-| 17 | Plan 011 umsetzen | 011 | `/plan-run 011` | 16 | Claude |
-| 18 | Code-Review 011, Findings umsetzen, Review-Check | 011 | `/code-review 011`, `/review-check 011` | 17 | Claude + Projektinhaber |
-| 19 | Push-Freigabe und Ende-zu-Ende-Test Schreiben auf Prod (Plan 011 T-011) | 011 | Push nach Freigabe | 18 | Projektinhaber |
-| 20 | Backlog-Einträge vom 2026-09-24 sichten (Monster-Marker-Sheet vertiefen, versteckte Verweise kryptisch darstellen, Fähigkeiten mit Angriffs-/Wirkungsart taggen, Kategorien in Tagebüchern, Threads archivieren) und entscheiden, ob daraus ein Plan `012` wird | – | `/plan-create` | – | Projektinhaber |
+| 13 | ✅ erledigt (2026-09-28): Plan 002 umsetzen (Remote-MCP-Server mit OAuth, nur lesend), lokal: T-001–T-009, T-012, T-013, T-014 Abnahmen (1)–(4) | 002 | `/plan-run 002` | 12 | Claude |
+| 14 | ✅ erledigt (2026-09-28): Push nach Freigabe (D21), `MCP_ENABLED=true` auf Prod dauerhaft; Demowelt auf Prod (T-014 (5)), Ende-zu-Ende-Test mit Claude (T-010), Abschluss & Normen (T-011) | 002 | Push nach Freigabe, `/plan-run 002` | 13 | Projektinhaber + Claude |
+| 15 | ✅ erledigt (2026-09-28): Code-Review 002 auf dem aktiven Prod-Stand, Findings umsetzen (inkl. MCP-Fehler), Review-Check, Fix-Push nach Freigabe | 002 | `/code-review 002`, `/review-check 002` | 14 | Claude + Projektinhaber |
+| 16 | ✅ erledigt (2026-09-27): Plan 011 (MCP: Schreibend) prüfen; Stand nach 002 auf Produktion abgleichen | 011 | `/plan-review 011` | 15, Lesen auf Prod läuft wie erwartet | Claude + Projektinhaber |
+| 17 | ✅ erledigt (2026-09-29): Plan 011 umsetzen (T-001–T-010, T-012, T-013; ausgeliefert mit `0.1.10`/`0.1.11`) | 011 | `/plan-run 011` | 16 | Claude |
+| 18 | 🚧 in Arbeit: Code-Review 011, Findings umsetzen, Review-Check — läuft nach den Fixes aus Plan `012` als dessen T-011 (Plan-Review 012, F3) | 011 | `/code-review 011`, `/review-check 011` | 17, 20 | Claude + Projektinhaber |
+| 19 | 🚧 in Arbeit: Push-Freigabe und Ende-zu-Ende-Test Schreiben auf Prod (Plan 011 T-011) — Push erfolgt, E2E-Lauf 1 in claude.ai am 2026-09-29 (4 bestanden, 1 teilweise); E2E-Lauf 2 folgt als Plan `012` T-013 | 011 | Push nach Freigabe | 18 | Projektinhaber |
+| 20 | Plan 012 (Release v1.0) umsetzen: E2E-Findings (Feldnamen, still ignorierte Felder, Delta im Chat), Feldkatalog, strikte Schemas, Vorschau und Quittung; T-001–T-010 | 012 | `/plan-run 012` | 19 (E2E-Lauf 1) | Claude |
+| 21 | Code-Reviews 011 und 012 (Plan 012 T-011), jeweils `/plan-review` und `/plan-run` der Findings, `/review-check`; danach Version `1.0.0`, Push nach Freigabe und E2E-Lauf 2 (T-012, T-013) | 011, 012 | `/code-review`, `/plan-review`, `/plan-run`, `/review-check` | 20 | Claude + Projektinhaber |
+| 22 | Backlog-Einträge vom 2026-09-24 sichten (Monster-Marker-Sheet vertiefen, versteckte Verweise kryptisch darstellen, Fähigkeiten mit Angriffs-/Wirkungsart taggen, Kategorien in Tagebüchern, Threads archivieren) und entscheiden, ob daraus ein Plan `013` wird | – | `/plan-create` | 21 | Projektinhaber |
 
-Die Schritte 5 und 8 (Plan-Reviews) können parallel laufen. Schritt 20 kann jederzeit dazwischen erfolgen.
+Die Schritte 5 und 8 (Plan-Reviews) können parallel laufen. Schritt 22 folgt nach dem Release v1.0 (Plan `012` E3).
 
 **Stand 2026-09-24:** Schritte 1–4 erledigt (Review 005 CR-009 behoben, Review 006 um CR-017–CR-025 ergänzt und abgearbeitet, Prod-Smoketest `0.1.4` bestanden, Abgleich 002 nach 006). Die Fixes aus Schritt 1 und 2 sind lokal und gehen mit dem nächsten Push raus. Plan `009` ist lokal abgeschlossen; Plan `010` ist ebenfalls lokal abgeschlossen (Migration `0023` angewendet, S10.1–S10.5 bestanden).
 
