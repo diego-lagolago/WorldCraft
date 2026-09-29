@@ -1115,6 +1115,7 @@ export const mcpUploadTickets = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     tokenHash: text("token_hash").notNull().unique(),
     userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    clientId: text("client_id").notNull(),
     worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" }),
     targetKind: text("target_kind").notNull(),
     targetId: text("target_id").notNull(),

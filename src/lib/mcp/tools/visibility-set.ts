@@ -107,6 +107,7 @@ async function executeVisibilitySet(input: {
       worldId: input.world.id,
       articleId: input.id,
       visibility: input.sichtbarkeit,
+      expectedUpdatedAt: new Date(input.stand),
     });
     if (!result.ok) throwAuthz(result);
     const row = await getArticle(input.world.id, input.id, input.world.role, input.world.userId);
@@ -130,6 +131,7 @@ async function executeVisibilitySet(input: {
       worldId: input.world.id,
       questId: input.id,
       visibility: input.sichtbarkeit,
+      expectedUpdatedAt: new Date(input.stand),
     });
     if (!result.ok) throwAuthz(result);
     const row = await getQuest(input.world.id, input.id, input.world.role, input.world.userId);
@@ -155,6 +157,7 @@ async function executeVisibilitySet(input: {
       questId: found.questId,
       chapterId: input.id,
       visibility: input.sichtbarkeit,
+      expectedUpdatedAt: new Date(input.stand),
     });
     if (!result.ok) throwAuthz(result);
     const refreshed = await findVisibleChapter(input.world, input.id);
@@ -177,6 +180,7 @@ async function executeVisibilitySet(input: {
       worldId: input.world.id,
       monsterId: input.id,
       visibility: input.sichtbarkeit,
+      expectedUpdatedAt: new Date(input.stand),
     });
     if (!result.ok) throwAuthz(result);
     const row = await getMonster(input.world.id, input.id, input.world.role, input.world.userId);
@@ -202,6 +206,7 @@ async function executeVisibilitySet(input: {
     worldId: input.world.id,
     universeId: input.id,
     visibility: input.sichtbarkeit,
+    expectedUpdatedAt: new Date(input.stand),
   });
   if (!result.ok) throwAuthz(result);
   const row = await getUniverse(input.world.id, input.id, input.world.role, input.world.userId);

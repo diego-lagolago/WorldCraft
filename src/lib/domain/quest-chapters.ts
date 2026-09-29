@@ -84,6 +84,8 @@ type WritableChapterRow = {
   id: string;
   ownerId: string;
   visibility: ContentVisibility;
+  position: number;
+  updatedAt: Date;
 };
 
 function toSummary(row: ChapterRow): ChapterSummary {
@@ -214,6 +216,8 @@ async function loadWritableChapter(
       id: questChapters.id,
       ownerId: questChapters.ownerId,
       visibility: questChapters.visibility,
+      position: questChapters.position,
+      updatedAt: questChapters.updatedAt,
     })
     .from(questChapters)
     .where(and(eq(questChapters.id, input.chapterId), eq(questChapters.questId, quest.id)))
@@ -238,6 +242,8 @@ export async function createChapter(input: {
   questId: string;
   title: string;
   body?: unknown;
+  status?: QuestStatus;
+  position?: number;
   visibility?: ContentVisibility;
 }): Promise<AuthzResult<ChapterSummary>> {
   const staff = requireStaff(input.membership);
@@ -261,7 +267,16 @@ export async function createChapter(input: {
         .select({ maxPos: max(questChapters.position) })
         .from(questChapters)
         .where(eq(questChapters.questId, quest.id));
-      const position = (agg?.maxPos ?? -1) + 1;
+      const count = (agg?.maxPos ?? -1) + 1;
+      if (input.position !== undefined && input.position > count + 1) {
+        throw Object.assign(new Error("position"), { positionInvalid: true });
+      }
+      const position = input.position === undefined ? count : input.position - 1;
+      if (position < count) {
+        await tx.update(questChapters)
+          .set({ position: sql`${questChapters.position} + 1`, updatedAt: new Date(), updatedBy: input.actorId })
+          .where(and(eq(questChapters.questId, quest.id), sql`${questChapters.position} >= ${position}`));
+      }
 
       const [created] = await tx
         .insert(questChapters)
@@ -290,6 +305,7 @@ export async function createChapter(input: {
     });
     return ok(toSummary(row));
   } catch (error) {
+    if (error && typeof error === "object" && "positionInvalid" in error) return fail(400, "Die Position ist ungültig.");
     const mapped = mapDbError(error);
     if (mapped) return mapped;
     throw error;
@@ -306,7 +322,9 @@ export async function updateChapter(input: {
   body?: unknown;
   status?: QuestStatus;
   visibility?: ContentVisibility;
-}): Promise<AuthzResult<{ id: string }>> {
+  position?: number;
+  expectedUpdatedAt?: Date;
+}): Promise<AuthzResult<{ id: string; updatedAt: Date }>> {
   const loaded = await loadWritableChapter({
     membership: input.membership,
     worldId: input.worldId,
@@ -323,23 +341,45 @@ export async function updateChapter(input: {
   const recalcMentions = needsMentionRecalc(input);
 
   try {
-    await db.transaction(async (tx) => {
+    const updated = await db.transaction(async (tx) => {
+      if (input.position !== undefined && input.position < 1) throw Object.assign(new Error("position"), { positionInvalid: true });
+      if (input.expectedUpdatedAt && chapter.updatedAt.getTime() !== input.expectedUpdatedAt.getTime()) return null;
+      await tx.execute(sql`SELECT 1 FROM ${quests} WHERE ${quests.id} = ${quest.id} FOR UPDATE`);
+      if (input.position !== undefined) {
+        const rows = await tx.select({ id: questChapters.id, position: questChapters.position })
+          .from(questChapters).where(eq(questChapters.questId, quest.id)).orderBy(asc(questChapters.position));
+        if (input.position > rows.length) throw Object.assign(new Error("position"), { positionInvalid: true });
+        const target = input.position - 1;
+        if (target !== chapter.position) {
+          for (const row of rows) {
+            if (row.id === chapter.id) continue;
+            const next = row.position > chapter.position && row.position <= target ? row.position - 1
+              : row.position < chapter.position && row.position >= target ? row.position + 1 : row.position;
+            if (next !== row.position) await tx.update(questChapters).set({ position: next, updatedAt: new Date(), updatedBy: input.actorId }).where(eq(questChapters.id, row.id));
+          }
+          patch.data.position = target;
+        }
+      }
       if (Object.keys(patch.data).length > 0) {
-        await tx
+        const rows = await tx
           .update(questChapters)
           .set({ ...patch.data, updatedAt: new Date(), updatedBy: input.actorId })
-          .where(eq(questChapters.id, chapter.id));
+          .where(and(eq(questChapters.id, chapter.id), ...(input.expectedUpdatedAt ? [eq(questChapters.updatedAt, input.expectedUpdatedAt)] : [])))
+          .returning({ updatedAt: questChapters.updatedAt });
+        if (rows.length === 0) return null;
+        if (recalcMentions) await recalcQuestMentions(input.worldId, input.actorId, quest.id, tx);
+        return rows[0];
       }
-      if (recalcMentions) {
-        await recalcQuestMentions(input.worldId, input.actorId, quest.id, tx);
-      }
+      return { updatedAt: chapter.updatedAt };
     });
+    if (!updated) return fail(409, "Inhalt wurde inzwischen geändert, bitte neu lesen.");
+    return ok({ id: chapter.id, updatedAt: updated.updatedAt });
   } catch (error) {
+    if (error && typeof error === "object" && "positionInvalid" in error) return fail(400, "Die Position ist ungültig.");
     const mapped = mapDbError(error);
     if (mapped) return mapped;
     throw error;
   }
-  return ok({ id: chapter.id });
 }
 
 export async function deleteChapter(input: {

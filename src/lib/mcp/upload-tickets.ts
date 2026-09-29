@@ -12,6 +12,7 @@ function hash(value: string) {
 /** Stores only a hash of the random bearer token; the original is returned once. */
 export async function createMcpUploadTicket(input: {
   userId: string;
+  clientId: string;
   worldId: string;
   targetKind: string;
   targetId: string;
@@ -23,6 +24,7 @@ export async function createMcpUploadTicket(input: {
   await db.insert(mcpUploadTickets).values({
     tokenHash: hash(token),
     userId: input.userId,
+    clientId: input.clientId,
     worldId: input.worldId,
     targetKind: input.targetKind,
     targetId: input.targetId,

@@ -2,12 +2,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { getArticle, updateArticle, createArticleStub } from "@/lib/domain/articles";
 import { getMonster, updateMonster } from "@/lib/domain/monsters";
-import {
-  listVisibleChapters,
-  reorderChapters,
-  updateChapter,
-  type ChapterSummary,
-} from "@/lib/domain/quest-chapters";
+import { listVisibleChapters, updateChapter, type ChapterSummary } from "@/lib/domain/quest-chapters";
 import { getQuest, listQuests, updateQuest } from "@/lib/domain/quests";
 import { getQuestNote, saveQuestNote } from "@/lib/domain/quest-notes";
 import { getUniverse, updateUniverse } from "@/lib/domain/universes";
@@ -59,25 +54,25 @@ const articleFields = z.object({
   vorlagentyp: z.enum(["person", "ort", "organisation", "gegenstand", "rasse", "ohne"]).optional(),
   vorlagenfelder: z.record(z.string(), z.unknown()).optional(),
   text: z.string().optional(),
-}).passthrough();
+}).strict();
 
 const questFields = z.object({
   titel: z.string().trim().min(1).max(200).optional(),
   status: z.enum(["offen", "aktiv", "abgeschlossen", "gescheitert"]).optional(),
   beschreibung: z.string().optional(),
   beteiligte: z.array(z.string().uuid()).optional(),
-}).passthrough();
+}).strict();
 
 const chapterFields = z.object({
   titel: z.string().trim().min(1).max(200).optional(),
   status: z.enum(["offen", "aktiv", "abgeschlossen", "gescheitert"]).optional(),
   text: z.string().optional(),
   position: z.number().int().min(1).optional(),
-}).passthrough();
+}).strict();
 
 const noteFields = z.object({
   text: z.string().optional(),
-}).passthrough();
+}).strict();
 
 const monsterFields = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -89,17 +84,17 @@ const monsterFields = z.object({
   lebensraum: z.unknown().optional(),
   charakterblatt: z.unknown().optional(),
   bio: z.string().optional(),
-}).passthrough();
+}).strict();
 
 const universeFields = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   beschreibung: z.string().optional(),
-}).passthrough();
+}).strict();
 
 const worldFields = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   beschreibung: z.string().optional(),
-}).passthrough();
+}).strict();
 
 const fieldsByArt = {
   artikel: articleFields,
@@ -786,6 +781,7 @@ async function executeUpdate(input: {
       templateType: nextType,
       templateFields,
       body,
+      expectedUpdatedAt: new Date(input.stand),
     });
     if (!result.ok) throwAuthz(result);
     const updated = await getArticle(input.world.id, input.id, input.world.role, input.world.userId);
@@ -824,6 +820,7 @@ async function executeUpdate(input: {
       status: felder.status ? MCP_QUEST_STATUS[felder.status] : undefined,
       description,
       participantIds: felder.beteiligte,
+      expectedUpdatedAt: new Date(input.stand),
     });
     if (!result.ok) throwAuthz(result);
     const updated = await getQuest(input.world.id, input.id, input.world.role, input.world.userId);
@@ -861,23 +858,10 @@ async function executeUpdate(input: {
       title: felder.titel,
       status: felder.status ? MCP_QUEST_STATUS[felder.status] : undefined,
       body,
+      position: felder.position,
+      expectedUpdatedAt: new Date(input.stand),
     });
     if (!result.ok) throwAuthz(result);
-    if (felder.position !== undefined) {
-      const chapters = await listVisibleChapters(input.world.id, found.questId, input.world.role, input.world.userId);
-      if (!chapters) throw new McpToolError("Quest nicht gefunden.");
-      const ids = chapters.map((chapter) => chapter.id).filter((id) => id !== input.id);
-      const index = Math.min(Math.max(felder.position, 1), ids.length + 1) - 1;
-      ids.splice(index, 0, input.id);
-      const reordered = await reorderChapters({
-        membership,
-        actorId: input.ctx.userId,
-        worldId: input.world.id,
-        questId: found.questId,
-        chapterIds: ids,
-      });
-      if (!reordered.ok) throwAuthz(reordered);
-    }
     const refreshed = await findVisibleChapter(input.world, input.id);
     return {
       worldId: input.world.id,
@@ -973,6 +957,7 @@ async function executeUpdate(input: {
       habitatArticleId,
       bio,
       ...sheet,
+      expectedUpdatedAt: new Date(input.stand),
     });
     if (!result.ok) throwAuthz(result);
     const updated = await getMonster(input.world.id, input.id, input.world.role, input.world.userId);
@@ -1009,6 +994,7 @@ async function executeUpdate(input: {
       universeId: input.id,
       name: felder.name,
       description,
+      expectedUpdatedAt: new Date(input.stand),
     });
     if (!result.ok) throwAuthz(result);
     const updated = await getUniverse(input.world.id, input.id, input.world.role, input.world.userId);
@@ -1046,6 +1032,7 @@ async function executeUpdate(input: {
     worldId: input.world.id,
     name: felder.name,
     description,
+    expectedUpdatedAt: new Date(input.stand),
   });
   if (!result.ok) throwAuthz(result);
   const updatedDetails = await getWorldDetails(input.world.id);

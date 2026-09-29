@@ -146,6 +146,7 @@ export async function updateUniverse(input: {
   name?: string;
   description?: unknown;
   visibility?: VisibilityStatus;
+  expectedUpdatedAt?: Date;
 }): Promise<AuthzResult<{ id: string; mentions: MentionRef[] | null }>> {
   const staff = requireStaff(input.membership);
   if (!staff.ok) return staff;
@@ -167,7 +168,7 @@ export async function updateUniverse(input: {
       const rows = await tx
         .update(universes)
         .set(patch)
-        .where(and(eq(universes.id, input.universeId), eq(universes.worldId, input.worldId)))
+        .where(and(eq(universes.id, input.universeId), eq(universes.worldId, input.worldId), ...(input.expectedUpdatedAt ? [eq(universes.updatedAt, input.expectedUpdatedAt)] : [])))
         .returning({ id: universes.id });
       if (rows.length === 0) return null;
       const [stored] = await tx
@@ -187,7 +188,9 @@ export async function updateUniverse(input: {
       );
       return rows[0];
     });
-    if (!updated) return fail(404, "Dieses Universum gibt es nicht.");
+    if (!updated) return input.expectedUpdatedAt
+      ? fail(409, "Inhalt wurde inzwischen geändert, bitte neu lesen.")
+      : fail(404, "Dieses Universum gibt es nicht.");
     return ok({ id: input.universeId, mentions });
   } catch (error) {
     const mapped = mapDbError(error, { unique: DUPLICATE_NAME });

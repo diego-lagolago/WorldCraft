@@ -10,9 +10,7 @@ import {
   resolveMcpMarkdown,
   type ResolvedMcpMarkdownMention,
 } from "@/lib/editor/mcp-markdown";
-import type { RichDoc } from "@/lib/editor/rich-text";
 import type { TemplateRefValue } from "@/lib/templates/registry";
-import { createArticleStub } from "@/lib/domain/articles";
 import type { McpWorldContext } from "./context";
 import { McpToolError } from "./context";
 
@@ -88,11 +86,8 @@ export async function resolveMentionRef(input: {
   viewerId: string;
   allowedKinds?: ReadonlyArray<ResolvedMcpMarkdownMention["kind"]>;
 }): Promise<{ ref: TemplateRefValue | { kind: "article"; id: string }; stubs: string[]; resolved?: ResolvedMcpMarkdownMention }> {
-  if (input.value && typeof input.value === "object" && !Array.isArray(input.value)) {
-    const record = input.value as { kind?: string; id?: string };
-    if ((record.kind === "article" || record.kind === "character") && typeof record.id === "string") {
-      return { ref: { kind: record.kind, id: record.id }, stubs: [] };
-    }
+  if (input.value && typeof input.value === "object") {
+    throw new McpToolError("Verweis muss in Erwähnungssyntax angegeben werden, z. B. @[Titel](artikel:id).");
   }
   if (typeof input.value !== "string" || !input.value.trim()) {
     throw new McpToolError("Verweis muss in Erwähnungssyntax angegeben werden.");
@@ -122,40 +117,6 @@ export async function resolveMentionRef(input: {
     ref: { kind: mention.kind, id: mention.id },
     stubs: [],
     resolved: mention,
-  };
-}
-
-export async function materializeStubs(input: {
-  membership: MembershipRow;
-  actorId: string;
-  worldId: string;
-  stubTitles: string[];
-  resolved: ResolvedMcpMarkdownMention[];
-  parsed: ReturnType<typeof mcpMarkdownToTiptap>;
-}): Promise<{ doc: RichDoc; stubs: { id: string; title: string }[] }> {
-  const stubs: { id: string; title: string }[] = [];
-  const resolved = [...input.resolved];
-  for (const title of input.stubTitles) {
-    const created = await createArticleStub({
-      membership: input.membership,
-      actorId: input.actorId,
-      worldId: input.worldId,
-      title,
-    });
-    if (!created.ok) throwAuthz(created);
-    stubs.push({ id: created.data.id, title: created.data.title });
-    const pending = input.parsed.mentions.find(
-      (mention) => !mention.target
-        && mention.title.localeCompare(title, "de", { sensitivity: "accent" }) === 0
-        && !resolved.some((entry) => entry.key === mention.key),
-    );
-    if (pending) {
-      resolved.push({ ...pending, kind: "article", id: created.data.id, title: created.data.title });
-    }
-  }
-  return {
-    doc: resolveMcpMarkdown(input.parsed, resolved, { mentions: true }),
-    stubs,
   };
 }
 

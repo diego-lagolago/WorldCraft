@@ -28,12 +28,13 @@ export function mcpMarkdownToTiptap(markdown: string, options: { mentions: boole
   const blocks: RichNode[] = [];
   const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
   let inCodeFence = false;
-  let paragraph: string[] = [];
+  let paragraph: { text: string; hardBreak: boolean }[] = [];
   let list: { ordered: boolean; items: RichNode[] } | null = null;
 
   const flushParagraph = () => {
     if (!paragraph.length) return;
-    blocks.push({ type: "paragraph", content: inline(paragraph.join("\n"), mentions, options.mentions) });
+    const text = paragraph.map((line, index) => `${line.text}${index === paragraph.length - 1 ? "" : line.hardBreak ? "  \n" : " "}`).join("");
+    blocks.push({ type: "paragraph", content: inline(text, mentions, options.mentions) });
     paragraph = [];
   };
   const flushList = () => {
@@ -45,14 +46,15 @@ export function mcpMarkdownToTiptap(markdown: string, options: { mentions: boole
   for (const rawLine of lines) {
     if (/^\s*```/.test(rawLine)) { inCodeFence = !inCodeFence; continue; }
     if (inCodeFence || /^\s*!\[[^\]]*\]\([^)]*\)\s*$/.test(rawLine) || /^\s*\|.*\|\s*$/.test(rawLine)) continue;
+    const hardBreak = /(?: {2}|\\)$/.test(rawLine);
     const line = rawLine.trimEnd();
-    const heading = /^(#{2,3})\s+(.+?)\s*$/.exec(line);
+    const heading = /^(#{1,6})\s+(.+?)\s*$/.exec(line);
     const quote = /^>\s?(.*)$/.exec(line);
     const bullet = /^\s*[-*+]\s+(.+)$/.exec(line);
     const ordered = /^\s*\d+[.)]\s+(.+)$/.exec(line);
     if (!line.trim()) { flushParagraph(); flushList(); continue; }
     if (/^\s*(---|\*\*\*|___)\s*$/.test(line)) { flushParagraph(); flushList(); blocks.push({ type: "horizontalRule" }); continue; }
-    if (heading) { flushParagraph(); flushList(); blocks.push({ type: "heading", attrs: { level: heading[1].length }, content: inline(heading[2], mentions, options.mentions) }); continue; }
+    if (heading) { flushParagraph(); flushList(); blocks.push({ type: "heading", attrs: { level: Math.min(3, Math.max(2, heading[1].length)) }, content: inline(heading[2], mentions, options.mentions) }); continue; }
     if (quote) { flushParagraph(); flushList(); blocks.push({ type: "blockquote", content: [{ type: "paragraph", content: inline(quote[1], mentions, options.mentions) }] }); continue; }
     if (bullet || ordered) {
       flushParagraph();
@@ -62,7 +64,7 @@ export function mcpMarkdownToTiptap(markdown: string, options: { mentions: boole
       continue;
     }
     flushList();
-    paragraph.push(line);
+    paragraph.push({ text: hardBreak ? line.replace(/(?: {2}|\\)$/, "") : line, hardBreak });
   }
   flushParagraph(); flushList();
   return { doc: { type: "doc", content: blocks.length ? blocks : [{ type: "paragraph" }] }, mentions };
@@ -113,29 +115,49 @@ function markedText(value: string): RichNode[] {
 }
 
 function markedLine(line: string): RichNode[] {
+  return parseMarked(line, []);
+}
+
+function parseMarked(line: string, inheritedMarks: RichMark[]): RichNode[] {
   const nodes: RichNode[] = [];
-  const token = /(\*\*|__|~~|\*|_)([^\n]+?)\1|<u>([^<]+)<\/u>|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
   let cursor = 0;
-  for (let match; (match = token.exec(line));) {
-    if (match.index > cursor) nodes.push({ type: "text", text: line.slice(cursor, match.index) });
-    if (match[1]) {
-      const mark = matchingMark(match[1], match[1]);
-      nodes.push({ type: "text", text: match[2], marks: mark ? [mark] : [] });
-    } else if (match[3] !== undefined) {
-      nodes.push({ type: "text", text: match[3], marks: [{ type: "underline" }] });
-    } else {
-      nodes.push({ type: "text", text: match[4], marks: [{ type: "link", attrs: { href: match[5] } }] });
+  while (cursor < line.length) {
+    const match = nextMark(line, cursor);
+    if (!match) {
+      nodes.push({ type: "text", text: line.slice(cursor), marks: inheritedMarks });
+      break;
     }
-    cursor = match.index + match[0].length;
+    if (match.index > cursor) nodes.push({ type: "text", text: line.slice(cursor, match.index), marks: inheritedMarks });
+    nodes.push(...parseMarked(match.content, [...inheritedMarks, match.mark]));
+    cursor = match.end;
   }
-  if (cursor < line.length) nodes.push({ type: "text", text: line.slice(cursor) });
   return nodes;
 }
 
-function matchingMark(open: string, close: string): RichMark | null {
-  if (open !== close && !(open === "__" && close === "__")) return null;
-  if (open === "**" || open === "__") return { type: "bold" };
-  if (open === "~~") return { type: "strike" };
-  if (open === "*" || open === "_") return { type: "italic" };
-  return null;
+function nextMark(value: string, start: number): { index: number; end: number; content: string; mark: RichMark } | null {
+  const link = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  const underline = /<u>([^<]+)<\/u>/g;
+  const delimiter = /(\*\*\*|___|\*\*|__|~~|\*|_)([^\n]+?)\1/g;
+  const candidates: { index: number; end: number; content: string; mark: RichMark }[] = [];
+  for (const [regex, mapper] of [
+    [link, (match: RegExpExecArray): { content: string; mark: RichMark } => ({ content: match[1], mark: { type: "link", attrs: { href: match[2] } } })],
+    [underline, (match: RegExpExecArray): { content: string; mark: RichMark } => ({ content: match[1], mark: { type: "underline" } })],
+    [delimiter, (match: RegExpExecArray): { content: string; mark: RichMark } | null => {
+      const token = match[1];
+      const before = match.index > 0 ? value[match.index - 1] : "";
+      const after = value[match.index + match[0].length] ?? "";
+      if ((token.includes("_") || token === "*") && /[\p{L}\p{N}]/u.test(before + after)) return null;
+      if (token === "***" || token === "___") return { content: match[2], mark: { type: "bold" } };
+      return { content: match[2], mark: token === "**" || token === "__" ? { type: "bold" } : token === "~~" ? { type: "strike" } : { type: "italic" } };
+    }],
+  ] as const) {
+    regex.lastIndex = start;
+    const match = regex.exec(value);
+    if (!match) continue;
+    const mapped = mapper(match);
+    if (mapped) candidates.push({ index: match.index, end: match.index + match[0].length, ...mapped });
+  }
+  if (!candidates.length) return null;
+  candidates.sort((left, right) => left.index - right.index || right.end - left.end);
+  return candidates[0];
 }

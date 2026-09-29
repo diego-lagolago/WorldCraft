@@ -99,6 +99,7 @@ function formatUploadLink(input: {
 
 async function issueUploadTicket(input: {
   userId: string;
+  clientId: string;
   world: McpWorldContext;
   ziel: z.infer<typeof uploadZiel>;
   id: string;
@@ -112,6 +113,7 @@ async function issueUploadTicket(input: {
   });
   const ticket = await createMcpUploadTicket({
     userId: input.userId,
+    clientId: input.clientId,
     worldId: input.world.id,
     targetKind: input.ziel,
     targetId: target.targetId,
@@ -134,6 +136,7 @@ registerMcpConfirmationHandler("bild_hochladen", async (row) => {
   const world = await resolveMcpWorld(row.userId, row.worldId);
   return issueUploadTicket({
     userId: row.userId,
+    clientId: row.clientId,
     world,
     ziel: payload.ziel,
     id: payload.id,
@@ -192,6 +195,7 @@ export function registerImageUploadTool(server: McpServer, ctx: ToolContext) {
 
     const issued = await issueUploadTicket({
       userId: ctx.userId,
+      clientId: ctx.clientId,
       world,
       ziel,
       id,

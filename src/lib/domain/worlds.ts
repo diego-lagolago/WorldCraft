@@ -9,7 +9,7 @@ import {
   universes,
   worlds,
 } from "@/db/schema";
-import { ok, requireGm, type AuthzResult, type MembershipRole, type MembershipRow } from "@/lib/authz";
+import { fail, ok, requireGm, type AuthzResult, type MembershipRole, type MembershipRow } from "@/lib/authz";
 import { collectUnreferencedFiles } from "@/lib/files/gc";
 import { swapSingleImage } from "@/lib/files/single-image";
 import { mapDbError } from "./db-errors";
@@ -124,6 +124,7 @@ export async function updateWorld(input: {
   description?: unknown;
   removeTitleImage?: boolean;
   mcpEnabled?: boolean;
+  expectedUpdatedAt?: Date;
 }): Promise<AuthzResult<{ id: string }>> {
   const gm = requireGm(input.membership);
   if (!gm.ok) return gm;
@@ -138,7 +139,12 @@ export async function updateWorld(input: {
     patch.descriptionPlain = description.data.plain;
   }
 
-  await db.update(worlds).set(patch).where(eq(worlds.id, input.worldId));
+  const updated = await db.update(worlds).set(patch)
+    .where(and(eq(worlds.id, input.worldId), ...(input.expectedUpdatedAt ? [eq(worlds.updatedAt, input.expectedUpdatedAt)] : [])))
+    .returning({ id: worlds.id });
+  if (!updated.length) return input.expectedUpdatedAt
+    ? fail(409, "Inhalt wurde inzwischen geändert, bitte neu lesen.")
+    : fail(404, "Diese Welt gibt es nicht.");
   if (input.removeTitleImage) {
     const previousImage = await swapSingleImage({
       kind: "world_title",

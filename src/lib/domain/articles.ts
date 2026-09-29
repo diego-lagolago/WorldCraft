@@ -395,6 +395,7 @@ export async function updateArticle(input: {
   body?: unknown;
   visibility?: ContentVisibility;
   removeTitleImage?: true;
+  expectedUpdatedAt?: Date;
 }): Promise<AuthzResult<{ id: string }>> {
   const [current] = await db
     .select({
@@ -422,13 +423,16 @@ export async function updateArticle(input: {
   if (!patch.ok) return patch;
   try {
     await db.transaction(async (tx) => {
-      await tx
+      const rows = await tx
         .update(articles)
         .set({ ...patch.data, updatedAt: new Date(), updatedBy: input.actorId })
-        .where(eq(articles.id, current.id));
+        .where(and(eq(articles.id, current.id), ...(input.expectedUpdatedAt ? [eq(articles.updatedAt, input.expectedUpdatedAt)] : [])))
+        .returning({ id: articles.id });
+      if (!rows.length) throw Object.assign(new Error("stale"), { stale: true });
       await recalcArticleRelations(input.worldId, input.actorId, current.id, tx);
     });
   } catch (error) {
+    if (error && typeof error === "object" && "stale" in error) return fail(409, "Inhalt wurde inzwischen geändert, bitte neu lesen.");
     const mapped = mapDbError(error);
     if (mapped) return mapped;
     throw error;

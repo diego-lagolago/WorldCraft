@@ -49,4 +49,19 @@ describe("mcpMarkdownToTiptap", () => {
     const actual = resolveMcpMarkdown(parsed, [], { mentions: true });
     expect(actual).toEqual(sanitizeRichDoc(original, { mentions: true }).value.doc);
   });
+
+  it("preserves hard breaks and nested marks without interpreting punctuation inside words", () => {
+    const parsed = mcpMarkdownToTiptap("# Titel\n\n**[Link](https://example.com)** und <u>*unter*</u>  \nzweite Zeile\n\nsnake_case_name und 2*3*4\n\n#### Klein", { mentions: true });
+    const json = JSON.stringify(parsed.doc);
+    expect(json).toContain('"hardBreak"');
+    expect(json).toContain('"bold"');
+    expect(json).toContain('"link"');
+    expect(json).toContain('"underline"');
+    expect(json).toContain('"italic"');
+    expect(json).toContain("snake_case_name");
+    expect(json).toContain("2*3*4");
+    expect(parsed.doc.content[0].attrs).toEqual({ level: 2 });
+    expect(parsed.doc.content.at(-1)?.attrs).toEqual({ level: 3 });
+    expect(json).not.toContain("\\\\n");
+  });
 });

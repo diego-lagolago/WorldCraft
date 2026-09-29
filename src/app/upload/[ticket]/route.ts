@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import { articles, monsters, users, worlds } from "@/db/schema";
 import { getArticle } from "@/lib/domain/articles";
 import { getMonster } from "@/lib/domain/monsters";
+import { hasActiveMcpConsent } from "@/lib/domain/connected-applications";
 import { isDiscordIdAllowed, isMcpEnabled } from "@/lib/env";
 import { attachImage } from "@/lib/files/attach";
 import { inspectImage, isImageError, maxBytesFor } from "@/lib/files/inspect";
@@ -26,7 +27,7 @@ type TicketRow = NonNullable<Awaited<ReturnType<typeof peekMcpUploadTicket>>>;
 
 function wantsJson(request: Request) {
   const accept = request.headers.get("accept") ?? "";
-  return accept.includes("application/json") && !accept.includes("text/html");
+  return !accept.includes("text/html");
 }
 
 function notFound() {
@@ -49,6 +50,7 @@ async function assertTicketStillAuthorized(ticket: TicketRow): Promise<string | 
     .where(eq(users.id, ticket.userId))
     .limit(1);
   if (!user || !isDiscordIdAllowed(user.discordId)) return "Zugriff verweigert.";
+  if (!await hasActiveMcpConsent(ticket.userId, ticket.clientId)) return "Zugriff verweigert.";
 
   const memberships = await listMcpWorldMemberships(ticket.userId);
   const world = memberships.find((entry) => entry.id === ticket.worldId);
@@ -170,7 +172,11 @@ export async function GET(
   const { ticket: token } = await context.params;
   const ticket = await peekMcpUploadTicket(token);
   if (!ticket) return notFound();
-  if (await assertTicketStillAuthorized(ticket)) return notFound();
+  const authError = await assertTicketStillAuthorized(ticket);
+  if (authError) {
+    if (authError.includes("geändert")) return pageResponse(ticket, 409, authError);
+    return notFound();
+  }
   return pageResponse(ticket, 200);
 }
 
@@ -205,6 +211,14 @@ export async function POST(
     return notFound();
   }
 
+  const maxBytes = maxBytesFor(peeked.imageKind as ImageKind);
+  const contentLength = request.headers.get("content-length");
+  if (!contentLength || !/^\d+$/.test(contentLength) || Number(contentLength) > maxBytes + 64 * 1024) {
+    const message = "Die Upload-Größe konnte nicht sicher geprüft werden.";
+    if (wantsJson(request)) return NextResponse.json({ error: message }, { status: 413 });
+    return pageResponse(peeked, 413, message);
+  }
+
   const form = await request.formData().catch(() => null);
   if (!form) {
     const message = "Bitte ein Bild als Formular senden.";
@@ -220,7 +234,6 @@ export async function POST(
   }
 
   const imageKind = peeked.imageKind as ImageKind;
-  const maxBytes = maxBytesFor(imageKind);
   if (file.size > maxBytes) {
     const limitMb = Math.round(maxBytes / (1024 * 1024));
     const message = `Das Bild darf höchstens ${limitMb} MB groß sein.`;
@@ -248,7 +261,7 @@ export async function POST(
 
   await writeMcpAuditLog({
     userId: ticket.userId,
-    clientId: "upload-ticket",
+    clientId: ticket.clientId,
     toolName: "upload_einloesen",
     worldId: ticket.worldId,
     targetKind: ticket.targetKind,

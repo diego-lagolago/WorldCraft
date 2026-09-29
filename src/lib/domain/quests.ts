@@ -479,6 +479,7 @@ export async function updateQuest(input: {
   participantIds?: string[];
   addParticipantIds?: string[];
   removeParticipantIds?: string[];
+  expectedUpdatedAt?: Date;
 }): Promise<AuthzResult<{ id: string }>> {
   const [current] = await db
     .select({ id: quests.id, ownerId: quests.ownerId, visibility: quests.visibility })
@@ -504,10 +505,12 @@ export async function updateQuest(input: {
   try {
     await db.transaction(async (tx) => {
       if (Object.keys(patch.data).length > 0) {
-        await tx
+        const rows = await tx
           .update(quests)
           .set({ ...patch.data, updatedAt: new Date(), updatedBy: input.actorId })
-          .where(eq(quests.id, current.id));
+          .where(and(eq(quests.id, current.id), ...(input.expectedUpdatedAt ? [eq(quests.updatedAt, input.expectedUpdatedAt)] : [])))
+          .returning({ id: quests.id });
+        if (!rows.length) throw Object.assign(new Error("stale"), { stale: true });
       }
       if (touchesParticipants) {
         const changed = await applyParticipantChanges(
@@ -528,6 +531,7 @@ export async function updateQuest(input: {
       await recalcQuestRelations(input.worldId, input.actorId, current.id, tx);
     });
   } catch (error) {
+    if (error && typeof error === "object" && "stale" in error) return fail(409, "Inhalt wurde inzwischen geändert, bitte neu lesen.");
     if (error && typeof error === "object" && "authzResult" in error) {
       return (error as { authzResult: AuthzResult<never> }).authzResult;
     }

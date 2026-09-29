@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { mcpChangeConfirmations } from "@/db/schema";
+import { McpToolError } from "./context";
 
 const TTL_MS = 10 * 60 * 1000;
 type ConfirmationRow = Awaited<ReturnType<typeof consumeMcpConfirmation>>;
@@ -13,6 +14,10 @@ export function registerMcpConfirmationHandler(operation: string, handler: Confi
 }
 
 export async function executeMcpConfirmation(row: NonNullable<ConfirmationRow>) {
+  if (hash(stableJson(row.payload)) !== row.changeHash) {
+    console.error(JSON.stringify({ event: "mcp_confirmation_integrity_error", confirmationId: row.id }));
+    throw new McpToolError("Die vorgemerkte Änderung ist ungültig. Bitte neu anfordern.");
+  }
   const operation = typeof (row.payload as { operation?: unknown }).operation === "string"
     ? (row.payload as { operation: string }).operation
     : "";
@@ -23,6 +28,14 @@ export async function executeMcpConfirmation(row: NonNullable<ConfirmationRow>) 
 
 function hash(value: string) {
   return createHash("sha256").update(value).digest("base64url");
+}
+
+/** JSONB does not preserve object-key order; use one canonical representation for storage and verification. */
+function stableJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(",")}}`;
 }
 
 /** Stores only a hash of the random bearer token; the original is returned once. */
@@ -37,7 +50,7 @@ export async function createMcpConfirmation(input: {
 }): Promise<{ token: string; expiresAt: Date }> {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + TTL_MS);
-  const changeHash = hash(JSON.stringify(input.payload));
+  const changeHash = hash(stableJson(input.payload));
   await db.insert(mcpChangeConfirmations).values({
     tokenHash: hash(token), userId: input.userId, clientId: input.clientId,
     worldId: input.worldId, targetKind: input.targetKind, targetId: input.targetId,

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { CONTENT_VISIBILITY_LABEL } from "@/lib/authz";
 import { createArticle, createArticleStub } from "@/lib/domain/articles";
 import { createMonster } from "@/lib/domain/monsters";
-import { createChapter, listVisibleChapters, reorderChapters, updateChapter } from "@/lib/domain/quest-chapters";
+import { createChapter } from "@/lib/domain/quest-chapters";
 import { createQuest } from "@/lib/domain/quests";
 import { createUniverse } from "@/lib/domain/universes";
 import { mcpMarkdownToTiptap, resolveMcpMarkdown, type ResolvedMcpMarkdownMention } from "@/lib/editor/mcp-markdown";
@@ -40,7 +40,7 @@ const articleFields = z.object({
   vorlagenfelder: z.record(z.string(), z.unknown()).optional(),
   text: z.string().optional(),
   sichtbarkeit: z.string().optional(),
-}).passthrough();
+}).strict();
 
 const questFields = z.object({
   titel: z.string().trim().min(1).max(200),
@@ -48,7 +48,7 @@ const questFields = z.object({
   beschreibung: z.string().optional(),
   beteiligte: z.array(z.string().uuid()).optional(),
   sichtbarkeit: z.string().optional(),
-}).passthrough();
+}).strict();
 
 const chapterFields = z.object({
   quest_id: z.string().uuid(),
@@ -57,7 +57,7 @@ const chapterFields = z.object({
   text: z.string().optional(),
   position: z.number().int().min(1).optional(),
   sichtbarkeit: z.string().optional(),
-}).passthrough();
+}).strict();
 
 const monsterFields = z.object({
   name: z.string().trim().min(1).max(120),
@@ -70,13 +70,13 @@ const monsterFields = z.object({
   charakterblatt: z.unknown().optional(),
   bio: z.string().optional(),
   sichtbarkeit: z.string().optional(),
-}).passthrough();
+}).strict();
 
 const universeFields = z.object({
   name: z.string().trim().min(1).max(200),
   beschreibung: z.string().optional(),
   sichtbarkeit: z.string().optional(),
-}).passthrough();
+}).strict();
 
 const fieldsByArt = {
   artikel: articleFields,
@@ -275,35 +275,11 @@ async function executeCreate(input: {
       questId: felder.quest_id,
       title: felder.titel,
       body,
+      status: felder.status ? MCP_QUEST_STATUS[felder.status] : undefined,
+      position: felder.position,
       visibility: "owner_only",
     });
     if (!result.ok) throwAuthz(result);
-    if (felder.status && felder.status !== "offen") {
-      const updated = await updateChapter({
-        membership,
-        actorId: input.ctx.userId,
-        worldId: input.world.id,
-        questId: felder.quest_id,
-        chapterId: result.data.id,
-        status: MCP_QUEST_STATUS[felder.status],
-      });
-      if (!updated.ok) throwAuthz(updated);
-    }
-    if (felder.position) {
-      const chapters = await listVisibleChapters(input.world.id, felder.quest_id, input.world.role, input.world.userId);
-      if (!chapters) throw new McpToolError("Quest nicht gefunden.");
-      const ids = chapters.map((chapter) => chapter.id).filter((id) => id !== result.data.id);
-      const index = Math.min(Math.max(felder.position, 1), ids.length + 1) - 1;
-      ids.splice(index, 0, result.data.id);
-      const reordered = await reorderChapters({
-        membership,
-        actorId: input.ctx.userId,
-        worldId: input.world.id,
-        questId: felder.quest_id,
-        chapterIds: ids,
-      });
-      if (!reordered.ok) throwAuthz(reordered);
-    }
     const stand = standOf(result.data.updatedAt);
     return {
       worldId: input.world.id,
