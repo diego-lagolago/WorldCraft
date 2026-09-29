@@ -35,6 +35,7 @@ export {
   type QuestParticipant,
   type QuestStatus,
 } from "@/lib/quests/status";
+import { matchesExpectedUpdatedAt } from "./expected-updated-at";
 
 export const QUEST_TITLE_MAX = 200;
 
@@ -508,7 +509,7 @@ export async function updateQuest(input: {
         const rows = await tx
           .update(quests)
           .set({ ...patch.data, updatedAt: new Date(), updatedBy: input.actorId })
-          .where(and(eq(quests.id, current.id), ...(input.expectedUpdatedAt ? [eq(quests.updatedAt, input.expectedUpdatedAt)] : [])))
+          .where(and(eq(quests.id, current.id), ...matchesExpectedUpdatedAt(quests.updatedAt, input.expectedUpdatedAt)))
           .returning({ id: quests.id });
         if (!rows.length) throw Object.assign(new Error("stale"), { stale: true });
       }

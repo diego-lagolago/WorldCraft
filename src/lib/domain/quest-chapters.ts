@@ -24,6 +24,7 @@ import {
 } from "./quest-access";
 import { recalcQuestMentions } from "./relations";
 import { richFieldFromInput } from "./rich-field";
+import { matchesExpectedUpdatedAt } from "./expected-updated-at";
 
 export const chapterTitleSchema = z.string().trim().min(1).max(CHAPTER_TITLE_MAX);
 
@@ -384,7 +385,7 @@ export async function updateChapter(input: {
         const rows = await tx
           .update(questChapters)
           .set({ ...patch.data, updatedAt: new Date(), updatedBy: input.actorId })
-          .where(and(eq(questChapters.id, chapter.id), ...(input.expectedUpdatedAt ? [eq(questChapters.updatedAt, input.expectedUpdatedAt)] : [])))
+          .where(and(eq(questChapters.id, chapter.id), ...matchesExpectedUpdatedAt(questChapters.updatedAt, input.expectedUpdatedAt)))
           .returning({ updatedAt: questChapters.updatedAt });
         if (rows.length === 0) return null;
         if (recalcMentions) await recalcQuestMentions(input.worldId, input.actorId, quest.id, tx);

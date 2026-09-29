@@ -14,6 +14,7 @@ import { collectUnreferencedFiles } from "@/lib/files/gc";
 import { swapSingleImage } from "@/lib/files/single-image";
 import { mapDbError } from "./db-errors";
 import { richFieldFromInput } from "./rich-field";
+import { matchesExpectedUpdatedAt } from "./expected-updated-at";
 
 export const WORLD_NAME_MAX = 120;
 export const FIRST_UNIVERSE_NAME = "Hauptuniversum";
@@ -140,7 +141,7 @@ export async function updateWorld(input: {
   }
 
   const updated = await db.update(worlds).set(patch)
-    .where(and(eq(worlds.id, input.worldId), ...(input.expectedUpdatedAt ? [eq(worlds.updatedAt, input.expectedUpdatedAt)] : [])))
+    .where(and(eq(worlds.id, input.worldId), ...matchesExpectedUpdatedAt(worlds.updatedAt, input.expectedUpdatedAt)))
     .returning({ id: worlds.id });
   if (!updated.length) return input.expectedUpdatedAt
     ? fail(409, "Inhalt wurde inzwischen geändert, bitte neu lesen.")

@@ -18,6 +18,7 @@ import { collectUnreferencedFiles } from "@/lib/files/gc";
 import { mapDbError } from "./db-errors";
 import { recalcOutgoingMentions } from "./relations";
 import { richFieldFromInput } from "./rich-field";
+import { matchesExpectedUpdatedAt } from "./expected-updated-at";
 
 export const UNIVERSE_NAME_MAX = 120;
 export const universeNameSchema = z.string().trim().min(1).max(UNIVERSE_NAME_MAX);
@@ -168,7 +169,7 @@ export async function updateUniverse(input: {
       const rows = await tx
         .update(universes)
         .set(patch)
-        .where(and(eq(universes.id, input.universeId), eq(universes.worldId, input.worldId), ...(input.expectedUpdatedAt ? [eq(universes.updatedAt, input.expectedUpdatedAt)] : [])))
+        .where(and(eq(universes.id, input.universeId), eq(universes.worldId, input.worldId), ...matchesExpectedUpdatedAt(universes.updatedAt, input.expectedUpdatedAt)))
         .returning({ id: universes.id });
       if (rows.length === 0) return null;
       const [stored] = await tx

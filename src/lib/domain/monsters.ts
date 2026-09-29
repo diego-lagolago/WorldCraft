@@ -65,6 +65,7 @@ export {
   type MonsterRarity,
   type MonsterSize,
 } from "@/lib/monsters/labels";
+import { matchesExpectedUpdatedAt } from "./expected-updated-at";
 
 export const monsterKindSchema = z.enum(MONSTER_KINDS);
 export const monsterRaritySchema = z.enum(MONSTER_RARITIES);
@@ -474,7 +475,7 @@ export async function updateMonster(input: {
       const rows = await tx
         .update(monsters)
         .set({ ...patch.data, updatedAt: new Date(), updatedBy: input.actorId })
-        .where(and(eq(monsters.id, current.id), ...(input.expectedUpdatedAt ? [eq(monsters.updatedAt, input.expectedUpdatedAt)] : [])))
+        .where(and(eq(monsters.id, current.id), ...matchesExpectedUpdatedAt(monsters.updatedAt, input.expectedUpdatedAt)))
         .returning({ id: monsters.id });
       if (!rows.length) throw Object.assign(new Error("stale"), { stale: true });
       await recalcMonsterRelations(input.worldId, input.actorId, current.id, tx);

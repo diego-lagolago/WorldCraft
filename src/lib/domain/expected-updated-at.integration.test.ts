@@ -77,6 +77,17 @@ afterAll(async () => {
 });
 
 describe("CR-003 expectedUpdatedAt", () => {
+  it("compares database microseconds with the millisecond MCP stand", async () => {
+    await sql`UPDATE articles SET updated_at = '2026-09-29T10:00:00.123456Z' WHERE id = ${articleId}`;
+    const stand = new Date("2026-09-29T10:00:00.123Z");
+    expectStale(await updateArticle({
+      membership, actorId: userId, worldId, articleId, title: "Article micro stale", expectedUpdatedAt: staleFrom(stand),
+    }));
+    expect((await updateArticle({
+      membership, actorId: userId, worldId, articleId, title: "Article micro current", expectedUpdatedAt: stand,
+    })).ok).toBe(true);
+  });
+
   it("rejects stale updates and accepts current revisions for all mutable MCP targets", async () => {
     const [articleBefore] = await sql`SELECT title, updated_at FROM articles WHERE id = ${articleId}`;
     expectStale(await updateArticle({

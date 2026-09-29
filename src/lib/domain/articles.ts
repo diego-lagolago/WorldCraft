@@ -34,6 +34,7 @@ import { mapDbError } from "./db-errors";
 import { visibleContentWhere } from "./visibility-sql";
 import { recalcArticleRelations } from "./relations";
 import { richFieldFromInput } from "./rich-field";
+import { matchesExpectedUpdatedAt } from "./expected-updated-at";
 
 export const ARTICLE_TITLE_MAX = 200;
 export const articleTitleSchema = z.string().trim().min(1).max(ARTICLE_TITLE_MAX);
@@ -426,7 +427,7 @@ export async function updateArticle(input: {
       const rows = await tx
         .update(articles)
         .set({ ...patch.data, updatedAt: new Date(), updatedBy: input.actorId })
-        .where(and(eq(articles.id, current.id), ...(input.expectedUpdatedAt ? [eq(articles.updatedAt, input.expectedUpdatedAt)] : [])))
+        .where(and(eq(articles.id, current.id), ...matchesExpectedUpdatedAt(articles.updatedAt, input.expectedUpdatedAt)))
         .returning({ id: articles.id });
       if (!rows.length) throw Object.assign(new Error("stale"), { stale: true });
       await recalcArticleRelations(input.worldId, input.actorId, current.id, tx);
