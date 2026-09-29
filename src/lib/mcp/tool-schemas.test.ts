@@ -77,7 +77,7 @@ describe("published MCP input schemas (012 T-004)", () => {
 
   it("(2) rejects an unknown felder key before the handler and names the valid keys", async () => {
     const error = await sdkValidation("inhalt_aendern", { ...updateArgs, art: "notizblock", felder: { inhalt: "Notiz" } });
-    expect(error).toContain("felder enthält unbekannte Schlüssel");
+    expect(error).toContain("Unbekanntes Feld „felder.inhalt“. Statt „inhalt“ bitte den Schreibschlüssel `text` (bei art = notizblock) verwenden.");
     expect(error).toContain("notizblock: text");
   });
 
@@ -111,5 +111,32 @@ describe("published MCP input schemas (012 T-004)", () => {
     expect(await sdkValidation("inhalt_anlegen", {
       welt: "MCP-Testwelt", art: "artikel", felder: { titel: "Neu", sichtbarkeit: "veröffentlicht" },
     })).toBeNull();
+  });
+});
+
+describe("SDK validation errors (012 T-005)", () => {
+  it("(1) keeps our German enum text for quest status", async () => {
+    const error = await sdkValidation("inhalt_aendern", { ...updateArgs, art: "quest", felder: { status: "Erledigt" } });
+    expect(error).toContain("Feld „felder.status“ hat den ungültigen Wert „Erledigt“. Erlaubte Werte: offen, aktiv, abgeschlossen, gescheitert.");
+  });
+
+  it("(2) names all six template types for an invalid vorlagentyp", async () => {
+    const error = await sdkValidation("inhalt_aendern", { ...updateArgs, art: "artikel", felder: { vorlagentyp: "Waffe" } });
+    expect(error).toContain("Feld „felder.vorlagentyp“ hat den ungültigen Wert „Waffe“. Erlaubte Werte: person, ort, organisation, gegenstand, rasse, ohne.");
+  });
+
+  it("(4) names felder.boss and true oder false", async () => {
+    const error = await sdkValidation("inhalt_aendern", { ...updateArgs, art: "monster", felder: { boss: "ja" } });
+    expect(error).toContain("Feld „felder.boss“ muss true oder false sein.");
+  });
+
+  it("names the write key for a display label and German texts for fixed enums", async () => {
+    expect(await sdkValidation("inhalt_aendern", { ...updateArgs, art: "monster", felder: { Gefahrenstufe: "hoch" } }))
+      .toMatch(/„Gefahrenstufe“ ist ein Anzeige-Label; der Schreibschlüssel ist .*`gefahr` \(bei art = monster\)/);
+    expect(await sdkValidation("inhalt_aendern", { ...updateArgs, art: "artikel", felder: {}, modus: "anfuegen" }))
+      .toContain("Feld „modus“ hat den ungültigen Wert „anfuegen“. Erlaubte Werte: anhaengen, ersetzen.");
+    expect(await sdkValidation("relation_anlegen", {
+      welt: "MCP-Testwelt", quelle: { art: "charakter", id: ID }, ziel: { art: "artikel", id: ID }, bezeichnung: "kennt",
+    })).toContain("Feld „quelle.art“ hat den ungültigen Wert „charakter“.");
   });
 });

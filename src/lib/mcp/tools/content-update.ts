@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { mcpEnum } from "../validation";
 import { createMcpConfirmation, registerMcpConfirmationHandler } from "../confirmations";
 import { McpToolError, resolveMcpWorld, type McpWorldContext } from "../context";
 import { withMcpStubCompensation } from "../stub-compensation";
@@ -155,13 +156,13 @@ export function registerContentUpdateTool(server: McpServer, ctx: ToolContext) {
       id: z.string().uuid(),
       stand: z.string().min(1),
       felder: updateFieldsInput,
-      modus: z.enum(["anhaengen", "ersetzen"]).optional(),
+      modus: mcpEnum(["anhaengen", "ersetzen"], "modus").optional(),
     }).strict(),
     annotations: { readOnlyHint: false, destructiveHint: true },
   }, async ({ welt, art, id, stand, felder, modus }) => withAudit(ctx, "inhalt_aendern", async () => {
     requireMcpWriteScope(ctx);
     const world = await resolveMcpWorld(ctx.userId, welt);
-    const parsed = parseFelder(UPDATE_HANDLERS[art].schema, felder);
+    const parsed = parseFelder(UPDATE_HANDLERS[art].schema, felder, art);
     if (!Object.keys(parsed).length) throw new McpToolError("Mindestens ein Feld muss geändert werden.");
     return previewOrExecute(ctx, { world, art, id, stand, felder: parsed, modus: modus ?? "anhaengen" });
   }));

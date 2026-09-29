@@ -14,10 +14,23 @@ describe("MCP write field schemas", () => {
     expect(updateFieldSchemas.welt.safeParse({ name: "Neu" }).success).toBe(true);
   });
 
-  it("CR-017: names unknown and invalid fields in a tool error", () => {
-    expect(() => parseFelder(updateFieldSchemas.artikel, { unbekannt: "x" })).toThrow("Unbekanntes Feld „unbekannt“.");
-    expect(() => parseFelder(updateFieldSchemas.artikel, { sichtbarkeit: "veröffentlicht" })).toThrow("„sichtbarkeit“");
-    expect(() => parseFelder(updateFieldSchemas.quest, { status: "egal" })).toThrow("Feld „status“ ist ungültig.");
+  it("CR-017 / 012 T-005: names unknown and invalid fields with path and valid keys", () => {
+    expect(() => parseFelder(updateFieldSchemas.artikel, { unbekannt: "x" }, "artikel"))
+      .toThrow("Unbekanntes Feld „felder.unbekannt“. Gültige Felder: titel, vorlagentyp, vorlagenfelder, text.");
+    expect(() => parseFelder(updateFieldSchemas.artikel, { sichtbarkeit: "veröffentlicht" }, "artikel")).toThrow("„felder.sichtbarkeit“");
+    expect(() => parseFelder(updateFieldSchemas.quest, { status: "egal" }, "quest"))
+      .toThrow("Feld „felder.status“ hat den ungültigen Wert „egal“. Erlaubte Werte: offen, aktiv, abgeschlossen, gescheitert.");
+  });
+
+  it("012 T-005: names the write key for display labels and known mistakes from E2E-Lauf 1", () => {
+    expect(() => parseFelder(updateFieldSchemas.monster, { Gefahrenstufe: "hoch" }, "monster"))
+      .toThrow("„Gefahrenstufe“ ist ein Anzeige-Label; der Schreibschlüssel ist `gefahr`.");
+    expect(() => parseFelder(updateFieldSchemas.artikel, { seltenheit: "Gewöhnlich" }, "artikel"))
+      .toThrow("der Schreibschlüssel ist `vorlagenfelder.Seltenheit`");
+    expect(() => parseFelder(updateFieldSchemas.notizblock, { inhalt: "x" }, "notizblock"))
+      .toThrow("Statt „inhalt“ bitte den Schreibschlüssel `text` verwenden.");
+    expect(() => parseFelder(updateFieldSchemas.monster, { boss: "ja" }, "monster"))
+      .toThrow("Feld „felder.boss“ muss true oder false sein.");
   });
 
   it("exposes strict catalog-derived field objects as an anyOf schema", () => {

@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { mcpEnum } from "../validation";
 import type { ContentVisibility, MembershipRow, VisibilityStatus } from "@/lib/authz";
 import { updateArticle } from "@/lib/domain/articles";
 import { updateMonster } from "@/lib/domain/monsters";
@@ -20,8 +21,8 @@ import {
 } from "../write-rich";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 
-const visibilityArt = z.enum(["artikel", "quest", "kapitel", "monster", "universum"]);
-const visibilityLabelInput = z.enum(["nur ich", "nur Spielleitung", "veröffentlicht"]);
+const visibilityArt = mcpEnum(["artikel", "quest", "kapitel", "monster", "universum"], "art");
+const visibilityLabelInput = mcpEnum(["nur ich", "nur Spielleitung", "veröffentlicht"], "sichtbarkeit");
 
 type VisibilityArt = z.infer<typeof visibilityArt>;
 

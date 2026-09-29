@@ -10,7 +10,7 @@ import {
   MONSTER_SIZE_LABEL,
   MONSTER_SIZES,
 } from "@/lib/monsters/labels";
-import { TEMPLATES, templateOf, type TemplateDefinition, type TemplateField, type TemplateType } from "@/lib/templates/registry";
+import { TEMPLATE_TYPES, TEMPLATES, templateOf, type TemplateDefinition, type TemplateField, type TemplateType } from "@/lib/templates/registry";
 import { MCP_SHEET_FIELDS } from "./write-fields";
 
 export type FieldOperation = "anlegen" | "aendern";
@@ -27,6 +27,8 @@ export type FieldDefinition = {
   allowedValues?: readonly AllowedValue[];
   referenceTargets?: readonly string[];
   path?: string;
+  /** Keys clients sent by mistake (E2E-Lauf 1); only used for the hint in tool errors. */
+  mistakenKeys?: readonly string[];
 };
 
 const values = <T extends string>(source: readonly T[], labels: Record<T, string>): AllowedValue[] =>
@@ -89,7 +91,7 @@ const baseFields: Record<FieldArt, readonly FieldDefinition[]> = {
   artikel: articleFields,
   quest: questFields,
   kapitel: chapterFields,
-  notizblock: [field("text", "Text", "markdown", "Anzeige: Text.")],
+  notizblock: [field("text", "Text", "markdown", "Anzeige: Text.", { mistakenKeys: ["inhalt", "notiz"] })],
   monster: monsterFields,
   universum: [
     field("name", "Name", "text", "Anzeige: Name.", { requiredOnCreate: true }),
@@ -154,6 +156,30 @@ export function writeKeyTable(art: FieldArt, vorlagentyp?: TemplateType): readon
 
 export function writeKeyForLabel(art: FieldArt, label: string, vorlagentyp?: TemplateType): string | undefined {
   return writeKeyTable(art, vorlagentyp).find((row) => row.label.localeCompare(label, "de", { sensitivity: "accent" }) === 0)?.key;
+}
+
+export type WriteKeyHint = { key: string; writeKey: string; isLabel: boolean; art: FieldArt };
+
+/**
+ * Finds the write key for a key a client sent although it is not a valid `felder` key (E6):
+ * an Anzeige-Label (also of any template field for artikel) or a known mistake from E2E-Lauf 1.
+ */
+export function writeKeyHints(key: string, arts: readonly FieldArt[]): WriteKeyHint[] {
+  const hints: WriteKeyHint[] = [];
+  for (const art of arts) {
+    const types = art === "artikel" ? TEMPLATE_TYPES : [undefined];
+    const found = new Set<string>();
+    for (const type of types) {
+      const writeKey = writeKeyForLabel(art, key, type);
+      if (writeKey && writeKey !== key && !found.has(writeKey)) {
+        found.add(writeKey);
+        hints.push({ key, writeKey, isLabel: true, art });
+      }
+    }
+    const mistaken = fieldsFor("aendern", art).find((entry) => entry.mistakenKeys?.includes(key.toLocaleLowerCase("de")));
+    if (mistaken && !found.has(mistaken.key)) hints.push({ key, writeKey: mistaken.key, isLabel: false, art });
+  }
+  return hints;
 }
 
 /** Guard used by tests so a registry or enum extension cannot bypass the catalog. */

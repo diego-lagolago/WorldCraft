@@ -4,6 +4,7 @@ import { TEMPLATE_TYPES, templateOf } from "@/lib/templates/registry";
 import { MCP_TEMPLATE_TYPE } from "../enums";
 import { fieldsFor, templateFieldsFor, type FieldArt, type FieldDefinition } from "../field-catalog";
 import { MCP_SHEET_FIELDS, SHEET_KEY_MAP } from "../write-fields";
+import { issuesMessage, mcpEnum, unionError } from "../validation";
 
 export type CreateArt = Exclude<FieldArt, "notizblock" | "welt">;
 export type UpdateArt = FieldArt;
@@ -37,7 +38,9 @@ function schemaFor(art: FieldArt, field: FieldDefinition): z.ZodType {
   case "number": return field.key === "position" ? z.number().int().min(1) : z.number();
   case "select": {
     const labels = field.allowedValues?.map((value) => value.label);
-    return FIXED_ENUM_KEYS.has(field.key) && labels?.length ? z.enum(labels as [string, ...string[]]) : z.string();
+    return FIXED_ENUM_KEYS.has(field.key) && labels?.length
+      ? mcpEnum(labels as [string, ...string[]], `felder.${field.key}`)
+      : z.string();
   }
   case "reference": return field.key === "quest_id" ? uuid : reference;
   case "list": return z.array(uuid);
@@ -79,7 +82,12 @@ function templateFieldsSchema() {
       return definition.fields.find((field) => field.key === key || sameKey(field.label, key))?.label;
     });
   });
-  return z.union(schemas as [typeof schemas[number], typeof schemas[number], ...typeof schemas[number][]]);
+  const keysPerType = TEMPLATE_TYPES
+    .map((templateType) => `${MCP_TEMPLATE_TYPE_LABEL[templateType]}: ${templateFieldsFor(templateType).map((field) => field.key).join(", ") || "–"}`)
+    .join("; ");
+  return z.union(schemas as [typeof schemas[number], typeof schemas[number], ...typeof schemas[number][]], {
+    error: unionError("felder.vorlagenfelder", [], `Gültige Schlüssel je Vorlagentyp – ${keysPerType}.`),
+  });
 }
 
 function monsterSheetSchema() {
@@ -161,10 +169,9 @@ function validKeys(operation: "anlegen" | "aendern", art: FieldArt) {
   return fieldsFor(operation, art).map((field) => field.key).join(", ");
 }
 
-/** The SDK validates `felder` before the handler knows `art`, so the error lists the keys of every art. */
-function unionError(operation: "anlegen" | "aendern", arts: readonly FieldArt[]) {
-  const perArt = arts.map((art) => `${art}: ${validKeys(operation, art)}`).join("; ");
-  return `felder enthält unbekannte Schlüssel oder ungültige Werte. Gültige Schlüssel je art – ${perArt}.`;
+/** The SDK validates `felder` before the handler knows `art`, so the fallback lists the keys of every art. */
+function keysPerArt(operation: "anlegen" | "aendern", arts: readonly FieldArt[]) {
+  return `Gültige Schlüssel je art – ${arts.map((art) => `${art}: ${validKeys(operation, art)}`).join("; ")}.`;
 }
 
 const CREATE_ARTS = ["artikel", "quest", "kapitel", "monster", "universum"] as const;
@@ -172,33 +179,27 @@ const UPDATE_ARTS = ["artikel", "quest", "kapitel", "notizblock", "monster", "un
 
 /** JSON Schema exposes this as anyOf: one strict object per supported content art. */
 export const createFieldsInput = z.union(CREATE_ARTS.map((art) => createFieldSchemas[art]), {
-  error: unionError("anlegen", CREATE_ARTS),
+  error: unionError("felder", CREATE_ARTS, keysPerArt("anlegen", CREATE_ARTS)),
 });
 
 export const updateFieldsInput = z.union(UPDATE_ARTS.map((art) => updateFieldSchemas[art]), {
-  error: unionError("aendern", UPDATE_ARTS),
+  error: unionError("felder", UPDATE_ARTS, keysPerArt("aendern", UPDATE_ARTS)),
 });
 
 export type CreateFields<A extends CreateArt> = z.infer<(typeof createFieldSchemas)[A]>;
 export type UpdateFields<A extends UpdateArt> = z.infer<(typeof updateFieldSchemas)[A]>;
 
-/** Parses `felder` and reports every invalid or unknown field by name as a tool error. */
-export function parseFelder<T>(schema: { safeParse: (value: unknown) => z.ZodSafeParseResult<T> }, felder: unknown): T {
+/** Parses `felder` and reports every invalid or unknown field with path and valid keys (T-005). */
+export function parseFelder<T>(
+  schema: { safeParse: (value: unknown) => z.ZodSafeParseResult<T> },
+  felder: unknown,
+  art: FieldArt,
+): T {
   const parsed = schema.safeParse(felder);
   if (parsed.success) return parsed.data;
-  const shape = schema instanceof z.ZodObject ? Object.keys(schema.shape) : [];
-  const messages = parsed.error.issues.map((issue) => (
-    issue.code === "unrecognized_keys"
-      ? issue.keys.map((key) => `Unbekanntes Feld „${key}“.`).join(" ")
-        + (shape.length && !issue.path.length ? ` Gültige Felder: ${shape.join(", ")}.` : "")
-      : `Feld „${issue.path.join(".") || "felder"}“ ist ungültig.`
-  ));
-  throw new McpToolError(messages.join(" "));
+  const validKeys = schema instanceof z.ZodObject ? Object.keys(schema.shape) : [];
+  throw new McpToolError(issuesMessage(parsed.error.issues, { base: "felder", arts: [art], validKeys }));
 }
 
-export const createArt = z.enum(["artikel", "quest", "kapitel", "monster", "universum"], {
-  error: "Feld „art“ muss artikel, quest, kapitel, monster oder universum sein.",
-});
-export const updateArt = z.enum(["artikel", "quest", "kapitel", "notizblock", "monster", "universum", "welt"], {
-  error: "Feld „art“ muss artikel, quest, kapitel, notizblock, monster, universum oder welt sein.",
-});
+export const createArt = mcpEnum(CREATE_ARTS, "art");
+export const updateArt = mcpEnum(UPDATE_ARTS, "art");

@@ -34,7 +34,7 @@ describe("MCP write field mapping", () => {
   });
 
   it("rejects unknown template field keys", () => {
-    expect(() => normalizeTemplateFieldsInput("person", { Unbekannt: "x" })).toThrow("Unbekanntes Vorlagenfeld");
+    expect(() => normalizeTemplateFieldsInput("person", { Unbekannt: "x" })).toThrow("Unbekanntes Feld „felder.vorlagenfelder.Unbekannt“. Gültige Vorlagenfelder für diesen Vorlagentyp:");
   });
 
   it("maps monster enums and character sheet fields from German labels", () => {
@@ -57,5 +57,11 @@ describe("MCP write field mapping", () => {
       abilities: [{ text: "Sprint", attr: "dex" }],
       personality: "hart",
     });
+  });
+
+  it("012 T-005: invalid template values name the path and all allowed labels", () => {
+    expect(() => normalizeTemplateFieldsInput("item", { Seltenheit: "super selten" }))
+      .toThrow(/Feld „felder\.vorlagenfelder\.Seltenheit“ hat den ungültigen Wert „super selten“\. Erlaubte Werte: Gewöhnlich, .*Legendär/);
+    expect(() => mapMonsterDanger("ungefährlich-ish")).toThrow(/Feld „felder\.gefahr“ .* Erlaubte Werte:/);
   });
 });

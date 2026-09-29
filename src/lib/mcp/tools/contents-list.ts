@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { mcpEnum } from "../validation";
 import { listArticles } from "@/lib/domain/articles";
 import { listMonsters } from "@/lib/domain/monsters";
 import { MONSTER_KIND_LABEL, MONSTER_RARITY_LABEL } from "@/lib/monsters/labels";
@@ -8,7 +9,7 @@ import { MCP_MONSTER_KIND_LABELS, MCP_TEMPLATE_TYPE } from "../enums";
 import { McpToolError, resolveMcpWorld } from "../context";
 import { type ToolContext, templateTypes, withAudit, worldSchema } from "./shared";
 
-const monsterKindLabel = z.enum(MCP_MONSTER_KIND_LABELS);
+const monsterKindLabel = mcpEnum(MCP_MONSTER_KIND_LABELS, "monster_art");
 
 /** Visible to MCP clients as both tool and parameter guidance. */
 export const QUEST_ITEM_FILTER_GUIDANCE =
@@ -22,7 +23,7 @@ export function registerContentsListTool(server: McpServer, ctx: ToolContext) {
       description: `Liste sichtbare Artikel oder Monster einer freigegebenen Welt, wenn kein Suchbegriff nötig ist. ${QUEST_ITEM_FILTER_GUIDANCE}`,
       inputSchema: z.object({
         welt: worldSchema,
-        art: z.enum(["artikel", "monster"]),
+        art: mcpEnum(["artikel", "monster"], "art"),
         vorlagentyp: templateTypes.optional(),
         monster_art: monsterKindLabel.optional(),
         quest_gegenstand: z.boolean().optional().describe(QUEST_ITEM_FILTER_GUIDANCE),

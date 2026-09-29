@@ -110,7 +110,7 @@ export function registerContentCreateTool(server: McpServer, ctx: ToolContext) {
   }, async ({ welt, art, felder }) => withAudit(ctx, "inhalt_anlegen", async () => {
     requireMcpWriteScope(ctx);
     const world = await resolveMcpWorld(ctx.userId, welt);
-    const parsed = parseFelder(CREATE_HANDLERS[art].schema, felder);
+    const parsed = parseFelder(CREATE_HANDLERS[art].schema, felder, art);
     const ignoredVisibility = Object.prototype.hasOwnProperty.call(parsed, "sichtbarkeit");
     return previewOrCreate(ctx, { world, art, felder: parsed, ignoredVisibility });
   }));

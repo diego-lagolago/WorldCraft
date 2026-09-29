@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { mcpEnum } from "../validation";
 import { getArticle } from "@/lib/domain/articles";
 import { getWorldCharacter } from "@/lib/domain/characters";
 import { getMonster } from "@/lib/domain/monsters";
@@ -16,7 +17,7 @@ export function registerImageReadTool(server: McpServer, ctx: ToolContext) {
       description: "Liefert ein sichtbares Inhaltsbild als Bilddaten. Kartenbilder sind ausgeschlossen; niemals URLs oder Datei-IDs ausgeben.",
       inputSchema: z.object({
         welt: worldSchema,
-        art: z.enum(["welt", "artikel", "charakter", "monster"]),
+        art: mcpEnum(["welt", "artikel", "charakter", "monster"], "art"),
         id: z.string().uuid().optional(),
         bild_nr: z.number().int().min(1).max(10).optional(),
       }).strict(),

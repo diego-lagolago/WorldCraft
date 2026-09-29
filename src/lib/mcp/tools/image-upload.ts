@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { mcpEnum } from "../validation";
 import { getWorldDetails } from "@/lib/domain/worlds";
 import { getAuthUrl } from "@/lib/env";
 import type { ImageKind } from "@/lib/files/kinds";
@@ -10,7 +11,7 @@ import { visibleArticle, visibleMonster, worldStand } from "../write-shared";
 import { assertStand, formatConfirmationPreview } from "../write-rich";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 
-const uploadZiel = z.enum(["welt", "artikel", "monster"]);
+const uploadZiel = mcpEnum(["welt", "artikel", "monster"], "ziel");
 
 const IMAGE_KIND_BY_ZIEL = {
   welt: "world_title",

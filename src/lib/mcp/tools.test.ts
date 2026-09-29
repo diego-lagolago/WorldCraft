@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const writeMcpAuditLog = vi.fn().mockResolvedValue(undefined);
 vi.mock("./audit", () => ({ writeMcpAuditLog }));
+vi.mock("./field-catalog", () => ({ writeKeyHints: () => [] }));
 vi.mock("@/lib/authz", () => ({ CONTENT_VISIBILITY_LABEL: {} }));
 vi.mock("@/lib/domain/articles", () => ({}));
 vi.mock("@/lib/domain/characters", () => ({}));

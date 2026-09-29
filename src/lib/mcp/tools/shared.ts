@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { McpToolError } from "../context";
 import { writeMcpAuditLog } from "../audit";
+import { issuesMessage, mcpEnum } from "../validation";
 
 export type ToolContext = {
   userId: string;
@@ -32,33 +33,40 @@ export const worldSchema = z.string().trim().min(1).max(120)
   .optional()
   .describe("ID oder Name der Welt. Bei mehreren Welten bitte zuerst welten_auflisten nutzen.");
 
-export const contentKind = z.enum([
+export const contentKind = mcpEnum([
   "artikel",
   "quest",
   "charakter",
   "pin",
   "monster",
   "universum",
-]);
+], "art");
 
-export const templateTypes = z.enum([
+export const templateTypes = mcpEnum([
   "person",
   "ort",
   "organisation",
   "gegenstand",
   "rasse",
   "ohne",
-]);
+], "vorlagentyp");
 
-export const questStatus = z.enum(["offen", "aktiv", "abgeschlossen", "gescheitert"]);
+export const questStatus = mcpEnum(["offen", "aktiv", "abgeschlossen", "gescheitert"], "status");
 
 export function text(value: string, isError = false) {
   const bounded = value.length > 20_000 ? `${value.slice(0, 19_950)}\n\n_(gekürzt)_` : value;
   return { isError, content: [{ type: "text" as const, text: bounded }] };
 }
 
+/** Validation failures are tool errors with field path and allowed values; only real failures stay generic. */
+export function isValidationError(error: unknown): error is McpToolError | z.ZodError {
+  return error instanceof McpToolError || error instanceof z.ZodError;
+}
+
 export function asError(error: unknown) {
-  return text(error instanceof McpToolError ? error.message : "Die Anfrage konnte nicht verarbeitet werden.", true);
+  if (error instanceof McpToolError) return text(error.message, true);
+  if (error instanceof z.ZodError) return text(issuesMessage(error.issues, { base: "" }), true);
+  return text("Die Anfrage konnte nicht verarbeitet werden.", true);
 }
 
 export async function withAudit(
@@ -83,8 +91,8 @@ export async function withAudit(
         }
       : text(response.value);
   } catch (error) {
-    result = error instanceof McpToolError ? "tool_error" : "error";
-    if (!(error instanceof McpToolError)) {
+    result = isValidationError(error) ? "tool_error" : "error";
+    if (!isValidationError(error)) {
       console.error(JSON.stringify({
         event: "mcp_tool_error",
         tool: toolName,

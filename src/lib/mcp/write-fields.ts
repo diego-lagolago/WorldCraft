@@ -1,4 +1,4 @@
-import { McpToolError } from "./errors";
+import { allowedList, McpToolError } from "./errors";
 import {
   ATTRIBUTE_KEYS,
   ATTRIBUTE_LONG,
@@ -48,10 +48,14 @@ for (const key of ATTRIBUTE_KEYS) {
   ATTR_BY_LABEL.set(ATTRIBUTE_LONG[key].toLocaleLowerCase("de"), key);
 }
 
-function lookupEnum<T extends string>(map: Map<string, T>, raw: unknown, label: string): T {
-  if (typeof raw !== "string" || !raw.trim()) throw new McpToolError(`„${label}“ fehlt oder ist ungültig.`);
-  const value = map.get(raw.trim().toLocaleLowerCase("de"));
-  if (!value) throw new McpToolError(`„${label}“ hat keinen gültigen Wert.`);
+function invalidValue(path: string, raw: unknown, allowed: readonly string[]) {
+  const problem = typeof raw === "string" && raw.trim() ? `hat den ungültigen Wert „${raw}“` : "fehlt oder ist kein Text";
+  return new McpToolError(`Feld „${path}“ ${problem}. Erlaubte Werte: ${allowedList(allowed)}.`);
+}
+
+function lookupEnum<T extends string>(map: Map<string, T>, raw: unknown, key: string, labels: Record<T, string>): T {
+  const value = typeof raw === "string" ? map.get(raw.trim().toLocaleLowerCase("de")) : undefined;
+  if (!value) throw invalidValue(`felder.${key}`, raw, Object.values(labels));
   return value;
 }
 
@@ -62,7 +66,7 @@ export function normalizeTemplateFieldsInput(
 ): Record<string, unknown> {
   if (raw === undefined || raw === null) return {};
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new McpToolError("vorlagenfelder muss ein Objekt sein.");
+    throw new McpToolError("Feld „felder.vorlagenfelder“ muss ein Objekt sein.");
   }
   const input = raw as Record<string, unknown>;
   const definition = templateOf(templateType);
@@ -71,30 +75,33 @@ export function normalizeTemplateFieldsInput(
   for (const [key, value] of Object.entries(input)) {
     if (value === undefined || value === null || value === "") continue;
     if (definition.type === "item" && QUEST_ITEM_ALIASES.has(key)) {
-      if (typeof value !== "boolean") throw new McpToolError("„Quest-Gegenstand“ muss true oder false sein.");
+      if (typeof value !== "boolean") throw new McpToolError("Feld „felder.vorlagenfelder.Quest-Gegenstand“ muss true oder false sein.");
       if (value) out.quest = true;
       continue;
     }
     const field = definition.fields.find(
       (candidate) => candidate.key === key || candidate.label.localeCompare(key, "de", { sensitivity: "accent" }) === 0,
     );
-    if (!field) throw new McpToolError(`Unbekanntes Vorlagenfeld „${key}“.`);
+    if (!field) {
+      const valid = [...definition.fields.map((entry) => entry.label), ...(definition.type === "item" ? ["Quest-Gegenstand"] : [])];
+      throw new McpToolError(`Unbekanntes Feld „felder.vorlagenfelder.${key}“. Gültige Vorlagenfelder für diesen Vorlagentyp: ${valid.join(", ") || "keine"}.`);
+    }
+    const path = `felder.vorlagenfelder.${field.label}`;
     if (field.type === "boolean") {
-      if (typeof value !== "boolean") throw new McpToolError(`„${field.label}“ muss true oder false sein.`);
+      if (typeof value !== "boolean") throw new McpToolError(`Feld „${path}“ muss true oder false sein.`);
       if (value) out[field.key] = true;
       continue;
     }
     if (field.type === "text") {
-      if (typeof value !== "string") throw new McpToolError(`„${field.label}“ muss Text sein.`);
+      if (typeof value !== "string") throw new McpToolError(`Feld „${path}“ muss Text sein.`);
       out[field.key] = value;
       continue;
     }
     if (field.type === "select") {
-      if (typeof value !== "string") throw new McpToolError(`„${field.label}“ muss Text sein.`);
-      const option = field.options.find(
+      const option = typeof value === "string" ? field.options.find(
         (entry) => entry.value === value || entry.label.localeCompare(value, "de", { sensitivity: "accent" }) === 0,
-      );
-      if (!option) throw new McpToolError(`„${field.label}“ hat keinen gültigen Wert.`);
+      ) : undefined;
+      if (!option) throw invalidValue(path, value, field.options.map((entry) => entry.label));
       out[field.key] = option.value;
       continue;
     }
@@ -155,14 +162,13 @@ export const SHEET_KEY_MAP: Record<string, keyof NormalizedMonsterSheet | "attri
 
 function mapAttributeKey(raw: string): AttributeKey {
   const key = ATTR_BY_LABEL.get(raw.trim().toLocaleLowerCase("de"));
-  if (!key) throw new McpToolError(`Unbekanntes Attribut „${raw}“.`);
+  if (!key) throw invalidValue("felder.charakterblatt.attribute", raw, ATTRIBUTE_KEYS.map((entry) => ATTRIBUTE_SHORT[entry]));
   return key;
 }
 
 function mapSkillLevel(raw: unknown): SkillLevel {
-  if (typeof raw !== "string") throw new McpToolError("Fertigkeitsstufe muss Text sein.");
-  const level = SKILL_LEVEL_BY_LABEL.get(raw.trim().toLocaleLowerCase("de"));
-  if (!level) throw new McpToolError(`Unbekannte Fertigkeitsstufe „${raw}“.`);
+  const level = typeof raw === "string" ? SKILL_LEVEL_BY_LABEL.get(raw.trim().toLocaleLowerCase("de")) : undefined;
+  if (!level) throw invalidValue("felder.charakterblatt.fertigkeiten.stufe", raw, SKILL_LEVELS.map((entry) => SKILL_LEVEL_LABEL[entry]));
   return level;
 }
 
@@ -170,36 +176,38 @@ function mapSkillLevel(raw: unknown): SkillLevel {
 export function normalizeMonsterSheet(raw: unknown): NormalizedMonsterSheet {
   if (raw === undefined || raw === null) return {};
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new McpToolError("charakterblatt muss ein Objekt sein.");
+    throw new McpToolError("Feld „felder.charakterblatt“ muss ein Objekt sein.");
   }
   const out: NormalizedMonsterSheet = {};
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
     const mapped = SHEET_KEY_MAP[key.toLocaleLowerCase("de")];
-    if (!mapped) throw new McpToolError(`Unbekanntes Charakterblatt-Feld „${key}“.`);
+    if (!mapped) {
+      throw new McpToolError(`Unbekanntes Feld „felder.charakterblatt.${key}“. Gültige Felder: ${MCP_SHEET_FIELDS.map((entry) => entry.key).join(", ")}.`);
+    }
     if (mapped === "class" || mapped === "personality" || mapped === "ideals" || mapped === "bonds" || mapped === "flaws") {
-      if (typeof value !== "string") throw new McpToolError(`„${key}“ muss Text sein.`);
+      if (typeof value !== "string") throw new McpToolError(`Feld „felder.charakterblatt.${key}“ muss Text sein.`);
       out[mapped] = value;
       continue;
     }
     if (mapped === "proficiencyBonus") {
-      if (typeof value !== "number") throw new McpToolError("Übungsbonus muss eine Zahl sein.");
+      if (typeof value !== "number") throw new McpToolError(`Feld „felder.charakterblatt.${key}“ muss eine Zahl sein.`);
       out.proficiencyBonus = value;
       continue;
     }
     if (mapped === "attributes") {
       if (!value || typeof value !== "object" || Array.isArray(value)) {
-        throw new McpToolError("attribute muss ein Objekt sein.");
+        throw new McpToolError(`Feld „felder.charakterblatt.${key}“ muss ein Objekt sein, z. B. { "STR": 12 }.`);
       }
       const attributes: Partial<Record<AttributeKey, number>> = {};
       for (const [attrKey, attrValue] of Object.entries(value as Record<string, unknown>)) {
-        if (typeof attrValue !== "number") throw new McpToolError(`Attribut „${attrKey}“ muss eine Zahl sein.`);
+        if (typeof attrValue !== "number") throw new McpToolError(`Feld „felder.charakterblatt.${key}.${attrKey}“ muss eine Zahl sein.`);
         attributes[mapAttributeKey(attrKey)] = attrValue;
       }
       out.attributes = attributes;
       continue;
     }
     if (mapped === "skills") {
-      if (!Array.isArray(value)) throw new McpToolError("fertigkeiten muss eine Liste sein.");
+      if (!Array.isArray(value)) throw new McpToolError(`Feld „felder.charakterblatt.${key}“ muss eine Liste sein.`);
       out.skills = value.map((entry) => {
         if (!entry || typeof entry !== "object") throw new McpToolError("Fertigkeit muss ein Objekt sein.");
         const row = entry as Record<string, unknown>;
@@ -213,7 +221,7 @@ export function normalizeMonsterSheet(raw: unknown): NormalizedMonsterSheet {
       continue;
     }
     if (mapped === "abilities") {
-      if (!Array.isArray(value)) throw new McpToolError("fähigkeiten muss eine Liste sein.");
+      if (!Array.isArray(value)) throw new McpToolError(`Feld „felder.charakterblatt.${key}“ muss eine Liste sein.`);
       out.abilities = value.map((entry) => {
         if (!entry || typeof entry !== "object") throw new McpToolError("Fähigkeit muss ein Objekt sein.");
         const row = entry as Record<string, unknown>;
@@ -230,22 +238,22 @@ export function normalizeMonsterSheet(raw: unknown): NormalizedMonsterSheet {
 
 export function mapMonsterKind(raw: unknown): MonsterKind | undefined {
   if (raw === undefined || raw === null || raw === "") return undefined;
-  return lookupEnum(KIND_BY_LABEL, raw, "monster_art");
+  return lookupEnum(KIND_BY_LABEL, raw, "monster_art", MONSTER_KIND_LABEL);
 }
 
 export function mapMonsterRarity(raw: unknown): MonsterRarity | undefined {
   if (raw === undefined || raw === null || raw === "") return undefined;
-  return lookupEnum(RARITY_BY_LABEL, raw, "seltenheit");
+  return lookupEnum(RARITY_BY_LABEL, raw, "seltenheit", MONSTER_RARITY_LABEL);
 }
 
 export function mapMonsterDanger(raw: unknown): MonsterDanger | undefined {
   if (raw === undefined || raw === null || raw === "") return undefined;
-  return lookupEnum(DANGER_BY_LABEL, raw, "gefahr");
+  return lookupEnum(DANGER_BY_LABEL, raw, "gefahr", MONSTER_DANGER_LABEL);
 }
 
 export function mapMonsterSize(raw: unknown): MonsterSize | undefined {
   if (raw === undefined || raw === null || raw === "") return undefined;
-  return lookupEnum(SIZE_BY_LABEL, raw, "groesse");
+  return lookupEnum(SIZE_BY_LABEL, raw, "groesse", MONSTER_SIZE_LABEL);
 }
 
 /** Completeness guard for S12 / D14-style enum coverage. */

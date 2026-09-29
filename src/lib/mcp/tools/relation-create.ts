@@ -1,15 +1,14 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { mcpEnum } from "../validation";
 import { createManualRelation } from "@/lib/domain/relations";
 import { resolveMcpWorld } from "../context";
 import { MCP_CONTENT_KIND, MCP_CONTENT_KIND_LABEL } from "../enums";
 import { mcpMembership, throwAuthz } from "../write-rich";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 
-const relationArt = z.enum(["artikel", "quest", "monster", "universum"]);
-
-const endpoint = z.object({
-  art: relationArt,
+const endpoint = (name: "quelle" | "ziel") => z.object({
+  art: mcpEnum(["artikel", "quest", "monster", "universum"], `${name}.art`),
   id: z.string().uuid(),
 }).strict();
 
@@ -23,8 +22,8 @@ export function registerRelationCreateTool(server: McpServer, ctx: ToolContext) 
     ].join(" "),
     inputSchema: z.object({
       welt: worldSchema,
-      quelle: endpoint,
-      ziel: endpoint,
+      quelle: endpoint("quelle"),
+      ziel: endpoint("ziel"),
       bezeichnung: z.string().trim().min(1).max(120),
       gegenbezeichnung: z.string().trim().min(1).max(120).optional(),
     }).strict(),
