@@ -1161,6 +1161,55 @@ describe("MCP write tools", () => {
     }
   });
 
+  it("T-004(5): disabling MCP between preview and confirmation leaves the quest unchanged", async () => {
+    const client = await registerMcpClient(9899, "MCP Confirmation World Disable Test");
+    const master = await authorizeMcpClient("test-master", client, WRITE_SCOPE);
+    const created = firstToolText(await callTool(master.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "quest",
+      felder: { titel: `MCP Freigabeverlust ${Date.now().toString(36)}`, beschreibung: "Ausgangstext." },
+    }));
+    const questId = extractId(created);
+    const read = firstToolText(await callTool(master.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "quest", id: questId,
+    }));
+    const preview = firstToolText(await callTool(master.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "quest",
+      id: questId,
+      stand: extractStand(read),
+      felder: { beschreibung: "Darf nach Abschalten nicht gespeichert werden." },
+    }));
+    const sql = testSql();
+    let mcpEnabled: boolean | undefined;
+    try {
+      const [before] = await sql.unsafe(
+        "SELECT description_plain FROM quests WHERE id = $1",
+        [questId],
+      );
+      const [world] = await sql.unsafe(
+        "SELECT mcp_enabled FROM worlds WHERE id = $1",
+        [data.worldId],
+      );
+      mcpEnabled = world.mcp_enabled as boolean;
+      await sql.unsafe("UPDATE worlds SET mcp_enabled = false WHERE id = $1", [data.worldId]);
+      const rejected = firstToolText(await callTool(master.accessToken, "aenderung_bestaetigen", {
+        token: extractToken(preview),
+      }));
+      expect(rejected).toContain("MCP ist für diese Welt nicht freigegeben");
+      const [after] = await sql.unsafe(
+        "SELECT description_plain FROM quests WHERE id = $1",
+        [questId],
+      );
+      expect(after.description_plain).toBe(before.description_plain);
+    } finally {
+      if (mcpEnabled !== undefined) {
+        await sql.unsafe("UPDATE worlds SET mcp_enabled = $1 WHERE id = $2", [mcpEnabled, data.worldId]);
+      }
+      await sql.end();
+    }
+  });
+
   it("T-006: updates content with confirmation, stubs, modes, stand, and rights", async () => {
     const client = await registerMcpClient(9891, "MCP Write Update Test");
     const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
