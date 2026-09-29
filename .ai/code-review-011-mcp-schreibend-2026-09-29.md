@@ -15,7 +15,7 @@
 | CR-005 | Sicherheit | mittel | behoben | Vorlagenverweise in Objektform `{kind,id}` umgehen die Sichtbarkeitsprüfung, Objektform wird verboten |
 | CR-006 | Aufgaben-Abgleich | mittel | behoben | Der Upload-Endpunkt antwortet für Nicht-Browser standardmäßig mit JSON |
 | CR-007 | Runtime-Risiken | mittel | offen | Kapitel mit Status/Position: veralteter Stand und nicht-atomare Folgeschritte, Status und Position kommen direkt in `createChapter`/`updateChapter` |
-| CR-008 | Fehlerbehandlung | mittel | offen | Im Bestätigungspfad werden Fehler zur generischen Meldung „Die Anfrage konnte nicht verarbeitet werden“ |
+| CR-008 | Fehlerbehandlung | mittel | behoben | Im Bestätigungspfad werden Fehler zur generischen Meldung „Die Anfrage konnte nicht verarbeitet werden“ |
 | CR-009 | Runtime-Risiken | mittel | offen | Der Markdown-Parser verliert harte Umbrüche und macht `_` innerhalb von Wörtern kursiv, der eigene Parser wird repariert |
 | CR-010 | Aufgaben-Abgleich | mittel | offen | Die Änderungsvorschau zeigt englische Schlüssel, rohe IDs und keinen alten Charakterblatt-Wert (S11, Begriff „Änderungsvorschau“) |
 | CR-011 | Duplizierung | mittel | offen | Große Duplikate zwischen `content-create`, `content-update`, `visibility-set` und `image-upload` |
@@ -110,6 +110,7 @@
 - **Abnahmekriterium:** (a) Domänen-Integrationstest (`npm run test:triggers`): `createChapter` mit `status: "active"` und `position: 1` liefert ein Kapitel mit Status aktiv an erster Stelle, und das zurückgegebene `updatedAt` entspricht dem DB-Wert. Mit einer ungültigen Position oder einer unsichtbaren Quest entsteht kein Kapitel. Dasselbe gilt für `updateChapter` mit `position`. (b) MCP-Suite (`npm run test:mcp`): `inhalt_anlegen` mit `art: kapitel, status: aktiv, position: 1`, danach sofort `inhalt_aendern` mit dem gemeldeten Stand liefert eine Vorschau mit Token, keinen Stand-Fehler. (c) `content-create.ts` ruft für Kapitel weder `updateChapter` noch `reorderChapters` auf. (d) Ein Protokollschritt dazu steht im E2E-Abschnitt „Schreiben“ von `.ai/infrastructure/mcp-e2e-test.md`.
 
 ### CR-008 – Generische Fehlermeldungen im Bestätigungspfad
+- **Status:** behoben – Erwähnungsfehler bleiben Werkzeugfehler; die MCP-Suite prüft Mehrdeutigkeit zwischen Vorschau und Bestätigung samt Audit-Ergebnis `tool_error`.
 - **Fundstelle:** `src/lib/domain/mcp-mentions.ts` Z. 9 (`McpMentionError extends Error`); `content-create.ts` `executeCreate` (`rich`, `articleFields.parse`); `content-update.ts` `materializeUpdateDocs.rich`, `executeUpdate` (`*.parse`); `src/lib/editor/mcp-markdown.ts` Z. 84 (`throw new Error`); `src/lib/mcp/tools/shared.ts` `asError`
 - **Kategorie:** Fehlerbehandlung & Validierung
 - **Schweregrad:** mittel

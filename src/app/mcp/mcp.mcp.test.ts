@@ -1105,6 +1105,40 @@ describe("MCP write tools", () => {
     }
   });
 
+  it("CR-008: returns an ambiguous mention error during confirmation and audits a tool error", async () => {
+    const client = await registerMcpClient(9902, "MCP Confirmation Mention Error Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const duplicateTitle = `MCP Mehrdeutig ${Date.now().toString(36)}`;
+    const preview = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP Mehrdeutiger Träger ${Date.now().toString(36)}`, text: `@[${duplicateTitle}]` },
+    }));
+    expect(preview).toContain("Bestätigungs-Token:");
+    const competing = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: duplicateTitle },
+    }));
+    expect(competing).toContain("ID:");
+
+    const rejected = firstToolText(await callTool(gm.accessToken, "aenderung_bestaetigen", {
+      token: extractToken(preview),
+    }));
+    expect(rejected).toMatch(/mehrdeutig|mehrere/i);
+    expect(rejected).toContain(duplicateTitle);
+    const sql = testSql();
+    try {
+      const [audit] = await sql.unsafe(
+        "SELECT result FROM mcp_audit_logs WHERE client_id = $1 AND tool_name = 'aenderung_bestaetigen' ORDER BY created_at DESC LIMIT 1",
+        [client.clientId],
+      );
+      expect(audit?.result).toBe("tool_error");
+    } finally {
+      await sql.end();
+    }
+  });
+
   it("T-004(5): role loss between preview and confirmation leaves the quest unchanged", async () => {
     const client = await registerMcpClient(9898, "MCP Confirmation Role Loss Test");
     const master = await authorizeMcpClient("test-master", client, WRITE_SCOPE);
