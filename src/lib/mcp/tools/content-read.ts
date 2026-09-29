@@ -9,15 +9,10 @@ import { getQuest } from "@/lib/domain/quests";
 import { getQuestNote } from "@/lib/domain/quest-notes";
 import { getUniverse } from "@/lib/domain/universes";
 import { tiptapJsonToMcpMarkdown } from "@/lib/editor/tiptap-mcp-markdown";
-import {
-  MONSTER_DANGER_LABEL,
-  MONSTER_KIND_LABEL,
-  MONSTER_RARITY_LABEL,
-  MONSTER_SIZE_LABEL,
-} from "@/lib/monsters/labels";
 import { pinTypeMeta } from "@/lib/map/pin-types";
 import { MCP_QUEST_STATUS_LABEL } from "../enums";
 import { McpToolError, resolveMcpWorld } from "../context";
+import { fieldFor, labelFor } from "../field-catalog";
 import { renderSheet, renderTemplateFields } from "./renderers";
 import { contentKind, type ToolContext, withAudit, worldSchema } from "./shared";
 
@@ -104,11 +99,11 @@ async function readMonster(world: ReadWorld, viewerId: string, id: string) {
     `# ${row.name}`,
     `Sichtbarkeit: ${CONTENT_VISIBILITY_LABEL[row.visibility]}`,
     `Stand: ${row.updatedAt.toISOString()}`,
-    `Art: ${MONSTER_KIND_LABEL[row.kind]}`,
-    `Seltenheit: ${MONSTER_RARITY_LABEL[row.rarity]}`,
+    `${fieldFor("monster", "monster_art")?.label}: ${labelFor(fieldFor("monster", "monster_art")!, row.kind)}`,
+    `${fieldFor("monster", "seltenheit")?.label}: ${labelFor(fieldFor("monster", "seltenheit")!, row.rarity)}`,
     `Boss: ${row.isBoss ? "Ja" : "Nein"}`,
-    `Gefahrenstufe: ${MONSTER_DANGER_LABEL[row.danger]}`,
-    `Größe: ${MONSTER_SIZE_LABEL[row.size]}`,
+    `${fieldFor("monster", "gefahr")?.label}: ${labelFor(fieldFor("monster", "gefahr")!, row.danger)}`,
+    `${fieldFor("monster", "groesse")?.label}: ${labelFor(fieldFor("monster", "groesse")!, row.size)}`,
     habitat ? `Lebensraum: ${habitat.title} (${habitat.id})` : "",
     row.portraitId ? "Bilder: 1 (über bild_lesen)" : "Bilder: keine",
     renderSheet(row),

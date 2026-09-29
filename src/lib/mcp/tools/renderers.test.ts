@@ -5,10 +5,10 @@ const getArticle = vi.fn();
 vi.mock("@/lib/domain/articles", () => ({ getArticle }));
 vi.mock("@/lib/domain/characters", () => ({ getWorldCharacter: vi.fn() }));
 vi.mock("@/lib/editor/tiptap-mcp-markdown", () => ({ tiptapJsonToMcpMarkdown: vi.fn() }));
-vi.mock("@/lib/characters/sheet", () => ({
+vi.mock("@/lib/characters/sheet", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/characters/sheet")>(),
   attributeModifier: vi.fn(),
   skillBonus: vi.fn(),
-  SKILL_LEVEL_LABEL: {},
 }));
 
 const { renderTemplateFields } = await import("./renderers");

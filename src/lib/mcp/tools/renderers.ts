@@ -4,6 +4,7 @@ import { tiptapJsonToMcpMarkdown } from "@/lib/editor/tiptap-mcp-markdown";
 import { attributeModifier, skillBonus, SKILL_LEVEL_LABEL } from "@/lib/characters/sheet";
 import { templateOf } from "@/lib/templates/registry";
 import { isPendingStubRef } from "../pending-stub-ref";
+import { labelFor, templateFieldsFor } from "../field-catalog";
 
 type VisibleWorld = {
   id: string;
@@ -43,6 +44,7 @@ export async function renderTemplateFields(
 ) {
   const definition = templateOf(templateType);
   const lines = [`Vorlagentyp: ${definition.label}`];
+  const catalog = templateFieldsFor(definition.type);
 
   for (const field of definition.fields) {
     const raw = fields[field.key];
@@ -53,7 +55,10 @@ export async function renderTemplateFields(
       continue;
     }
     if (field.type === "select") {
-      const label = field.options.find((option) => option.value === raw)?.label ?? String(raw);
+      const label = labelFor(
+        catalog.find((entry) => entry.label === field.label) ?? { allowedValues: field.options },
+        raw,
+      );
       lines.push(`${field.label}: ${label}`);
       continue;
     }

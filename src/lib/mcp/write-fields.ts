@@ -116,7 +116,19 @@ export type NormalizedMonsterSheet = {
   flaws?: string;
 };
 
-const SHEET_KEY_MAP: Record<string, keyof NormalizedMonsterSheet | "attributes" | "skills" | "abilities"> = {
+export const MCP_SHEET_FIELDS = [
+  { key: "klasse", label: "Klasse" },
+  { key: "attribute", label: "Attribute" },
+  { key: "uebungsbonus", label: "Übungsbonus" },
+  { key: "fertigkeiten", label: "Fertigkeiten" },
+  { key: "faehigkeiten", label: "Fähigkeiten" },
+  { key: "persoenlichkeit", label: "Persönlichkeitsmerkmale" },
+  { key: "ideale", label: "Ideale" },
+  { key: "bindungen", label: "Bindungen" },
+  { key: "schwaechen", label: "Makel" },
+] as const;
+
+export const SHEET_KEY_MAP: Record<string, keyof NormalizedMonsterSheet | "attributes" | "skills" | "abilities"> = {
   klasse: "class",
   class: "class",
   attribute: "attributes",
