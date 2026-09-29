@@ -7,7 +7,9 @@ function nodes(value: unknown): Node[] {
 
 function textWithMarks(text: string, marks: Mark[]): string {
   let value = text.replace(/([\\`*_{}\[\]()#+.!|-])/g, "\\$1");
-  for (const mark of marks) {
+  // Marks are ordered from outermost to innermost in a TipTap node. Wrap the
+  // innermost mark first so parsing restores that order on the round trip.
+  for (const mark of [...marks].reverse()) {
     if (mark.type === "bold") value = `**${value}**`;
     else if (mark.type === "italic") value = `*${value}*`;
     else if (mark.type === "underline") value = `<u>${value}</u>`;
@@ -53,7 +55,7 @@ function block(node: Node, depth = 0): string {
       return `${"#".repeat(level)} ${inline(content)}`;
     }
     case "blockquote":
-      return content.map((child) => `> ${block(child, depth)}`).join("\n");
+      return content.map((child) => block(child, depth).replace(/^/gm, "> ")).join("\n");
     case "bulletList":
       return content.map((child) => block(child, depth)).join("\n");
     case "orderedList":

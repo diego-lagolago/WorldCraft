@@ -30,7 +30,7 @@ export function mcpMarkdownToTiptap(markdown: string, options: { mentions: boole
   let inCodeFence = false;
   let paragraph: { text: string; hardBreak: boolean }[] = [];
   let list: { ordered: boolean; items: RichNode[] } | null = null;
-  let quoteLines: string[] = [];
+  let quoteLines: { text: string; hardBreak: boolean }[] = [];
 
   const flushParagraph = () => {
     if (!paragraph.length) return;
@@ -45,7 +45,10 @@ export function mcpMarkdownToTiptap(markdown: string, options: { mentions: boole
   };
   const flushQuote = () => {
     if (!quoteLines.length) return;
-    blocks.push({ type: "blockquote", content: [{ type: "paragraph", content: inline(quoteLines.join(" "), mentions, options.mentions) }] });
+    const text = quoteLines.map((line, index) => (
+      `${line.text}${index === quoteLines.length - 1 ? "" : line.hardBreak ? "  \n" : " "}`
+    )).join("");
+    blocks.push({ type: "blockquote", content: [{ type: "paragraph", content: inline(text, mentions, options.mentions) }] });
     quoteLines = [];
   };
 
@@ -58,7 +61,7 @@ export function mcpMarkdownToTiptap(markdown: string, options: { mentions: boole
     const quote = /^>\s?(.*)$/.exec(line);
     const bullet = /^\s*[-*+]\s+(.+)$/.exec(line);
     const ordered = /^\s*\d+[.)]\s+(.+)$/.exec(line);
-    if (quote) { flushParagraph(); flushList(); quoteLines.push(quote[1]); continue; }
+    if (quote) { flushParagraph(); flushList(); quoteLines.push({ text: quote[1], hardBreak }); continue; }
     flushQuote();
     if (!line.trim()) { flushParagraph(); flushList(); continue; }
     if (/^\s*(---|\*\*\*|___)\s*$/.test(line)) { flushParagraph(); flushList(); blocks.push({ type: "horizontalRule" }); continue; }
@@ -154,7 +157,10 @@ function nextMark(value: string, start: number): { index: number; end: number; c
       const before = match.index > 0 ? value[match.index - 1] : "";
       const after = value[match.index + match[0].length] ?? "";
       if ((token.includes("_") || token === "*") && /[\p{L}\p{N}]/u.test(before + after)) return null;
-      if (token === "***" || token === "___") return { content: match[2], mark: { type: "bold" } };
+      if (token === "***" || token === "___") {
+        const delimiter = token === "***" ? "*" : "_";
+        return { content: `${delimiter}${match[2]}${delimiter}`, mark: { type: "bold" } };
+      }
       return { content: match[2], mark: token === "**" || token === "__" ? { type: "bold" } : token === "~~" ? { type: "strike" } : { type: "italic" } };
     }],
   ] as const) {

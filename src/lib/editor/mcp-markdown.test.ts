@@ -50,6 +50,32 @@ describe("mcpMarkdownToTiptap", () => {
     expect(actual).toEqual(sanitizeRichDoc(original, { mentions: true }).value.doc);
   });
 
+  it("round-trips hard breaks, nested marks and a multi-line quote", () => {
+    const original = { type: "doc", content: [
+      { type: "paragraph", content: [
+        { type: "text", text: "erste Zeile" },
+        { type: "hardBreak" },
+        { type: "text", text: "zweite Zeile" },
+      ] },
+      { type: "paragraph", content: [
+        { type: "text", text: "fett kursiv", marks: [{ type: "bold" }, { type: "italic" }] },
+        { type: "text", text: " und " },
+        { type: "text", text: "Link", marks: [{ type: "link", attrs: { href: "https://example.com" } }, { type: "bold" }] },
+        { type: "text", text: " und " },
+        { type: "text", text: "unter kursiv", marks: [{ type: "italic" }, { type: "underline" }] },
+      ] },
+      { type: "blockquote", content: [{ type: "paragraph", content: [
+        { type: "text", text: "Zitat eins" },
+        { type: "hardBreak" },
+        { type: "text", text: "Zitat zwei" },
+      ] }] },
+    ] };
+    const parsed = mcpMarkdownToTiptap(tiptapJsonToMcpMarkdown(original), { mentions: true });
+    const actual = resolveMcpMarkdown(parsed, [], { mentions: true });
+    expect(actual).toEqual(sanitizeRichDoc(original, { mentions: true }).value.doc);
+    expect(JSON.stringify(actual)).not.toContain("\\n");
+  });
+
   it("preserves hard breaks and nested marks without interpreting punctuation inside words", () => {
     const parsed = mcpMarkdownToTiptap("# Titel\n\n**[Link](https://example.com)** und <u>*unter*</u>  \nzweite Zeile\n\nsnake_case_name und 2*3*4\n\n#### Klein", { mentions: true });
     const json = JSON.stringify(parsed.doc);
