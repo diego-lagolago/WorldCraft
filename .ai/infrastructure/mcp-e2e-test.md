@@ -38,18 +38,19 @@ Die Verbindung funktioniert in beiden Clients. Die Gesamtbewertung lautet: **bes
 
 ## Schreiben
 
-**Status: ausstehend / noch nicht auf Produktion geprüft** (Plan `011` T-011).  
+**Status: E2E-Lauf 1 in claude.ai am 2026-09-29 durchgeführt; Claude Code ausstehend** (Plan `011` T-011, Nacharbeit in Plan `012`).
 Protokollvorlage für beide Clients; Ergebnisse und Notizen nach dem Prod-Lauf eintragen.
 
 ### claude.ai
 
 | # | Frage / Prüffall | Aufgerufene Werkzeuge | Ergebnis | Notiz |
 |---|---|---|---|---|
-| 1 | „Leg einen Artikel über Gräfin Mirelda an, sie ist mit der Gilde der Raben verfeindet.“ → Claude prüft Namen per `suchen`; für neue Namen zeigt es geplante Stubs und legt Artikel und Stubs erst nach Bestätigung an; Ergebnis `nur ich` mit Erwähnungen in der App sichtbar. | _ausstehend_ | **ausstehend / noch nicht auf Produktion geprüft** | |
-| 2 | „Ergänze im Notizblock der Quest …“ → Claude zeigt die Vorschau und führt erst nach Bestätigung aus. | _ausstehend_ | **ausstehend / noch nicht auf Produktion geprüft** | |
-| 3 | „Veröffentliche den Artikel.“ → nur nach Bestätigung. | _ausstehend_ | **ausstehend / noch nicht auf Produktion geprüft** | |
-| 4 | „Lösche den Artikel.“ → Claude erklärt, dass es nicht löschen kann. | _ausstehend_ | **ausstehend / noch nicht auf Produktion geprüft** | |
-| 5 | „Lade `rabenstein.png` als Titelbild hoch.“ → Link; Upload im Browser. | _ausstehend_ | **ausstehend / noch nicht auf Produktion geprüft** | |
+| 1 | „Leg einen Artikel über Gräfin Mirelda an, sie ist mit der Gilde der Raben verfeindet.“ → Claude prüft Namen per `suchen`; für neue Namen zeigt es geplante Stubs und legt Artikel und Stubs erst nach Bestätigung an; Ergebnis `nur ich` mit Erwähnungen in der App sichtbar. | `welten_auflisten` → `suchen` → Rückfrage zur Welt und zum Anlageort der Gilde → `inhalt_lesen` → `inhalt_anlegen` → `relation_anlegen` → `sichtbarkeit_setzen` | **bestanden** | Artikel und Gilde angelegt, Relation erstellt und Sichtbarkeit auf `nur ich` gesetzt. |
+| 2 | „Ergänze im Notizblock der Quest …“ → Claude zeigt die Vorschau und führt erst nach Bestätigung aus. | `inhalt_aendern` (zuerst mit `felder.inhalt`, dann mit `felder.text`) → `aenderung_bestaetigen` | **teilweise bestanden** | (A) Der erste Versuch mit `felder.inhalt` scheiterte; `felder.text` funktionierte. (B) Die Bestätigung wurde mit Token angefragt, ohne dass der Chat zeigte, was sich ändert und was vorher stand. Nacharbeit: Plan `012` T-004, T-005 und T-007. |
+| 3 | „Veröffentliche den Artikel.“ → nur nach Bestätigung. | `sichtbarkeit_setzen` → `aenderung_bestaetigen` → `inhalt_lesen` | **bestanden** | Sichtbarkeit erfolgreich gesetzt und anschließend gelesen. |
+| 4 | „Lösche den Artikel.“ → Claude erklärt, dass es nicht löschen kann. | kein Schreibwerkzeug aufgerufen | **bestanden** | Claude hat das Löschen abgelehnt. |
+| 5 | „Lade `rabenstein.png` als Titelbild hoch.“ → Link; Upload im Browser. | `bild_hochladen` | **bestanden** | Upload-Link im Browser geöffnet; für den aktuellen Umfang ausreichend. Verbesserungen folgen als Roadmap-Eintrag. |
+| F-Seltenheit | Seltenheit eines Gegenstand-Artikels setzen. | `inhalt_aendern` mit `seltenheit` bzw. `vorlagendaten.seltenheit` | **fehlgeschlagen** | Die Werte wurden still nicht gespeichert bzw. die Anfrage schlug allgemein fehl. Korrekt wäre `felder: { vorlagenfelder: { "Seltenheit": "Gewöhnlich" } }`; dieser Schlüssel war für Claude nicht erkennbar. Nacharbeit: Plan `012`. |
 | 6 | „Lege ein Kapitel mit Status aktiv an Position 1 an und ändere es direkt danach mit dem gemeldeten Stand.“ → Die Änderungsvorschau erscheint ohne Stand-Fehler. | _ausstehend_ | **ausstehend / noch nicht auf Produktion geprüft** | |
 
 ### Claude Code
@@ -65,4 +66,4 @@ Protokollvorlage für beide Clients; Ergebnisse und Notizen nach dem Prod-Lauf e
 
 ### Gesamtbewertung (Schreiben)
 
-**ausstehend / noch nicht auf Produktion geprüft.**
+**Lauf 1 (claude.ai, 2026-09-29): 4 bestanden, 1 teilweise; Nacharbeit in Plan `012`.** Claude Code ist weiterhin ausstehend.

@@ -16,7 +16,8 @@ Reihenfolge der Pläne für WorldCraft. Jeder Plan liegt unter `.ai/feature-task
 | 8 | [`009` Neue Vorlagenfelder und Vorlage „Rasse“](feature-tasks/009-vorlagenfelder-und-rasse.md) | Neue Auswahlwerte/-felder für Person, Ort, Organisation, Gegenstand (u. a. Gefahrenstufe, Ruf, Größe, Seltenheit als Pill); Vorlage „Rasse“ mit Verweis Person → Rasse | ✅ abgeschlossen (2026-09-24) |
 | 9 | [`010` Status für Quest-Kapitel](feature-tasks/010-kapitel-status.md) | Kapitel bekommen den Quest-Status (offen/aktiv/abgeschlossen/gescheitert); Inline-Feld der Kapitelzeile wird Status, Sichtbarkeit nur noch im Bearbeitendialog | ✅ abgeschlossen (2026-09-24) |
 | 10 | [`002` MCP-Server für Claude](feature-tasks/002-mcp-server.md) | Nur lesender Remote-MCP-Server mit OAuth, nutzt die Daten- und Rechteschicht aus `003`/`004` | ✅ abgeschlossen (2026-09-28); Lesen auf Produktion |
-| 11 | [`011` MCP: Schreibend](feature-tasks/011-mcp-schreibend.md) | Schreibende MCP-Werkzeuge mit eigenem Scope `worlds:write`, Bestätigungspflicht für Änderungen, `nur ich` für Neues, kein Löschen, Bild-Upload per einmaligem Link | ⏳ T-005–T-010 lokal umgesetzt; T-011 E2E auf Produktion ausstehend; Normen T-012 nachgezogen |
+| 11 | [`011` MCP: Schreibend](feature-tasks/011-mcp-schreibend.md) | Schreibende MCP-Werkzeuge mit eigenem Scope `worlds:write`, Bestätigungspflicht für Änderungen, `nur ich` für Neues, kein Löschen, Bild-Upload per einmaligem Link | ⏳ E2E-Lauf 1 durchgeführt; Nacharbeit in `012` |
+| 12 | [`012` Release v1.0](feature-tasks/012-v1-release.md) | Feldkatalog, strikte MCP-Eingaben, verständliche Fehler sowie Delta-Vorschau und Quittung für Schreibvorgänge | ⏳ in Umsetzung |
 
 Die Nummern der Pläne geben die Reihenfolge ihrer Entstehung an, nicht die Reihenfolge der Umsetzung: `004` vor `002` (R4); `005` vor `006` (006 setzt Monster voraus); `002` nach `006`, damit der MCP-Server Monster und Monster-Marker mit abdeckt (Abgleiche in `004` T-012, `005` T-011 und nach `006`); `009` und `010` vor `002` (Entscheidung Projektinhaber 2026-09-24), damit der MCP-Server die neuen Vorlagenfelder, die Vorlage „Rasse“ und den Kapitel-Status gleich mit abdeckt (Abgleiche in `009` T-005 und `010` T-004).
 
@@ -47,7 +48,7 @@ Plan `002` ist abgeschlossen, Plan `011` ist mit Version `0.1.11` auf Produktion
 | 17 | ✅ erledigt (2026-09-29): Plan 011 umsetzen (T-001–T-010, T-012, T-013; ausgeliefert mit `0.1.10`/`0.1.11`) | 011 | `/plan-run 011` | 16 | Claude |
 | 18 | 🚧 in Arbeit: Code-Review 011, Findings umsetzen, Review-Check — läuft nach den Fixes aus Plan `012` als dessen T-011 (Plan-Review 012, F3) | 011 | `/code-review 011`, `/review-check 011` | 17, 20 | Claude + Projektinhaber |
 | 19 | 🚧 in Arbeit: Push-Freigabe und Ende-zu-Ende-Test Schreiben auf Prod (Plan 011 T-011) — Push erfolgt, E2E-Lauf 1 in claude.ai am 2026-09-29 (4 bestanden, 1 teilweise); E2E-Lauf 2 folgt als Plan `012` T-013 | 011 | Push nach Freigabe | 18 | Projektinhaber |
-| 20 | Plan 012 (Release v1.0) umsetzen: E2E-Findings (Feldnamen, still ignorierte Felder, Delta im Chat), Feldkatalog, strikte Schemas, Vorschau und Quittung; T-001–T-010 | 012 | `/plan-run 012` | 19 (E2E-Lauf 1) | Claude |
+| 20 | 🚧 Plan 012 (Release v1.0) umsetzen: E2E-Findings (Feldnamen, still ignorierte Felder, Delta im Chat), Feldkatalog, strikte Schemas, Vorschau und Quittung; T-001–T-010 | 012 | `/plan-run 012` | 19 (E2E-Lauf 1) | Claude |
 | 21 | Code-Reviews 011 und 012 (Plan 012 T-011), jeweils `/plan-review` und `/plan-run` der Findings, `/review-check`; danach Version `1.0.0`, Push nach Freigabe und E2E-Lauf 2 (T-012, T-013) | 011, 012 | `/code-review`, `/plan-review`, `/plan-run`, `/review-check` | 20 | Claude + Projektinhaber |
 | 22 | Backlog-Einträge vom 2026-09-24 sichten (Monster-Marker-Sheet vertiefen, versteckte Verweise kryptisch darstellen, Fähigkeiten mit Angriffs-/Wirkungsart taggen, Kategorien in Tagebüchern, Threads archivieren) und entscheiden, ob daraus ein Plan `013` wird | – | `/plan-create` | 21 | Projektinhaber |
 
@@ -68,6 +69,9 @@ Die Schritte 5 und 8 (Plan-Reviews) können parallel laufen. Schritt 22 folgt na
 - **`010`:** ✅ abgeschlossen (2026-09-24). Kapitel-Status wie bei Quests, Inline-Feld der Kapitelzeile ist Status, Sichtbarkeit nur noch im Bearbeitendialog. Migration `0023` lokal angewendet; MCP-Abgleich in `architecture.md` und Smoketest S10.1–S10.5 bestanden. Code-Review `code-review-010-kapitel-status-2026-09-24.md`: 4 Findings behoben, 1 verworfen.
 - **`002`:** ✅ abgeschlossen (2026-09-28). Remote-MCP-Server nur lesend auf Produktion; OAuth, acht Lesewerkzeuge, Demowelt, E2E mit akzeptierten Abweichungen. Historie der Abgleiche steht in `architecture.md` unter *Abgleich Plan 002*.
 - **`011`:** ⏳ in Umsetzung. T-001–T-010 und T-013 lokal erledigt (Schreibwerkzeuge, Bestätigung, Upload-Link, Audit, Testwelt-Suite); T-011: Hilfeseite und E2E-Protokollvorlage fertig, E2E-Lauf auf Produktion ausstehend; T-012 Normen/Katalog nachgezogen.
+- **`012`:** ⏳ in Umsetzung. E2E-Findings aus Lauf 1 (claude.ai, 2026-09-29) werden vor Release `1.0.0` abgearbeitet.
+
+Bild-Upload verbessern: Drag & Drop, Drop-Zone und überarbeitete Upload-Oberfläche für die Upload-Seite des MCP-Upload-Links (`011` S9) — eigener Plan, noch nicht angelegt.
 
 ## Arbeitsweise
 
