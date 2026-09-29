@@ -21,6 +21,11 @@ export type ToolResponse = {
   value: string;
   worldId?: string | null;
   image?: ToolImage;
+  audit?: {
+    targetKind?: string | null;
+    targetId?: string | null;
+    confirmed?: boolean | null;
+  };
 };
 
 export const worldSchema = z.string().trim().min(1).max(120)
@@ -63,10 +68,12 @@ export async function withAudit(
 ) {
   const start = performance.now();
   let worldId: string | null = null;
+  let audit: ToolResponse["audit"];
   let result = "ok";
   try {
     const response = await action();
     worldId = response.worldId ?? null;
+    audit = response.audit;
     return response.image
       ? {
           content: [
@@ -91,6 +98,10 @@ export async function withAudit(
       clientId: ctx.clientId,
       toolName,
       worldId,
+      targetKind: audit?.targetKind,
+      targetId: audit?.targetId,
+      confirmed: audit?.confirmed,
+      origin: "mcp",
       durationMs: performance.now() - start,
       result,
     }).catch((auditError: unknown) => console.error(JSON.stringify({

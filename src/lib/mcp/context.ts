@@ -2,6 +2,9 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { memberships, worlds } from "@/db/schema";
 import type { MembershipRole } from "@/lib/authz";
+import { McpToolError } from "./errors";
+
+export { McpToolError } from "./errors";
 
 export type McpWorldContext = {
   id: string;
@@ -11,9 +14,6 @@ export type McpWorldContext = {
 };
 
 export type McpWorldSummary = McpWorldContext & { mcpEnabled: boolean; updatedAt: Date };
-
-export class McpToolError extends Error {}
-
 async function enabledWorlds(userId: string) {
   return db
     .select({ id: worlds.id, name: worlds.name, role: memberships.role })

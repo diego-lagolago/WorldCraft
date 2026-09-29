@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "worldcraft",
-  "version": "0.1.0",
-  "description": "Connect ChatGPT to a WorldCraft campaign and read the worlds, quests, characters, lore, maps, and monsters you are allowed to access.",
+  "version": "0.2.0",
+  "description": "Connect ChatGPT to a WorldCraft campaign to read and write the worlds, quests, lore, maps, and monsters you are allowed to access.",
   "author": {
     "name": "WorldCraft"
   },
@@ -19,7 +19,7 @@
       "interface": {
         "displayName": "WorldCraft",
         "shortDescription": "Deine D&D-Welt direkt in ChatGPT",
-        "longDescription": "Verbinde dein WorldCraft-Konto, damit ChatGPT die Welten, Quests, Charaktere, Artikel, Monster und Karten lesen kann, für die du in WorldCraft berechtigt bist. Der Zugriff ist schreibgeschützt und wird per WorldCraft-Anmeldung freigegeben.",
+        "longDescription": "Verbinde dein WorldCraft-Konto, damit ChatGPT die Welten, Quests, Charaktere, Artikel, Monster und Karten lesen und – mit deiner Zustimmung – anlegen und ändern kann, für die du in WorldCraft berechtigt bist. Gelöscht wird nie. Der Zugriff wird per WorldCraft-Anmeldung freigegeben.",
         "developerName": "WorldCraft",
         "category": "Productivity",
         "capabilities": [

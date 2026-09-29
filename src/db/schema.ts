@@ -1065,7 +1065,7 @@ export const chatMessages = pgTable(
   ],
 );
 
-/** Metadata-only audit trail for MCP tool calls (Plan 002 T-009). */
+/** Metadata-only audit trail for MCP tool calls (Plan 002 T-009; Plan 011 T-009). */
 export const mcpAuditLogs = pgTable(
   "mcp_audit_logs",
   {
@@ -1076,6 +1076,10 @@ export const mcpAuditLogs = pgTable(
     clientId: text("client_id").notNull(),
     toolName: text("tool_name").notNull(),
     worldId: uuid("world_id").references(() => worlds.id, { onDelete: "set null" }),
+    targetKind: text("target_kind"),
+    targetId: text("target_id"),
+    confirmed: boolean("confirmed"),
+    origin: text("origin").notNull().default("mcp"),
     durationMs: integer("duration_ms").notNull(),
     result: text("result").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -1102,6 +1106,25 @@ export const mcpChangeConfirmations = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [index("mcp_change_confirmations_expires_at").on(t.expiresAt)],
+);
+
+/** One-time upload links for MCP image writes (Plan 011 T-008 / ADR-005). */
+export const mcpUploadTickets = pgTable(
+  "mcp_upload_tickets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tokenHash: text("token_hash").notNull().unique(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" }),
+    targetKind: text("target_kind").notNull(),
+    targetId: text("target_id").notNull(),
+    imageKind: text("image_kind").notNull(),
+    expectedStand: text("expected_stand").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("mcp_upload_tickets_expires_at").on(t.expiresAt)],
 );
 
 /**

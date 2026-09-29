@@ -570,6 +570,71 @@ Threads werden im MVP nicht einzeln archiviert oder gelöscht. Umbenennen: Erste
 
 Kein vollständiges `updated_*`-Paar — bei Bearbeitung nur `edited_at` (`APP-CHAT-EDIT`). `UQ-MSG-OPENS-THREAD`: `opens_thread_id` eindeutig, wo gesetzt (mehrere `NULL` bleiben erlaubt). `CHK-OPENER-BODY`: `body IS NULL` genau dann, wenn `opens_thread_id IS NOT NULL`. Würfelwurf = `dice_expression`, `dice_terms` und `dice_sum` gemeinsam gesetzt. `CHK-DICE-SHAPE`: alle drei Dice-Spalten gesetzt oder alle drei leer. Bearbeiten: nur Autor, nur Textnachrichten ohne Würfelwurf und ohne `opens_thread_id`, Text 1–2000 Zeichen, kein Würfelbefehl (`APP-CHAT-EDIT`). Löschen: physisches DELETE; Würfelwürfe nur durch Spielleitung (`APP-CHAT-DELETE`). Eine Nachricht, die einen Thread eröffnet (`opens_thread_id` gesetzt), ist weder bearbeitbar noch löschbar.
 
+### 3.18 MCP (Audit, Bestätigungen, Upload-Tickets)
+
+Infrastruktur für den Remote-MCP-Server (Pläne `002` und `011`). Keine Fachinhalte; Tokens nur als Hash. Ablauf und Checkliste: `.ai/architecture/mcp.md`.
+
+#### `mcp_audit_logs` (MCP-Audit)
+
+| Spalte | Typ | Pflicht | Regel |
+|---|---|:-:|---|
+| `id` | uuid PK | ✅ | |
+| `user_id` | text FK `users` ON DELETE CASCADE | ✅ | Aufrufer |
+| `client_id` | text | ✅ | OAuth-Client |
+| `tool_name` | text | ✅ | Werkzeugname |
+| `world_id` | uuid FK `worlds` ON DELETE SET NULL | – | aufgelöste Welt, falls bekannt |
+| `target_kind` | text | – | Ziel-Art bei Schreiben (Plan `011`) |
+| `target_id` | text | – | Ziel-ID bei Schreiben |
+| `confirmed` | boolean | – | Bestätigung ja/nein bei Schreiben |
+| `origin` | text | ✅ | Herkunft; Standard `mcp` |
+| `duration_ms` | integer | ✅ | |
+| `result` | text | ✅ | Erfolg/Fehler ohne Inhalte |
+| `created_at` | timestamptz | ✅ | |
+
+Keine Titel, Texte, Suchbegriffe, Bilddaten oder Klartext-Tokens. Indexe auf `created_at` und `(user_id, created_at)`. Einträge werden nach 30 Tagen täglich bereinigt.
+
+#### `mcp_change_confirmations` (MCP-Bestätigungen)
+
+Einmalige Vorschau-Tokens für bestätigungspflichtige Schreibänderungen (Plan `011` T-004).
+
+| Spalte | Typ | Pflicht | Regel |
+|---|---|:-:|---|
+| `id` | uuid PK | ✅ | |
+| `token_hash` | text | ✅ | Unique; Klartext-Token nur an den Client |
+| `user_id` | text FK `users` ON DELETE CASCADE | ✅ | |
+| `client_id` | text | ✅ | |
+| `world_id` | uuid FK `worlds` ON DELETE CASCADE | ✅ | |
+| `target_kind` | text | ✅ | Ziel-Art |
+| `target_id` | text | ✅ | Ziel-ID |
+| `expected_stand` | text | ✅ | Stand bei Vorschau |
+| `change_hash` | text | ✅ | Hash der vorgemerkten Änderung |
+| `payload` | jsonb | ✅ | auszuführende Änderung (ohne Klartext-Token) |
+| `expires_at` | timestamptz | ✅ | 10 Minuten gültig |
+| `consumed_at` | timestamptz | – | gesetzt = einmal eingelöst |
+| `created_at` | timestamptz | ✅ | |
+
+Index auf `expires_at`. Abgelaufene Einträge werden täglich entfernt.
+
+#### `mcp_upload_tickets` (MCP-Upload-Tickets)
+
+Einmalige Upload-Links für Bild-Schreiben (Plan `011` T-008).
+
+| Spalte | Typ | Pflicht | Regel |
+|---|---|:-:|---|
+| `id` | uuid PK | ✅ | |
+| `token_hash` | text | ✅ | Unique; Ticket nur im Pfad `/upload/<ticket>` |
+| `user_id` | text FK `users` ON DELETE CASCADE | ✅ | Ticket-Besitzer |
+| `world_id` | uuid FK `worlds` ON DELETE CASCADE | ✅ | |
+| `target_kind` | text | ✅ | welt / artikel / monster |
+| `target_id` | text | ✅ | |
+| `image_kind` | text | ✅ | Bildart am Ziel |
+| `expected_stand` | text | ✅ | Stand des Ziels |
+| `expires_at` | timestamptz | ✅ | 15 Minuten gültig |
+| `consumed_at` | timestamptz | – | gesetzt = einmal eingelöst |
+| `created_at` | timestamptz | ✅ | |
+
+Index auf `expires_at`. Abgelaufene Einträge werden täglich entfernt.
+
 ---
 
 ## 4. Zuordnung fachlich → Schema

@@ -129,8 +129,15 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 
 | Feature | Was es tut | Status |
 |---|---|---|
-| Rechteschicht | Eine TypeScript-Schicht für HTTP, Loader (später MCP); keine Rechte nur in der UI | MVP / shipped |
-| MCP-Weltfreigabe | Game Master kann den lesenden KI-Zugriff je Welt ein- oder ausschalten; Standard ist aus. „Verbundene Anwendungen“ liegt im Weltmenü jeder Welt und zeigt weltunabhängige Zustimmungen des Benutzers. | in Umsetzung (Plan 002) |
+| Rechteschicht | Eine TypeScript-Schicht für HTTP, Loader und MCP; keine Rechte nur in der UI | MVP / shipped |
+| MCP-Weltfreigabe | Game Master kann den KI-Zugriff (Lesen und Schreiben) je Welt ein- oder ausschalten; Standard ist aus. „Verbundene Anwendungen“ liegt im Weltmenü jeder Welt und zeigt weltunabhängige Zustimmungen des Benutzers. | Plan 002 / shipped |
+| MCP Lesen | Acht Lesewerkzeuge über `/mcp` (OAuth, Scopes `worlds:read` / `worlds:write`); siehe Plan `002` | Plan 002 / shipped |
+| MCP `inhalt_anlegen` | Artikel, Quest, Kapitel, Monster, Universum anlegen; Start `nur ich` (Universum: `nur Spielleitung`); Stubs nur nach Bestätigung | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
+| MCP `inhalt_aendern` | Bestehende Inhalte ändern (inkl. Notizblock, Welt); Stand-Prüfung; Bestätigung außer bei leerem Artikel | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
+| MCP `relation_anlegen` | Manuelle Relationen anlegen (nur Spielleitung; kein Pin/Charakter) | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
+| MCP `sichtbarkeit_setzen` | Sichtbarkeit setzen nur auf ausdrücklichen Wunsch und nach Bestätigung | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
+| MCP `aenderung_bestaetigen` | Bestätigungs-Token einlösen und vorgemerkte Änderung ausführen | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
+| MCP `bild_hochladen` | Einmaliger Upload-Link für Welt-/Artikel-/Monster-Bild; Ersetzen nur nach Bestätigung | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
 | Sichtbarkeit | Artikel/Quest/Pin: `nur ich` / `nur Spielleitung` / `veröffentlicht` (Default neu: `nur ich`); Universum/Karte bleiben zweistufig; Vererbung Universum → Karte → Pin | MVP / Plan 004 T-005 / shipped |
 | Archivierung | Austritt/Entfernen archiviert Mitgliedschaft, Teilnahmen, Marker, Relationen | MVP / shipped |
 
@@ -143,4 +150,4 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 
 ## Geplant (nicht shipped)
 
-Siehe Pläne unter `.ai/feature-tasks/` und [backlog.md](backlog.md) — u. a. MCP (Plan `002`), Rest Plan `004` (T-011–T-013). Hier nicht als Produktfeatures führen, bis sie gebaut sind.
+Siehe Pläne unter `.ai/feature-tasks/` und [backlog.md](backlog.md). Offene Produktideen gehören hier erst rein, wenn sie gebaut sind.

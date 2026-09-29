@@ -15,6 +15,14 @@ export function registerChangeConfirmTool(server: McpServer, ctx: ToolContext) {
     const confirmation = await consumeMcpConfirmation({ token, userId: ctx.userId, clientId: ctx.clientId });
     if (!confirmation) throw new McpToolError("Bestätigungs-Token ist ungültig oder abgelaufen.");
     const result = await executeMcpConfirmation(confirmation);
-    return { worldId: result.worldId ?? confirmation.worldId, value: result.value };
+    return {
+      worldId: result.worldId ?? confirmation.worldId,
+      value: result.value,
+      audit: {
+        targetKind: confirmation.targetKind,
+        targetId: confirmation.targetId,
+        confirmed: true,
+      },
+    };
   }));
 }

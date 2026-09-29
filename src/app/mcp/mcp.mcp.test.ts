@@ -1,8 +1,14 @@
 import { createHash } from "node:crypto";
 import sharp from "sharp";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { BASE, login, testSql } from "@/test/api-harness";
 import { purgeMcpAuditLog } from "@/lib/mcp/audit";
+
+/** 1×1 PNG used for multipart upload tests (T-008). */
+const TINY_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
 
 const protocolMeta = {
   "io.modelcontextprotocol/protocolVersion": "2026-07-28",
@@ -131,6 +137,11 @@ async function callToolResponse(accessToken: string, name: string, args: Record<
   });
 }
 
+async function resetMcpRateLimit() {
+  const response = await fetch(`${BASE}/api/test/mcp-rate-limit-reset`, { method: "POST" });
+  expect(response.status).toBe(200);
+}
+
 function toolText(result: Record<string, unknown>): string {
   return JSON.stringify(result);
 }
@@ -160,6 +171,7 @@ type Fixture = {
   secondWorldId: string;
   burgId: string;
   personId: string;
+  raceId: string;
   guildId: string;
   masterSecretId: string;
   activeQuestId: string;
@@ -180,6 +192,7 @@ async function fixture(): Promise<Fixture> {
       secondWorldId: secondWorlds[0].id,
       burgId: byTitle.get("Burg Rabenstein")!,
       personId: byTitle.get("Hauptmann Arin")!,
+      raceId: byTitle.get("Rabenblut")!,
       guildId: byTitle.get("Archiv der Spielleitung")!,
       masterSecretId: byTitle.get("Private Notiz des Masters")!,
       activeQuestId: quests[0].id,
@@ -191,6 +204,10 @@ async function fixture(): Promise<Fixture> {
 }
 
 describe("MCP OAuth and protected resource", () => {
+  beforeEach(async () => {
+    await resetMcpRateLimit();
+  });
+
   it("CR-024: advertises discovery and a machine-readable unauthenticated challenge", async () => {
     const challenge = await fetch(`${BASE}/mcp`, {
       method: "POST",
@@ -713,4 +730,875 @@ describe("MCP OAuth and protected resource", () => {
     }
   });
 
+});
+
+function extractId(text: string): string {
+  const match = /ID: ([0-9a-f-]{36})/i.exec(text);
+  expect(match?.[1]).toBeTruthy();
+  return match![1];
+}
+
+function extractStand(text: string): string {
+  const match = /^Stand: (.+)$/m.exec(text);
+  expect(match?.[1]).toBeTruthy();
+  return match![1].trim();
+}
+
+function extractNoteStand(text: string): string {
+  const match = /## Notizblock\nStand: (.+)/.exec(text);
+  expect(match?.[1]).toBeTruthy();
+  return match![1].trim();
+}
+
+function extractToken(text: string): string {
+  const match = /Bestätigungs-Token: (\S+)/.exec(text);
+  expect(match?.[1]).toBeTruthy();
+  return match![1];
+}
+
+function extractUploadLink(text: string): string {
+  const match = /^Link: (\S+)$/m.exec(text);
+  expect(match?.[1]).toBeTruthy();
+  return match![1];
+}
+
+function rightsError(text: string) {
+  expect(text.toLowerCase()).toMatch(/recht|berechtigung|spielleitung|staff|darf|nur der game master/);
+}
+
+function notFoundError(text: string) {
+  expect(text.toLowerCase()).toMatch(/nicht gefunden|gibt es nicht/);
+}
+
+/** Undo TipTap→Markdown escaping so assertions can use plain German text. */
+function plainMcp(text: string) {
+  return text.replace(/\\([\\`*_{}\[\]()#+.!|-])/g, "$1");
+}
+
+function schemaError(text: string) {
+  expect(text.toLowerCase()).toMatch(/ungültig|invalid|enum|erwartete|art|option|unterstützen|schema/);
+}
+
+async function sqlHiddenQuest(worldId: string): Promise<string> {
+  const sql = testSql();
+  try {
+    const rows = await sql.unsafe(
+      "SELECT id FROM quests WHERE world_id = $1 AND visibility = 'owner_only' ORDER BY created_at DESC LIMIT 1",
+      [worldId],
+    );
+    if (rows[0]?.id) return rows[0].id as string;
+    const inserted = await sql.unsafe(
+      `INSERT INTO quests (world_id, title, visibility, owner_id, created_by, updated_by, status)
+       SELECT $1, 'MCP Hidden Quest', 'owner_only', u.id, u.id, u.id, 'open'
+       FROM users u WHERE u.discord_id = 'test-gm' LIMIT 1
+       RETURNING id`,
+      [worldId],
+    );
+    return inserted[0].id as string;
+  } finally {
+    await sql.end();
+  }
+}
+
+async function tableCounts(worldId: string): Promise<Record<string, number>> {
+  const sql = testSql();
+  try {
+    const queries: Record<string, string> = {
+      articles: "SELECT count(*)::int AS count FROM articles WHERE world_id = $1",
+      quests: "SELECT count(*)::int AS count FROM quests WHERE world_id = $1",
+      quest_chapters: "SELECT count(*)::int AS count FROM quest_chapters qc JOIN quests q ON q.id = qc.quest_id WHERE q.world_id = $1",
+      monsters: "SELECT count(*)::int AS count FROM monsters WHERE world_id = $1",
+      universes: "SELECT count(*)::int AS count FROM universes WHERE world_id = $1",
+      relations: "SELECT count(*)::int AS count FROM relations WHERE world_id = $1",
+      pins: `SELECT count(*)::int AS count FROM pins p
+        JOIN maps m ON m.id = p.map_id JOIN universes u ON u.id = m.universe_id WHERE u.world_id = $1`,
+      characters: "SELECT count(*)::int AS count FROM characters c JOIN world_participations wp ON wp.character_id = c.id WHERE wp.world_id = $1",
+      character_markers: `SELECT count(*)::int AS count FROM character_markers mk
+        JOIN maps m ON m.id = mk.map_id JOIN universes u ON u.id = m.universe_id WHERE u.world_id = $1`,
+      monster_markers: `SELECT count(*)::int AS count FROM monster_markers mk
+        JOIN maps m ON m.id = mk.map_id JOIN universes u ON u.id = m.universe_id WHERE u.world_id = $1`,
+      maps: "SELECT count(*)::int AS count FROM maps m JOIN universes u ON u.id = m.universe_id WHERE u.world_id = $1",
+      journal_entries: "SELECT count(*)::int AS count FROM journal_entries WHERE world_id = $1",
+      chat_messages: "SELECT count(*)::int AS count FROM chat_messages WHERE world_id = $1",
+      memberships: "SELECT count(*)::int AS count FROM memberships WHERE world_id = $1",
+      invite_links: "SELECT count(*)::int AS count FROM invite_links WHERE world_id = $1",
+    };
+    const out: Record<string, number> = {};
+    for (const [table, query] of Object.entries(queries)) {
+      const rows = await sql.unsafe(query, [worldId]);
+      out[table] = rows[0].count as number;
+    }
+    return out;
+  } finally {
+    await sql.end();
+  }
+}
+
+async function protectedChecksums(worldId: string): Promise<Record<string, string>> {
+  const sql = testSql();
+  try {
+    const queries: Record<string, string> = {
+      pins: `SELECT coalesce(md5(string_agg(p.id::text || coalesce(p.updated_at::text, ''), ',' ORDER BY p.id)), '') AS c FROM pins p JOIN maps m ON m.id = p.map_id JOIN universes u ON u.id = m.universe_id WHERE u.world_id = $1`,
+      characters: `SELECT coalesce(md5(string_agg(c.id::text || coalesce(c.updated_at::text, ''), ',' ORDER BY c.id)), '') AS c FROM characters c JOIN world_participations wp ON wp.character_id = c.id WHERE wp.world_id = $1`,
+      character_markers: `SELECT coalesce(md5(string_agg(mk.id::text, ',' ORDER BY mk.id)), '') AS c FROM character_markers mk JOIN maps m ON m.id = mk.map_id JOIN universes u ON u.id = m.universe_id WHERE u.world_id = $1`,
+      monster_markers: `SELECT coalesce(md5(string_agg(mk.id::text, ',' ORDER BY mk.id)), '') AS c FROM monster_markers mk JOIN maps m ON m.id = mk.map_id JOIN universes u ON u.id = m.universe_id WHERE u.world_id = $1`,
+      maps: `SELECT coalesce(md5(string_agg(m.id::text || coalesce(m.updated_at::text, ''), ',' ORDER BY m.id)), '') AS c FROM maps m JOIN universes u ON u.id = m.universe_id WHERE u.world_id = $1`,
+      journal_entries: `SELECT coalesce(md5(string_agg(id::text || coalesce(updated_at::text, ''), ',' ORDER BY id)), '') AS c FROM journal_entries WHERE world_id = $1`,
+      chat_messages: `SELECT coalesce(md5(string_agg(id::text || coalesce(sent_at::text, ''), ',' ORDER BY id)), '') AS c FROM chat_messages WHERE world_id = $1`,
+      memberships: `SELECT coalesce(md5(string_agg(id::text || role::text, ',' ORDER BY id)), '') AS c FROM memberships WHERE world_id = $1`,
+      invite_links: `SELECT coalesce(md5(string_agg(id::text || coalesce(revoked_at::text, ''), ',' ORDER BY id)), '') AS c FROM invite_links WHERE world_id = $1`,
+    };
+    const out: Record<string, string> = {};
+    for (const [key, query] of Object.entries(queries)) {
+      const rows = await sql.unsafe(query, [worldId]);
+      out[key] = rows[0].c as string;
+    }
+    return out;
+  } finally {
+    await sql.end();
+  }
+}
+
+async function postUpload(link: string, file: Buffer, filename: string, mime: string) {
+  const body = new FormData();
+  body.append("datei", new Blob([new Uint8Array(file)], { type: mime }), filename);
+  return fetch(link, {
+    method: "POST",
+    headers: { accept: "application/json" },
+    body,
+  });
+}
+
+describe("MCP write tools", () => {
+  const WRITE_SCOPE = "worlds:write offline_access";
+  let data: Fixture;
+  let countsBefore: Record<string, number>;
+  let checksumsBefore: Record<string, string>;
+
+  beforeAll(async () => {
+    await resetMcpRateLimit();
+    data = await fixture();
+    countsBefore = await tableCounts(data.worldId);
+    checksumsBefore = await protectedChecksums(data.worldId);
+  });
+
+  beforeEach(async () => {
+    await resetMcpRateLimit();
+  });
+
+  afterAll(async () => {
+    const countsAfter = await tableCounts(data.worldId);
+    for (const [table, before] of Object.entries(countsBefore)) {
+      expect(countsAfter[table], `${table} must not shrink`).toBeGreaterThanOrEqual(before);
+    }
+    const checksumsAfter = await protectedChecksums(data.worldId);
+    expect(checksumsAfter).toEqual(checksumsBefore);
+  });
+
+  it("T-005: creates content kinds, confirms stubs, renames stubs, rejects players/pins", async () => {
+    const client = await registerMcpClient(9890, "MCP Write Create Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const master = await authorizeMcpClient("test-master", client, WRITE_SCOPE);
+    const player = await authorizeMcpClient("test-player-a", client, WRITE_SCOPE);
+    const suffix = Date.now().toString(36);
+
+    const article = await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: {
+        titel: `MCP Artikel ${suffix}`,
+        vorlagentyp: "person",
+        vorlagenfelder: { Rasse: `@[Rabenblut](artikel:${data.raceId})` },
+        text: "Ein neuer Testartikel.",
+      },
+    });
+    const articleText = firstToolText(article);
+    expect(articleText).toMatch(/Sichtbarkeit: nur ich/);
+    expect(articleText).toMatch(/Art: artikel/);
+    const articleId = extractId(articleText);
+
+    const readArticle = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: articleId,
+    }));
+    expect(readArticle).toContain("Rasse:");
+    expect(readArticle).toContain("Rabenblut");
+    const masterRead = firstToolText(await callTool(master.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: articleId,
+    }));
+    notFoundError(masterRead);
+
+    for (const [art, felder] of [
+      ["quest", { titel: `MCP Quest ${suffix}`, beschreibung: "Beschreibung" }],
+      ["kapitel", { quest_id: data.activeQuestId, titel: `MCP Kapitel ${suffix}`, text: "Kapiteltext" }],
+      ["monster", { name: `MCP Monster ${suffix}`, monster_art: "Bestie" }],
+      ["universum", { name: `MCP Universum ${suffix}`, beschreibung: "Universum" }],
+    ] as const) {
+      const created = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+        welt: "MCP-Testwelt", art, felder,
+      }));
+      expect(created).toMatch(art === "universum" ? /Sichtbarkeit: nur Spielleitung/ : /Sichtbarkeit: nur ich/);
+      expect(created).toContain(`Art: ${art}`);
+      const createdId = extractId(created);
+      const readBack = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+        welt: "MCP-Testwelt",
+        art: art === "kapitel" ? "quest" : art,
+        id: art === "kapitel" ? data.activeQuestId : createdId,
+      }));
+      if (art === "kapitel") expect(readBack).toContain(`MCP Kapitel ${suffix}`);
+      else expect(readBack).toContain(art === "monster" || art === "universum" ? `MCP ${art === "monster" ? "Monster" : "Universum"} ${suffix}` : `MCP Quest ${suffix}`);
+    }
+
+    const stubTitle = `Gräfin Mirelda MCP ${suffix}`;
+    const stubPreview = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP StubTräger ${suffix}`, text: `@[${stubTitle}]` },
+    }));
+    expect(stubPreview).toContain("Bestätigungs-Token:");
+    expect(stubPreview).toContain(stubTitle);
+    const token = extractToken(stubPreview);
+    const sql = testSql();
+    try {
+      const before = await sql.unsafe(
+        "SELECT count(*)::int AS count FROM articles WHERE world_id = $1 AND title IN ($2, $3)",
+        [data.worldId, `MCP StubTräger ${suffix}`, stubTitle],
+      );
+      expect(before[0].count).toBe(0);
+      const confirmed = firstToolText(await callTool(gm.accessToken, "aenderung_bestaetigen", { token }));
+      expect(confirmed).toContain(stubTitle);
+      const after = await sql.unsafe(
+        "SELECT id, title, visibility FROM articles WHERE world_id = $1 AND title IN ($2, $3) ORDER BY title",
+        [data.worldId, `MCP StubTräger ${suffix}`, stubTitle],
+      );
+      expect(after).toHaveLength(2);
+      expect(after.every((row: { visibility: string }) => row.visibility === "owner_only")).toBe(true);
+
+      const stubRow = after.find((row: { title: string }) => row.title === stubTitle)!;
+      const stubRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+        welt: "MCP-Testwelt", art: "artikel", id: stubRow.id,
+      }));
+      const renamed = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+        welt: "MCP-Testwelt",
+        art: "artikel",
+        id: stubRow.id,
+        stand: extractStand(stubRead),
+        felder: { titel: `Gräfin Umbenannt ${suffix}` },
+      }));
+      expect(renamed).not.toContain("Bestätigungs-Token:");
+      expect(renamed).toContain(`Gräfin Umbenannt ${suffix}`);
+    } finally {
+      await sql.end();
+    }
+
+    for (const art of ["artikel", "quest", "kapitel", "monster", "universum"] as const) {
+      const denied = firstToolText(await callTool(player.accessToken, "inhalt_anlegen", {
+        welt: "MCP-Testwelt",
+        art,
+        felder: art === "kapitel"
+          ? { quest_id: data.activeQuestId, titel: "x" }
+          : art === "universum" || art === "monster"
+            ? { name: "x" }
+            : { titel: "x" },
+      }));
+      rightsError(denied);
+    }
+
+    schemaError(firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "pin", felder: { titel: "x" },
+    })));
+    schemaError(firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "charakter", felder: { titel: "x" },
+    })));
+
+    const hiddenQuest = await sqlHiddenQuest(data.worldId);
+    notFoundError(firstToolText(await callTool(master.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "kapitel",
+      felder: { quest_id: hiddenQuest, titel: `Hidden Chapter ${suffix}` },
+    })));
+  });
+
+  it("T-006: updates content with confirmation, stubs, modes, stand, and rights", async () => {
+    const client = await registerMcpClient(9891, "MCP Write Update Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const master = await authorizeMcpClient("test-master", client, WRITE_SCOPE);
+    const player = await authorizeMcpClient("test-player-a", client, WRITE_SCOPE);
+    const suffix = Date.now().toString(36);
+
+    const filled = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP Filled ${suffix}`, text: "Ursprungstext bleibt." },
+    }));
+    const filledId = extractId(filled);
+    const filledRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: filledId,
+    }));
+    const filledStand = extractStand(filledRead);
+    const preview = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      id: filledId,
+      stand: filledStand,
+      felder: { text: "Anhang nach Bestätigung." },
+    }));
+    expect(preview).toContain("Bestätigungs-Token:");
+    expect(preview).toMatch(/Ursprungstext bleibt/);
+    const midRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: filledId,
+    }));
+    expect(midRead).toMatch(/Ursprungstext bleibt/);
+    expect(midRead).not.toContain("Anhang nach Bestätigung.");
+    const confirmed = firstToolText(await callTool(gm.accessToken, "aenderung_bestaetigen", {
+      token: extractToken(preview),
+    }));
+    expect(confirmed).toContain(filledId);
+    const afterConfirm = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: filledId,
+    }));
+    expect(afterConfirm).toMatch(/Ursprungstext bleibt/);
+    expect(afterConfirm).toMatch(/Anhang nach Bestätigung/);
+
+    const empty = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP Empty ${suffix}` },
+    }));
+    const emptyId = extractId(empty);
+    const emptyRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: emptyId,
+    }));
+    const emptyRename = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      id: emptyId,
+      stand: extractStand(emptyRead),
+      felder: { titel: `MCP Empty Renamed ${suffix}`, text: "Sofort geschrieben." },
+    }));
+    expect(emptyRename).not.toContain("Bestätigungs-Token:");
+    expect(emptyRename).toContain(`MCP Empty Renamed ${suffix}`);
+
+    const appendBase = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP Append ${suffix}`, text: "Alpha." },
+    }));
+    const appendId = extractId(appendBase);
+    const appendRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: appendId,
+    }));
+    const appendPreview = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      id: appendId,
+      stand: extractStand(appendRead),
+      felder: { text: "Beta." },
+    }));
+    expect(appendPreview).toContain("Bestätigungs-Token:");
+    await callTool(gm.accessToken, "aenderung_bestaetigen", { token: extractToken(appendPreview) });
+    const appendAfter = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: appendId,
+    }));
+    expect(plainMcp(appendAfter)).toContain("Alpha.");
+    expect(plainMcp(appendAfter)).toContain("Beta.");
+
+    const stale = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      id: filledId,
+      stand: "2000-01-01T00:00:00.000Z",
+      felder: { text: "soll fehlschlagen" },
+    }));
+    expect(stale.toLowerCase()).toMatch(/geändert|stand|neu lesen/);
+
+    const questRead = firstToolText(await callTool(player.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "quest", id: data.activeQuestId,
+    }));
+    const noteStand = extractNoteStand(questRead);
+    const notePreview = firstToolText(await callTool(player.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "notizblock",
+      id: data.activeQuestId,
+      stand: noteStand,
+      felder: { text: `Player-Notiz ${suffix}` },
+    }));
+    expect(notePreview).toContain("Bestätigungs-Token:");
+    await callTool(player.accessToken, "aenderung_bestaetigen", { token: extractToken(notePreview) });
+    const noteAfter = firstToolText(await callTool(player.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "quest", id: data.activeQuestId,
+    }));
+    expect(plainMcp(noteAfter)).toContain(`Player-Notiz ${suffix}`);
+    expect(plainMcp(noteAfter)).toContain("Notizblock zur aktiven Quest.");
+
+    rightsError(firstToolText(await callTool(player.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "quest",
+      id: data.activeQuestId,
+      stand: extractStand(questRead),
+      felder: { titel: "Darf nicht" },
+    })));
+    const chapterId = /ID: ([0-9a-f-]{36})/i.exec(questRead)?.[1];
+    expect(chapterId).toBeTruthy();
+    const chapterStand = questRead.match(new RegExp(`ID: ${chapterId}\\nStatus: [^\\n]+\\nStand: ([^\\n]+)`))?.[1];
+    expect(chapterStand).toBeTruthy();
+    rightsError(firstToolText(await callTool(player.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "kapitel",
+      id: chapterId,
+      stand: chapterStand!,
+      felder: { titel: "Darf nicht" },
+    })));
+
+    const worlds = firstToolText(await callTool(gm.accessToken, "welten_auflisten"));
+    const worldStand = worlds.match(new RegExp(`## MCP-Testwelt\\nID: ${data.worldId}\\nStand: ([^\\n]+)`))?.[1];
+    expect(worldStand).toBeTruthy();
+    rightsError(firstToolText(await callTool(master.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "welt",
+      id: data.worldId,
+      stand: worldStand!,
+      felder: { beschreibung: "Master darf Welt nicht ändern." },
+    })));
+    const mentionDenied = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "welt",
+      id: data.worldId,
+      stand: worldStand!,
+      felder: { beschreibung: `@[Burg Rabenstein](artikel:${data.burgId})` },
+    }));
+    expect(mentionDenied.toLowerCase()).toMatch(/erwähnung/);
+
+    notFoundError(firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      id: data.masterSecretId,
+      stand: "2000-01-01T00:00:00.000Z",
+      felder: { text: "unsichtbar" },
+    })));
+  });
+
+  it("T-007: relations and visibility confirmations with rights matrix", async () => {
+    const client = await registerMcpClient(9892, "MCP Write Relation Visibility Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const master = await authorizeMcpClient("test-master", client, WRITE_SCOPE);
+    const player = await authorizeMcpClient("test-player-a", client, WRITE_SCOPE);
+    const suffix = Date.now().toString(36);
+
+    const created = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP RelSrc ${suffix}`, text: "Relationsträger." },
+    }));
+    const sourceId = extractId(created);
+    const relation = firstToolText(await callTool(gm.accessToken, "relation_anlegen", {
+      welt: "MCP-Testwelt",
+      quelle: { art: "artikel", id: sourceId },
+      ziel: { art: "quest", id: data.activeQuestId },
+      bezeichnung: "führt zu",
+      gegenbezeichnung: "kommt von",
+    }));
+    expect(relation).toContain("Relation angelegt.");
+    const fromArticle = firstToolText(await callTool(gm.accessToken, "relationen_abrufen", {
+      welt: "MCP-Testwelt", art: "artikel", id: sourceId,
+    }));
+    const fromQuest = firstToolText(await callTool(gm.accessToken, "relationen_abrufen", {
+      welt: "MCP-Testwelt", art: "quest", id: data.activeQuestId,
+    }));
+    expect(fromArticle).toContain("führt zu");
+    expect(fromArticle).toContain("Die Rückkehr des Rabens");
+    expect(fromQuest).toContain("kommt von");
+    expect(fromQuest).toContain(`MCP RelSrc ${suffix}`);
+
+    schemaError(firstToolText(await callTool(gm.accessToken, "relation_anlegen", {
+      welt: "MCP-Testwelt",
+      quelle: { art: "pin", id: data.visiblePinId },
+      ziel: { art: "artikel", id: sourceId },
+      bezeichnung: "x",
+    })));
+    schemaError(firstToolText(await callTool(gm.accessToken, "relation_anlegen", {
+      welt: "MCP-Testwelt",
+      quelle: { art: "artikel", id: sourceId },
+      ziel: { art: "charakter", id: data.personId },
+      bezeichnung: "x",
+    })));
+    rightsError(firstToolText(await callTool(player.accessToken, "relation_anlegen", {
+      welt: "MCP-Testwelt",
+      quelle: { art: "artikel", id: sourceId },
+      ziel: { art: "quest", id: data.activeQuestId },
+      bezeichnung: "x",
+    })));
+
+    const visArticle = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP Publish ${suffix}`, text: "Bald öffentlich." },
+    }));
+    const visId = extractId(visArticle);
+    const visRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: visId,
+    }));
+    const visPreview = firstToolText(await callTool(gm.accessToken, "sichtbarkeit_setzen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      id: visId,
+      stand: extractStand(visRead),
+      sichtbarkeit: "veröffentlicht",
+    }));
+    expect(visPreview).toContain("Bestätigungs-Token:");
+    notFoundError(firstToolText(await callTool(player.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: visId,
+    })));
+    await callTool(gm.accessToken, "aenderung_bestaetigen", { token: extractToken(visPreview) });
+    const playerSees = firstToolText(await callTool(player.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: visId,
+    }));
+    expect(playerSees).toContain(`MCP Publish ${suffix}`);
+    expect(playerSees).toContain("veröffentlicht");
+
+    const foreignRead = firstToolText(await callTool(master.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: data.burgId,
+    }));
+    const foreignPreview = firstToolText(await callTool(master.accessToken, "sichtbarkeit_setzen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      id: data.burgId,
+      stand: extractStand(foreignRead),
+      sichtbarkeit: "nur ich",
+    }));
+    expect(foreignPreview).toContain("Bestätigungs-Token:");
+    rightsError(firstToolText(await callTool(master.accessToken, "aenderung_bestaetigen", {
+      token: extractToken(foreignPreview),
+    })));
+
+    const universes = firstToolText(await callTool(gm.accessToken, "universen_auflisten", {
+      welt: "MCP-Testwelt",
+    }));
+    const universeId = /ID: ([0-9a-f-]{36})/i.exec(universes)?.[1];
+    expect(universeId).toBeTruthy();
+    const universeRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "universum", id: universeId,
+    }));
+    schemaError(firstToolText(await callTool(gm.accessToken, "sichtbarkeit_setzen", {
+      welt: "MCP-Testwelt",
+      art: "universum",
+      id: universeId,
+      stand: extractStand(universeRead),
+      sichtbarkeit: "nur ich",
+    })));
+  });
+
+  it("T-008: upload links, single-use expiry, confirmation, validation", async () => {
+    const client = await registerMcpClient(9893, "MCP Write Upload Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const suffix = Date.now().toString(36);
+
+    const article = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP Upload ${suffix}`, text: "Mit Bild." },
+    }));
+    const articleId = extractId(article);
+    let read = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: articleId,
+    }));
+    expect(read).toContain("Bilder: keine");
+    const linkText = firstToolText(await callTool(gm.accessToken, "bild_hochladen", {
+      welt: "MCP-Testwelt",
+      ziel: "artikel",
+      id: articleId,
+      stand: extractStand(read),
+    }));
+    expect(linkText).toContain("Upload-Link");
+    expect(linkText).not.toContain("Bestätigungs-Token:");
+    const link = extractUploadLink(linkText);
+    const uploaded = await postUpload(link, TINY_PNG, "tiny.png", "image/png");
+    expect(uploaded.status).toBe(201);
+    const uploadedJson = await json(uploaded);
+    expect(uploadedJson.fileId).toBeTruthy();
+    expect(uploadedJson.ziel).toBe("artikel");
+    expect(uploadedJson.id).toBe(articleId);
+    read = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: articleId,
+    }));
+    expect(read).toContain("Bilder: 1");
+
+    const reuse = await postUpload(link, TINY_PNG, "tiny.png", "image/png");
+    expect(reuse.status).toBe(404);
+
+    const fresh = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP Upload Exp ${suffix}`, text: "Ablauf." },
+    }));
+    const freshId = extractId(fresh);
+    const freshRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: freshId,
+    }));
+    const expireLinkText = firstToolText(await callTool(gm.accessToken, "bild_hochladen", {
+      welt: "MCP-Testwelt",
+      ziel: "artikel",
+      id: freshId,
+      stand: extractStand(freshRead),
+    }));
+    const expireLink = extractUploadLink(expireLinkText);
+    const sql = testSql();
+    try {
+      await sql.unsafe(
+        "UPDATE mcp_upload_tickets SET expires_at = now() - interval '1 minute' WHERE target_id = $1 AND consumed_at IS NULL",
+        [freshId],
+      );
+    } finally {
+      await sql.end();
+    }
+    const expired = await postUpload(expireLink, TINY_PNG, "tiny.png", "image/png");
+    expect(expired.status).toBe(404);
+
+    const replacePreview = firstToolText(await callTool(gm.accessToken, "bild_hochladen", {
+      welt: "MCP-Testwelt",
+      ziel: "artikel",
+      id: articleId,
+      stand: extractStand(read),
+    }));
+    expect(replacePreview).toContain("Bestätigungs-Token:");
+    expect(replacePreview).not.toContain("Link:");
+
+    const usable = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP Upload Bad ${suffix}`, text: "Validierung." },
+    }));
+    const usableId = extractId(usable);
+    const usableRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: usableId,
+    }));
+    const usableLink = extractUploadLink(firstToolText(await callTool(gm.accessToken, "bild_hochladen", {
+      welt: "MCP-Testwelt",
+      ziel: "artikel",
+      id: usableId,
+      stand: extractStand(usableRead),
+    })));
+    const badType = await postUpload(usableLink, Buffer.from("not-an-image"), "bad.txt", "text/plain");
+    expect(badType.status).toBe(400);
+    const tooLarge = await postUpload(
+      usableLink,
+      Buffer.alloc(10 * 1024 * 1024 + 1, 1),
+      "huge.png",
+      "image/png",
+    );
+    expect(tooLarge.status).toBe(400);
+    const stillOk = await postUpload(usableLink, TINY_PNG, "tiny.png", "image/png");
+    expect(stillOk.status).toBe(201);
+
+    schemaError(firstToolText(await callTool(gm.accessToken, "bild_hochladen", {
+      welt: "MCP-Testwelt",
+      ziel: "karte",
+      id: articleId,
+      stand: extractStand(read),
+    })));
+    schemaError(firstToolText(await callTool(gm.accessToken, "bild_hochladen", {
+      welt: "MCP-Testwelt",
+      ziel: "charakter",
+      id: articleId,
+      stand: extractStand(read),
+    })));
+
+    const missingStand = firstToolText(await callTool(gm.accessToken, "bild_hochladen", {
+      welt: "MCP-Testwelt",
+      ziel: "artikel",
+      id: usableId,
+    } as Record<string, unknown>));
+    expect(missingStand.toLowerCase()).toMatch(/stand|required|ungültig|invalid|erwartet/);
+    const staleStand = firstToolText(await callTool(gm.accessToken, "bild_hochladen", {
+      welt: "MCP-Testwelt",
+      ziel: "artikel",
+      id: usableId,
+      stand: "2000-01-01T00:00:00.000Z",
+    }));
+    expect(staleStand.toLowerCase()).toMatch(/geändert|stand|neu lesen/);
+  });
+
+  it("T-009: write audit fields omit titles and upload rate-limits", async () => {
+    const client = await registerMcpClient(9894, "MCP Write Audit Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const master = await authorizeMcpClient("test-master", client, WRITE_SCOPE);
+    const suffix = Date.now().toString(36);
+    const secretTitle = `AuditSecretTitle ${suffix}`;
+    const secretBody = `AuditSecretBody ${suffix}`;
+
+    const created = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: secretTitle, text: secretBody },
+    }));
+    const articleId = extractId(created);
+    const read = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: articleId,
+    }));
+    const preview = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      id: articleId,
+      stand: extractStand(read),
+      felder: { text: "Nach Audit-Bestätigung." },
+    }));
+    await callTool(gm.accessToken, "aenderung_bestaetigen", { token: extractToken(preview) });
+    const after = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: articleId,
+    }));
+    // Clear title image if any, then upload.
+    const sql = testSql();
+    try {
+      await sql.unsafe("UPDATE articles SET title_image_id = NULL WHERE id = $1", [articleId]);
+    } finally {
+      await sql.end();
+    }
+    const standAfter = extractStand(firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: articleId,
+    })));
+    const uploadTool = firstToolText(await callTool(gm.accessToken, "bild_hochladen", {
+      welt: "MCP-Testwelt",
+      ziel: "artikel",
+      id: articleId,
+      stand: standAfter,
+    }));
+    const uploadLink = extractUploadLink(uploadTool);
+    expect((await postUpload(uploadLink, TINY_PNG, "tiny.png", "image/png")).status).toBe(201);
+
+    const auditSql = testSql();
+    try {
+      const rows = await auditSql.unsafe(
+        `SELECT tool_name, target_kind, target_id, confirmed, origin, world_id, client_id
+         FROM mcp_audit_logs
+         WHERE user_id = $1
+           AND (
+             (client_id = $2 AND tool_name IN ('inhalt_anlegen', 'inhalt_aendern', 'aenderung_bestaetigen', 'bild_hochladen'))
+             OR (tool_name = 'upload_einloesen' AND target_id = $3)
+           )
+         ORDER BY created_at ASC`,
+        [gm.session.user.id, client.clientId, articleId],
+      );
+      const byTool = Object.fromEntries(rows.map((row: { tool_name: string }) => [row.tool_name, row]));
+      for (const tool of ["inhalt_anlegen", "inhalt_aendern", "aenderung_bestaetigen", "bild_hochladen", "upload_einloesen"]) {
+        expect(byTool[tool], tool).toBeTruthy();
+        expect(byTool[tool].target_kind).toBeTruthy();
+        expect(byTool[tool].target_id).toBeTruthy();
+        expect(byTool[tool].origin).toBe("mcp");
+        expect(typeof byTool[tool].confirmed).toBe("boolean");
+      }
+      expect(byTool.aenderung_bestaetigen.confirmed).toBe(true);
+      expect(byTool.upload_einloesen.confirmed).toBe(true);
+      expect(JSON.stringify(rows)).not.toContain(secretTitle);
+      expect(JSON.stringify(rows)).not.toContain(secretBody);
+      expect(plainMcp(after)).toContain("Nach Audit-Bestätigung.");
+    } finally {
+      await auditSql.end();
+    }
+
+    // Upload redeem limit is per ticket owner; use master so prior GM uploads do not interfere.
+    const rateArticle = firstToolText(await callTool(master.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP Rate ${suffix}`, text: "Rate limit." },
+    }));
+    const rateId = extractId(rateArticle);
+    const rateRead = firstToolText(await callTool(master.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: rateId,
+    }));
+    const rateLink = extractUploadLink(firstToolText(await callTool(master.accessToken, "bild_hochladen", {
+      welt: "MCP-Testwelt",
+      ziel: "artikel",
+      id: rateId,
+      stand: extractStand(rateRead),
+    })));
+
+    const statuses: number[] = [];
+    let limited: Response | null = null;
+    for (let index = 0; index < 11; index += 1) {
+      const response = await postUpload(rateLink, Buffer.from("bad"), "bad.txt", "text/plain");
+      statuses.push(response.status);
+      if (response.status === 429) {
+        limited = response;
+        break;
+      }
+    }
+    expect(statuses.filter((status) => status === 400).length).toBeGreaterThanOrEqual(10);
+    expect(limited).toBeTruthy();
+    expect(limited!.status).toBe(429);
+    expect(Number(limited!.headers.get("Retry-After"))).toBeGreaterThan(0);
+  });
+
+  it("T-010: disabled worlds and missing write scope reject writes; confirms are required", async () => {
+    const client = await registerMcpClient(9895, "MCP Write Guardrails Test");
+    const gmWrite = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const gmRead = await authorizeMcpClient("test-gm", await registerMcpClient(9896, "MCP Write Scope Deny"), "worlds:read offline_access");
+    const playerB = await authorizeMcpClient("test-player-b", client, WRITE_SCOPE);
+    const suffix = Date.now().toString(36);
+
+    const disabled = firstToolText(await callTool(playerB.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Zweite-Welt",
+      art: "artikel",
+      felder: { titel: `Disabled ${suffix}`, text: "nein" },
+    }));
+    expect(disabled).toContain("MCP ist für diese Welt nicht freigegeben.");
+
+    const noScope = firstToolText(await callTool(gmRead.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `NoScope ${suffix}` },
+    }));
+    expect(noScope.toLowerCase()).toMatch(/worlds:write|berechtigung|scope/);
+
+    const filled = firstToolText(await callTool(gmWrite.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP Noop ${suffix}`, text: "Vorher." },
+    }));
+    const filledId = extractId(filled);
+    const filledRead = firstToolText(await callTool(gmWrite.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: filledId,
+    }));
+    const preview = firstToolText(await callTool(gmWrite.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      id: filledId,
+      stand: extractStand(filledRead),
+      felder: { text: "Darf ohne Bestätigung nicht landen." },
+    }));
+    expect(preview).toContain("Bestätigungs-Token:");
+    const mid = firstToolText(await callTool(gmWrite.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: filledId,
+    }));
+    expect(mid).toMatch(/Vorher/);
+    expect(mid).not.toContain("Darf ohne Bestätigung nicht landen.");
+
+    const stubPreview = firstToolText(await callTool(gmWrite.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP StubNoop ${suffix}`, text: `@[Stub Noop ${suffix}]` },
+    }));
+    expect(stubPreview).toContain("Bestätigungs-Token:");
+    const sql = testSql();
+    try {
+      const rows = await sql.unsafe(
+        "SELECT count(*)::int AS count FROM articles WHERE world_id = $1 AND title IN ($2, $3)",
+        [data.worldId, `MCP StubNoop ${suffix}`, `Stub Noop ${suffix}`],
+      );
+      expect(rows[0].count).toBe(0);
+    } finally {
+      await sql.end();
+    }
+
+    const visPreview = firstToolText(await callTool(gmWrite.accessToken, "sichtbarkeit_setzen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      id: filledId,
+      stand: extractStand(mid),
+      sichtbarkeit: "veröffentlicht",
+    }));
+    expect(visPreview).toContain("Bestätigungs-Token:");
+    const stillPrivate = firstToolText(await callTool(gmWrite.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: filledId,
+    }));
+    expect(stillPrivate).toMatch(/nur ich/);
+  });
 });
