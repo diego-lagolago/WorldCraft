@@ -11,13 +11,36 @@ import {
 } from "@/lib/editor/mcp-markdown";
 import type { RichDoc } from "@/lib/editor/rich-text";
 import { templateOf, type TemplateType } from "@/lib/templates/registry";
+import { getWorldCharacter } from "@/lib/domain/characters";
 import { listMcpWorldMemberships, McpToolError, type McpWorldContext } from "./context";
+import { MCP_NOT_SET } from "./enums";
 import { compensateMcpStubArticles } from "./stub-compensation";
 import { isPendingStubRef, type PendingStubRef } from "./pending-stub-ref";
 import { normalizeTemplateFieldsInput } from "./write-fields";
 import { mcpMembership, resolveMentionRef, standOf, throwAuthz } from "./write-rich";
 
 const NOT_FOUND = "Inhalt nicht gefunden.";
+
+const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+const PARTICIPANT_MENTION = new RegExp(`^@\\[[^\\]]*\\]\\((charakter|teilnahme):(${UUID})\\)$`, "i");
+const BARE_ID = new RegExp(`^${UUID}$`, "i");
+
+/**
+ * Resolves `beteiligte` as written by inhalt_lesen (T-006): character IDs or `@[Name](charakter:id)`
+ * for characters brought into the world, `@[Name](teilnahme:id)` for snapshots of deleted characters.
+ */
+export async function resolveParticipantIds(world: McpWorldContext, values: readonly string[] | undefined) {
+  if (values === undefined) return undefined;
+  return Promise.all(values.filter((value) => value.trim() !== MCP_NOT_SET).map(async (value) => {
+    const mention = PARTICIPANT_MENTION.exec(value.trim());
+    if (mention?.[1].toLowerCase() === "teilnahme") return mention[2];
+    const id = mention?.[2] ?? (BARE_ID.test(value.trim()) ? value.trim() : null);
+    if (id && await getWorldCharacter(world.id, id)) return id;
+    throw new McpToolError(
+      `Feld „felder.beteiligte“: „${value}“ ist kein in die Welt mitgebrachter Charakter. Erlaubt sind Charakter-IDs oder @[Name](charakter:id).`,
+    );
+  }));
+}
 
 export async function visibleArticle(world: McpWorldContext, id: string) {
   const row = await getArticle(world.id, id, world.role, world.userId);
@@ -109,7 +132,7 @@ export type ResolvedHabitat = {
 
 export async function resolveHabitat(value: unknown, world: McpWorldContext): Promise<ResolvedHabitat> {
   if (value === undefined) return {};
-  if (value === null || value === "") return { habitatArticleId: null };
+  if (value === null || value === "" || value === MCP_NOT_SET) return { habitatArticleId: null };
   const resolved = await resolveMentionRef({
     value,
     worldId: world.id,

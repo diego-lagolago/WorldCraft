@@ -2,15 +2,19 @@ import { getWorldCharacter } from "@/lib/domain/characters";
 import { updateQuest } from "@/lib/domain/quests";
 import { MCP_QUEST_STATUS, MCP_QUEST_STATUS_LABEL } from "../../enums";
 import type { McpWorldContext } from "../../context";
-import { visibleQuest } from "../../write-shared";
+import { resolveParticipantIds, visibleQuest } from "../../write-shared";
 import { assertStand, standOf, throwAuthz, visibilityLabel } from "../../write-rich";
 import { updateFieldSchemas } from "../write-schemas";
 import { defineUpdateHandler, executeRich, previewRich, pushChange, pushRenamed } from "./common";
 
-async function participantLabels(world: McpWorldContext, ids: string[]): Promise<string> {
+async function participantLabels(
+  world: McpWorldContext,
+  ids: string[],
+  current: readonly { id: string; characterName: string }[],
+): Promise<string> {
   const labels = await Promise.all(ids.map(async (id) => {
-    const character = await getWorldCharacter(world.id, id);
-    return `${character?.name ?? "Unbekannter Charakter"} (${id})`;
+    const name = (await getWorldCharacter(world.id, id))?.name ?? current.find((entry) => entry.id === id)?.characterName;
+    return `${name ?? "Unbekannter Charakter"} (${id})`;
   }));
   return labels.join(", ") || "(keine)";
 }
@@ -25,9 +29,10 @@ export const questUpdate = defineUpdateHandler({
   preview: async (row, felder, context) => {
     pushRenamed(context, "titel", row.title, felder.titel);
     if (felder.status !== undefined) pushChange(context, "status", MCP_QUEST_STATUS_LABEL[row.status], felder.status);
-    if (felder.beteiligte !== undefined) {
-      const current = row.participants.map((entry) => `${entry.characterName} (${entry.characterId})`).join(", ");
-      pushChange(context, "beteiligte", current || "(keine)", await participantLabels(context.world, felder.beteiligte));
+    const participantIds = await resolveParticipantIds(context.world, felder.beteiligte);
+    if (participantIds !== undefined) {
+      const current = row.participants.map((entry) => `${entry.characterName} (${entry.characterId ?? entry.id})`).join(", ");
+      pushChange(context, "beteiligte", current || "(keine)", await participantLabels(context.world, participantIds, row.participants));
     }
     await previewRich(context, { label: "beschreibung", oldJson: row.descriptionJson, markdown: felder.beschreibung });
     return { title: felder.titel ?? row.title };
@@ -41,7 +46,7 @@ export const questUpdate = defineUpdateHandler({
       title: felder.titel,
       status: felder.status ? MCP_QUEST_STATUS[felder.status] : undefined,
       description: await executeRich(context, row.descriptionJson, felder.beschreibung),
-      participantIds: felder.beteiligte,
+      participantIds: await resolveParticipantIds(context.world, felder.beteiligte),
       expectedUpdatedAt: context.expectedUpdatedAt,
     });
     if (!result.ok) throwAuthz(result);

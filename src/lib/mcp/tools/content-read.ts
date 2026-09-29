@@ -10,10 +10,11 @@ import { getQuestNote } from "@/lib/domain/quest-notes";
 import { getUniverse } from "@/lib/domain/universes";
 import { tiptapJsonToMcpMarkdown } from "@/lib/editor/tiptap-mcp-markdown";
 import { pinTypeMeta } from "@/lib/map/pin-types";
-import { MCP_QUEST_STATUS_LABEL } from "../enums";
+import { templateOf } from "@/lib/templates/registry";
+import { MCP_NOT_SET, MCP_QUEST_STATUS_LABEL } from "../enums";
 import { McpToolError, resolveMcpWorld } from "../context";
 import { fieldFor, labelFor } from "../field-catalog";
-import { renderSheet, renderTemplateFields } from "./renderers";
+import { renderSheet, renderTemplateFields, renderWriteKeys } from "./renderers";
 import { contentKind, type ToolContext, withAudit, worldSchema } from "./shared";
 
 export function registerContentReadTool(server: McpServer, ctx: ToolContext) {
@@ -41,6 +42,18 @@ type ReadContentInput = {
 
 type ReadWorld = ReadContentInput["world"];
 
+/** Display labels come from the field catalog so they match the Schreibschlüssel table (E6). */
+function label(art: "quest" | "monster", key: string) {
+  return fieldFor(art, key)?.label ?? key;
+}
+
+/** Writable form of a participant (T-006); snapshots of deleted characters keep their row ID. */
+function participantMention(entry: { id: string; characterId: string | null; characterName: string; href: boolean }) {
+  return entry.characterId && entry.href
+    ? `@[${entry.characterName}](charakter:${entry.characterId})`
+    : `@[${entry.characterName}](teilnahme:${entry.id})`;
+}
+
 async function readArticle(world: ReadWorld, viewerId: string, id: string) {
   const row = await getArticle(world.id, id, world.role, viewerId);
   if (!row) throw new McpToolError("Inhalt nicht gefunden.");
@@ -51,6 +64,7 @@ async function readArticle(world: ReadWorld, viewerId: string, id: string) {
     await renderTemplateFields(row.templateType, row.templateFields, world, viewerId),
     row.titleImageId ? "Bilder: 1 (über bild_lesen)" : "Bilder: keine",
     tiptapJsonToMcpMarkdown(row.bodyJson),
+    renderWriteKeys([{ art: "artikel", heading: "Artikel", vorlagentyp: templateOf(row.templateType).type }]),
   ].filter(Boolean).join("\n\n");
 }
 
@@ -61,10 +75,10 @@ async function readQuest(world: ReadWorld, viewerId: string, id: string) {
   const note = await getQuestNote({ worldId: world.id, questId: row.id, role, viewerId });
   return [
     `# ${row.title}`,
-    `Status: ${MCP_QUEST_STATUS_LABEL[row.status]}`,
+    `${label("quest", "status")}: ${MCP_QUEST_STATUS_LABEL[row.status]}`,
     `Sichtbarkeit: ${CONTENT_VISIBILITY_LABEL[row.visibility]}`,
     `Stand: ${row.updatedAt.toISOString()}`,
-    row.participants.length ? `Beteiligte Charaktere: ${row.participants.map((entry) => entry.characterName).join(", ")}` : "",
+    `${label("quest", "beteiligte")}: ${row.participants.map(participantMention).join(", ") || MCP_NOT_SET}`,
     tiptapJsonToMcpMarkdown(row.descriptionJson),
     ...row.chapters.map((chapter) => [
       `## ${chapter.title}`,
@@ -74,6 +88,11 @@ async function readQuest(world: ReadWorld, viewerId: string, id: string) {
       tiptapJsonToMcpMarkdown(chapter.bodyJson),
     ].join("\n")),
     note.ok ? `## Notizblock\nStand: ${note.data.version}\n${tiptapJsonToMcpMarkdown(note.data.bodyJson)}` : "",
+    renderWriteKeys([
+      { art: "quest", heading: "Quest (id = Quest-ID)" },
+      { art: "kapitel", heading: "Kapitel (id = Kapitel-ID)" },
+      ...(note.ok ? [{ art: "notizblock" as const, heading: "Notizblock (id = Quest-ID, Stand des Notizblocks)" }] : []),
+    ]),
   ].filter(Boolean).join("\n\n");
 }
 
@@ -99,14 +118,15 @@ async function readMonster(world: ReadWorld, viewerId: string, id: string) {
     `# ${row.name}`,
     `Sichtbarkeit: ${CONTENT_VISIBILITY_LABEL[row.visibility]}`,
     `Stand: ${row.updatedAt.toISOString()}`,
-    `${fieldFor("monster", "monster_art")?.label}: ${labelFor(fieldFor("monster", "monster_art")!, row.kind)}`,
-    `${fieldFor("monster", "seltenheit")?.label}: ${labelFor(fieldFor("monster", "seltenheit")!, row.rarity)}`,
-    `Boss: ${row.isBoss ? "Ja" : "Nein"}`,
-    `${fieldFor("monster", "gefahr")?.label}: ${labelFor(fieldFor("monster", "gefahr")!, row.danger)}`,
-    `${fieldFor("monster", "groesse")?.label}: ${labelFor(fieldFor("monster", "groesse")!, row.size)}`,
-    habitat ? `Lebensraum: ${habitat.title} (${habitat.id})` : "",
+    `${label("monster", "monster_art")}: ${labelFor(fieldFor("monster", "monster_art")!, row.kind)}`,
+    `${label("monster", "seltenheit")}: ${labelFor(fieldFor("monster", "seltenheit")!, row.rarity)}`,
+    `${label("monster", "boss")}: ${row.isBoss ? "Ja" : "Nein"}`,
+    `${label("monster", "gefahr")}: ${labelFor(fieldFor("monster", "gefahr")!, row.danger)}`,
+    `${label("monster", "groesse")}: ${labelFor(fieldFor("monster", "groesse")!, row.size)}`,
+    `${label("monster", "lebensraum")}: ${habitat ? `@[${habitat.title}](artikel:${habitat.id})` : MCP_NOT_SET}`,
     row.portraitId ? "Bilder: 1 (über bild_lesen)" : "Bilder: keine",
     renderSheet(row),
+    renderWriteKeys([{ art: "monster", heading: "Monster" }]),
   ].filter(Boolean).join("\n\n");
 }
 
@@ -121,6 +141,7 @@ async function readUniverse(world: ReadWorld, viewerId: string, id: string) {
     `Stand: ${row.updatedAt.toISOString()}`,
     visible?.maps.length ? `Karten: ${visible.maps.map((map) => `${map.name} (${map.id})`).join(", ")}` : "Karten: keine",
     tiptapJsonToMcpMarkdown(row.descriptionJson),
+    renderWriteKeys([{ art: "universum", heading: "Universum" }]),
   ].filter(Boolean).join("\n\n");
 }
 

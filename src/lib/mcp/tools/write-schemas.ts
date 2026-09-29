@@ -43,7 +43,7 @@ function schemaFor(art: FieldArt, field: FieldDefinition): z.ZodType {
       : z.string();
   }
   case "reference": return field.key === "quest_id" ? uuid : reference;
-  case "list": return z.array(uuid);
+  case "list": return z.array(z.string().trim().min(1));
   case "object": return field.key === "vorlagenfelder" ? templateFieldsSchema() : monsterSheetSchema();
   }
 }

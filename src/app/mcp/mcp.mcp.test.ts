@@ -2250,4 +2250,39 @@ describe("MCP write tools", () => {
       beschreibung: "zusätzlicher Parameter",
     })));
   });
+
+  it("012 T-006(1, 4–6): reads all template fields, write keys and writable references", async () => {
+    const client = await registerMcpClient(9908, "MCP Writable Read Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const suffix = Date.now().toString(36);
+
+    const item = extractId(firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "artikel", felder: { titel: `MCP Leerer Gegenstand ${suffix}`, vorlagentyp: "gegenstand" },
+    })));
+    const itemRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "artikel", id: item }));
+    for (const line of ["Art: –", "Seltenheit: –", "Besitzer: –", "Quest-Gegenstand: Nein", "- Seltenheit → `vorlagenfelder.Seltenheit`", "- Text → `text`"]) {
+      expect(itemRead).toContain(line);
+    }
+
+    const monster = extractId(firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "monster", felder: { name: `MCP Lebensraum ${suffix}`, lebensraum: `@[Burg Rabenstein](artikel:${data.burgId})` },
+    })));
+    const monsterRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "monster", id: monster }));
+    expect(monsterRead).toContain(`Lebensraum: @[Burg Rabenstein](artikel:${data.burgId})`);
+    expect(monsterRead).toContain("- Gefahrenstufe → `gefahr`");
+
+    const questRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "quest", id: data.activeQuestId }));
+    const mention = /@\[[^\]]+\]\(charakter:[0-9a-f-]{36}\)/i.exec(questRead)?.[0];
+    expect(mention).toBeTruthy();
+    const name = /@\[([^\]]+)\]/.exec(mention!)![1];
+    const quest = extractId(firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "quest", felder: { titel: `MCP Beteiligte ${suffix}`, beschreibung: "Schon befüllt." },
+    })));
+    const newQuestRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "quest", id: quest }));
+    const preview = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "quest", id: quest, stand: extractStand(newQuestRead), felder: { beteiligte: [mention] },
+    }));
+    expect(preview).toContain(name);
+    expect(preview).toContain("Bestätigungs-Token:");
+  });
 });

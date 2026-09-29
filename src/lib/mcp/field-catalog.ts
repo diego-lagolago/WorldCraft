@@ -66,7 +66,7 @@ const questFields = [
   field("titel", "Titel", "text", "Anzeige: Titel.", { requiredOnCreate: true }),
   field("status", "Status", "select", "Anzeige: Status.", { allowedValues: questStatuses }),
   field("beschreibung", "Beschreibung", "markdown", "Anzeige: Beschreibung."),
-  field("beteiligte", "Beteiligte Charaktere", "list", "Anzeige: Beteiligte Charaktere.", { referenceTargets: ["charakter"] }),
+  field("beteiligte", "Beteiligte Charaktere", "list", "Anzeige: Beteiligte Charaktere. Liste aus Charakter-IDs oder @[Name](charakter:id) wie von inhalt_lesen ausgegeben; nur in die Welt mitgebrachte Charaktere.", { referenceTargets: ["charakter"] }),
 ];
 const chapterFields = [
   field("quest_id", "Quest", "reference", "Anzeige: Quest.", { requiredOnCreate: true, referenceTargets: ["quest"] }),
@@ -126,15 +126,16 @@ function templateField(fieldDefinition: TemplateField): FieldDefinition {
   });
 }
 
+/** The item flag `quest` is shown and written as „Quest-Gegenstand“ (T-006). */
+const QUEST_ITEM_FIELD = field("Quest-Gegenstand", "Quest-Gegenstand", "boolean", "Anzeige: Quest-Gegenstand.", {
+  path: "vorlagenfelder.Quest-Gegenstand",
+});
+
 export function templateFieldsFor(vorlagentyp: TemplateType): readonly FieldDefinition[] {
   const definition = templateOf(vorlagentyp);
-  const fields = definition.fields.map(templateField);
-  if (definition.type === "item") {
-    fields.push(field("Quest-Gegenstand", "Quest-Gegenstand", "boolean", "Anzeige: Quest-Gegenstand.", {
-      path: "vorlagenfelder.Quest-Gegenstand",
-    }));
-  }
-  return fields;
+  return definition.fields.map((entry) => (
+    definition.type === "item" && entry.key === "quest" ? QUEST_ITEM_FIELD : templateField(entry)
+  ));
 }
 
 export function allowedValuesFor(fieldDefinition: Pick<FieldDefinition, "allowedValues">): readonly AllowedValue[] {

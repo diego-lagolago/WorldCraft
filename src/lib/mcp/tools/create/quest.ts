@@ -3,6 +3,7 @@ import { createQuest, getQuest } from "@/lib/domain/quests";
 import { McpToolError } from "../../context";
 import { MCP_QUEST_STATUS } from "../../enums";
 import { standOf, throwAuthz, visibilityLabel } from "../../write-rich";
+import { resolveParticipantIds } from "../../write-shared";
 import { createFieldSchemas } from "../write-schemas";
 import { collectRich, createRich, defineCreateHandler } from "./common";
 
@@ -18,7 +19,7 @@ export const questCreate = defineCreateHandler({
       title: felder.titel,
       description: await createRich(context, felder.beschreibung),
       status: felder.status ? MCP_QUEST_STATUS[felder.status] : undefined,
-      participantIds: felder.beteiligte,
+      participantIds: await resolveParticipantIds(context.world, felder.beteiligte),
       visibility: "owner_only",
     });
     if (!result.ok) throwAuthz(result);

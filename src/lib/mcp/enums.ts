@@ -1,6 +1,9 @@
 import { MONSTER_KINDS, MONSTER_KIND_LABEL, MONSTER_RARITIES, MONSTER_RARITY_LABEL } from "@/lib/monsters/labels";
 import { TEMPLATE_TYPES, type TemplateType } from "@/lib/templates/registry";
 
+/** Shown by inhalt_lesen for empty fields; written back it means „not set“ (002 D18, 012 T-006). */
+export const MCP_NOT_SET = "–";
+
 export const MCP_CONTENT_KIND = {
   artikel: "article",
   quest: "quest",

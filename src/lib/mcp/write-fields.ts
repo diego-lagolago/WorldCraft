@@ -23,6 +23,7 @@ import {
   type MonsterSize,
 } from "@/lib/monsters/labels";
 import { templateOf, type TemplateType } from "@/lib/templates/registry";
+import { MCP_NOT_SET } from "./enums";
 
 const QUEST_ITEM_ALIASES = new Set(["quest", "Quest", "Quest-Gegenstand"]);
 
@@ -73,7 +74,7 @@ export function normalizeTemplateFieldsInput(
   const out: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(input)) {
-    if (value === undefined || value === null || value === "") continue;
+    if (value === undefined || value === null || value === "" || value === MCP_NOT_SET) continue;
     if (definition.type === "item" && QUEST_ITEM_ALIASES.has(key)) {
       if (typeof value !== "boolean") throw new McpToolError("Feld „felder.vorlagenfelder.Quest-Gegenstand“ muss true oder false sein.");
       if (value) out.quest = true;
