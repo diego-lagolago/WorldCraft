@@ -21,7 +21,7 @@
 | CR-011 | Duplizierung | mittel | offen | Große Duplikate zwischen `content-create`, `content-update`, `visibility-set` und `image-upload` |
 | CR-012 | Bad Practices | mittel | offen | `content-update.ts` (1 163 Zeilen) steuert alles über zwei riesige Verzweigungsketten je `art` |
 | CR-013 | Testabdeckung | mittel | offen | Für T-004 (2) Ablauf nach 10 Minuten und (5) Rechteverlust zwischen Vorschau und Bestätigung fehlen Tests |
-| CR-014 | Runtime-Risiken | niedrig | offen | Erwähnungen mit expliziter ID werden über eine Titelsuche mit Limit aufgelöst und schlagen dadurch fälschlich fehl |
+| CR-014 | Runtime-Risiken | niedrig | behoben | Explizite Erwähnungs-IDs werden direkt sichtbarkeitsgeprüft geladen und nutzen den DB-Titel |
 | CR-015 | Performance | niedrig | offen | N+1-Abfragen: eine Suche mit 5 Abfragen je Erwähnung, das Ganze mehrfach je Aufruf; `findVisibleChapter` lädt alle Quests |
 | CR-016 | Bad Practices | niedrig | behoben | Die Audit-ID wird strukturiert aus dem Anlegeergebnis übernommen |
 | CR-017 | Fehlerbehandlung | niedrig | behoben | Unbekannte Felder werden strikt validiert und erzeugen keine Vorschau |
@@ -164,6 +164,7 @@
 - **Abnahmekriterium:** `npm run test:mcp` enthält benannte Tests „T-004(2)“ und „T-004(5)“ mit je mindestens einer Assertion, dass sich der Zielinhalt (Stand/Text) nach dem Einlöseversuch nicht geändert hat.
 
 ### CR-014 – Explizite Erwähnungs-IDs über Titelsuche aufgelöst
+- **Status:** behoben – Explizite Ziele werden über den jeweiligen Sichtbarkeits-Loader geladen; der gerenderte Titel stammt aus der Datenbank.
 - **Fundstelle:** `src/lib/domain/mcp-mentions.ts` Z. 31–41
 - **Kategorie:** Runtime-Risiken
 - **Schweregrad:** niedrig
