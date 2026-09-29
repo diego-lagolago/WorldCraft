@@ -918,6 +918,18 @@ describe("MCP write tools", () => {
     expect(articleText).toMatch(/Art: artikel/);
     const articleId = extractId(articleText);
 
+    const objectReference = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: {
+        titel: `Objektverweis ${suffix}`,
+        vorlagentyp: "person",
+        vorlagenfelder: { Rasse: { kind: "article", id: data.raceId } },
+      },
+    }));
+    expect(objectReference).toContain("Erwähnungssyntax");
+    expect(objectReference).not.toContain("Bestätigungs-Token:");
+
     const readArticle = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
       welt: "MCP-Testwelt", art: "artikel", id: articleId,
     }));
