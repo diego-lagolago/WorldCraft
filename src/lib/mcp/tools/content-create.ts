@@ -4,7 +4,7 @@ import { CONTENT_VISIBILITY_LABEL } from "@/lib/authz";
 import { createArticle, createArticleStub } from "@/lib/domain/articles";
 import { createMonster } from "@/lib/domain/monsters";
 import { createChapter } from "@/lib/domain/quest-chapters";
-import { createQuest } from "@/lib/domain/quests";
+import { createQuest, getQuest } from "@/lib/domain/quests";
 import { createUniverse } from "@/lib/domain/universes";
 import { mcpMarkdownToTiptap, resolveMcpMarkdown, type ResolvedMcpMarkdownMention } from "@/lib/editor/mcp-markdown";
 import { McpMentionError, resolveMcpMarkdownMentions } from "@/lib/domain/mcp-mentions";
@@ -149,6 +149,13 @@ async function executeCreate(input: {
   stubTitles: string[];
   ignoredVisibility: boolean;
 }): Promise<{ value: string; worldId: string }> {
+  // Validate the only create target that has a parent before materializing stubs.
+  // This guarantees a revoked or hidden quest cannot leave orphaned articles behind.
+  if (input.art === "kapitel") {
+    const chapter = chapterFields.parse(input.felder);
+    const quest = await getQuest(input.world.id, chapter.quest_id, input.world.role, input.world.userId);
+    if (!quest) throw new McpToolError("Quest nicht gefunden.");
+  }
   const membership = mcpMembership(input.world);
   const stubArticles: { id: string; title: string }[] = [];
   const stubIdByTitle = new Map<string, string>();
