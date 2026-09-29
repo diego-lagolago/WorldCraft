@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { deleteArticle, getArticle, updateArticle, createArticleStub } from "@/lib/domain/articles";
+import { getArticle, updateArticle, createArticleStub } from "@/lib/domain/articles";
 import { getMonster, updateMonster } from "@/lib/domain/monsters";
 import { getVisibleChapter, updateChapter } from "@/lib/domain/quest-chapters";
 import { getQuest, updateQuest } from "@/lib/domain/quests";
@@ -25,6 +25,7 @@ import { templateFieldsHaveValue, type StoredTemplateFields } from "@/lib/templa
 import { isTemplateType, templateOf, type TemplateType } from "@/lib/templates/registry";
 import { createMcpConfirmation, registerMcpConfirmationHandler } from "../confirmations";
 import { listMcpWorldMemberships, McpToolError, resolveMcpWorld, type McpWorldContext } from "../context";
+import { compensateMcpStubArticles } from "../stub-compensation";
 import { MCP_QUEST_STATUS, MCP_QUEST_STATUS_LABEL, MCP_TEMPLATE_TYPE } from "../enums";
 import {
   mapMonsterDanger,
@@ -285,23 +286,6 @@ async function resolveBodyDoc(input: {
   return { doc: resolution.doc, stubs: resolution.stubs, touched: true };
 }
 
-async function compensateStubArticles(input: {
-  membership: ReturnType<typeof mcpMembership>;
-  actorId: string;
-  worldId: string;
-  stubs: { id: string }[];
-}) {
-  await Promise.all(input.stubs.map(async (stub) => {
-    const removed = await deleteArticle({
-      membership: input.membership,
-      actorId: input.actorId,
-      worldId: input.worldId,
-      articleId: stub.id,
-    }).catch(() => null);
-    if (!removed?.ok) console.error(JSON.stringify({ event: "mcp_stub_compensation_error", stubId: stub.id }));
-  }));
-}
-
 async function materializeUpdateDocs(input: {
   ctx: ToolContext;
   world: McpWorldContext;
@@ -330,7 +314,7 @@ async function materializeUpdateDocs(input: {
       stubIdByTitle.set(title.toLocaleLowerCase("de"), created.data.id);
     }
   } catch (error) {
-    await compensateStubArticles({
+    await compensateMcpStubArticles({
       membership,
       actorId: input.ctx.userId,
       worldId: input.world.id,
@@ -1101,7 +1085,7 @@ async function executeUpdate(input: {
     }),
   };
   } catch (error) {
-    await compensateStubArticles({
+    await compensateMcpStubArticles({
       membership,
       actorId: input.ctx.userId,
       worldId: input.world.id,

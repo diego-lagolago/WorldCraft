@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { CONTENT_VISIBILITY_LABEL } from "@/lib/authz";
-import { createArticle, createArticleStub, deleteArticle } from "@/lib/domain/articles";
+import { createArticle, createArticleStub } from "@/lib/domain/articles";
 import { createMonster } from "@/lib/domain/monsters";
 import { createChapter } from "@/lib/domain/quest-chapters";
 import { createQuest, getQuest } from "@/lib/domain/quests";
@@ -11,6 +11,7 @@ import { McpMentionError, resolveMcpMarkdownMentions } from "@/lib/domain/mcp-me
 import { templateOf, type TemplateType } from "@/lib/templates/registry";
 import { createMcpConfirmation, registerMcpConfirmationHandler } from "../confirmations";
 import { McpToolError, resolveMcpWorld, type McpWorldContext } from "../context";
+import { withMcpStubCompensation } from "../stub-compensation";
 import { MCP_QUEST_STATUS, MCP_TEMPLATE_TYPE } from "../enums";
 import {
   mapMonsterDanger,
@@ -160,7 +161,12 @@ async function executeCreate(input: {
   const stubArticles: { id: string; title: string }[] = [];
   const stubIdByTitle = new Map<string, string>();
 
-  try {
+  return withMcpStubCompensation({
+    membership,
+    actorId: input.ctx.userId,
+    worldId: input.world.id,
+    stubs: stubArticles,
+    write: async () => {
   for (const title of input.stubTitles) {
     const created = await createArticleStub({
       membership,
@@ -370,18 +376,8 @@ async function executeCreate(input: {
       ignoredVisibility: input.ignoredVisibility,
     }),
   };
-  } catch (error) {
-    await Promise.all(stubArticles.map(async (stub) => {
-      const removed = await deleteArticle({
-        membership,
-        actorId: input.ctx.userId,
-        worldId: input.world.id,
-        articleId: stub.id,
-      }).catch(() => null);
-      if (!removed?.ok) console.error(JSON.stringify({ event: "mcp_stub_compensation_error", stubId: stub.id }));
-    }));
-    throw error;
-  }
+    },
+  });
 }
 
 async function collectCreateStubs(input: {

@@ -8,7 +8,7 @@
 
 | ID | Kategorie | Schweregrad | Status | Kurzbeschreibung |
 |----|-----------|-------------|--------|-------------------|
-| CR-001 | Runtime-Risiken | kritisch | offen | Stub-Artikel entstehen vor der Stand- und Zielprüfung; umstellen auf „prüfen → Stubs → schreiben“ mit Kompensation |
+| CR-001 | Runtime-Risiken | kritisch | behoben | Stub-Artikel entstehen erst nach Ziel- und Standprüfung; fehlgeschlagene Schreibvorgänge werden kompensiert |
 | CR-002 | Lesbarkeit (Doku) | niedrig | behoben | Verhalten bleibt (Entscheidung 2026-09-29): S1, ADR-005 und Hilfeseite an „jede Verbindung ist Lesen und Schreiben“ anpassen |
 | CR-003 | Runtime-Risiken | mittel | offen | Die Stand-Prüfung ist nicht atomar mit dem Schreiben (ADR-005 „Stand“), daher sind Lost Updates möglich |
 | CR-004 | Aufgaben-Abgleich | mittel | behoben | Die Plausibilitätsprüfung sucht Wortpräfixe und wird in der MCP-Suite geprüft |
@@ -38,6 +38,7 @@
 ## Findings im Detail
 
 ### CR-001 – Stubs entstehen vor Stand- und Zielprüfung und ohne Transaktion
+- **Status:** behoben – Ziel und Stand werden vor der Stub-Anlage geprüft. Ein gemeinsamer Kompensationshelfer löscht bei einem fehlgeschlagenen Schreibschritt ausschließlich die in diesem Aufruf erzeugten Stubs; Unit- und MCP-Tests decken die Fälle ab.
 - **Fundstelle:** `src/lib/mcp/tools/content-update.ts` `executeUpdate` (Z. 734 ff., Aufruf `materializeUpdateDocs` Z. 747 vor `assertStand` Z. 757/809/…); `src/lib/mcp/tools/content-create.ts` `executeCreate` (Z. 144–166)
 - **Kategorie:** Runtime-Risiken / Aufgaben-Abgleich
 - **Schweregrad:** kritisch
