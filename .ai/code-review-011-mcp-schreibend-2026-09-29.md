@@ -18,8 +18,8 @@
 | CR-008 | Fehlerbehandlung | mittel | behoben | Im Bestätigungspfad werden Fehler zur generischen Meldung „Die Anfrage konnte nicht verarbeitet werden“ |
 | CR-009 | Runtime-Risiken | mittel | behoben | Der Markdown-Parser erhält harte Umbrüche, verschachtelte Marks und mehrzeilige Zitate verlustfrei |
 | CR-010 | Aufgaben-Abgleich | mittel | behoben | Die Änderungsvorschau zeigt englische Schlüssel, rohe IDs und keinen alten Charakterblatt-Wert (S11, Begriff „Änderungsvorschau“) |
-| CR-011 | Duplizierung | mittel | offen | Große Duplikate zwischen `content-create`, `content-update`, `visibility-set` und `image-upload` |
-| CR-012 | Bad Practices | mittel | offen | `content-update.ts` (1 163 Zeilen) steuert alles über zwei riesige Verzweigungsketten je `art` |
+| CR-011 | Duplizierung | mittel | behoben | Große Duplikate zwischen `content-create`, `content-update`, `visibility-set` und `image-upload` |
+| CR-012 | Bad Practices | mittel | behoben | `content-update.ts` (1 163 Zeilen) steuert alles über zwei riesige Verzweigungsketten je `art` |
 | CR-013 | Testabdeckung | mittel | offen | Für T-004 (2) Ablauf nach 10 Minuten und (5) Rechteverlust zwischen Vorschau und Bestätigung fehlen Tests |
 | CR-014 | Runtime-Risiken | niedrig | behoben | Explizite Erwähnungs-IDs werden direkt sichtbarkeitsgeprüft geladen und nutzen den DB-Titel |
 | CR-015 | Performance | niedrig | behoben | Gleiche Erwähnungen werden einmal aufgelöst; Kapitelsuche startet direkt bei der Kapitel-ID |
@@ -144,6 +144,7 @@
 - **Abnahmekriterium:** MCP-Test: Die Vorschau einer Vorlagenfeld-Änderung enthält „Rasse:“ und `@[<Titel>](artikel:<id>)`, aber nicht `"race"`. Die Vorschau einer Charakterblatt-Änderung enthält einen alten Wert ungleich „(bisheriges Blatt)“. Die Lebensraum-Vorschau enthält den Titel des Ort-Artikels.
 
 ### CR-011 – Duplizierter Code in den Schreibwerkzeugen
+- **Status:** behoben – Gemeinsame Hilfen liegen in `src/lib/mcp/write-shared.ts`, Feld-Schemas einmal in `tools/write-schemas.ts` (Update = `partial()`), Enums aus `shared.ts`, ein gemeinsamer Vorschau-Rahmen in `write-rich.ts`; alte `materializeStubs`-Kopien sind entfernt. Grep-Abnahme erfüllt, `npm run test:mcp` grün.
 - **Fundstelle:** `content-create.ts` und `content-update.ts`: Feld-Schemas (Z. 37–79 bzw. 57–102), `prepareTemplateFields` (create Z. 97, update Z. 214, identisch), `resolveHabitat` (create Z. 125, update Z. 242, fast identisch), Stub-Materialisierung/`fillStubRefs`/`rich` (create Z. 152–204, update `materializeUpdateDocs` Z. 301–370); `findVisibleChapter` (update Z. 260, `visibility-set.ts` Z. 38, identisch); `worldStand` (update Z. 274, `image-upload.ts` Z. 35, identisch); Quest-Status- und Vorlagentyp-Enums mehrfach neu definiert statt `questStatus`/`templateTypes` aus `shared.ts`; Vorschau-Kopf „Änderung noch nicht ausgeführt …“ viermal; außerdem ungenutztes `materializeStubs` in `write-rich.ts` Z. 128
 - **Kategorie:** Duplizierung & Modularisierung / Toter Code
 - **Schweregrad:** mittel
@@ -153,6 +154,7 @@
 - **Abnahmekriterium:** `grep -n "async function prepareTemplateFields\|async function findVisibleChapter\|async function worldStand\|async function resolveHabitat" src/lib/mcp` liefert je genau eine Definition. `z.enum(["offen", "aktiv", "abgeschlossen", "gescheitert"])` kommt unter `src/lib/mcp/tools` nur noch in `shared.ts` vor. `materializeStubs` ist entweder referenziert oder gelöscht. `npm run test:mcp` bleibt grün.
 
 ### CR-012 – `content-update.ts` zu groß und zu verzweigt
+- **Status:** behoben – `inhalt_aendern` und `inhalt_anlegen` dispatchen über Handler-Tabellen (`tools/update/`, `tools/create/`), `sichtbarkeit_setzen` über eine Tabelle je Art; keine Funktion unter `src/lib/mcp/tools/` ist länger als 80 Zeilen. `npm run test:mcp` grün.
 - **Fundstelle:** `src/lib/mcp/tools/content-update.ts` `prepareUpdate` (Z. 380–732, ~350 Zeilen) und `executeUpdate` (Z. 734–1064, ~330 Zeilen)
 - **Kategorie:** Bad Practices / Lesbarkeit
 - **Schweregrad:** mittel
