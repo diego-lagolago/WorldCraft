@@ -736,6 +736,37 @@ async function executeUpdate(input: {
   modus: "anhaengen" | "ersetzen";
   stubTitles: string[];
 }): Promise<{ value: string; worldId: string }> {
+  // The target and its revision must be checked before creating any pending stubs.
+  // Each branch performs the same checks again before its write to keep the final
+  // domain operation authoritative.
+  if (input.art === "artikel") {
+    const row = await getArticle(input.world.id, input.id, input.world.role, input.world.userId);
+    if (!row) throw new McpToolError("Inhalt nicht gefunden.");
+    assertStand(row.updatedAt, input.stand);
+  } else if (input.art === "quest") {
+    const row = await getQuest(input.world.id, input.id, input.world.role, input.world.userId);
+    if (!row) throw new McpToolError("Inhalt nicht gefunden.");
+    assertStand(row.updatedAt, input.stand);
+  } else if (input.art === "kapitel") {
+    const found = await findVisibleChapter(input.world, input.id);
+    assertStand(found.chapter.updatedAt, input.stand);
+  } else if (input.art === "notizblock") {
+    const note = await getQuestNote({ worldId: input.world.id, questId: input.id, role: input.world.role, viewerId: input.world.userId });
+    if (!note.ok) throwAuthz(note);
+    if (String(note.data.version) !== input.stand) throw new McpToolError("Inhalt wurde inzwischen geändert, bitte neu lesen.");
+  } else if (input.art === "monster") {
+    const row = await getMonster(input.world.id, input.id, input.world.role, input.world.userId);
+    if (!row) throw new McpToolError("Inhalt nicht gefunden.");
+    assertStand(row.updatedAt, input.stand);
+  } else if (input.art === "universum") {
+    const row = await getUniverse(input.world.id, input.id, input.world.role, input.world.userId);
+    if (!row) throw new McpToolError("Inhalt nicht gefunden.");
+    assertStand(row.updatedAt, input.stand);
+  } else {
+    const world = await getWorldDetails(input.world.id);
+    if (!world || input.id !== input.world.id) throw new McpToolError("Inhalt nicht gefunden.");
+    if (await worldStand(input.world.userId, input.world.id) !== input.stand) throw new McpToolError("Inhalt wurde inzwischen geändert, bitte neu lesen.");
+  }
   const membership = mcpMembership(input.world);
   const mentions = input.art !== "welt";
   const allowStubs = input.art !== "notizblock" && input.art !== "welt";
