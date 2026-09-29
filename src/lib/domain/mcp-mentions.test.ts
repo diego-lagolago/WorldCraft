@@ -41,8 +41,10 @@ describe("resolveMcpMarkdownMentions", () => {
   });
 
   it("deduplicates identical unresolved titles and renders the database title for explicit ids", async () => {
-    searchMentionTargets.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
-    await expect(input("@[Neu] und @[neu]")).resolves.toMatchObject({ stubs: ["Neu"] });
+    searchMentionTargets.mockClear();
+    searchMentionTargets.mockResolvedValue([]);
+    await expect(input("@[Neu] und @[neu] und @[Neu]")).resolves.toMatchObject({ stubs: ["Neu"] });
+    expect(searchMentionTargets).toHaveBeenCalledTimes(1);
     getArticle.mockResolvedValueOnce({ id: ID, title: "Burg Rabenstein" });
     await expect(input(`@[Burg](artikel:${ID})`)).resolves.toMatchObject({ resolved: [expect.objectContaining({ title: "Burg Rabenstein" })] });
   });

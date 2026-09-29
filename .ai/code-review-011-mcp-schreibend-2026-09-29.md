@@ -22,7 +22,7 @@
 | CR-012 | Bad Practices | mittel | offen | `content-update.ts` (1 163 Zeilen) steuert alles über zwei riesige Verzweigungsketten je `art` |
 | CR-013 | Testabdeckung | mittel | offen | Für T-004 (2) Ablauf nach 10 Minuten und (5) Rechteverlust zwischen Vorschau und Bestätigung fehlen Tests |
 | CR-014 | Runtime-Risiken | niedrig | behoben | Explizite Erwähnungs-IDs werden direkt sichtbarkeitsgeprüft geladen und nutzen den DB-Titel |
-| CR-015 | Performance | niedrig | offen | N+1-Abfragen: eine Suche mit 5 Abfragen je Erwähnung, das Ganze mehrfach je Aufruf; `findVisibleChapter` lädt alle Quests |
+| CR-015 | Performance | niedrig | behoben | Gleiche Erwähnungen werden einmal aufgelöst; Kapitelsuche startet direkt bei der Kapitel-ID |
 | CR-016 | Bad Practices | niedrig | behoben | Die Audit-ID wird strukturiert aus dem Anlegeergebnis übernommen |
 | CR-017 | Fehlerbehandlung | niedrig | behoben | Unbekannte Felder werden strikt validiert und erzeugen keine Vorschau |
 | CR-018 | Sicherheit | niedrig | offen | Upload-Tickets sind nicht an den OAuth-Client gebunden, das Audit schreibt `clientId: "upload-ticket"` |
@@ -174,6 +174,7 @@
 - **Abnahmekriterium:** Unit-/MCP-Test: `@[Burg](artikel:<id von „Burg Rabenstein“>)` löst auf und rendert als „Burg Rabenstein“. Ein unsichtbares Ziel liefert weiterhin „Erwähntes Ziel nicht gefunden.“
 
 ### CR-015 – N+1-Abfragen bei Erwähnungen und Kapitelsuche
+- **Status:** behoben – Identische Erwähnungen teilen einen Auflösungsvorgang; die Kapitelsuche enumeriert keine Quests mehr.
 - **Fundstelle:** `src/lib/domain/mcp-mentions.ts` Schleife Z. 30 (sequenzielle `searchMentionTargets` je Erwähnung, jeweils 5 Tabellen); mehrfache Auflösung pro Aufruf in `content-create.ts` (`collectCreateStubs` + `executeCreate`) und `content-update.ts` (`prepareUpdate` + `executeUpdate`); `findVisibleChapter` (`content-update.ts` Z. 260, `visibility-set.ts` Z. 38) lädt alle Quests und für jede die Kapitel, bei Update/Sichtbarkeit bis zu dreimal pro Aufruf
 - **Kategorie:** Performance
 - **Schweregrad:** niedrig
