@@ -24,9 +24,9 @@
 | CR-014 | Runtime-Risiken | niedrig | offen | Erwähnungen mit expliziter ID werden über eine Titelsuche mit Limit aufgelöst und schlagen dadurch fälschlich fehl |
 | CR-015 | Performance | niedrig | offen | N+1-Abfragen: eine Suche mit 5 Abfragen je Erwähnung, das Ganze mehrfach je Aufruf; `findVisibleChapter` lädt alle Quests |
 | CR-016 | Bad Practices | niedrig | behoben | Die Audit-ID wird strukturiert aus dem Anlegeergebnis übernommen |
-| CR-017 | Fehlerbehandlung | niedrig | offen | `.passthrough()` akzeptiert unbekannte Felder stillschweigend, das führt zu leerer Vorschau und einer No-op-Bestätigung |
+| CR-017 | Fehlerbehandlung | niedrig | behoben | Unbekannte Felder werden strikt validiert und erzeugen keine Vorschau |
 | CR-018 | Sicherheit | niedrig | offen | Upload-Tickets sind nicht an den OAuth-Client gebunden, das Audit schreibt `clientId: "upload-ticket"` |
-| CR-019 | Toter Code | niedrig | offen | `change_hash` wird gespeichert, aber nie geprüft, künftig beim Einlösen prüfen |
+| CR-019 | Toter Code | niedrig | behoben | Der Änderungs-Hash wird beim Einlösen gegen den normalisierten Payload geprüft |
 | CR-020 | Lesbarkeit | niedrig | behoben | `registerMcpTools` beschreibt den vollständigen Werkzeugsatz; Purge-Operationen sind getrennt geloggt |
 | CR-021 | Sicherheit | niedrig | offen | Der Upload-POST liest den ganzen Body vor der Größenprüfung, GET antwortet bei Stand-Drift mit 404 statt mit einer Erklärung |
 | CR-022 | Testabdeckung | niedrig | behoben | Bestätigungs-Integrationstest ist nur noch Teil der MCP-Suite |
@@ -191,6 +191,7 @@
 - **Abnahmekriterium:** Keine Regex-Auswertung von Werkzeugantworttext mehr in `src/lib/mcp/tools/`. Der T-009-Test prüft `target_id` des Anlege-Audits gegen die tatsächlich angelegte ID.
 
 ### CR-017 – Unbekannte Felder werden stillschweigend akzeptiert
+- **Status:** behoben – Feldschemas sind strikt; der MCP-Test prüft die Ablehnung ohne Bestätigungs-Token.
 - **Fundstelle:** alle Feld-Schemas mit `.passthrough()` in `content-create.ts` Z. 37–79 und `content-update.ts` Z. 57–102; `requireFields` (`content-update.ts` Z. 126)
 - **Kategorie:** Fehlerbehandlung & Validierung
 - **Schweregrad:** niedrig
@@ -209,6 +210,7 @@
 - **Abnahmekriterium:** MCP-Test: Nach Widerruf der Anwendung liefert ein zuvor erzeugter Upload-Link 404. Der Audit-Eintrag `upload_einloesen` hat die `client_id` des erzeugenden Clients.
 
 ### CR-019 – `change_hash` ungenutzt
+- **Status:** behoben – Der normalisierte Payload wird vor dem Handler gegen `change_hash` geprüft; Manipulation wird abgelehnt.
 - **Fundstelle:** `src/lib/mcp/confirmations.ts` Z. 40/43; Migration `0028`
 - **Kategorie:** Toter Code
 - **Schweregrad:** niedrig
