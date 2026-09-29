@@ -1139,6 +1139,49 @@ describe("MCP write tools", () => {
     }
   });
 
+  it("CR-001: a stale update confirmation leaves no pending stub behind", async () => {
+    const client = await registerMcpClient(9903, "MCP Stub Stale Update Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const target = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      felder: { titel: `MCP Standziel ${Date.now().toString(36)}`, text: "Ausgangstext." },
+    }));
+    const targetId = extractId(target);
+    const read = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: targetId,
+    }));
+    const stubTitle = `MCP Verwaister Stub ${Date.now().toString(36)}`;
+    const preview = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "artikel",
+      id: targetId,
+      stand: extractStand(read),
+      felder: { text: `@[${stubTitle}]` },
+    }));
+    const sql = testSql();
+    try {
+      const [before] = await sql.unsafe(
+        "SELECT count(*)::int AS count FROM articles WHERE world_id = $1",
+        [data.worldId],
+      );
+      await sql.unsafe("UPDATE articles SET updated_at = now() + interval '1 minute' WHERE id = $1", [targetId]);
+      const rejected = firstToolText(await callTool(gm.accessToken, "aenderung_bestaetigen", {
+        token: extractToken(preview),
+      }));
+      expect(rejected).toContain("Inhalt wurde inzwischen geändert");
+      const [after] = await sql.unsafe(
+        "SELECT count(*)::int AS count FROM articles WHERE world_id = $1",
+        [data.worldId],
+      );
+      expect(after.count).toBe(before.count);
+      const stubs = await sql.unsafe("SELECT id FROM articles WHERE world_id = $1 AND title = $2", [data.worldId, stubTitle]);
+      expect(stubs).toHaveLength(0);
+    } finally {
+      await sql.end();
+    }
+  });
+
   it("T-004(5): role loss between preview and confirmation leaves the quest unchanged", async () => {
     const client = await registerMcpClient(9898, "MCP Confirmation Role Loss Test");
     const master = await authorizeMcpClient("test-master", client, WRITE_SCOPE);

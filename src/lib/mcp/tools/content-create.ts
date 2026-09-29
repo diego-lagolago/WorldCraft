@@ -160,6 +160,7 @@ async function executeCreate(input: {
   const stubArticles: { id: string; title: string }[] = [];
   const stubIdByTitle = new Map<string, string>();
 
+  try {
   for (const title of input.stubTitles) {
     const created = await createArticleStub({
       membership,
@@ -210,7 +211,6 @@ async function executeCreate(input: {
     return resolution.doc ?? undefined;
   };
 
-  try {
   if (input.art === "artikel") {
     const felder = articleFields.parse(input.felder);
     const templateType = MCP_TEMPLATE_TYPE[felder.vorlagentyp ?? "ohne"];
@@ -372,8 +372,13 @@ async function executeCreate(input: {
   };
   } catch (error) {
     await Promise.all(stubArticles.map(async (stub) => {
-      const removed = await deleteArticle({ membership, actorId: input.ctx.userId, worldId: input.world.id, articleId: stub.id });
-      if (!removed.ok) console.error(JSON.stringify({ event: "mcp_stub_compensation_error", stubId: stub.id }));
+      const removed = await deleteArticle({
+        membership,
+        actorId: input.ctx.userId,
+        worldId: input.world.id,
+        articleId: stub.id,
+      }).catch(() => null);
+      if (!removed?.ok) console.error(JSON.stringify({ event: "mcp_stub_compensation_error", stubId: stub.id }));
     }));
     throw error;
   }

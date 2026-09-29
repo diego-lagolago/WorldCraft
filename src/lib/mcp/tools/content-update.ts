@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { getArticle, updateArticle, createArticleStub } from "@/lib/domain/articles";
+import { deleteArticle, getArticle, updateArticle, createArticleStub } from "@/lib/domain/articles";
 import { getMonster, updateMonster } from "@/lib/domain/monsters";
 import { getVisibleChapter, updateChapter } from "@/lib/domain/quest-chapters";
 import { getQuest, updateQuest } from "@/lib/domain/quests";
@@ -285,6 +285,23 @@ async function resolveBodyDoc(input: {
   return { doc: resolution.doc, stubs: resolution.stubs, touched: true };
 }
 
+async function compensateStubArticles(input: {
+  membership: ReturnType<typeof mcpMembership>;
+  actorId: string;
+  worldId: string;
+  stubs: { id: string }[];
+}) {
+  await Promise.all(input.stubs.map(async (stub) => {
+    const removed = await deleteArticle({
+      membership: input.membership,
+      actorId: input.actorId,
+      worldId: input.worldId,
+      articleId: stub.id,
+    }).catch(() => null);
+    if (!removed?.ok) console.error(JSON.stringify({ event: "mcp_stub_compensation_error", stubId: stub.id }));
+  }));
+}
+
 async function materializeUpdateDocs(input: {
   ctx: ToolContext;
   world: McpWorldContext;
@@ -300,16 +317,26 @@ async function materializeUpdateDocs(input: {
   const stubArticles: { id: string; title: string }[] = [];
   const stubIdByTitle = new Map<string, string>();
 
-  for (const title of input.stubTitles) {
-    const created = await createArticleStub({
+  try {
+    for (const title of input.stubTitles) {
+      const created = await createArticleStub({
+        membership,
+        actorId: input.ctx.userId,
+        worldId: input.world.id,
+        title,
+      });
+      if (!created.ok) throwAuthz(created);
+      stubArticles.push({ id: created.data.id, title: created.data.title });
+      stubIdByTitle.set(title.toLocaleLowerCase("de"), created.data.id);
+    }
+  } catch (error) {
+    await compensateStubArticles({
       membership,
       actorId: input.ctx.userId,
       worldId: input.world.id,
-      title,
+      stubs: stubArticles,
     });
-    if (!created.ok) throwAuthz(created);
-    stubArticles.push({ id: created.data.id, title: created.data.title });
-    stubIdByTitle.set(title.toLocaleLowerCase("de"), created.data.id);
+    throw error;
   }
 
   const fillStubRefs = (fields: Record<string, unknown>) => {
@@ -769,6 +796,8 @@ async function executeUpdate(input: {
     mentions,
   });
 
+  try {
+
   if (input.art === "artikel") {
     const row = await getArticle(input.world.id, input.id, input.world.role, input.world.userId);
     if (!row) throw new McpToolError("Inhalt nicht gefunden.");
@@ -1071,6 +1100,15 @@ async function executeUpdate(input: {
       visibility: "—",
     }),
   };
+  } catch (error) {
+    await compensateStubArticles({
+      membership,
+      actorId: input.ctx.userId,
+      worldId: input.world.id,
+      stubs: stubArticles,
+    });
+    throw error;
+  }
 }
 
 registerMcpConfirmationHandler("inhalt_aendern", async (row) => {
