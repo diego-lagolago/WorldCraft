@@ -146,4 +146,11 @@ describe("SDK validation errors (012 T-005)", () => {
       "Führt eine Änderung aus, deren Vorschau dem Benutzer gezeigt wurde und der er ausdrücklich zugestimmt hat. Niemals ohne diese Zustimmung aufrufen.",
     );
   });
+
+  it("012 T-009: accepts Ja/Nein as read by inhalt_lesen for yes/no fields", async () => {
+    expect(await sdkValidation("inhalt_aendern", { ...updateArgs, art: "monster", felder: { boss: "Ja" } })).toBeNull();
+    expect(await sdkValidation("inhalt_aendern", {
+      ...updateArgs, art: "artikel", felder: { vorlagenfelder: { "Quest-Gegenstand": "Nein" } },
+    })).toBeNull();
+  });
 });

@@ -3,6 +3,8 @@ import sharp from "sharp";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { BASE, login, testSql } from "@/test/api-harness";
 import { purgeMcpAuditLog } from "@/lib/mcp/audit";
+import { fieldsFor, templateFieldsFor, type FieldDefinition } from "@/lib/mcp/field-catalog";
+import { MCP_TEMPLATE_TYPE } from "@/lib/mcp/enums";
 
 /** 1×1 PNG used for multipart upload tests (T-008). */
 const TINY_PNG = Buffer.from(
@@ -2340,5 +2342,286 @@ describe("MCP write tools", () => {
     expect(relation.split("\n")[0]).toBe("Zeige dem Benutzer diese Quittung.");
     expect(relation).toContain(`„MCP Quittung ${suffix}“`);
     expect(relation).toContain(`„MCP Quittung Monster ${suffix}“`);
+  });
+});
+
+
+/**
+ * 012 T-009: round-trip suite generated from the field catalog. Every writable field is written
+ * via MCP, read back with inhalt_lesen, written back unchanged via its Schreibschlüssel („Keine
+ * Änderung“) and sent once with its display label as key (error naming the write key).
+ */
+describe("012 T-009: Rundreise-Suite aus dem Feldkatalog", () => {
+  const WRITE_SCOPE = "worlds:write offline_access";
+  const NO_CHANGE = "Keine Änderung: Die übergebenen Werte entsprechen dem aktuellen Stand.";
+  let data: Fixture;
+  let token: string;
+  let calls = 0;
+  const suffix = Date.now().toString(36);
+  const targets = new Map<string, { id: string; title: string }>();
+  let characterMention: string | undefined;
+
+  async function call(name: string, args: Record<string, unknown>) {
+    calls += 1;
+    if (calls % 40 === 0) await resetMcpRateLimit();
+    return firstToolText(await callTool(token, name, args));
+  }
+
+  const read = (art: string, id: string) => call("inhalt_lesen", { welt: "MCP-Testwelt", art, id });
+
+  /** Value shown for a display label in the content part (before the Schreibschlüssel block). */
+  function shown(text: string, label: string): string | undefined {
+    const content = text.split("## Schreibschlüssel")[0];
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`^${escaped}: (.*)$`, "m").exec(content)?.[1];
+  }
+
+  /** Schreibschlüssel table of an inhalt_lesen answer: display label → felder key. */
+  function writeKeys(text: string): Map<string, string> {
+    const table = text.split("## Schreibschlüssel")[1] ?? "";
+    return new Map([...table.matchAll(/^- (.+) → `([^`]+)`$/gm)].map((match) => [match[1], match[2]]));
+  }
+
+  /** Nests a Schreibschlüssel path like `vorlagenfelder.Seltenheit` into a felder object. */
+  function felderFor(path: string, value: unknown): Record<string, unknown> {
+    const [head, ...rest] = path.split(".");
+    return rest.length ? { [head]: { [rest.join(".")]: value } } : { [head]: value };
+  }
+
+  /** Writes with confirmation when the tool asks for it and returns the final answer. */
+  async function write(input: { art: string; id: string; stand: string; felder: Record<string, unknown>; modus?: string }) {
+    const answer = await call("inhalt_aendern", { welt: "MCP-Testwelt", ...input });
+    if (!answer.includes("Bestätigungs-Token:")) return answer;
+    return call("aenderung_bestaetigen", { token: extractToken(answer) });
+  }
+
+  async function probeRewrite(input: {
+    art: string; id: string; stand: string; text: string; label: string; modus?: string; asList?: boolean;
+  }) {
+    const key = writeKeys(input.text).get(input.label);
+    expect(key, `Schreibschlüssel für ${input.label}`).toBeTruthy();
+    const value = shown(input.text, input.label);
+    expect(value, `gelesener Wert für ${input.label}`).toBeDefined();
+    const written = input.asList ? [value] : value;
+    const rewrite = await call("inhalt_aendern", {
+      welt: "MCP-Testwelt", art: input.art, id: input.id, stand: input.stand, felder: felderFor(key!, written),
+      ...(input.modus ? { modus: input.modus } : {}),
+    });
+    expect(rewrite, `Rückschreibprobe ${input.label}`).toContain(NO_CHANGE);
+    if (key === input.label) return;
+    const byLabel = await call("inhalt_aendern", {
+      welt: "MCP-Testwelt", art: input.art, id: input.id, stand: input.stand, felder: { [input.label]: written },
+    });
+    expect(byLabel, `Anzeige-Label ${input.label} als Schlüssel`).toContain(`\`${key}\``);
+    expect(byLabel).not.toContain("Bestätigungs-Token:");
+  }
+
+  function referenceValue(field: FieldDefinition): { value: string; title: string } | undefined {
+    for (const target of field.referenceTargets ?? []) {
+      if (target === "charakter" && characterMention) {
+        return { value: characterMention, title: /@\[([^\]]+)\]/.exec(characterMention)![1] };
+      }
+      const article = targets.get(target.replace("artikel:", ""));
+      if (article) return { value: `@[${article.title}](artikel:${article.id})`, title: article.title };
+    }
+    return undefined;
+  }
+
+  beforeAll(async () => {
+    await resetMcpRateLimit();
+    data = await fixture();
+    const client = await registerMcpClient(9910, "MCP Rundreise Test");
+    token = (await authorizeMcpClient("test-gm", client, WRITE_SCOPE)).accessToken;
+    for (const [label, type] of Object.entries(MCP_TEMPLATE_TYPE)) {
+      if (type === "none" || type === "item") continue;
+      const title = `Rundreise Ziel ${label} ${suffix}`;
+      const created = await call("inhalt_anlegen", { welt: "MCP-Testwelt", art: "artikel", felder: { titel: title, vorlagentyp: label } });
+      targets.set(type, { id: extractId(created), title });
+    }
+    const questRead = await read("quest", data.activeQuestId);
+    characterMention = /@\[[^\]]+\]\(charakter:[0-9a-f-]{36}\)/i.exec(questRead)?.[0];
+  });
+
+  beforeEach(async () => {
+    await resetMcpRateLimit();
+  });
+
+  for (const [templateLabel, templateType] of Object.entries(MCP_TEMPLATE_TYPE)) {
+    it(`artikel (${templateLabel}): every template field round-trips`, async () => {
+      const created = await call("inhalt_anlegen", {
+        welt: "MCP-Testwelt", art: "artikel",
+        felder: { titel: `Rundreise ${templateLabel} ${suffix}`, vorlagentyp: templateLabel, text: "Befüllt." },
+      });
+      const id = extractId(created);
+      for (const field of templateFieldsFor(templateType)) {
+        const values: { value: unknown; shown: string; title?: string }[] = [];
+        if (field.type === "select") values.push(...(field.allowedValues ?? []).map((entry) => ({ value: entry.label, shown: entry.label })));
+        if (field.type === "boolean") values.push({ value: true, shown: "Ja" });
+        if (field.type === "text") values.push({ value: `Rundreise ${field.label}`, shown: `Rundreise ${field.label}` });
+        if (field.type === "reference") {
+          const reference = referenceValue(field);
+          if (reference) values.push({ value: reference.value, shown: reference.value, title: reference.title });
+        }
+        expect(values.length || field.type === "reference", `Testwerte für ${field.label}`).toBeTruthy();
+        for (const entry of values) {
+          const before = await read("artikel", id);
+          await write({ art: "artikel", id, stand: extractStand(before), felder: { vorlagenfelder: { [field.label]: entry.value } } });
+          const after = await read("artikel", id);
+          expect(shown(after, field.label), `${templateLabel}.${field.label}`).toBe(entry.shown);
+          if (entry.title) {
+            const relations = await call("relationen_abrufen", { welt: "MCP-Testwelt", art: "artikel", id });
+            expect(relations, `Relation aus ${field.label}`).toContain(entry.title);
+          }
+        }
+        if (!values.length) continue;
+        const current = await read("artikel", id);
+        await probeRewrite({ art: "artikel", id, stand: extractStand(current), text: current, label: field.label });
+      }
+      const final = await read("artikel", id);
+      for (const label of ["Titel", "Text"]) {
+        await probeRewrite({
+          art: "artikel", id, stand: extractStand(final), text: final, label, modus: label === "Text" ? "ersetzen" : undefined,
+        });
+      }
+    });
+  }
+
+  it("monster: every field, select value and sheet sub-field round-trips", async () => {
+    const id = extractId(await call("inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "monster", felder: { name: `Rundreise Monster ${suffix}`, bio: "Befüllt." },
+    }));
+    for (const field of fieldsFor("aendern", "monster")) {
+      if (field.type === "select") {
+        for (const entry of field.allowedValues ?? []) {
+          const before = await read("monster", id);
+          await write({ art: "monster", id, stand: extractStand(before), felder: { [field.key]: entry.label } });
+          expect(shown(await read("monster", id), field.label), `${field.key} = ${entry.label}`).toBe(entry.label);
+        }
+      }
+      if (field.key === "boss") {
+        const before = await read("monster", id);
+        await write({ art: "monster", id, stand: extractStand(before), felder: { boss: true } });
+        expect(shown(await read("monster", id), field.label)).toBe("Ja");
+      }
+      if (field.key === "lebensraum") {
+        const place = targets.get("place")!;
+        const before = await read("monster", id);
+        await write({ art: "monster", id, stand: extractStand(before), felder: { lebensraum: `@[${place.title}](artikel:${place.id})` } });
+        expect(shown(await read("monster", id), field.label)).toBe(`@[${place.title}](artikel:${place.id})`);
+      }
+    }
+    const sheet = {
+      klasse: "Späher", persoenlichkeit: "Wachsam", ideale: "Ruhe", bindungen: "Rudel", schwaechen: "Gierig",
+      attribute: { STR: 14 }, uebungsbonus: 3,
+      fertigkeiten: [{ name: "Heimlichkeit", stufe: "Geübt", attribut: "GES" }],
+      faehigkeiten: [{ text: "Rudeltaktik", attribut: "STR" }],
+    };
+    const beforeSheet = await read("monster", id);
+    await write({ art: "monster", id, stand: extractStand(beforeSheet), felder: { charakterblatt: sheet } });
+    const afterSheet = await read("monster", id);
+    for (const [label, value] of [["Klasse", "Späher"], ["Persönlichkeitsmerkmale", "Wachsam"], ["Ideale", "Ruhe"], ["Bindungen", "Rudel"], ["Makel", "Gierig"], ["Übungsbonus", "+3"]]) {
+      expect(shown(afterSheet, label), `Charakterblatt ${label}`).toBe(value);
+    }
+    expect(afterSheet).toContain("STR: 14");
+    expect(afterSheet).toContain("Heimlichkeit");
+    expect(afterSheet).toContain("Rudeltaktik");
+
+    const final = await read("monster", id);
+    for (const label of ["Name", "Art", "Seltenheit", "Boss", "Gefahrenstufe", "Größe", "Lebensraum", "Klasse", "Persönlichkeitsmerkmale", "Ideale", "Bindungen", "Makel"]) {
+      await probeRewrite({ art: "monster", id, stand: extractStand(final), text: final, label });
+    }
+  });
+
+  it("quest, kapitel and notizblock: every field and status round-trips", async () => {
+    const questId = extractId(await call("inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "quest", felder: { titel: `Rundreise Quest ${suffix}`, beschreibung: "Befüllt." },
+    }));
+    for (const status of ["offen", "aktiv", "abgeschlossen", "gescheitert"]) {
+      const before = await read("quest", questId);
+      if (shown(before, "Status") !== status) await write({ art: "quest", id: questId, stand: extractStand(before), felder: { status } });
+      expect(shown(await read("quest", questId), "Status")).toBe(status);
+    }
+    if (characterMention) {
+      const before = await read("quest", questId);
+      await write({ art: "quest", id: questId, stand: extractStand(before), felder: { beteiligte: [characterMention] } });
+      expect(shown(await read("quest", questId), "Beteiligte Charaktere")).toBe(characterMention);
+    }
+    const questRead = await read("quest", questId);
+    for (const label of ["Titel", "Status", ...(characterMention ? ["Beteiligte Charaktere"] : [])]) {
+      await probeRewrite({ art: "quest", id: questId, stand: extractStand(questRead), text: questRead, label, asList: label === "Beteiligte Charaktere" });
+    }
+
+    const chapterId = extractId(await call("inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "kapitel", felder: { quest_id: questId, titel: `Rundreise Kapitel ${suffix}`, text: "Befüllt.", position: 1 },
+    }));
+    for (const status of ["aktiv", "abgeschlossen", "gescheitert", "offen"]) {
+      const questText = await read("quest", questId);
+      const stand = questText.match(new RegExp(`ID: ${chapterId}\\nStatus: [^\\n]+\\nStand: ([^\\n]+)`))![1];
+      await write({ art: "kapitel", id: chapterId, stand, felder: { status } });
+      expect(await read("quest", questId)).toMatch(new RegExp(`ID: ${chapterId}\\nStatus: ${status}\\n`));
+    }
+    const chapterText = await read("quest", questId);
+    const chapterStand = chapterText.match(new RegExp(`ID: ${chapterId}\\nStatus: [^\\n]+\\nStand: ([^\\n]+)`))![1];
+    expect(await call("inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "kapitel", id: chapterId, stand: chapterStand, felder: { status: "offen", titel: `Rundreise Kapitel ${suffix}` },
+    })).toContain(NO_CHANGE);
+
+    const noteRead = await read("quest", questId);
+    const noteReceipt = await write({ art: "notizblock", id: questId, stand: extractNoteStand(noteRead), felder: { text: `Rundreise Notiz ${suffix}` } });
+    expect(noteReceipt).toContain(`Rundreise Notiz ${suffix}`);
+    expect(plainMcp(await read("quest", questId))).toContain(`Rundreise Notiz ${suffix}`);
+  });
+
+  it("universum and welt: name and description round-trip", async () => {
+    const universeId = extractId(await call("inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "universum", felder: { name: `Rundreise Universum ${suffix}`, beschreibung: "Befüllt." },
+    }));
+    const universe = await read("universum", universeId);
+    expect(universe).toContain("Befüllt.");
+    await probeRewrite({ art: "universum", id: universeId, stand: extractStand(universe), text: universe, label: "Name" });
+
+    const worlds = await call("welten_auflisten", {});
+    const worldBlock = worlds.split("## ").find((block) => block.startsWith("MCP-Testwelt\n"))!;
+    const worldStand = /^Stand: (.+)$/m.exec(worldBlock)![1].trim();
+    expect(await call("inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "welt", id: data.worldId, stand: worldStand, felder: { name: "MCP-Testwelt" },
+    })).toContain(NO_CHANGE);
+  });
+
+  it("every art rejects an unknown key without changing the record", async () => {
+    const id = extractId(await call("inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "artikel", felder: { titel: `Rundreise Unbekannt ${suffix}`, text: "Befüllt." },
+    }));
+    const before = await read("artikel", id);
+    for (const art of ["artikel", "quest", "kapitel", "notizblock", "monster", "universum", "welt"]) {
+      const answer = await call("inhalt_aendern", {
+        welt: "MCP-Testwelt", art, id, stand: extractStand(before), felder: { gibtsnicht: "x" },
+      });
+      expect(answer, art).toContain("Unbekanntes Feld „felder.gibtsnicht“");
+      expect(answer).not.toContain("Bestätigungs-Token:");
+    }
+    expect(extractStand(await read("artikel", id))).toBe(extractStand(before));
+  });
+
+  it("E2E-Lauf 1: notizblock inhalt statt text", async () => {
+    const questRead = await read("quest", data.activeQuestId);
+    const answer = await call("inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "notizblock", id: data.activeQuestId, stand: extractNoteStand(questRead), felder: { inhalt: "x" },
+    });
+    expect(answer).toContain("`text`");
+    expect(answer).not.toContain("Bestätigungs-Token:");
+  });
+
+  it("E2E-Lauf 1: seltenheit am gegenstand", async () => {
+    const id = extractId(await call("inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "artikel", felder: { titel: `Rundreise Seltenheit ${suffix}`, vorlagentyp: "gegenstand", text: "Befüllt." },
+    }));
+    const before = await read("artikel", id);
+    const wrong = await call("inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "artikel", id, stand: extractStand(before), felder: { seltenheit: "Gewöhnlich" },
+    });
+    expect(wrong).toContain("`vorlagenfelder.Seltenheit`");
+    await write({ art: "artikel", id, stand: extractStand(before), felder: { vorlagenfelder: { Seltenheit: "Gewöhnlich" } } });
+    expect(shown(await read("artikel", id), "Seltenheit")).toBe("Gewöhnlich");
   });
 });

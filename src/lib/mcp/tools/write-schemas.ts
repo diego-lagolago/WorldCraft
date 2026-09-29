@@ -19,6 +19,9 @@ const MCP_TEMPLATE_TYPE_LABEL = Object.fromEntries(
   Object.entries(MCP_TEMPLATE_TYPE).map(([label, value]) => [value, label]),
 ) as Record<string, string>;
 
+/** inhalt_lesen shows Ja/Nein; written back unchanged it maps onto true/false (002 D18, 012 T-009). */
+const yesNo = () => z.preprocess((value) => (value === "Ja" ? true : value === "Nein" ? false : value), z.boolean());
+
 /** Fixed MCP enums without an English alternative stay enums in the schema (E5). */
 const FIXED_ENUM_KEYS = new Set(["vorlagentyp", "status"]);
 
@@ -34,7 +37,7 @@ function schemaFor(art: FieldArt, field: FieldDefinition): z.ZodType {
     if (field.key === "titel") return title;
     return field.key === "name" && art !== "universum" ? shortName : field.key === "name" ? title : z.string();
   case "markdown": return z.string();
-  case "boolean": return z.boolean();
+  case "boolean": return yesNo();
   case "number": return field.key === "position" ? z.number().int().min(1) : z.number();
   case "select": {
     const labels = field.allowedValues?.map((value) => value.label);
@@ -50,7 +53,7 @@ function schemaFor(art: FieldArt, field: FieldDefinition): z.ZodType {
 
 /** Template values are checked by `normalizeTemplateFieldsInput`; `null` clears a field. */
 function templateValueSchema(field: FieldDefinition): z.ZodType {
-  if (field.type === "boolean") return z.boolean().nullable();
+  if (field.type === "boolean") return yesNo().nullable();
   if (field.type === "reference") return reference;
   return z.string().nullable();
 }
