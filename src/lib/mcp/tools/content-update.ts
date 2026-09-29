@@ -5,7 +5,8 @@ import { createMcpConfirmation, registerMcpConfirmationHandler } from "../confir
 import { McpToolError, resolveMcpWorld, type McpWorldContext } from "../context";
 import { withMcpStubCompensation } from "../stub-compensation";
 import { createStubPlan, materializeStubs } from "../write-shared";
-import { formatConfirmationPreview, formatCreateResult, mcpMembership } from "../write-rich";
+import { formatReceipt, snapshotContent, snapshotDelta } from "../receipt";
+import { formatConfirmationPreview, mcpMembership } from "../write-rich";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 import type { FieldChange, PreviewContext, RichModus } from "./update/common";
 import { UPDATE_HANDLERS } from "./update";
@@ -52,6 +53,7 @@ async function prepareUpdate(input: UpdateRequest): Promise<PreparedUpdate> {
 async function executeUpdate(input: UpdateRequest & { ctx: ToolContext; stubTitles: string[] }) {
   const handler = UPDATE_HANDLERS[input.art];
   const target = await handler.load(input.world, input.id, input.stand);
+  const before = await snapshotContent(input.world, input.art, input.id);
   const membership = mcpMembership(input.world);
   const stubs = await materializeStubs({
     world: input.world,
@@ -73,9 +75,16 @@ async function executeUpdate(input: UpdateRequest & { ctx: ToolContext; stubTitl
         expectedUpdatedAt: new Date(input.stand),
         stubs,
       });
+      const after = await snapshotContent(input.world, input.art, input.id);
       return {
         worldId: input.world.id,
-        value: formatCreateResult({ art: input.art, ...result, stubs: stubs.articles }),
+        value: formatReceipt({
+          art: input.art,
+          id: result.id,
+          after: { ...after, stand: result.stand },
+          changes: snapshotDelta(before, after),
+          stubs: stubs.articles,
+        }),
       };
     },
   });

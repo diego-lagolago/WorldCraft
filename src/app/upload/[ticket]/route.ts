@@ -12,6 +12,7 @@ import type { ImageKind } from "@/lib/files/kinds";
 import { consumeMcpUploadRedeem, McpUploadRateLimitError, writeMcpAuditLog } from "@/lib/mcp/audit";
 import { listMcpWorldMemberships } from "@/lib/mcp/context";
 import { consumeMcpUploadTicket, peekMcpUploadTicket } from "@/lib/mcp/upload-tickets";
+import { formatDelta, RECEIPT_INSTRUCTION } from "@/lib/mcp/change-format";
 import { standOf } from "@/lib/mcp/write-rich";
 
 export const dynamic = "force-dynamic";
@@ -105,6 +106,40 @@ async function targetTitle(ticket: TicketRow): Promise<string> {
   return monster?.name ?? "Monster";
 }
 
+/** Whether the target already had an image before this upload (for the receipt delta). */
+async function hadImage(ticket: TicketRow): Promise<boolean> {
+  if (ticket.targetKind === "welt") {
+    const [row] = await db.select({ image: worlds.titleImageId }).from(worlds).where(eq(worlds.id, ticket.worldId)).limit(1);
+    return Boolean(row?.image);
+  }
+  if (ticket.targetKind === "artikel") {
+    const [row] = await db.select({ image: articles.titleImageId }).from(articles).where(eq(articles.id, ticket.targetId)).limit(1);
+    return Boolean(row?.image);
+  }
+  const [row] = await db.select({ image: monsters.portraitId }).from(monsters).where(eq(monsters.id, ticket.targetId)).limit(1);
+  return Boolean(row?.image);
+}
+
+/** Receipt after a redeemed upload link (012 T-008): same first line and delta as the tools. */
+async function uploadReceipt(ticket: TicketRow, replaced: boolean): Promise<string> {
+  const label = TARGET_LABEL[ticket.targetKind as keyof typeof TARGET_LABEL];
+  return [
+    RECEIPT_INSTRUCTION,
+    "Gespeichert.",
+    `Art: ${ticket.targetKind}`,
+    `ID: ${ticket.targetKind === "welt" ? ticket.worldId : ticket.targetId}`,
+    `Titel: ${await targetTitle(ticket)}`,
+    `Stand: ${await currentStand(ticket) ?? "–"}`,
+    `Ziel: ${ticket.targetKind}`,
+    `Bildart: ${label}`,
+    `Ersetzt vorhandenes Bild: ${replaced ? "ja" : "nein"}`,
+    ...formatDelta(
+      [{ label, oldValue: replaced ? "bisheriges Bild" : "–", newValue: "neu hochgeladenes Bild" }],
+      "Gespeicherte Änderungen (vorher → nachher):",
+    ),
+  ].join("\n");
+}
+
 function uploadPageHtml(input: {
   label: string;
   title: string;
@@ -112,10 +147,13 @@ function uploadPageHtml(input: {
   maxMb: number;
   error?: string;
   success?: boolean;
+  receipt?: string;
 }) {
   const expiry = input.expiresAt.toLocaleString("de-DE", { timeZone: "Europe/Vienna" });
   const body = input.success
-    ? `<p class="ok">Bild hochgeladen. Du kannst dieses Fenster schließen.</p>`
+    ? `<p class="ok">Bild hochgeladen. Du kannst dieses Fenster schließen.</p>${
+      input.receipt ? `<pre>${escapeHtml(input.receipt.split("\n").slice(1).join("\n"))}</pre>` : ""
+    }`
     : `
       <p>Ziel: <strong>${escapeHtml(input.label)}</strong> – ${escapeHtml(input.title)}</p>
       <p>Gültig bis: ${escapeHtml(expiry)}</p>
@@ -138,6 +176,7 @@ function uploadPageHtml(input: {
     main { max-width: 28rem; margin: 0 auto; }
     h1 { font-size: 1.25rem; margin: 0 0 1rem; }
     label { display: block; margin: 1rem 0 0.35rem; font-weight: 600; }
+    pre { white-space: pre-wrap; font: inherit; background: #fff; padding: 0.75rem; border-radius: 0.5rem; }
     input[type=file] { width: 100%; }
     button { margin-top: 1rem; width: 100%; padding: 0.75rem 1rem; font-size: 1rem; border: 0; border-radius: 0.5rem; background: #1c1917; color: #fff; }
     .err { color: #9f1239; }
@@ -153,12 +192,12 @@ function uploadPageHtml(input: {
 </html>`;
 }
 
-async function pageResponse(ticket: TicketRow, status: number, error?: string, success?: boolean) {
+async function pageResponse(ticket: TicketRow, status: number, error?: string, success?: boolean, receipt?: string) {
   const title = await targetTitle(ticket);
   const label = TARGET_LABEL[ticket.targetKind as keyof typeof TARGET_LABEL] ?? "Bild";
   const maxMb = Math.round(maxBytesFor(ticket.imageKind as ImageKind) / (1024 * 1024));
   return new NextResponse(uploadPageHtml({
-    label, title, expiresAt: ticket.expiresAt, maxMb, error, success,
+    label, title, expiresAt: ticket.expiresAt, maxMb, error, success, receipt,
   }), {
     status,
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
@@ -248,6 +287,7 @@ export async function POST(
     return pageResponse(peeked, 400, inspected.error);
   }
 
+  const replaced = await hadImage(peeked);
   const ticket = await consumeMcpUploadTicket(token);
   if (!ticket) return notFound();
 
@@ -282,13 +322,15 @@ export async function POST(
     );
   }
 
+  const receipt = await uploadReceipt(ticket, replaced);
   if (wantsJson(request)) {
     return NextResponse.json({
       fileId: result.data.fileId,
       ziel: ticket.targetKind,
       id: ticket.targetId,
+      quittung: receipt,
     }, { status: 201 });
   }
 
-  return pageResponse(ticket, 201, undefined, true);
+  return pageResponse(ticket, 201, undefined, true, receipt);
 }

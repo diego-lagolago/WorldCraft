@@ -13,12 +13,11 @@ import { findVisibleChapter, visibleArticle, visibleMonster, visibleQuest, visib
 import {
   assertStand,
   formatConfirmationPreview,
-  formatCreateResult,
   mcpMembership,
-  standOf,
   throwAuthz,
   visibilityLabel,
 } from "../write-rich";
+import { formatReceipt, snapshotContent, snapshotDelta } from "../receipt";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 
 const visibilityArt = mcpEnum(["artikel", "quest", "kapitel", "monster", "universum"], "art");
@@ -109,6 +108,7 @@ async function executeVisibilitySet(input: Omit<VisibilityPayload, "operation"> 
   world: McpWorldContext;
 }): Promise<{ worldId: string; value: string }> {
   await loadCurrentTarget(input.world, input.art, input.id, input.stand);
+  const before = await snapshotContent(input.world, input.art, input.id);
   const result = await HANDLERS[input.art].write({
     membership: mcpMembership(input.world),
     actorId: input.ctx.userId,
@@ -118,16 +118,10 @@ async function executeVisibilitySet(input: Omit<VisibilityPayload, "operation"> 
     expectedUpdatedAt: new Date(input.stand),
   });
   if (!result.ok) throwAuthz(result);
-  const updated = await HANDLERS[input.art].load(input.world, input.id);
+  const after = await snapshotContent(input.world, input.art, input.id);
   return {
     worldId: input.world.id,
-    value: formatCreateResult({
-      art: input.art,
-      id: updated.id,
-      title: updated.title,
-      stand: standOf(updated.updatedAt),
-      visibility: visibilityLabel(updated.current),
-    }),
+    value: formatReceipt({ art: input.art, id: input.id, after, changes: snapshotDelta(before, after) }),
   };
 }
 

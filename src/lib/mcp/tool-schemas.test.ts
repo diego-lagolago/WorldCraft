@@ -139,4 +139,11 @@ describe("SDK validation errors (012 T-005)", () => {
       welt: "MCP-Testwelt", quelle: { art: "charakter", id: ID }, ziel: { art: "artikel", id: ID }, bezeichnung: "kennt",
     })).toContain("Feld „quelle.art“ hat den ungültigen Wert „charakter“.");
   });
+
+  it("012 T-007(6): aenderung_bestaetigen demands the user's explicit consent", () => {
+    const tools = registeredTools() as unknown as Record<string, { description: string }>;
+    expect(tools.aenderung_bestaetigen.description).toBe(
+      "Führt eine Änderung aus, deren Vorschau dem Benutzer gezeigt wurde und der er ausdrücklich zugestimmt hat. Niemals ohne diese Zustimmung aufrufen.",
+    );
+  });
 });

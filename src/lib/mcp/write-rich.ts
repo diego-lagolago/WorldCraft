@@ -13,6 +13,10 @@ import {
 import type { TemplateRefValue } from "@/lib/templates/registry";
 import type { McpWorldContext } from "./context";
 import { McpToolError } from "./context";
+import { formatDelta, PREVIEW_INSTRUCTION, type FieldChange } from "./change-format";
+
+export { formatDelta, PREVIEW_INSTRUCTION, RECEIPT_INSTRUCTION, type FieldChange } from "./change-format";
+
 
 export function mcpMembership(world: McpWorldContext): MembershipRow {
   return {
@@ -120,59 +124,7 @@ export async function resolveMentionRef(input: {
   };
 }
 
-export function formatCreateResult(input: {
-  art: string;
-  id: string;
-  title: string;
-  stand: string;
-  visibility: string;
-  stubs?: { id: string; title: string }[];
-  ignoredVisibility?: boolean;
-}): string {
-  const lines = [
-    `Art: ${input.art}`,
-    `ID: ${input.id}`,
-    `Titel: ${input.title}`,
-    `Stand: ${input.stand}`,
-    `Sichtbarkeit: ${input.visibility}`,
-  ];
-  if (input.ignoredVisibility) {
-    lines.push("Hinweis: Eine übergebene Sichtbarkeit wurde ignoriert; neue Inhalte starten privat (Universen: nur Spielleitung).");
-  }
-  if (input.stubs?.length) {
-    lines.push("Neu angelegte Stubs:");
-    for (const stub of input.stubs) lines.push(`- ${stub.title} (${stub.id})`);
-  }
-  return lines.join("\n");
-}
-
-/** One delta row (Begriffe „Delta“); captions replace „vorher“/„nachher“, e.g. for rich text. */
-export type FieldChange = { label: string; oldValue: string; newValue: string; oldCaption?: string; newCaption?: string };
-
-export const PREVIEW_INSTRUCTION = "Zeige dem Benutzer diese Vorschau vollständig und unverändert. "
-  + "Rufe aenderung_bestaetigen erst auf, wenn der Benutzer ausdrücklich zugestimmt hat.";
-
-function indented(caption: string, value: string): string[] {
-  const [first, ...rest] = value.split("\n");
-  return [`  ${caption}: ${first}`, ...rest.map((line) => `    ${line}`)];
-}
-
-/** Delta „vorher → nachher“ per changed field; long or multi-line values get their own lines. */
-export function formatDelta(changes: readonly FieldChange[], heading = "Änderungen:"): string[] {
-  if (!changes.length) return [];
-  return [heading, ...changes.flatMap((change) => {
-    const inline = !change.oldCaption && !change.newCaption
-      && !`${change.oldValue}${change.newValue}`.includes("\n")
-      && change.oldValue.length + change.newValue.length <= 160;
-    return inline
-      ? [`- ${change.label}: ${change.oldValue} → ${change.newValue}`]
-      : [
-        `- ${change.label}:`,
-        ...indented(change.oldCaption ?? "vorher", change.oldValue),
-        ...indented(change.newCaption ?? "nachher", change.newValue),
-      ];
-  })];
-}
+export const IGNORED_VISIBILITY = "Hinweis: Eine übergebene Sichtbarkeit wurde ignoriert; neue Inhalte starten privat (Universen: nur Spielleitung).";
 
 /** Shared preview format of every confirmation path (012 T-007, E2). */
 export function formatConfirmationPreview(input: {

@@ -4,7 +4,8 @@ import { createMcpConfirmation, registerMcpConfirmationHandler } from "../confir
 import { resolveMcpWorld, type McpWorldContext } from "../context";
 import { withMcpStubCompensation } from "../stub-compensation";
 import { createStubPlan, materializeStubs } from "../write-shared";
-import { formatConfirmationPreview, formatCreateResult, formatStubLines, mcpMembership } from "../write-rich";
+import { formatReceipt, snapshotContent, snapshotDelta } from "../receipt";
+import { formatConfirmationPreview, IGNORED_VISIBILITY, mcpMembership } from "../write-rich";
 import { CREATE_HANDLERS } from "./create";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 import { createArt, createFieldsInput, parseFelder, type CreateArt } from "./write-schemas";
@@ -34,14 +35,17 @@ async function executeCreate(input: CreateRequest & { ctx: ToolContext; stubTitl
     stubs: stubs.articles,
     write: async () => {
       const result = await handler.execute(input.felder, { ctx: input.ctx, world: input.world, membership, stubs });
+      const after = await snapshotContent(input.world, input.art, result.id);
       return {
         worldId: input.world.id,
         id: result.id,
-        value: formatCreateResult({
+        value: formatReceipt({
           art: input.art,
-          ...result,
+          id: result.id,
+          after: { ...after, stand: result.stand },
+          changes: snapshotDelta(null, after),
           stubs: stubs.articles,
-          ignoredVisibility: input.ignoredVisibility,
+          notes: input.ignoredVisibility ? [IGNORED_VISIBILITY] : [],
         }),
       };
     },

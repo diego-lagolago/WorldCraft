@@ -27,7 +27,7 @@ vi.mock("@/db/schema", () => ({
   articles: { id: "id", updatedAt: "updated_at" },
   monsters: { id: "id", updatedAt: "updated_at" },
   users: { id: "id", discordId: "discord_id" },
-  worlds: { id: "id", name: "name" },
+  worlds: { id: "id", name: "name", titleImageId: "title_image_id" },
 }));
 vi.mock("@/lib/domain/articles", () => ({ getArticle: vi.fn() }));
 vi.mock("@/lib/domain/monsters", () => ({ getMonster: vi.fn() }));
@@ -93,5 +93,27 @@ describe("upload route", () => {
     expect(response.status).toBe(413);
     expect(formData).not.toHaveBeenCalled();
     expect(mocks.consume).not.toHaveBeenCalled();
+  });
+
+  it("012 T-008: answers a redeemed JSON upload with a receipt", async () => {
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "base64",
+    );
+    const form = new FormData();
+    form.append("datei", new Blob([new Uint8Array(png)], { type: "image/png" }), "bild.png");
+    const { request, formData } = uploadRequest("512");
+    formData.mockResolvedValue(form);
+    mocks.consume.mockResolvedValue(mocks.ticket);
+    mocks.attachImage.mockResolvedValue({ ok: true, data: { fileId: "file-1" } });
+
+    const response = await POST(request, params);
+    expect(response.status).toBe(201);
+    const body = await response.json() as { quittung: string };
+    expect(body.quittung.split("\n")[0]).toBe("Zeige dem Benutzer diese Quittung.");
+    expect(body.quittung).toContain("Titel: Testwelt");
+    expect(body.quittung).toContain("Bildart: Welt-Titelbild");
+    expect(body.quittung).toContain("Ersetzt vorhandenes Bild: nein");
+    expect(body.quittung).toContain("- Welt-Titelbild: – → neu hochgeladenes Bild");
   });
 });

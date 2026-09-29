@@ -2287,4 +2287,58 @@ describe("MCP write tools", () => {
     expect(preview).toContain(name);
     expect(preview).toContain("Bestätigungs-Token:");
   });
+
+  it("012 T-007/T-008: readable previews and receipts for note, template, habitat, sheet and relation", async () => {
+    const client = await registerMcpClient(9909, "MCP Preview Receipt Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const suffix = Date.now().toString(36);
+
+    const item = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "artikel",
+      felder: { titel: `MCP Quittung ${suffix}`, vorlagentyp: "gegenstand", vorlagenfelder: { Seltenheit: "Selten" }, text: "Befüllt." },
+    }));
+    expect(item.split("\n")[0]).toBe("Zeige dem Benutzer diese Quittung.");
+    expect(item).toContain("- Seltenheit: – → Selten");
+    expect(item).toContain("Sichtbarkeit: nur ich");
+    const itemId = extractId(item);
+
+    const itemRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "artikel", id: itemId }));
+    const templatePreview = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "artikel", id: itemId, stand: extractStand(itemRead), felder: { vorlagenfelder: { rarity: "common" } },
+    }));
+    expect(templatePreview).toContain("Seltenheit: Selten → Gewöhnlich");
+    expect(templatePreview).not.toContain("rarity");
+    expect(templatePreview).not.toContain("{");
+
+    const questRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "quest", id: data.activeQuestId }));
+    const notePreview = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "notizblock", id: data.activeQuestId, stand: extractNoteStand(questRead), felder: { text: `Quittungsnotiz ${suffix}` },
+    }));
+    expect(notePreview.split("\n")[0]).toContain("Zeige dem Benutzer diese Vorschau vollständig und unverändert.");
+    expect(notePreview).toContain("wird angehängt: Quittungsnotiz");
+    const noteReceipt = firstToolText(await callTool(gm.accessToken, "aenderung_bestaetigen", { token: extractToken(notePreview) }));
+    expect(noteReceipt.split("\n")[0]).toBe("Zeige dem Benutzer diese Quittung.");
+    expect(noteReceipt).toContain(`Quittungsnotiz ${suffix}`);
+    expect(noteReceipt).toMatch(/^Stand: \d+$/m);
+
+    const monster = extractId(firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "monster",
+      felder: { name: `MCP Quittung Monster ${suffix}`, charakterblatt: { klasse: "Späher", ideale: "Ruhe" }, bio: "Befüllt." },
+    })));
+    const monsterRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "monster", id: monster }));
+    const monsterPreview = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "monster", id: monster, stand: extractStand(monsterRead),
+      felder: { charakterblatt: { klasse: "Wächter" }, lebensraum: `@[Burg Rabenstein](artikel:${data.burgId})` },
+    }));
+    expect(monsterPreview).toContain("- Charakterblatt – Klasse: Späher → Wächter");
+    expect(monsterPreview).not.toContain("Charakterblatt – Ideale");
+    expect(monsterPreview).toContain(`Lebensraum: – → Burg Rabenstein (${data.burgId})`);
+
+    const relation = firstToolText(await callTool(gm.accessToken, "relation_anlegen", {
+      welt: "MCP-Testwelt", quelle: { art: "artikel", id: itemId }, ziel: { art: "monster", id: monster }, bezeichnung: "gehört zu",
+    }));
+    expect(relation.split("\n")[0]).toBe("Zeige dem Benutzer diese Quittung.");
+    expect(relation).toContain(`„MCP Quittung ${suffix}“`);
+    expect(relation).toContain(`„MCP Quittung Monster ${suffix}“`);
+  });
 });
