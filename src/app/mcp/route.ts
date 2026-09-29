@@ -9,7 +9,7 @@ import { hasActiveMcpConsent } from "@/lib/domain/connected-applications";
 import { isDiscordIdAllowed, isMcpEnabled, isProductionAppEnv } from "@/lib/env";
 import { MCP_RESOURCE } from "@/lib/mcp-oauth";
 import { consumeMcpCall, McpRateLimitError, writeMcpAuditLog } from "@/lib/mcp/audit";
-import { registerMcpReadTools } from "@/lib/mcp/tools";
+import { registerMcpTools } from "@/lib/mcp/tools";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ const mcpHandler = createMcpHandler(
     }
     const userId = context.authInfo?.extra?.userId;
     if (typeof userId !== "string" || !userId) throw new Error("MCP authentication context has no user ID.");
-    registerMcpReadTools(server, {
+    registerMcpTools(server, {
       userId,
       clientId: typeof context.authInfo?.clientId === "string" ? context.authInfo.clientId : "",
       scopes: context.authInfo?.scopes ?? [],

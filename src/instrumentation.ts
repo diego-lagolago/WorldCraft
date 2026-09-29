@@ -18,19 +18,19 @@ export async function register() {
     import("@/lib/mcp/upload-tickets"),
   ]);
 
-  const reportPurgeError = (error: unknown) => console.error(JSON.stringify({
-    event: "mcp_audit_error",
-    operation: "purge",
+  const reportPurgeError = (operation: "purge_audit" | "purge_confirmations" | "purge_upload_tickets") => (error: unknown) => console.error(JSON.stringify({
+    event: "mcp_purge_error",
+    operation,
     error: error instanceof Error ? error.name : "unknown",
   }));
 
-  void purgeMcpAuditLog().catch(reportPurgeError);
-  void purgeMcpChangeConfirmations().catch(reportPurgeError);
-  void purgeMcpUploadTickets().catch(reportPurgeError);
+  void purgeMcpAuditLog().catch(reportPurgeError("purge_audit"));
+  void purgeMcpChangeConfirmations().catch(reportPurgeError("purge_confirmations"));
+  void purgeMcpUploadTickets().catch(reportPurgeError("purge_upload_tickets"));
   const timer = setInterval(() => {
-    void purgeMcpAuditLog().catch(reportPurgeError);
-    void purgeMcpChangeConfirmations().catch(reportPurgeError);
-    void purgeMcpUploadTickets().catch(reportPurgeError);
+    void purgeMcpAuditLog().catch(reportPurgeError("purge_audit"));
+    void purgeMcpChangeConfirmations().catch(reportPurgeError("purge_confirmations"));
+    void purgeMcpUploadTickets().catch(reportPurgeError("purge_upload_tickets"));
   }, 24 * 60 * 60 * 1000);
   timer.unref?.();
 }

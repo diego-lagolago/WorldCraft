@@ -29,7 +29,7 @@ vi.mock("@/lib/env", () => ({
   isProductionAppEnv: () => true,
 }));
 vi.mock("@/lib/mcp-oauth", () => ({ MCP_RESOURCE: "http://localhost:3000/mcp" }));
-vi.mock("@/lib/mcp/tools", () => ({ registerMcpReadTools: vi.fn() }));
+vi.mock("@/lib/mcp/tools", () => ({ registerMcpTools: vi.fn() }));
 vi.mock("@/lib/mcp/audit", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/mcp/audit")>()),
   writeMcpAuditLog: async () => {},

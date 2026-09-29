@@ -16,7 +16,7 @@ import { registerVisibilitySetTool } from "./tools/visibility-set";
 import { registerWorldsListTool } from "./tools/worlds-list";
 
 /** Registers the MCP tool set (read + write). Each tool stays isolated in its own module. */
-export function registerMcpReadTools(server: McpServer, ctx: ToolContext) {
+export function registerMcpTools(server: McpServer, ctx: ToolContext) {
   registerWorldsListTool(server, ctx);
   registerSearchTool(server, ctx);
   registerContentsListTool(server, ctx);

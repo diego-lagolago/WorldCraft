@@ -30,4 +30,32 @@ describe("MCP confirmation tokens", () => {
       await sql.end();
     }
   });
+
+  it("rejects expired and tampered confirmation payloads before calling the handler", async () => {
+    const { sql, worldId } = await fixture();
+    try {
+      const expired = await createMcpConfirmation({
+        userId: "test-gm", clientId: "confirmation-client", worldId,
+        targetKind: "article", targetId: "expired-target", expectedStand: "stand-1", payload: { operation: "test-expired" },
+      });
+      await sql.unsafe("UPDATE mcp_change_confirmations SET expires_at = now() - interval '1 minute' WHERE target_id = $1", ["expired-target"]);
+      expect(await consumeMcpConfirmation({ token: expired.token, userId: "test-gm", clientId: "confirmation-client" })).toBeNull();
+
+      let executed = false;
+      registerMcpConfirmationHandler("test-integrity", async () => {
+        executed = true;
+        return { worldId, value: "must not run" };
+      });
+      const tampered = await createMcpConfirmation({
+        userId: "test-gm", clientId: "confirmation-client", worldId,
+        targetKind: "article", targetId: "tampered-target", expectedStand: "stand-1", payload: { operation: "test-integrity", art: "article" },
+      });
+      await sql.unsafe("UPDATE mcp_change_confirmations SET payload = jsonb_set(payload, '{art}', '\"quest\"') WHERE target_id = $1", ["tampered-target"]);
+      const consumed = await consumeMcpConfirmation({ token: tampered.token, userId: "test-gm", clientId: "confirmation-client" });
+      await expect(executeMcpConfirmation(consumed!)).rejects.toThrow("vorgemerkte Änderung ist ungültig");
+      expect(executed).toBe(false);
+    } finally {
+      await sql.end();
+    }
+  });
 });
