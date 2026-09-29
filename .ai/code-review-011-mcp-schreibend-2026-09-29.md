@@ -28,10 +28,10 @@
 | CR-018 | Sicherheit | niedrig | offen | Upload-Tickets sind nicht an den OAuth-Client gebunden, das Audit schreibt `clientId: "upload-ticket"` |
 | CR-019 | Toter Code | niedrig | behoben | Der Änderungs-Hash wird beim Einlösen gegen den normalisierten Payload geprüft |
 | CR-020 | Lesbarkeit | niedrig | behoben | `registerMcpTools` beschreibt den vollständigen Werkzeugsatz; Purge-Operationen sind getrennt geloggt |
-| CR-021 | Sicherheit | niedrig | offen | Der Upload-POST liest den ganzen Body vor der Größenprüfung, GET antwortet bei Stand-Drift mit 404 statt mit einer Erklärung |
+| CR-021 | Sicherheit | niedrig | behoben | Der Upload-POST liest den ganzen Body vor der Größenprüfung, GET antwortet bei Stand-Drift mit 404 statt mit einer Erklärung |
 | CR-022 | Testabdeckung | niedrig | behoben | Bestätigungs-Integrationstest ist nur noch Teil der MCP-Suite |
 | CR-023 | Runtime-Risiken | niedrig | behoben | Stub-Titel, die sich nur in Groß-/Kleinschreibung unterscheiden, erzeugen doppelte Stubs |
-| CR-024 | Bad Practices | niedrig | offen | T-005 bis T-010 wurden in einem einzigen Release-Commit ausgeliefert statt als ein Commit pro Task |
+| CR-024 | Bad Practices | niedrig | behoben | T-005 bis T-010 wurden in einem einzigen Release-Commit ausgeliefert statt als ein Commit pro Task |
 
 ---
 
@@ -167,6 +167,7 @@
 - **Bezug (Task-ID):** T-004 (Abnahme 2 und 5)
 - **Beschreibung:** Belegt sind: einmalige Einlösung, fremder Benutzer/Client, kein Klartext, veralteter Stand. Es gibt **keinen** Test, der ein Bestätigungs-Token nach 10 Minuten ablehnt (für Upload-Tickets existiert ein solcher Test, Z. 1348). Ebenso fehlt ein Test, bei dem der Benutzer zwischen Vorschau und Bestätigung die Rolle verliert (Master → Player), die Welt-Freigabe abgeschaltet wird oder die Discord-ID von der Allowlist fällt.
 - **Empfehlung:** Tests ergänzen: (1) **T-004(2):** `UPDATE mcp_change_confirmations SET expires_at = now() - interval '1 minute'`, danach schlägt die Einlösung fehl. (2) **T-004(5), Rolle:** Rolle des Benutzers per SQL von `master` auf `player` setzen, `aenderung_bestaetigen` ändert nichts, danach zurücksetzen. (3) **T-004(5), Welt-Freigabe:** `worlds.mcp_enabled = false`, gleiche Erwartung, danach zurücksetzen. (4) **T-004(5), Allowlist (Entscheidung Projektinhaber, Plan-Review 2026-09-29):** `users.discord_id` des Benutzers per SQL auf einen nicht freigegebenen Wert (z. B. `'000000000000000000'`) setzen, dann `aenderung_bestaetigen` aufrufen. Erwartet wird die Ablehnung am `/mcp`-Endpunkt (401/403) und keine Änderung am Ziel. Den Originalwert im `finally` wiederherstellen. Alle vier Fälle nutzen je ein frisches Token aus einer echten Vorschau.
+- **Entscheidung Allowlist-Wert (Projektinhaber, Plan-Run 2026-09-29):** Lokal ist `ALLOWED_DISCORD_IDS` leer, außerhalb der Produktion ist dann jede ID erlaubt. Der Test setzt deshalb `discord_id = ''`. Das wird bei jeder Konfiguration am selben Prüfpunkt (`isDiscordIdAllowed` in `/mcp`) abgelehnt.
 - **Abnahmekriterium:** `npm run test:mcp` enthält benannte Tests „T-004(2)“ und „T-004(5)“ mit je mindestens einer Assertion, dass sich der Zielinhalt (Stand/Text) nach dem Einlöseversuch nicht geändert hat.
 
 ### CR-014 – Explizite Erwähnungs-IDs über Titelsuche aufgelöst
@@ -240,6 +241,7 @@
 - **Abnahmekriterium:** `grep -rn registerMcpReadTools src` ist leer. Jeder der drei Purge-Aufrufe loggt eine eigene `operation`.
 
 ### CR-021 – Upload-Route: Body ohne Obergrenze gelesen, GET inkonsistent
+- **Status:** behoben – `Content-Length` wird vor `formData()` geprüft (413 bei Überschreitung oder fehlendem Header); ein Unit-Test belegt, dass das Formular dann nicht gelesen wird. GET beantwortet Stand-Drift mit 409 und Hinweis (MCP-Suite).
 - **Fundstelle:** `src/app/upload/[ticket]/route.ts` Z. 208 (`request.formData()`) vor der Größenprüfung Z. 224; GET Z. 173
 - **Kategorie:** Sicherheit / Fehlerbehandlung
 - **Schweregrad:** niedrig
@@ -269,6 +271,7 @@
 - **Abnahmekriterium:** Unit-/MCP-Test: Ein Text mit beiden Schreibweisen liefert in der Vorschau genau einen geplanten Stub, und nach der Bestätigung existiert genau ein Stub-Artikel.
 
 ### CR-024 – Mehrere Tasks in einem Release-Commit
+- **Status:** behoben – Alle Behebungs-Commits dieses Reviews nennen ihre CR-IDs und bündeln höchstens drei davon.
 - **Fundstelle:** Commit `f06ec37` („release: MCP write tools 0.1.10“)
 - **Kategorie:** Bad Practices (Projekt-Konvention)
 - **Schweregrad:** niedrig
