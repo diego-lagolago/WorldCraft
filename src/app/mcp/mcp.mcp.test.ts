@@ -1134,6 +1134,11 @@ describe("MCP write tools", () => {
         [client.clientId],
       );
       expect(audit?.result).toBe("tool_error");
+      const matches = await sql.unsafe(
+        "SELECT id FROM articles WHERE world_id = $1 AND title = $2",
+        [data.worldId, duplicateTitle],
+      );
+      expect(matches).toHaveLength(1);
     } finally {
       await sql.end();
     }
