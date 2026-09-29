@@ -83,3 +83,77 @@ sequenceDiagram
 5. Eingabeschema, deutschsprachige Beschreibung, Fehlertexte und Ausgabe-Begrenzung ergänzen.
 6. Werkzeug über den Audit-Wrapper registrieren; bei Schreiben Ziel-Art/-ID und Bestätigungsstatus setzen, keine Inhalte im Audit-Log ablegen.
 7. Die lokale MCP-Suite um Rollen-, Sichtbarkeits-, Ausschluss- und ggf. Bestätigungstests erweitern und `npm run test:mcp` ausführen.
+
+## Eingabe-Inventur (Plan 012)
+
+**Stand:** vor T-003 bis T-008, erhoben am 2026-09-29. S = Schlüssel im
+Werkzeug-Schema sichtbar; W = erlaubte Werte sichtbar; U = Verhalten bei
+unbekanntem Schlüssel; F = Fehler bei ungültigem Wert; L = wieder lesbar
+(auch leer); D = Vorschau/Quittung mit deutschem Label und Titel statt ID.
+Alle obersten Objekte sind noch nicht strikt: unbekannte Parameter werden
+entfernt (B7 → T-004).
+
+**Werte-Legende:** Art = artikel, quest, charakter, pin, monster, universum;
+Vorlage = person, ort, organisation, gegenstand, rasse, ohne; Status = offen,
+aktiv, abgeschlossen, gescheitert; Sichtbarkeit = nur ich, nur Spielleitung,
+veröffentlicht; Monster-Art = Bestie, Untoter, Dämon, Drache, Humanoid,
+Konstrukt, Aberration, Pflanze, Magisch, sonstiges; Seltenheit = Gewöhnlich,
+Ungewöhnlich, Selten, Episch, Legendär; Gefahr = Harmlos, Gefährlich,
+Tödlich, Verheerend, Göttlich, Apokalyptisch; Größe = Winzig, Klein,
+Durchschnitt, Groß, Gigantisch.
+
+| Werkzeug | Jede Eingabe | S/W | U/F | L/D | Befund → Aufgabe |
+|---|---|---|---|---|---|
+| welten_auflisten | keine | – | – | ja/– | – |
+| suchen | welt, suchbegriff, art (Art), limit (1–50) | ja/ja | entfernt/teils allgemein | ja/– | B3, B7 → T-004/T-005 |
+| inhalte_auflisten | welt, art (artikel/monster), vorlagentyp (Vorlage), monster_art (Monster-Art), quest_gegenstand (Ja/Nein), limit (1–200) | ja/teils | entfernt/teils allgemein | ja/– | B1, B3, B7 → T-003–T-005 |
+| inhalt_lesen | welt, art (Art), id | ja/ja | entfernt/teils allgemein | nein bei leeren Vorlagenfeldern/nein | B3, B4, B7, B8 → T-004–T-006 |
+| relationen_abrufen | welt, art (Art), id, tiefe (1/2) | ja/ja | entfernt/teils allgemein | ja/– | B3, B7 → T-004/T-005 |
+| quests_auflisten | welt, status (Status) | ja/ja | entfernt/teils allgemein | ja/– | B3, B7 → T-004/T-005 |
+| universen_auflisten | welt | ja/n/a | entfernt/teils allgemein | ja/– | B3, B7 → T-004/T-005 |
+| bild_lesen | welt, art (welt/artikel/charakter/monster), id, bild_nr (1–10) | ja/ja | entfernt/teils allgemein | ja/– | B3, B7 → T-004/T-005 |
+| aenderung_bestaetigen | token | ja/n/a | entfernt/teils allgemein | ja/nein | B3, B5/B6, B7 → T-004/T-005/T-008 |
+| sichtbarkeit_setzen | welt, art (artikel/quest/kapitel/monster/universum), id, stand, sichtbarkeit (Sichtbarkeit) | ja/ja | entfernt/teils allgemein | ja/nein | B3, B5/B6, B7 → T-004/T-005/T-008 |
+| bild_hochladen | welt, ziel (welt/artikel/monster), id, stand | ja/ja | entfernt/teils allgemein | ja/nein | B3, B5/B6, B7 → T-004/T-005/T-008 |
+| relation_anlegen | welt, quelle.art, quelle.id, ziel.art, ziel.id, bezeichnung, gegenbezeichnung | ja/ja | entfernt, auch verschachtelt/teils allgemein | ja/nein; IDs statt Titel | B3, B6, B7 → T-004/T-005/T-008 |
+
+### Inhalt anlegen und ändern
+
+Welt, Art sowie beim Ändern ID, Stand und Modus (anhaengen/ersetzen) sind
+sichtbar. Felder ist ein freies Objekt: seine Schlüssel und Werte sind nicht
+sichtbar (B1); unbekannte Felder liefern nicht durchgängig Pfad und zulässige
+Alternativen (B2/B3). Jede Zeile hat daher im Ist-Stand S/W nein und U/F
+unvollständig; T-003 bis T-005 beheben das.
+
+| Art | Jedes Feld | L/D | Befund → Aufgabe |
+|---|---|---|---|
+| artikel | titel, vorlagentyp (Vorlage), vorlagenfelder (20 Zeilen unten), text; beim Anlegen sichtbarkeit (wird ignoriert) | leere Vorlagenfelder nein/nein | B1, B2, B4–B6 → T-003–T-008 |
+| quest | titel, status (Status), beschreibung, beteiligte (Charakter-IDs); beim Anlegen sichtbarkeit | Beteiligte nicht rückschreibbar/nein | B1, B5/B6, B8 → T-003–T-008 |
+| kapitel | quest_id (nur Anlegen), titel, status (Status), text, position; beim Anlegen sichtbarkeit | ja/nein | B1, B5/B6 → T-003–T-008 |
+| notizblock | text | ja/nein | B1/B2 (Fehlgriff inhalt), B5/B6 → T-003–T-008 |
+| monster | name, monster_art (Monster-Art), seltenheit (Seltenheit), boss, gefahr (Gefahr), groesse (Größe), lebensraum, charakterblatt, bio; beim Anlegen sichtbarkeit | Lebensraum nur Titel/ID; nein | B1, B5/B6, B8 → T-003–T-008 |
+| universum | name, beschreibung; beim Anlegen sichtbarkeit | ja/nein | B1, B5/B6 → T-003–T-008 |
+| welt | name, beschreibung | ja/nein | B1, B5/B6 → T-003–T-008 |
+
+### Vorlagenfelder (20 Registry-Felder)
+
+Für jede der folgenden Zeilen gilt: S/W nein, U/F unvollständig, L bei leerem
+Wert nein, D nein (B1–B6 → T-003–T-008).
+
+| Vorlage | Deutsches Label | Typ / erlaubte Werte oder Verweisziel |
+|---|---|---|
+| Person | Andere Namen; Beruf / Rolle; Rasse; Status; Aufenthaltsort; Organisation | Text; Text; Rasse-Artikel; lebendig/kampfunfähig/versiegelt/tot/verschollen/unbekannt; Ort-Artikel; Organisations-Artikel |
+| Ort | Art; Gefahrenstufe; Ruf; Herrscher; Übergeordneter Ort | Stadt/Dorf/Gebäude/Kontinent/Region/Dungeon/Wildnis/Ebene/sonstiges; Harmlos/Gefährlich/Tödlich; Gehasst/Verrufen/Neutral/Akzeptiert/Geliebt; Person-Artikel; Ort-Artikel |
+| Organisation | Art; Größe; Gefahrenstufe; Anführer; Sitz | Gilde/Religion/Adelshaus/Freie Kompanie/Staat/Kult/sonstiges; 1–10/11–50/51–100/101+; Gefahr; Person-Artikel; Ort-Artikel |
+| Gegenstand | Art; Seltenheit; Besitzer; Quest-Gegenstand | Waffe/Rüstung/Artefakt/Relikt/alltäglich/Fisch/Pflanze/sonstiges; Seltenheit; Person-Artikel oder Charakter; Ja/Nein |
+| Rasse | keine | – |
+
+### Monster-Charakterblatt und Auswahlwerte
+
+Die vollständigen Unterfelder sind klasse (Text), attribute (STR/GES/KON/INT/WEI/CHA
+mit Zahl), uebungsbonus (Zahl), fertigkeiten (name, stufe Ungeübt/Geübt/Experte,
+attribut), faehigkeiten (text, attribut), persoenlichkeit, ideale, bindungen
+und schwaechen (je Text). Für jedes gelten S/W nein, U/F B1–B3, L ja und D B8;
+T-003 bis T-008 beheben das. Damit sind auch Vorlagen-Verweise samt Relation,
+lebensraum, beteiligte, Sichtbarkeit, Upload-Ziel und sämtliche Lesefilter
+erfasst. Es gibt keine Abweichung außerhalb B1–B8; ein B9 ist nicht angelegt.
