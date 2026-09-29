@@ -1370,6 +1370,47 @@ describe("MCP write tools", () => {
     }
   });
 
+  it("T-004(5): losing the Discord allowlist between preview and confirmation leaves the quest unchanged", async () => {
+    const client = await registerMcpClient(9901, "MCP Confirmation Allowlist Test");
+    const master = await authorizeMcpClient("test-master", client, WRITE_SCOPE);
+    const created = firstToolText(await callTool(master.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "quest",
+      felder: { titel: `MCP Allowlistverlust ${Date.now().toString(36)}`, beschreibung: "Ausgangstext." },
+    }));
+    const questId = extractId(created);
+    const read = firstToolText(await callTool(master.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "quest", id: questId,
+    }));
+    const preview = firstToolText(await callTool(master.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "quest",
+      id: questId,
+      stand: extractStand(read),
+      felder: { beschreibung: "Darf nach Allowlist-Verlust nicht gespeichert werden." },
+    }));
+    const sql = testSql();
+    let originalDiscordId: string | undefined;
+    try {
+      const [before] = await sql.unsafe("SELECT description_plain FROM quests WHERE id = $1", [questId]);
+      const [user] = await sql.unsafe("SELECT discord_id FROM users WHERE id = $1", [master.session.user.id]);
+      originalDiscordId = user.discord_id as string;
+      // An empty Discord ID is rejected by the allowlist regardless of ALLOWED_DISCORD_IDS.
+      await sql.unsafe("UPDATE users SET discord_id = '' WHERE id = $1", [master.session.user.id]);
+      const rejected = await callToolResponse(master.accessToken, "aenderung_bestaetigen", {
+        token: extractToken(preview),
+      });
+      expect([401, 403]).toContain(rejected.status);
+      const [after] = await sql.unsafe("SELECT description_plain FROM quests WHERE id = $1", [questId]);
+      expect(after.description_plain).toBe(before.description_plain);
+    } finally {
+      if (originalDiscordId) {
+        await sql.unsafe("UPDATE users SET discord_id = $1 WHERE id = $2", [originalDiscordId, master.session.user.id]);
+      }
+      await sql.end();
+    }
+  });
+
   it("T-004(2): an expired confirmation token leaves the quest unchanged", async () => {
     const client = await registerMcpClient(9900, "MCP Confirmation Expiry Test");
     const master = await authorizeMcpClient("test-master", client, WRITE_SCOPE);
