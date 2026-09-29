@@ -1499,6 +1499,7 @@ describe("MCP write tools", () => {
       }
       expect(byTool.aenderung_bestaetigen.confirmed).toBe(true);
       expect(byTool.upload_einloesen.confirmed).toBe(true);
+      expect(byTool.upload_einloesen.client_id).toBe(client.clientId);
       expect(JSON.stringify(rows)).not.toContain(secretTitle);
       expect(JSON.stringify(rows)).not.toContain(secretBody);
       expect(plainMcp(after)).toContain("Nach Audit-Bestätigung.");
