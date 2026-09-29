@@ -51,7 +51,7 @@ const protectedMcpHandler = requireMcpAuth(auth, async (request, claims) => {
   const resourceMetadataUrl = `${new URL(MCP_RESOURCE).origin}/.well-known/oauth-protected-resource/mcp`;
   const unauthorized = () => new Response(null, {
     status: 401,
-    headers: { "WWW-Authenticate": `Bearer resource_metadata="${resourceMetadataUrl}"` },
+    headers: { "WWW-Authenticate": `Bearer resource_metadata="${resourceMetadataUrl}", scope="worlds:read worlds:write"` },
   });
   if (typeof claims.sub !== "string" || typeof claims.client_id !== "string") return unauthorized();
   const [user] = await db.select({ name: users.name, discordId: users.discordId }).from(users).where(eq(users.id, claims.sub)).limit(1);
@@ -88,6 +88,8 @@ const protectedMcpHandler = requireMcpAuth(auth, async (request, claims) => {
 }, {
   resource: MCP_RESOURCE,
   requiredScopes: ["worlds:read"],
+  // Advertise write on unauthenticated challenges so clients request it at consent (S1).
+  challengeScopes: ["worlds:read", "worlds:write"],
   // `worlds:write` deliberately includes reading (Plan 011 S1).
   isScopeSatisfied: (required, granted) => required === "worlds:read"
     ? granted.has("worlds:read") || granted.has("worlds:write")

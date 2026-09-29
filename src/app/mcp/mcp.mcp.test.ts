@@ -216,6 +216,7 @@ describe("MCP OAuth and protected resource", () => {
     });
     expect(challenge.status).toBe(401);
     expect(challenge.headers.get("www-authenticate")).toContain("resource_metadata=");
+    expect(challenge.headers.get("www-authenticate")).toMatch(/worlds:write/);
 
     const [resource, issuer] = await Promise.all([
       fetch(`${BASE}/.well-known/oauth-protected-resource/mcp`),

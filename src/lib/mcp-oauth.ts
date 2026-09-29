@@ -70,6 +70,25 @@ export function hasAllowedMcpAuthorizeRedirect(request: Request): boolean {
   return isAllowedMcpRedirectUri(url.searchParams.get("redirect_uri"));
 }
 
+/**
+ * MCP clients often only request `worlds:read` (matching the old challenge).
+ * When the authorize targets `/mcp` and already asks for world access, add
+ * `worlds:write` so consent shows Lesen und Schreiben. Better Auth still
+ * rejects the scope if the registered client is not allowed to use it.
+ */
+export function withExpandedMcpAuthorizeScopes(request: Request): Request {
+  const url = new URL(request.url);
+  if (url.pathname !== `${AUTH_PATH_PREFIX}oauth2/authorize`) return request;
+  const resource = url.searchParams.get("resource");
+  if (resource && resource !== MCP_RESOURCE) return request;
+  const scopes = new Set((url.searchParams.get("scope") ?? "").split(" ").filter(Boolean));
+  if (!scopes.has("worlds:read") && !scopes.has("worlds:write")) return request;
+  if (scopes.has("worlds:write")) return request;
+  scopes.add("worlds:write");
+  url.searchParams.set("scope", [...scopes].join(" "));
+  return new Request(url.toString(), request);
+}
+
 /** OAuth 2.1 requires PKCE; the MCP integration accepts only S256. Authorize is GET-only (see CR-007); POST is rejected earlier with 405. */
 export function hasRequiredMcpPkce(request: Request): boolean {
   const url = new URL(request.url);

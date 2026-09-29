@@ -7,6 +7,7 @@ import {
   hasRequiredMcpPkce,
   isMcpAuthPath,
   mcpTokenGrantFailure,
+  withExpandedMcpAuthorizeScopes,
 } from "@/lib/mcp-oauth";
 import { logMcpOAuthException, logMcpOAuthResponse } from "@/lib/mcp/oauth-observability";
 
@@ -60,7 +61,8 @@ async function handle(request: Request, method: "GET" | "POST") {
           return response;
         }
       }
-      response = await handlers[method](request);
+      const authRequest = method === "GET" ? withExpandedMcpAuthorizeScopes(request) : request;
+      response = await handlers[method](authRequest);
     }
     if (isMcpOAuthRequest) await logMcpOAuthResponse(request, response);
     return response;

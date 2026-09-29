@@ -17,6 +17,7 @@ import {
   MCP_CIMD_LIMITS,
   MCP_OAUTH_RATE_LIMITS,
   mcpTokenGrantFailure,
+  withExpandedMcpAuthorizeScopes,
 } from "./mcp-oauth";
 
 function query(result: unknown[]) {
@@ -57,6 +58,20 @@ describe("MCP OAuth redirect policy", () => {
     expect(hasRequiredMcpPkce(valid)).toBe(true);
     expect(hasRequiredMcpPkce(plain)).toBe(false);
     expect(hasRequiredMcpPkce(missing)).toBe(false);
+  });
+
+  it("expands MCP authorize scopes to include worlds:write", () => {
+    const readOnly = new Request(
+      "http://localhost:3000/api/auth/oauth2/authorize?scope=worlds%3Aread+offline_access&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp&redirect_uri=https%3A%2F%2Fclaude.ai%2Fcb&code_challenge_method=S256&code_challenge=x",
+    );
+    const expanded = withExpandedMcpAuthorizeScopes(readOnly);
+    expect(new URL(expanded.url).searchParams.get("scope")?.split(" ").sort()).toEqual(
+      ["offline_access", "worlds:read", "worlds:write"].sort(),
+    );
+    const alreadyWrite = new Request(
+      "http://localhost:3000/api/auth/oauth2/authorize?scope=worlds%3Awrite&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp",
+    );
+    expect(withExpandedMcpAuthorizeScopes(alreadyWrite)).toBe(alreadyWrite);
   });
 });
 
