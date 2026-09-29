@@ -385,8 +385,8 @@ async function collectCreateStubs(input: {
   felder: Record<string, unknown>;
 }): Promise<{ stubTitles: string[]; ignoredVisibility: boolean }> {
   const ignoredVisibility = Object.prototype.hasOwnProperty.call(input.felder, "sichtbarkeit");
-  const stubs = new Set<string>();
-  const add = (titles: string[]) => { for (const title of titles) stubs.add(title); };
+  const stubs = new Map<string, string>();
+  const add = (titles: string[]) => { for (const title of titles) stubs.set(title.toLocaleLowerCase("de"), stubs.get(title.toLocaleLowerCase("de")) ?? title); };
 
   try {
     if (input.art === "artikel") {
@@ -454,7 +454,7 @@ async function collectCreateStubs(input: {
     if (error instanceof McpMentionError) throw new McpToolError(error.message);
     throw error;
   }
-  return { stubTitles: [...stubs], ignoredVisibility };
+  return { stubTitles: [...stubs.values()], ignoredVisibility };
 }
 
 registerMcpConfirmationHandler("inhalt_anlegen", async (row) => {

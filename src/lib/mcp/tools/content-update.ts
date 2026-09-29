@@ -380,8 +380,8 @@ async function prepareUpdate(input: {
   felder: Record<string, unknown>;
   modus: "anhaengen" | "ersetzen";
 }): Promise<PreparedUpdate> {
-  const stubs = new Set<string>();
-  const add = (titles: string[]) => { for (const title of titles) stubs.add(title); };
+  const stubs = new Map<string, string>();
+  const add = (titles: string[]) => { for (const title of titles) stubs.set(title.toLocaleLowerCase("de"), stubs.get(title.toLocaleLowerCase("de")) ?? title); };
   const changes: FieldChange[] = [];
 
   try {
@@ -432,7 +432,7 @@ async function prepareUpdate(input: {
       return {
         title: felder.titel ?? row.title,
         emptyArticle,
-        stubTitles: [...stubs],
+        stubTitles: [...stubs.values()],
         changes,
         visibility: visibilityLabel(row.visibility),
       };
@@ -478,7 +478,7 @@ async function prepareUpdate(input: {
       return {
         title: felder.titel ?? row.title,
         emptyArticle: false,
-        stubTitles: [...stubs],
+        stubTitles: [...stubs.values()],
         changes,
         visibility: visibilityLabel(row.visibility),
       };
@@ -523,7 +523,7 @@ async function prepareUpdate(input: {
       return {
         title: felder.titel ?? found.chapter.title,
         emptyArticle: false,
-        stubTitles: [...stubs],
+        stubTitles: [...stubs.values()],
         changes,
         visibility: visibilityLabel(found.chapter.visibility),
       };
@@ -650,7 +650,7 @@ async function prepareUpdate(input: {
       return {
         title: felder.name ?? row.name,
         emptyArticle: false,
-        stubTitles: [...stubs],
+        stubTitles: [...stubs.values()],
         changes,
         visibility: visibilityLabel(row.visibility),
       };
@@ -682,7 +682,7 @@ async function prepareUpdate(input: {
       return {
         title: felder.name ?? row.name,
         emptyArticle: false,
-        stubTitles: [...stubs],
+        stubTitles: [...stubs.values()],
         changes,
         visibility: visibilityLabel(row.visibility),
       };
