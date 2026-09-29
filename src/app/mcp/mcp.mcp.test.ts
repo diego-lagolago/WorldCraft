@@ -1182,6 +1182,57 @@ describe("MCP write tools", () => {
     }
   });
 
+  it("CR-001: a hidden quest rejects a chapter confirmation before creating its stub", async () => {
+    const client = await registerMcpClient(9904, "MCP Stub Hidden Quest Test");
+    const master = await authorizeMcpClient("test-master", client, WRITE_SCOPE);
+    const quest = firstToolText(await callTool(master.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "quest",
+      felder: { titel: `MCP Verborgene Quest ${Date.now().toString(36)}` },
+    }));
+    const questId = extractId(quest);
+    const stubTitle = `MCP Verborgener Kapitelstub ${Date.now().toString(36)}`;
+    const preview = firstToolText(await callTool(master.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "kapitel",
+      felder: { quest_id: questId, titel: "MCP Verborgene Kapitel", text: `@[${stubTitle}]` },
+    }));
+    expect(preview).toContain("Bestätigungs-Token:");
+    const sql = testSql();
+    let originalQuest: { owner_id: string; visibility: string } | undefined;
+    try {
+      const [before] = await sql.unsafe(
+        "SELECT count(*)::int AS count FROM articles WHERE world_id = $1",
+        [data.worldId],
+      );
+      [originalQuest] = await sql.unsafe("SELECT owner_id, visibility FROM quests WHERE id = $1", [questId]);
+      const [otherUser] = await sql.unsafe("SELECT id FROM users WHERE discord_id = 'test-gm'", []);
+      await sql.unsafe(
+        "UPDATE quests SET owner_id = $1, visibility = 'owner_only' WHERE id = $2",
+        [otherUser.id, questId],
+      );
+      const rejected = firstToolText(await callTool(master.accessToken, "aenderung_bestaetigen", {
+        token: extractToken(preview),
+      }));
+      notFoundError(rejected);
+      const [after] = await sql.unsafe(
+        "SELECT count(*)::int AS count FROM articles WHERE world_id = $1",
+        [data.worldId],
+      );
+      expect(after.count).toBe(before.count);
+      const stubs = await sql.unsafe("SELECT id FROM articles WHERE world_id = $1 AND title = $2", [data.worldId, stubTitle]);
+      expect(stubs).toHaveLength(0);
+    } finally {
+      if (originalQuest) {
+        await sql.unsafe(
+          "UPDATE quests SET owner_id = $1, visibility = $2 WHERE id = $3",
+          [originalQuest.owner_id, originalQuest.visibility, questId],
+        );
+      }
+      await sql.end();
+    }
+  });
+
   it("T-004(5): role loss between preview and confirmation leaves the quest unchanged", async () => {
     const client = await registerMcpClient(9898, "MCP Confirmation Role Loss Test");
     const master = await authorizeMcpClient("test-master", client, WRITE_SCOPE);
