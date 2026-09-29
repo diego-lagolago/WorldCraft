@@ -1210,6 +1210,43 @@ describe("MCP write tools", () => {
     }
   });
 
+  it("T-004(2): an expired confirmation token leaves the quest unchanged", async () => {
+    const client = await registerMcpClient(9900, "MCP Confirmation Expiry Test");
+    const master = await authorizeMcpClient("test-master", client, WRITE_SCOPE);
+    const created = firstToolText(await callTool(master.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "quest",
+      felder: { titel: `MCP Ablauf ${Date.now().toString(36)}`, beschreibung: "Ausgangstext." },
+    }));
+    const questId = extractId(created);
+    const read = firstToolText(await callTool(master.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "quest", id: questId,
+    }));
+    const preview = firstToolText(await callTool(master.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "quest",
+      id: questId,
+      stand: extractStand(read),
+      felder: { beschreibung: "Darf nach Ablauf nicht gespeichert werden." },
+    }));
+    const sql = testSql();
+    try {
+      const [before] = await sql.unsafe("SELECT description_plain FROM quests WHERE id = $1", [questId]);
+      await sql.unsafe(
+        "UPDATE mcp_change_confirmations SET expires_at = now() - interval '1 minute' WHERE target_id = $1 AND client_id = $2 AND consumed_at IS NULL",
+        [questId, client.clientId],
+      );
+      const rejected = firstToolText(await callTool(master.accessToken, "aenderung_bestaetigen", {
+        token: extractToken(preview),
+      }));
+      expect(rejected).toMatch(/ungültig|abgelaufen/i);
+      const [after] = await sql.unsafe("SELECT description_plain FROM quests WHERE id = $1", [questId]);
+      expect(after.description_plain).toBe(before.description_plain);
+    } finally {
+      await sql.end();
+    }
+  });
+
   it("T-006: updates content with confirmation, stubs, modes, stand, and rights", async () => {
     const client = await registerMcpClient(9891, "MCP Write Update Test");
     const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
