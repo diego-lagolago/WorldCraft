@@ -13,7 +13,7 @@
 | CR-003 | Runtime-Risiken | mittel | offen | Die Stand-Prüfung ist nicht atomar mit dem Schreiben (ADR-005 „Stand“), daher sind Lost Updates möglich |
 | CR-004 | Aufgaben-Abgleich | mittel | offen | Die Plausibilitätsprüfung für Stubs (S7 Maßnahme 3) greift real nie, der Test ist durch einen Mock grün |
 | CR-005 | Sicherheit | mittel | offen | Vorlagenverweise in Objektform `{kind,id}` umgehen die Sichtbarkeitsprüfung, Objektform wird verboten |
-| CR-006 | Aufgaben-Abgleich | mittel | offen | Der Upload-Endpunkt liefert bei `curl -F` ohne Accept-Header HTML statt JSON |
+| CR-006 | Aufgaben-Abgleich | mittel | behoben | Der Upload-Endpunkt antwortet für Nicht-Browser standardmäßig mit JSON |
 | CR-007 | Runtime-Risiken | mittel | offen | Kapitel mit Status/Position: veralteter Stand und nicht-atomare Folgeschritte, Status und Position kommen direkt in `createChapter`/`updateChapter` |
 | CR-008 | Fehlerbehandlung | mittel | offen | Im Bestätigungspfad werden Fehler zur generischen Meldung „Die Anfrage konnte nicht verarbeitet werden“ |
 | CR-009 | Runtime-Risiken | mittel | offen | Der Markdown-Parser verliert harte Umbrüche und macht `_` innerhalb von Wörtern kursiv, der eigene Parser wird repariert |
@@ -23,7 +23,7 @@
 | CR-013 | Testabdeckung | mittel | offen | Für T-004 (2) Ablauf nach 10 Minuten und (5) Rechteverlust zwischen Vorschau und Bestätigung fehlen Tests |
 | CR-014 | Runtime-Risiken | niedrig | offen | Erwähnungen mit expliziter ID werden über eine Titelsuche mit Limit aufgelöst und schlagen dadurch fälschlich fehl |
 | CR-015 | Performance | niedrig | offen | N+1-Abfragen: eine Suche mit 5 Abfragen je Erwähnung, das Ganze mehrfach je Aufruf; `findVisibleChapter` lädt alle Quests |
-| CR-016 | Bad Practices | niedrig | offen | Die ID des angelegten Inhalts wird per Regex aus dem Antworttext gelesen |
+| CR-016 | Bad Practices | niedrig | behoben | Die Audit-ID wird strukturiert aus dem Anlegeergebnis übernommen |
 | CR-017 | Fehlerbehandlung | niedrig | offen | `.passthrough()` akzeptiert unbekannte Felder stillschweigend, das führt zu leerer Vorschau und einer No-op-Bestätigung |
 | CR-018 | Sicherheit | niedrig | offen | Upload-Tickets sind nicht an den OAuth-Client gebunden, das Audit schreibt `clientId: "upload-ticket"` |
 | CR-019 | Toter Code | niedrig | offen | `change_hash` wird gespeichert, aber nie geprüft, künftig beim Einlösen prüfen |
@@ -88,6 +88,7 @@
 - **Abnahmekriterium:** MCP-Test: `inhalt_anlegen` mit `vorlagenfelder: { Rasse: { kind: "article", id: <UUID> } }` liefert die Meldung „Verweis muss in Erwähnungssyntax angegeben werden …“. Die Meldung ist identisch für eine existierende sichtbare, eine fremde `nur ich`- und eine nicht existierende ID. Es entsteht weder Artikel noch Relation. `resolveMentionRef` enthält keinen Zweig mehr, der ein Objekt mit `kind`/`id` übernimmt.
 
 ### CR-006 – Upload antwortet Programmen nur mit Accept-Header in JSON
+- **Status:** behoben – Nicht-Browser erhalten JSON als Standard; die MCP-Suite prüft Upload ohne `Accept`-Header.
 - **Fundstelle:** `src/app/upload/[ticket]/route.ts` `wantsJson` (Z. 27–30); Hinweistext `src/lib/mcp/tools/image-upload.ts` Z. 95; Test `src/app/mcp/mcp.mcp.test.ts` Z. 868 (setzt `accept: application/json`)
 - **Kategorie:** Aufgaben-Abgleich
 - **Schweregrad:** mittel
@@ -180,6 +181,7 @@
 - **Abnahmekriterium:** `findVisibleChapter` ruft `listQuests` nicht mehr auf. Ein Unit-Test mit gemocktem `searchMentionTargets` zeigt für einen Text mit 3 gleichen `@[X]` genau einen Suchaufruf.
 
 ### CR-016 – ID per Regex aus dem Antworttext
+- **Status:** behoben – `executeCreate` liefert die erzeugte ID strukturiert; das Audit verwendet sie direkt.
 - **Fundstelle:** `src/lib/mcp/tools/content-create.ts` Z. 543
 - **Kategorie:** Bad Practices
 - **Schweregrad:** niedrig
