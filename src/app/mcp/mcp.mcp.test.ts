@@ -1412,6 +1412,26 @@ describe("MCP write tools", () => {
     const stillOk = await postUpload(usableLink, TINY_PNG, "tiny.png", "image/png");
     expect(stillOk.status).toBe(201);
 
+    const drifted = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "artikel", felder: { titel: `MCP Upload Drift ${suffix}` },
+    }));
+    const driftedId = extractId(drifted);
+    const driftedRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: driftedId,
+    }));
+    const driftedLink = extractUploadLink(firstToolText(await callTool(gm.accessToken, "bild_hochladen", {
+      welt: "MCP-Testwelt", ziel: "artikel", id: driftedId, stand: extractStand(driftedRead),
+    })));
+    const driftSql = testSql();
+    try {
+      await driftSql.unsafe("UPDATE articles SET updated_at = now() + interval '1 second' WHERE id = $1", [driftedId]);
+    } finally {
+      await driftSql.end();
+    }
+    const driftPage = await fetch(driftedLink, { headers: { accept: "text/html" } });
+    expect(driftPage.status).toBe(409);
+    expect(await driftPage.text()).toContain("Inhalt wurde inzwischen geändert");
+
     schemaError(firstToolText(await callTool(gm.accessToken, "bild_hochladen", {
       welt: "MCP-Testwelt",
       ziel: "karte",
