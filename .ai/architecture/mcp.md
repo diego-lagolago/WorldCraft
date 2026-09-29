@@ -83,6 +83,8 @@ sequenceDiagram
 - **Feste Enums (E5):** `vorlagentyp` und Quest-/Kapitel-`status` sind im Schema `enum`; übrige Auswahlwerte nennen die erlaubten Werte nur in der Beschreibung und werden im Handler geprüft.
 - **Englische Schlüssel (E5):** Registry-Schlüssel der Vorlagenfelder (z. B. `rarity`), abweichende Groß-/Kleinschreibung der Labels und englische Charakterblatt-Schlüssel werden vor der strikten Prüfung per `z.preprocess` auf den beworbenen Schlüssel abgebildet. Sie erscheinen deshalb nicht im veröffentlichten Schema, werden beim Schreiben aber weiter angenommen.
 - **Fehler (T-005):** Texte, Feldpfade und erlaubte Werte kommen zentral aus `src/lib/mcp/validation.ts` (`mcpEnum`, `unionError`, `issuesMessage`, höchstens 20 Werte, dann „…“). Das SDK prüft `felder` vor dem Handler, ohne `art` zu kennen: Passen die Schlüssel zu einer oder mehreren Arten, erklären diese Varianten den Fehler (z. B. `felder.status` mit den vier Status-Werten); kennt keine Art einen Schlüssel, nennt der Fehler den Schlüssel, ggf. den Schreibschlüssel eines Anzeige-Labels (E6), und die gültigen Schlüssel je `art`. Passt `felder` zu einer anderen Art (z. B. `seltenheit` am Artikel), lehnt der Handler strikt ab und nennt die gültigen Felder der angefragten Art sowie den Schreibschlüssel (`vorlagenfelder.Seltenheit`). Das SDK (`@modelcontextprotocol/server`) übernimmt die Zod-Meldung unverändert, umhüllt mit „Input validation error: Invalid arguments for tool <name>: <pfad>: <meldung>“. Zod-Fehler aus dem Handler werden in `asError` ebenfalls als verständlicher Werkzeugfehler ausgegeben und als `tool_error` protokolliert; nur andere Fehler bleiben „Die Anfrage konnte nicht verarbeitet werden.“
+- **Vorlagenfelder beim Ändern (T-007):** Nur die genannten Vorlagenfelder werden geändert, die übrigen bleiben; `null`, `""`, „–“ oder `false` leert ein Feld. Wechselt der Vorlagentyp, ersetzen die genannten Felder die alten. Ja/Nein-Felder nehmen zusätzlich „Ja“/„Nein“ an, damit die Ausgabe von `inhalt_lesen` unverändert zurückschreibbar ist (T-009, `002` D18).
+- **Leseausgabe (T-006):** `inhalt_lesen` zeigt alle Vorlagenfelder (nicht gesetzte als „–“), Lebensraum und Beteiligte in Erwähnungssyntax und hängt den Block „Schreibschlüssel“ (Anzeige-Label → `felder`-Schlüssel) an.
 - **Keine Änderung:** Ergibt eine Änderung gegenüber dem gelesenen Stand kein Delta, antwortet `inhalt_aendern` mit „Keine Änderung: Die übergebenen Werte entsprechen dem aktuellen Stand.“ und erzeugt kein Bestätigungs-Token.
 - Alle `inputSchema` aller Werkzeuge sind strikt, auch verschachtelte Objekte (`quelle`, `ziel`) und `welten_auflisten` (leeres striktes Objekt).
 
@@ -92,9 +94,10 @@ sequenceDiagram
 2. Nur bestehende Domänen- und Rechteschicht verwenden. Das Werkzeug darf keine Tabellen direkt abfragen.
 3. Sichtbarkeit, Weltfreigabe und die feste Ausschlussliste prüfen: Tagebuch, Chat, Einladungen, Koordinaten, Marker, Kartenbilder, Datei-IDs und URLs sind tabu. Pins und Charaktere sind vom Schreiben ausgeschlossen.
 4. **Schreiben:** Kein Löschen. Neue Inhalte starten mit `nur ich` (Universen: `nur Spielleitung`). Änderungen an bestehendem Inhalt, Sichtbarkeit und Stub-Anlage laufen über den Bestätigungsablauf; Stand-Prüfung ist Pflicht.
-5. Eingabeschema, deutschsprachige Beschreibung, Fehlertexte und Ausgabe-Begrenzung ergänzen.
-6. Werkzeug über den Audit-Wrapper registrieren; bei Schreiben Ziel-Art/-ID und Bestätigungsstatus setzen, keine Inhalte im Audit-Log ablegen.
-7. Die lokale MCP-Suite um Rollen-, Sichtbarkeits-, Ausschluss- und ggf. Bestätigungstests erweitern und `npm run test:mcp` ausführen.
+5. Eingabeschema, deutschsprachige Beschreibung, Fehlertexte und Ausgabe-Begrenzung ergänzen. Jede Eingabe ist strikt (`.strict()`, auch verschachtelte Objekte); jedes schreibbare Feld steht im Feldkatalog (`src/lib/mcp/field-catalog.ts`); feste Enums über `mcpEnum`, Validierungsfehler als verständlicher Werkzeugfehler (`src/lib/mcp/validation.ts`, siehe „Schema von `felder`“).
+6. Bestätigungspflichtige Wege nutzen das Vorschauformat (`formatConfirmationPreview`), jeder ausgeführte Schreibvorgang liefert eine Quittung (`formatReceipt` aus `src/lib/mcp/receipt.ts`).
+7. Werkzeug über den Audit-Wrapper registrieren; bei Schreiben Ziel-Art/-ID und Bestätigungsstatus setzen, keine Inhalte im Audit-Log ablegen.
+8. Die lokale MCP-Suite um Rollen-, Sichtbarkeits-, Ausschluss- und ggf. Bestätigungstests erweitern und `npm run test:mcp` ausführen.
 
 ## Eingabe-Inventur (Plan 012)
 

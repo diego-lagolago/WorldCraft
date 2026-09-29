@@ -131,13 +131,13 @@ Status-Spalte: **shipped** = produktiv nutzbar; **MVP** = Teil des MVP-Umfangs (
 |---|---|---|
 | Rechteschicht | Eine TypeScript-Schicht für HTTP, Loader und MCP; keine Rechte nur in der UI | MVP / shipped |
 | MCP-Weltfreigabe | Game Master kann den KI-Zugriff (Lesen und Schreiben) je Welt ein- oder ausschalten; Standard ist aus. „Verbundene Anwendungen“ liegt im Weltmenü jeder Welt und zeigt weltunabhängige Zustimmungen des Benutzers. | Plan 002 / shipped |
-| MCP Lesen | Acht Lesewerkzeuge über `/mcp` (OAuth, Scopes `worlds:read` / `worlds:write`); siehe Plan `002` | Plan 002 / shipped |
-| MCP `inhalt_anlegen` | Artikel, Quest, Kapitel, Monster, Universum anlegen; Start `nur ich` (Universum: `nur Spielleitung`); Stubs nur nach Bestätigung | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
-| MCP `inhalt_aendern` | Bestehende Inhalte ändern (inkl. Notizblock, Welt); Stand-Prüfung; Bestätigung außer bei leerem Artikel; Vorschau zeigt alt/neu mit deutschen Labels, Titeln statt IDs und Charakterblatt | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
-| MCP `relation_anlegen` | Manuelle Relationen anlegen (nur Spielleitung; kein Pin/Charakter) | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
-| MCP `sichtbarkeit_setzen` | Sichtbarkeit setzen nur auf ausdrücklichen Wunsch und nach Bestätigung; Vorschau nennt, wer den Inhalt danach sieht | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
-| MCP `aenderung_bestaetigen` | Bestätigungs-Token einlösen und vorgemerkte Änderung ausführen | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
-| MCP `bild_hochladen` | Einmaliger Upload-Link für Welt-/Artikel-/Monster-Bild; Ersetzen nur nach Bestätigung | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
+| MCP Lesen | Acht Lesewerkzeuge über `/mcp` (OAuth, Scopes `worlds:read` / `worlds:write`); siehe Plan `002`. `inhalt_lesen` zeigt alle Vorlagenfelder und den Block „Schreibschlüssel“ (Plan 012) | Plan 002 / shipped |
+| MCP `inhalt_anlegen` | Artikel, Quest, Kapitel, Monster, Universum anlegen; Start `nur ich` (Universum: `nur Spielleitung`); Stubs nur nach Bestätigung (Vorschau mit Weitergabe-Anweisung); Quittung mit allen gesetzten Feldern (– → Wert); strikte Felder je Art aus dem Feldkatalog (Plan 012) | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
+| MCP `inhalt_aendern` | Bestehende Inhalte ändern (inkl. Notizblock, Welt); Stand-Prüfung; Bestätigung außer bei leerem Artikel; Vorschau zeigt das Delta vorher → nachher je Feld mit deutschen Labels, Titeln statt IDs, Vorlagen- und Charakterblatt-Unterfeldern und Weitergabe-Anweisung; nach dem Speichern Quittung mit dem gespeicherten Delta; „Keine Änderung“ statt Token ohne Delta; Vorlagenfelder ändern nur die genannten Felder (Plan 012) | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
+| MCP `relation_anlegen` | Manuelle Relationen anlegen (nur Spielleitung; kein Pin/Charakter); Quittung mit beiden Titeln (Plan 012) | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
+| MCP `sichtbarkeit_setzen` | Sichtbarkeit setzen nur auf ausdrücklichen Wunsch und nach Bestätigung; Vorschau nennt alt → neu und wer den Inhalt danach sieht; Quittung nach dem Speichern (Plan 012) | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
+| MCP `aenderung_bestaetigen` | Bestätigungs-Token einlösen und vorgemerkte Änderung ausführen, nur nach ausdrücklicher Zustimmung; antwortet mit Quittung (Plan 012) | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
+| MCP `bild_hochladen` | Einmaliger Upload-Link für Welt-/Artikel-/Monster-Bild; Ersetzen nur nach Bestätigung (Vorschau); Upload-Link antwortet mit Quittung (JSON-Feld `quittung`, Erfolgsseite) (Plan 012) | Plan 011 / lokal umgesetzt (E2E Prod ausstehend) |
 | Sichtbarkeit | Artikel/Quest/Pin: `nur ich` / `nur Spielleitung` / `veröffentlicht` (Default neu: `nur ich`); Universum/Karte bleiben zweistufig; Vererbung Universum → Karte → Pin | MVP / Plan 004 T-005 / shipped |
 | Archivierung | Austritt/Entfernen archiviert Mitgliedschaft, Teilnahmen, Marker, Relationen | MVP / shipped |
 
