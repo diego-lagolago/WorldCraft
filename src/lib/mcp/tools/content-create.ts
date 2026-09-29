@@ -148,7 +148,7 @@ async function executeCreate(input: {
   felder: Record<string, unknown>;
   stubTitles: string[];
   ignoredVisibility: boolean;
-}): Promise<{ value: string; worldId: string }> {
+}): Promise<{ value: string; worldId: string; id: string }> {
   // Validate the only create target that has a parent before materializing stubs.
   // This guarantees a revoked or hidden quest cannot leave orphaned articles behind.
   if (input.art === "kapitel") {
@@ -233,6 +233,7 @@ async function executeCreate(input: {
     if (!result.ok) throwAuthz(result);
     return {
       worldId: input.world.id,
+      id: result.data.id,
       value: formatCreateResult({
         art: "artikel",
         id: result.data.id,
@@ -261,6 +262,7 @@ async function executeCreate(input: {
     if (!result.ok) throwAuthz(result);
     return {
       worldId: input.world.id,
+      id: result.data.id,
       value: formatCreateResult({
         art: "quest",
         id: result.data.id,
@@ -291,6 +293,7 @@ async function executeCreate(input: {
     const stand = standOf(result.data.updatedAt);
     return {
       worldId: input.world.id,
+      id: result.data.id,
       value: formatCreateResult({
         art: "kapitel",
         id: result.data.id,
@@ -330,6 +333,7 @@ async function executeCreate(input: {
     if (!result.ok) throwAuthz(result);
     return {
       worldId: input.world.id,
+      id: result.data.monster.id,
       value: formatCreateResult({
         art: "monster",
         id: result.data.monster.id,
@@ -355,6 +359,7 @@ async function executeCreate(input: {
   if (!result.ok) throwAuthz(result);
   return {
     worldId: input.world.id,
+    id: result.data.id,
     value: formatCreateResult({
       art: "universum",
       id: result.data.id,
@@ -531,10 +536,9 @@ export function registerContentCreateTool(server: McpServer, ctx: ToolContext) {
       stubTitles: [],
       ignoredVisibility,
     });
-    const createdId = /ID: ([0-9a-f-]{36})/i.exec(created.value)?.[1] ?? null;
     return {
       ...created,
-      audit: { targetKind: art, targetId: createdId, confirmed: false },
+      audit: { targetKind: art, targetId: created.id, confirmed: false },
     };
   }));
 }
