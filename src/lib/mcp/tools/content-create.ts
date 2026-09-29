@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { CONTENT_VISIBILITY_LABEL } from "@/lib/authz";
-import { createArticle, createArticleStub } from "@/lib/domain/articles";
+import { createArticle, createArticleStub, deleteArticle } from "@/lib/domain/articles";
 import { createMonster } from "@/lib/domain/monsters";
 import { createChapter } from "@/lib/domain/quest-chapters";
 import { createQuest, getQuest } from "@/lib/domain/quests";
@@ -210,6 +210,7 @@ async function executeCreate(input: {
     return resolution.doc ?? undefined;
   };
 
+  try {
   if (input.art === "artikel") {
     const felder = articleFields.parse(input.felder);
     const templateType = MCP_TEMPLATE_TYPE[felder.vorlagentyp ?? "ohne"];
@@ -364,6 +365,13 @@ async function executeCreate(input: {
       ignoredVisibility: input.ignoredVisibility,
     }),
   };
+  } catch (error) {
+    await Promise.all(stubArticles.map(async (stub) => {
+      const removed = await deleteArticle({ membership, actorId: input.ctx.userId, worldId: input.world.id, articleId: stub.id });
+      if (!removed.ok) console.error(JSON.stringify({ event: "mcp_stub_compensation_error", stubId: stub.id }));
+    }));
+    throw error;
+  }
 }
 
 async function collectCreateStubs(input: {
