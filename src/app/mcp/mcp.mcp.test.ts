@@ -1071,6 +1071,28 @@ describe("MCP write tools", () => {
     expect(afterConfirm).toMatch(/Ursprungstext bleibt/);
     expect(afterConfirm).toMatch(/Anhang nach Bestätigung/);
 
+    const expiryPreview = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "artikel", id: filledId, stand: extractStand(afterConfirm),
+      felder: { text: "Darf nach Ablauf nicht landen." },
+    }));
+    const expirySql = testSql();
+    try {
+      await expirySql.unsafe(
+        "UPDATE mcp_change_confirmations SET expires_at = now() - interval '1 minute' WHERE target_id = $1 AND consumed_at IS NULL",
+        [filledId],
+      );
+    } finally {
+      await expirySql.end();
+    }
+    const expiredConfirmation = firstToolText(await callTool(gm.accessToken, "aenderung_bestaetigen", {
+      token: extractToken(expiryPreview),
+    }));
+    expect(expiredConfirmation).toMatch(/ungültig|abgelaufen/i);
+    const afterExpiry = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "artikel", id: filledId,
+    }));
+    expect(afterExpiry).not.toContain("Darf nach Ablauf nicht landen.");
+
     const empty = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
       welt: "MCP-Testwelt",
       art: "artikel",
