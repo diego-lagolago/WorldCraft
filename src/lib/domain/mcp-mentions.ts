@@ -1,4 +1,5 @@
 import { isStaff, type MembershipRole } from "@/lib/authz";
+import { McpToolError } from "@/lib/mcp/errors";
 import { getArticle } from "./articles";
 import { getWorldCharacter } from "./characters";
 import { getMonster } from "./monsters";
@@ -11,7 +12,8 @@ import {
 } from "@/lib/editor/mcp-markdown";
 import { searchMentionTargets } from "./mention-search";
 
-export class McpMentionError extends Error {}
+/** A visibility or ambiguity error that MCP can safely return to the client. */
+export class McpMentionError extends McpToolError {}
 
 export type McpMentionResolution = {
   doc: ReturnType<typeof resolveMcpMarkdown> | null;
