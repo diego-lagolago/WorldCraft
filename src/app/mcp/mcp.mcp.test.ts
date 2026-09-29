@@ -1105,6 +1105,62 @@ describe("MCP write tools", () => {
     }
   });
 
+  it("T-004(5): role loss between preview and confirmation leaves the quest unchanged", async () => {
+    const client = await registerMcpClient(9898, "MCP Confirmation Role Loss Test");
+    const master = await authorizeMcpClient("test-master", client, WRITE_SCOPE);
+    const created = firstToolText(await callTool(master.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt",
+      art: "quest",
+      felder: { titel: `MCP Rechteverlust ${Date.now().toString(36)}`, beschreibung: "Ausgangstext." },
+    }));
+    const questId = extractId(created);
+    const read = firstToolText(await callTool(master.accessToken, "inhalt_lesen", {
+      welt: "MCP-Testwelt", art: "quest", id: questId,
+    }));
+    const preview = firstToolText(await callTool(master.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt",
+      art: "quest",
+      id: questId,
+      stand: extractStand(read),
+      felder: { beschreibung: "Darf nach Rechteverlust nicht gespeichert werden." },
+    }));
+    const sql = testSql();
+    let originalRole: string | undefined;
+    try {
+      const [before] = await sql.unsafe(
+        "SELECT description_plain FROM quests WHERE id = $1",
+        [questId],
+      );
+      const [membership] = await sql.unsafe(
+        "SELECT role FROM memberships WHERE world_id = $1 AND user_id = $2 AND archived_at IS NULL",
+        [data.worldId, master.session.user.id],
+      );
+      expect(membership?.role).toBeTruthy();
+      originalRole = membership.role as string;
+      await sql.unsafe(
+        "UPDATE memberships SET role = 'player' WHERE world_id = $1 AND user_id = $2 AND archived_at IS NULL",
+        [data.worldId, master.session.user.id],
+      );
+      const rejected = firstToolText(await callTool(master.accessToken, "aenderung_bestaetigen", {
+        token: extractToken(preview),
+      }));
+      notFoundError(rejected);
+      const [after] = await sql.unsafe(
+        "SELECT description_plain FROM quests WHERE id = $1",
+        [questId],
+      );
+      expect(after.description_plain).toBe(before.description_plain);
+    } finally {
+      if (originalRole) {
+        await sql.unsafe(
+          "UPDATE memberships SET role = $1 WHERE world_id = $2 AND user_id = $3 AND archived_at IS NULL",
+          [originalRole, data.worldId, master.session.user.id],
+        );
+      }
+      await sql.end();
+    }
+  });
+
   it("T-006: updates content with confirmation, stubs, modes, stand, and rights", async () => {
     const client = await registerMcpClient(9891, "MCP Write Update Test");
     const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
