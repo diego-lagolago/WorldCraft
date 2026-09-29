@@ -860,12 +860,12 @@ async function protectedChecksums(worldId: string): Promise<Record<string, strin
   }
 }
 
-async function postUpload(link: string, file: Buffer, filename: string, mime: string) {
+async function postUpload(link: string, file: Buffer, filename: string, mime: string, accept = "application/json") {
   const body = new FormData();
   body.append("datei", new Blob([new Uint8Array(file)], { type: mime }), filename);
   return fetch(link, {
     method: "POST",
-    headers: { accept: "application/json" },
+    headers: accept ? { accept } : undefined,
     body,
   });
 }
@@ -1312,8 +1312,9 @@ describe("MCP write tools", () => {
     expect(linkText).toContain("Upload-Link");
     expect(linkText).not.toContain("Bestätigungs-Token:");
     const link = extractUploadLink(linkText);
-    const uploaded = await postUpload(link, TINY_PNG, "tiny.png", "image/png");
+    const uploaded = await postUpload(link, TINY_PNG, "tiny.png", "image/png", "");
     expect(uploaded.status).toBe(201);
+    expect(uploaded.headers.get("content-type")).toContain("application/json");
     const uploadedJson = await json(uploaded);
     expect(uploadedJson.fileId).toBeTruthy();
     expect(uploadedJson.ziel).toBe("artikel");
