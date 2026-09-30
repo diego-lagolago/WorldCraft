@@ -21,7 +21,7 @@
 | CR-010 | Duplizierung & Modularisierung | niedrig | offen | Quittungen von `relation_anlegen` und Upload-Link sind von Hand gebaut statt über `formatReceipt` |
 | CR-011 | Runtime-Risiken | niedrig | offen | `unionError` ruft `reduce` ohne Startwert auf einer möglicherweise leeren Liste auf |
 | CR-012 | Fehlerbehandlung & Validierung | niedrig | offen | `beteiligte` in anderer Reihenfolge gilt als Änderung statt „Keine Änderung“ |
-| CR-013 | Performance | niedrig | offen | Jeder bestätigte Schreibvorgang liest das Ziel vier- bis fünfmal, inklusive doppelt gerenderter Vorlagen-Verweise |
+| CR-013 | Performance | niedrig | behoben | Jeder bestätigte Schreibvorgang liest das Ziel vier- bis fünfmal, inklusive doppelt gerenderter Vorlagen-Verweise |
 
 ---
 
@@ -148,6 +148,7 @@
 - **Beschreibung:** Ein bestätigtes `inhalt_aendern` liest das Ziel in `handler.load`, erneut in `snapshotContent` (vorher), in der Domäne, im Handler nach dem Schreiben (CR-001) und in `snapshotContent` (nachher). Bei Artikeln löst jeder Snapshot zusätzlich jeden Vorlagen-Verweis einzeln und nacheinander auf (`await` in der Schleife von `renderTemplateFields`); in der Vorschau geschieht dasselbe zweimal (alt und neu). Bei der aktuellen Feldanzahl unkritisch, aber unnötig und mit jeder Verweis-Vorlage linear wachsend.
 - **Empfehlung:** Zusammen mit CR-001 den Nach-Lese-Schritt der Handler streichen; `snapshotContent` kann die in `load` bereits geladene Zeile übernehmen (Snapshot-Funktionen nehmen optional die Zeile entgegen); Verweise in `renderTemplateFields` mit `Promise.all` auflösen.
 - **Abnahmekriterium:** `executeUpdate` lädt das Ziel vor dem Schreiben genau einmal und danach genau einmal (im Quittungs-Snapshot); `renderTemplateFields` enthält kein `await` in einer Schleife.
+- **Umsetzung (2026-09-30):** Der Vorher-Snapshot verwendet jetzt die bereits sichtbar und standgeprüft geladene Handler-Zeile; nur die Quittung lädt nach dem Speichern erneut. Verweisauflösungen der Vorlagenfelder laufen parallel über `Promise.all`.
 
 ---
 

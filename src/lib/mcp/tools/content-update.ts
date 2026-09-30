@@ -53,7 +53,9 @@ async function prepareUpdate(input: UpdateRequest): Promise<PreparedUpdate> {
 async function executeUpdate(input: UpdateRequest & { ctx: ToolContext; stubTitles: string[] }) {
   const handler = UPDATE_HANDLERS[input.art];
   const target = await handler.load(input.world, input.id, input.stand);
-  const before = await snapshotContent(input.world, input.art, input.id);
+  // Reuse the visible, stand-checked row from the handler. A receipt still takes one fresh
+  // snapshot after writing, but the pre-write snapshot must not load the target again.
+  const before = await snapshotContent(input.world, input.art, input.id, target.source);
   const membership = mcpMembership(input.world);
   const stubs = await materializeStubs({
     world: input.world,

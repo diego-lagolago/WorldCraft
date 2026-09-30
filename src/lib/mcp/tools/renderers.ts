@@ -63,31 +63,25 @@ export async function renderTemplateFields(
   viewerId: string,
 ) {
   const definition = templateOf(templateType);
-  const lines = [`Vorlagentyp: ${definition.label}`];
   const catalog = templateFieldsFor(definition.type);
-
-  for (const [index, field] of definition.fields.entries()) {
+  const lines = await Promise.all(definition.fields.map(async (field, index) => {
     const entry = catalog[index];
     const raw = fields[field.key];
     if (field.type === "boolean") {
-      lines.push(`${entry.label}: ${raw === true ? "Ja" : "Nein"}`);
-      continue;
+      return `${entry.label}: ${raw === true ? "Ja" : "Nein"}`;
     }
     if (raw === undefined || raw === null || raw === "") {
-      lines.push(`${entry.label}: ${MCP_NOT_SET}`);
-      continue;
+      return `${entry.label}: ${MCP_NOT_SET}`;
     }
     if (field.type === "select") {
-      lines.push(`${entry.label}: ${labelFor(entry, raw)}`);
-      continue;
+      return `${entry.label}: ${labelFor(entry, raw)}`;
     }
     if (field.type === "ref") {
-      lines.push(`${entry.label}: ${await renderReference(raw, world, viewerId)}`);
-      continue;
+      return `${entry.label}: ${await renderReference(raw, world, viewerId)}`;
     }
-    lines.push(`${entry.label}: ${String(raw)}`);
-  }
-  return lines.join("\n");
+    return `${entry.label}: ${String(raw)}`;
+  }));
+  return [`Vorlagentyp: ${definition.label}`, ...lines].join("\n");
 }
 
 export type WriteKeySection = { art: FieldArt; heading: string; vorlagentyp?: TemplateType };

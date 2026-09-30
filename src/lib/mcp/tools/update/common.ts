@@ -39,6 +39,8 @@ export type PreviewSummary = { title: string; visibility?: string; skipConfirmat
 
 /** A loaded, visible target whose stand already matched (phase a). */
 export type UpdateTarget = {
+  /** The already loaded target, reused for the pre-write receipt snapshot. */
+  source: unknown;
   preview: (felder: Record<string, unknown>, context: PreviewContext) => Promise<PreviewSummary>;
   execute: (felder: Record<string, unknown>, context: ExecuteContext) => Promise<UpdateResult>;
 };
@@ -66,6 +68,7 @@ export function defineUpdateHandler<F, Row>(spec: {
     load: async (world, id, stand) => {
       const row = await spec.load(world, id, stand);
       return {
+        source: row,
         preview: (felder, context) => spec.preview(row, felder as F, context),
         execute: (felder, context) => spec.execute(row, felder as F, context),
       };

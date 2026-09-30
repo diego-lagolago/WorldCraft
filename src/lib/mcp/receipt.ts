@@ -46,8 +46,8 @@ function snapshot(input: Omit<Snapshot, "entries" | "richLabels">, rows: [string
   return { ...input, entries: new Map(rows), richLabels: new Set(rich) };
 }
 
-async function articleSnapshot(world: McpWorldContext, id: string) {
-  const row = await visibleArticle(world, id);
+async function articleSnapshot(world: McpWorldContext, id: string, source?: unknown) {
+  const row = source as Awaited<ReturnType<typeof visibleArticle>> ?? await visibleArticle(world, id);
   const result = snapshot(
     { title: row.title, stand: standOf(row.updatedAt), visibility: visibilityLabel(row.visibility) },
     [[label("artikel", "titel"), row.title], [label("artikel", "vorlagentyp"), templateOf(row.templateType).label]],
@@ -59,8 +59,8 @@ async function articleSnapshot(world: McpWorldContext, id: string) {
   return result;
 }
 
-async function questSnapshot(world: McpWorldContext, id: string) {
-  const row = await visibleQuest(world, id);
+async function questSnapshot(world: McpWorldContext, id: string, source?: unknown) {
+  const row = source as Awaited<ReturnType<typeof visibleQuest>> ?? await visibleQuest(world, id);
   const participants = row.participants.map((entry) => entry.characterName).join(", ") || MCP_NOT_SET;
   return snapshot(
     { title: row.title, stand: standOf(row.updatedAt), visibility: visibilityLabel(row.visibility) },
@@ -74,8 +74,8 @@ async function questSnapshot(world: McpWorldContext, id: string) {
   );
 }
 
-async function chapterSnapshot(world: McpWorldContext, id: string) {
-  const { chapter } = await findVisibleChapter(world, id);
+async function chapterSnapshot(world: McpWorldContext, id: string, source?: unknown) {
+  const { chapter } = source as Awaited<ReturnType<typeof findVisibleChapter>> ?? await findVisibleChapter(world, id);
   return snapshot(
     { title: chapter.title, stand: standOf(chapter.updatedAt), visibility: visibilityLabel(chapter.visibility) },
     [
@@ -88,9 +88,16 @@ async function chapterSnapshot(world: McpWorldContext, id: string) {
   );
 }
 
-async function noteSnapshot(world: McpWorldContext, questId: string) {
-  const quest = await visibleQuest(world, questId);
-  const note = await getQuestNote({ worldId: world.id, questId: quest.id, role: world.role, viewerId: world.userId });
+async function noteSnapshot(world: McpWorldContext, questId: string, source?: unknown) {
+  type LoadedNote = {
+    quest: Awaited<ReturnType<typeof visibleQuest>>;
+    note: Awaited<ReturnType<typeof getQuestNote>> extends { ok: true; data: infer T } ? T : never;
+  };
+  const loaded = source as LoadedNote | undefined;
+  const quest = loaded?.quest ?? await visibleQuest(world, questId);
+  const note = loaded
+    ? { ok: true as const, data: loaded.note }
+    : await getQuestNote({ worldId: world.id, questId: quest.id, role: world.role, viewerId: world.userId });
   if (!note.ok) throw new McpToolError("Notizblock nicht gefunden.");
   return snapshot(
     { title: quest.title, stand: String(note.data.version) },
@@ -99,8 +106,8 @@ async function noteSnapshot(world: McpWorldContext, questId: string) {
   );
 }
 
-async function monsterSnapshot(world: McpWorldContext, id: string) {
-  const row = await visibleMonster(world, id);
+async function monsterSnapshot(world: McpWorldContext, id: string, source?: unknown) {
+  const row = source as Awaited<ReturnType<typeof visibleMonster>> ?? await visibleMonster(world, id);
   const habitat = row.habitatArticleId
     ? await getArticle(world.id, row.habitatArticleId, world.role, world.userId)
     : null;
@@ -123,8 +130,8 @@ async function monsterSnapshot(world: McpWorldContext, id: string) {
   return result;
 }
 
-async function universeSnapshot(world: McpWorldContext, id: string) {
-  const row = await visibleUniverse(world, id);
+async function universeSnapshot(world: McpWorldContext, id: string, source?: unknown) {
+  const row = source as Awaited<ReturnType<typeof visibleUniverse>> ?? await visibleUniverse(world, id);
   return snapshot(
     { title: row.name, stand: standOf(row.updatedAt), visibility: visibilityLabel(row.visibility) },
     [[label("universum", "name"), row.name], [label("universum", "beschreibung"), markdown(row.descriptionJson)]],
@@ -132,8 +139,8 @@ async function universeSnapshot(world: McpWorldContext, id: string) {
   );
 }
 
-async function worldSnapshot(world: McpWorldContext) {
-  const row = await getWorldDetails(world.id);
+async function worldSnapshot(world: McpWorldContext, source?: unknown) {
+  const row = source as Awaited<ReturnType<typeof getWorldDetails>> ?? await getWorldDetails(world.id);
   if (!row) throw new McpToolError("Inhalt nicht gefunden.");
   return snapshot(
     { title: row.name, stand: await worldStand(world.userId, world.id) },
@@ -151,15 +158,15 @@ export async function contentTitle(world: McpWorldContext, art: "artikel" | "que
 }
 
 /** Reads the stored state through the same visibility-aware loaders as the write tools. */
-export async function snapshotContent(world: McpWorldContext, art: FieldArt, id: string): Promise<Snapshot> {
+export async function snapshotContent(world: McpWorldContext, art: FieldArt, id: string, source?: unknown): Promise<Snapshot> {
   switch (art) {
-  case "artikel": return articleSnapshot(world, id);
-  case "quest": return questSnapshot(world, id);
-  case "kapitel": return chapterSnapshot(world, id);
-  case "notizblock": return noteSnapshot(world, id);
-  case "monster": return monsterSnapshot(world, id);
-  case "universum": return universeSnapshot(world, id);
-  case "welt": return worldSnapshot(world);
+  case "artikel": return articleSnapshot(world, id, source);
+  case "quest": return questSnapshot(world, id, source);
+  case "kapitel": return chapterSnapshot(world, id, source);
+  case "notizblock": return noteSnapshot(world, id, source);
+  case "monster": return monsterSnapshot(world, id, source);
+  case "universum": return universeSnapshot(world, id, source);
+  case "welt": return worldSnapshot(world, source);
   }
 }
 
