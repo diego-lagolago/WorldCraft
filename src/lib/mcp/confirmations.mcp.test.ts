@@ -58,4 +58,20 @@ describe("MCP confirmation tokens", () => {
       await sql.end();
     }
   });
+
+  it("012 E10: an optional payload field left undefined still verifies after the JSONB round-trip", async () => {
+    const { sql, worldId } = await fixture();
+    try {
+      registerMcpConfirmationHandler("test-optional", async (row) => ({ worldId: row.worldId, value: "ok" }));
+      const created = await createMcpConfirmation({
+        userId: "test-gm", clientId: "confirmation-client", worldId,
+        targetKind: "relation", targetId: "optional-target", expectedStand: "",
+        payload: { operation: "test-optional", bezeichnung: "kennt", gegenbezeichnung: undefined },
+      });
+      const consumed = await consumeMcpConfirmation({ token: created.token, userId: "test-gm", clientId: "confirmation-client" });
+      expect(await executeMcpConfirmation(consumed!)).toEqual({ worldId, value: "ok" });
+    } finally {
+      await sql.end();
+    }
+  });
 });
