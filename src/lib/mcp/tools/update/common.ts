@@ -32,7 +32,8 @@ export type ExecuteContext = {
   stubs: MaterializedStubs;
 };
 
-export type UpdateResult = { id: string; title: string; stand: string; visibility: string };
+/** A write handler must not read the target after persisting it: that read runs inside stub compensation. */
+export type UpdateResult = { id: string; stand?: string };
 
 export type PreviewSummary = { title: string; visibility?: string; skipConfirmation?: boolean };
 

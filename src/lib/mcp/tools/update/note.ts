@@ -1,7 +1,7 @@
 import { getQuestNote, saveQuestNote } from "@/lib/domain/quest-notes";
 import { McpToolError } from "../../context";
 import { visibleQuest } from "../../write-shared";
-import { throwAuthz, visibilityLabel } from "../../write-rich";
+import { throwAuthz } from "../../write-rich";
 import { updateFieldSchemas } from "../write-schemas";
 import { defineUpdateHandler, executeRich, previewRich, staleError } from "./common";
 
@@ -38,11 +38,6 @@ export const noteUpdate = defineUpdateHandler({
       if ("version" in saved) throw staleError();
       throwAuthz(saved);
     }
-    return {
-      id: quest.id,
-      title: quest.title,
-      stand: String(saved.data.version),
-      visibility: visibilityLabel(quest.visibility),
-    };
+    return { id: quest.id, stand: String(saved.data.version) };
   },
 });

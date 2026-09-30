@@ -3,7 +3,7 @@ import { updateQuest } from "@/lib/domain/quests";
 import { MCP_QUEST_STATUS, MCP_QUEST_STATUS_LABEL } from "../../enums";
 import type { McpWorldContext } from "../../context";
 import { resolveParticipantIds, visibleQuest } from "../../write-shared";
-import { assertStand, standOf, throwAuthz, visibilityLabel } from "../../write-rich";
+import { assertStand, throwAuthz, visibilityLabel } from "../../write-rich";
 import { updateFieldSchemas } from "../write-schemas";
 import { defineUpdateHandler, executeRich, previewRich, pushChange, pushRenamed } from "./common";
 
@@ -50,12 +50,6 @@ export const questUpdate = defineUpdateHandler({
       expectedUpdatedAt: context.expectedUpdatedAt,
     });
     if (!result.ok) throwAuthz(result);
-    const updated = await visibleQuest(context.world, row.id);
-    return {
-      id: updated.id,
-      title: updated.title,
-      stand: standOf(updated.updatedAt),
-      visibility: visibilityLabel(updated.visibility),
-    };
+    return { id: row.id };
   },
 });

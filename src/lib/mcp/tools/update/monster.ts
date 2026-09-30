@@ -18,7 +18,7 @@ import {
   type NormalizedMonsterSheet,
 } from "../../write-fields";
 import { resolveHabitat, visibleMonster, type ResolvedHabitat } from "../../write-shared";
-import { assertStand, standOf, throwAuthz, visibilityLabel } from "../../write-rich";
+import { assertStand, throwAuthz, visibilityLabel } from "../../write-rich";
 import { renderSheet } from "../renderers";
 import { updateFieldSchemas, type UpdateFields } from "../write-schemas";
 import {
@@ -128,12 +128,6 @@ export const monsterUpdate = defineUpdateHandler({
       expectedUpdatedAt: context.expectedUpdatedAt,
     });
     if (!result.ok) throwAuthz(result);
-    const updated = await visibleMonster(context.world, row.id);
-    return {
-      id: updated.id,
-      title: updated.name,
-      stand: standOf(updated.updatedAt),
-      visibility: visibilityLabel(updated.visibility),
-    };
+    return { id: row.id };
   },
 });

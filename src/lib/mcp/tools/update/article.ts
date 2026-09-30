@@ -5,7 +5,7 @@ import type { McpWorldContext } from "../../context";
 import { MCP_TEMPLATE_TYPE } from "../../enums";
 import { clearedTemplateFieldKeys } from "../../write-fields";
 import { prepareTemplateFields, visibleArticle } from "../../write-shared";
-import { assertStand, standOf, throwAuthz, visibilityLabel } from "../../write-rich";
+import { assertStand, throwAuthz, visibilityLabel } from "../../write-rich";
 import { renderTemplateFields } from "../renderers";
 import { updateFieldSchemas } from "../write-schemas";
 import {
@@ -96,12 +96,6 @@ export const articleUpdate = defineUpdateHandler({
       expectedUpdatedAt: context.expectedUpdatedAt,
     });
     if (!result.ok) throwAuthz(result);
-    const updated = await visibleArticle(context.world, row.id);
-    return {
-      id: updated.id,
-      title: updated.title,
-      stand: standOf(updated.updatedAt),
-      visibility: visibilityLabel(updated.visibility),
-    };
+    return { id: row.id };
   },
 });

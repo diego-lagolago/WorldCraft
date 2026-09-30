@@ -36,13 +36,6 @@ export const worldUpdate = defineUpdateHandler({
       expectedUpdatedAt: context.expectedUpdatedAt,
     });
     if (!result.ok) throwAuthz(result);
-    const updated = await getWorldDetails(context.world.id);
-    if (!updated) throw new McpToolError("Inhalt nicht gefunden.");
-    return {
-      id: updated.id,
-      title: updated.name,
-      stand: await worldStand(context.world.userId, context.world.id),
-      visibility: "—",
-    };
+    return { id: row.id };
   },
 });

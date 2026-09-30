@@ -202,8 +202,8 @@ export async function receiptAfterWrite(input: {
   art: FieldArt;
   id: string;
   before: Snapshot | null;
-  /** Domain result; without `stand` the re-read stand is used. */
-  result: { title: string; stand?: string; visibility?: string };
+  /** The handler returns only the ID (and the note version when applicable). */
+  result: { id: string; stand?: string };
   stubs?: readonly { id: string; title: string }[];
   notes?: readonly string[];
 }): Promise<string> {
@@ -213,7 +213,16 @@ export async function receiptAfterWrite(input: {
     return formatReceipt({ ...base, after: { ...after, stand: input.result.stand ?? after.stand }, changes: snapshotDelta(input.before, after) });
   } catch (error) {
     console.error(JSON.stringify({ event: "mcp_receipt_error", art: input.art, error: error instanceof Error ? error.name : "unknown" }));
-    return formatReceipt({ ...base, after: { ...input.result, stand: input.result.stand ?? MCP_NOT_SET }, changes: null });
+    return formatReceipt({
+      ...base,
+      after: {
+        title: input.before?.title ?? "Unbekannter Inhalt",
+        stand: MCP_NOT_SET,
+        visibility: input.before?.visibility,
+      },
+      changes: null,
+      notes: [...(input.notes ?? []), "Bitte vor der nächsten Änderung neu lesen."],
+    });
   }
 }
 

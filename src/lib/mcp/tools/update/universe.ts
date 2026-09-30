@@ -1,6 +1,6 @@
 import { updateUniverse } from "@/lib/domain/universes";
 import { visibleUniverse } from "../../write-shared";
-import { assertStand, standOf, throwAuthz, visibilityLabel } from "../../write-rich";
+import { assertStand, throwAuthz, visibilityLabel } from "../../write-rich";
 import { updateFieldSchemas } from "../write-schemas";
 import { defineUpdateHandler, executeRich, previewRich, pushRenamed } from "./common";
 
@@ -27,12 +27,6 @@ export const universeUpdate = defineUpdateHandler({
       expectedUpdatedAt: context.expectedUpdatedAt,
     });
     if (!result.ok) throwAuthz(result);
-    const updated = await visibleUniverse(context.world, row.id);
-    return {
-      id: updated.id,
-      title: updated.name,
-      stand: standOf(updated.updatedAt),
-      visibility: visibilityLabel(updated.visibility),
-    };
+    return { id: row.id };
   },
 });

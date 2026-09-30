@@ -128,7 +128,7 @@ async function executeVisibilitySet(input: Omit<VisibilityPayload, "operation"> 
       art: input.art,
       id: input.id,
       before,
-      result: { title: before.title, visibility: visibilityLabel(input.sichtbarkeit) },
+      result: { id: input.id },
     }),
   };
 }

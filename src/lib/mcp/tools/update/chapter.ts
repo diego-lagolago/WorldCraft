@@ -1,7 +1,7 @@
 import { updateChapter } from "@/lib/domain/quest-chapters";
 import { MCP_QUEST_STATUS, MCP_QUEST_STATUS_LABEL } from "../../enums";
 import { findVisibleChapter } from "../../write-shared";
-import { assertStand, standOf, throwAuthz, visibilityLabel } from "../../write-rich";
+import { assertStand, throwAuthz, visibilityLabel } from "../../write-rich";
 import { updateFieldSchemas } from "../write-schemas";
 import { defineUpdateHandler, executeRich, previewRich, pushChange, pushRenamed } from "./common";
 
@@ -33,12 +33,6 @@ export const chapterUpdate = defineUpdateHandler({
       expectedUpdatedAt: context.expectedUpdatedAt,
     });
     if (!result.ok) throwAuthz(result);
-    const refreshed = await findVisibleChapter(context.world, chapter.id);
-    return {
-      id: refreshed.chapter.id,
-      title: refreshed.chapter.title,
-      stand: standOf(refreshed.chapter.updatedAt),
-      visibility: visibilityLabel(refreshed.chapter.visibility),
-    };
+    return { id: chapter.id };
   },
 });

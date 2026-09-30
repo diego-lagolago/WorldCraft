@@ -19,12 +19,21 @@ describe("receiptAfterWrite (Review 012 CR-001)", () => {
       world: { id: "world-1" } as never,
       art: "artikel",
       id: "article-1",
-      before: null,
-      result: { title: "Schwert", stand: "2026-09-29T10:00:00.000Z", visibility: "nur ich" },
+      before: {
+        title: "Schwert",
+        stand: "2026-09-29T10:00:00.000Z",
+        visibility: "nur ich",
+        entries: new Map(),
+        richLabels: new Set(),
+      },
+      result: { id: "article-1" },
       stubs: [{ id: "stub-1", title: "Schmiede" }],
     });
     expect(text).toContain("Gespeichert.");
+    expect(text).toContain("Titel: Schwert");
+    expect(text).toContain("Stand: –");
     expect(text).toContain("die Änderung ist gespeichert");
+    expect(text).toContain("Bitte vor der nächsten Änderung neu lesen.");
     expect(text).toContain("- Schmiede (stub-1)");
     expect(error).toHaveBeenCalledWith(expect.stringContaining("mcp_receipt_error"));
     error.mockRestore();
