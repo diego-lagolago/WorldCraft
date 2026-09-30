@@ -1712,12 +1712,21 @@ describe("MCP write tools", () => {
       felder: { titel: `MCP RelSrc ${suffix}`, text: "Relationsträger." },
     }));
     const sourceId = extractId(created);
-    const relation = firstToolText(await callTool(gm.accessToken, "relation_anlegen", {
+    const relationPreview = firstToolText(await callTool(gm.accessToken, "relation_anlegen", {
       welt: "MCP-Testwelt",
       quelle: { art: "artikel", id: sourceId },
       ziel: { art: "quest", id: data.activeQuestId },
       bezeichnung: "führt zu",
       gegenbezeichnung: "kommt von",
+    }));
+    // Review E2E-Lauf 2: relations need a confirmation like every other write.
+    expect(relationPreview).toContain("Bestätigungs-Token:");
+    expect(relationPreview).not.toContain("Relation angelegt.");
+    expect(firstToolText(await callTool(gm.accessToken, "relationen_abrufen", {
+      welt: "MCP-Testwelt", art: "artikel", id: sourceId,
+    }))).not.toContain("führt zu");
+    const relation = firstToolText(await callTool(gm.accessToken, "aenderung_bestaetigen", {
+      token: extractToken(relationPreview),
     }));
     expect(relation).toContain("Relation angelegt.");
     const fromArticle = firstToolText(await callTool(gm.accessToken, "relationen_abrufen", {
@@ -2336,9 +2345,12 @@ describe("MCP write tools", () => {
     expect(monsterPreview).not.toContain("Charakterblatt – Ideale");
     expect(monsterPreview).toContain(`Lebensraum: – → Burg Rabenstein (${data.burgId})`);
 
-    const relation = firstToolText(await callTool(gm.accessToken, "relation_anlegen", {
+    const relationPreview = firstToolText(await callTool(gm.accessToken, "relation_anlegen", {
       welt: "MCP-Testwelt", quelle: { art: "artikel", id: itemId }, ziel: { art: "monster", id: monster }, bezeichnung: "gehört zu",
     }));
+    expect(relationPreview.split("\n")[0]).toContain("Zeige dem Benutzer diese Vorschau vollständig und unverändert.");
+    expect(relationPreview).toContain(`„MCP Quittung Monster ${suffix}“`);
+    const relation = firstToolText(await callTool(gm.accessToken, "aenderung_bestaetigen", { token: extractToken(relationPreview) }));
     expect(relation.split("\n")[0]).toBe("Zeige dem Benutzer diese Quittung.");
     expect(relation).toContain(`„MCP Quittung ${suffix}“`);
     expect(relation).toContain(`„MCP Quittung Monster ${suffix}“`);

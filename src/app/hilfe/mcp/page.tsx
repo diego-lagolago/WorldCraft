@@ -30,7 +30,7 @@ export default function McpHelpPage() {
           Neue Inhalte starten mit der Sichtbarkeit <strong>nur ich</strong>. Ausnahme: Universen starten mit <strong>nur Spielleitung</strong>, wie in der App. Eine andere Sichtbarkeit setzt die KI nur auf ausdrücklichen Wunsch und nur nach Bestätigung.
         </p>
         <p>
-          Änderungen an bestehendem Inhalt und Sichtbarkeitswechsel brauchen eine Bestätigung: Die KI zeigt dir zuerst eine Vorschau; erst wenn du zustimmst, führt sie die Änderung aus. So bleibt nichts unbemerkt überschrieben. Claude zeigt dir vorher, was sich ändert (vorher → nachher), und danach, was gespeichert wurde. Leere Stub-Artikel und das Anlegen neuer Relationen sind davon ausgenommen; Bild-Ersetzen braucht wieder eine Bestätigung.
+          Änderungen an bestehendem Inhalt, neue Relationen und Sichtbarkeitswechsel brauchen eine Bestätigung: Die KI zeigt dir zuerst eine Vorschau; erst wenn du zustimmst, führt sie die Änderung aus. So bleibt nichts unbemerkt überschrieben. Claude zeigt dir vorher, was sich ändert (vorher → nachher), und danach, was gespeichert wurde. Nur leere Stub-Artikel sind davon ausgenommen; Bild-Ersetzen braucht ebenfalls eine Bestätigung.
         </p>
         <p>
           Für Bilder erzeugt die KI einen einmaligen Upload-Link (15 Minuten, einmal nutzbar). In Claude Code kann die KI die Datei selbst über den Link hochladen; in claude.ai öffnest du den Link im Browser und wählst die Datei dort. Die KI löscht weder Inhalte noch Relationen, Kapitel oder Bilder.

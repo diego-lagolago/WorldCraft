@@ -2,10 +2,12 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { mcpEnum } from "../validation";
 import { createManualRelation } from "@/lib/domain/relations";
-import { resolveMcpWorld } from "../context";
-import { MCP_CONTENT_KIND, MCP_CONTENT_KIND_LABEL } from "../enums";
+import { requireStaff } from "@/lib/authz";
+import { createMcpConfirmation, registerMcpConfirmationHandler } from "../confirmations";
+import { McpToolError, resolveMcpWorld, type McpWorldContext } from "../context";
+import { MCP_CONTENT_KIND, MCP_CONTENT_KIND_LABEL, MCP_NOT_SET } from "../enums";
 import { contentTitle, RECEIPT_INSTRUCTION } from "../receipt";
-import { mcpMembership, throwAuthz } from "../write-rich";
+import { formatConfirmationPreview, mcpMembership, throwAuthz } from "../write-rich";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 
 const endpoint = (name: "quelle" | "ziel") => z.object({
@@ -13,13 +15,73 @@ const endpoint = (name: "quelle" | "ziel") => z.object({
   id: z.string().uuid(),
 }).strict();
 
+type RelationArt = "artikel" | "quest" | "monster" | "universum";
+type RelationEnd = { art: RelationArt; id: string };
+
+type RelationPayload = {
+  operation: "relation_anlegen";
+  quelle: RelationEnd;
+  ziel: RelationEnd;
+  bezeichnung: string;
+  gegenbezeichnung?: string;
+};
+
+/** Rights, visibility and titles of both ends; nothing is written (phase a). */
+async function checkRelation(world: McpWorldContext, input: Omit<RelationPayload, "operation">) {
+  const staff = requireStaff(mcpMembership(world));
+  if (!staff.ok) throwAuthz(staff);
+  if (input.quelle.art === input.ziel.art && input.quelle.id === input.ziel.id) {
+    throw new McpToolError("Quelle und Ziel dürfen nicht identisch sein.");
+  }
+  const [sourceTitle, targetTitle] = await Promise.all([
+    contentTitle(world, input.quelle.art, input.quelle.id),
+    contentTitle(world, input.ziel.art, input.ziel.id),
+  ]);
+  return { sourceTitle, targetTitle };
+}
+
+const endLine = (end: RelationEnd, title: string) => `${MCP_CONTENT_KIND_LABEL[end.art]} „${title}“ (${end.id})`;
+
+async function executeRelation(input: Omit<RelationPayload, "operation"> & { userId: string; world: McpWorldContext }) {
+  const { sourceTitle, targetTitle } = await checkRelation(input.world, input);
+  const result = await createManualRelation({
+    membership: mcpMembership(input.world),
+    actorId: input.userId,
+    worldId: input.world.id,
+    sourceKind: MCP_CONTENT_KIND[input.quelle.art],
+    sourceId: input.quelle.id,
+    targetKind: MCP_CONTENT_KIND[input.ziel.art],
+    targetId: input.ziel.id,
+    label: input.bezeichnung,
+    counterLabel: input.gegenbezeichnung,
+  });
+  if (!result.ok) throwAuthz(result);
+  return {
+    worldId: input.world.id,
+    value: [
+      RECEIPT_INSTRUCTION,
+      "Relation angelegt.",
+      `ID: ${result.data.id}`,
+      `Quelle: ${endLine(input.quelle, sourceTitle)}`,
+      `Ziel: ${endLine(input.ziel, targetTitle)}`,
+      `Bezeichnung: ${result.data.label ?? input.bezeichnung}`,
+      `Gegenbezeichnung: ${result.data.counterLabel ?? MCP_NOT_SET}`,
+    ].join("\n"),
+  };
+}
+
+registerMcpConfirmationHandler("relation_anlegen", async (row) => {
+  const payload = row.payload as RelationPayload;
+  return executeRelation({ ...payload, userId: row.userId, world: await resolveMcpWorld(row.userId, row.worldId) });
+});
+
 export function registerRelationCreateTool(server: McpServer, ctx: ToolContext) {
   server.registerTool("relation_anlegen", {
     title: "Relation anlegen",
     description: [
       "Legt eine manuelle Verknüpfung zwischen zwei sichtbaren Inhalten an (nur Spielleitung).",
       "Quelle und Ziel: artikel, quest, monster oder universum — nie pin oder charakter.",
-      "Keine Bestätigung nötig. Gelöscht wird nie.",
+      "Immer mit Bestätigung: liefert zuerst eine Vorschau und ein Bestätigungs-Token (aenderung_bestaetigen). Gelöscht wird nie.",
     ].join(" "),
     inputSchema: z.object({
       welt: worldSchema,
@@ -28,38 +90,37 @@ export function registerRelationCreateTool(server: McpServer, ctx: ToolContext) 
       bezeichnung: z.string().trim().min(1).max(120),
       gegenbezeichnung: z.string().trim().min(1).max(120).optional(),
     }).strict(),
-    annotations: { readOnlyHint: false, destructiveHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true },
   }, async ({ welt, quelle, ziel, bezeichnung, gegenbezeichnung }) => withAudit(ctx, "relation_anlegen", async () => {
     requireMcpWriteScope(ctx);
     const world = await resolveMcpWorld(ctx.userId, welt);
-    const result = await createManualRelation({
-      membership: mcpMembership(world),
-      actorId: ctx.userId,
+    const change = { quelle, ziel, bezeichnung, gegenbezeichnung };
+    const { sourceTitle, targetTitle } = await checkRelation(world, change);
+    const confirmation = await createMcpConfirmation({
+      userId: ctx.userId,
+      clientId: ctx.clientId,
       worldId: world.id,
-      sourceKind: MCP_CONTENT_KIND[quelle.art],
-      sourceId: quelle.id,
-      targetKind: MCP_CONTENT_KIND[ziel.art],
-      targetId: ziel.id,
-      label: bezeichnung,
-      counterLabel: gegenbezeichnung,
+      targetKind: "relation",
+      targetId: quelle.id,
+      expectedStand: "",
+      payload: { operation: "relation_anlegen", ...change } satisfies RelationPayload,
     });
-    if (!result.ok) throwAuthz(result);
-    const [sourceTitle, targetTitle] = await Promise.all([
-      contentTitle(world, quelle.art, quelle.id),
-      contentTitle(world, ziel.art, ziel.id),
-    ]);
     return {
       worldId: world.id,
-      value: [
-        RECEIPT_INSTRUCTION,
-        "Relation angelegt.",
-        `ID: ${result.data.id}`,
-        `Quelle: ${MCP_CONTENT_KIND_LABEL[quelle.art]} „${sourceTitle}“ (${quelle.id})`,
-        `Ziel: ${MCP_CONTENT_KIND_LABEL[ziel.art]} „${targetTitle}“ (${ziel.id})`,
-        `Bezeichnung: ${result.data.label ?? bezeichnung}`,
-        `Gegenbezeichnung: ${result.data.counterLabel ?? "–"}`,
-      ].join("\n"),
-      audit: { targetKind: "relation", targetId: result.data.id, confirmed: false },
+      value: formatConfirmationPreview({
+        art: "relation",
+        title: `${sourceTitle} → ${targetTitle}`,
+        lines: [
+          "Neue Relation:",
+          `- Quelle: ${endLine(quelle, sourceTitle)}`,
+          `- Ziel: ${endLine(ziel, targetTitle)}`,
+          `- Bezeichnung: ${MCP_NOT_SET} → ${bezeichnung}`,
+          `- Gegenbezeichnung: ${MCP_NOT_SET} → ${gegenbezeichnung ?? MCP_NOT_SET}`,
+        ],
+        token: confirmation.token,
+        expiresAt: confirmation.expiresAt,
+      }),
+      audit: { targetKind: "relation", targetId: quelle.id, confirmed: false },
     };
   }));
 }

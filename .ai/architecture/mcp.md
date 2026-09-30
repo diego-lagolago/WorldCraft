@@ -39,7 +39,7 @@ sequenceDiagram
 
 ## Bestätigungsablauf (Schreiben)
 
-Bestätigungspflichtige Änderungen (bestehender Inhalt, Sichtbarkeit, Stub-Anlage, Bild-Ersetzen) werden nicht sofort ausgeführt. Das Schreibwerkzeug liefert eine Änderungsvorschau und ein Bestätigungs-Token; erst `aenderung_bestaetigen` führt aus. Tokens liegen nur gehasht in `mcp_change_confirmations`, sind 10 Minuten gültig und einmal einlösbar.
+Bestätigungspflichtige Änderungen (bestehender Inhalt, Sichtbarkeit, Stub-Anlage, neue Relationen – seit Plan `012` E10 –, Bild-Ersetzen) werden nicht sofort ausgeführt. Das Schreibwerkzeug liefert eine Änderungsvorschau und ein Bestätigungs-Token; erst `aenderung_bestaetigen` führt aus. Tokens liegen nur gehasht in `mcp_change_confirmations`, sind 10 Minuten gültig und einmal einlösbar.
 
 ```mermaid
 sequenceDiagram
