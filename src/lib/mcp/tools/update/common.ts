@@ -159,8 +159,12 @@ export async function previewRich(context: PreviewContext, input: {
     throw new McpToolError(`Unbekannte Erwähnung: „${resolution.stubs[0]}“.`);
   }
   context.stubs.add(resolution.stubs);
+  // Compare in the rendered form: inhalt_lesen escapes Markdown („Befüllt\.“), clients may send either form.
+  const rendered = resolution.doc && !resolution.stubs.length
+    ? tiptapJsonToMcpMarkdown(resolution.doc).trim()
+    : input.markdown.trim();
   const unchanged = context.modus === "ersetzen"
-    ? input.markdown.trim() === tiptapJsonToMcpMarkdown(input.oldJson).trim()
+    ? rendered === tiptapJsonToMcpMarkdown(input.oldJson).trim()
     : !input.markdown.trim();
   if (unchanged) return;
   context.changes.push(richChange(displayLabel(context.art, input.label), input.oldJson, input.markdown, context.modus));
