@@ -12,6 +12,8 @@ export const questCreate = defineCreateHandler({
   titleOf: (felder) => felder.titel,
   collect: (felder, context) => collectRich(context, felder.beschreibung),
   execute: async (felder, context) => {
+    const participants = await resolveParticipantIds(context.world, felder.beteiligte);
+    if (participants?.snapshotIds.length) throw new McpToolError("Feld „felder.beteiligte“: Teilnahme-Erwähnungen sind beim Anlegen nicht erlaubt.");
     const result = await createQuest({
       membership: context.membership,
       actorId: context.ctx.userId,
@@ -19,7 +21,7 @@ export const questCreate = defineCreateHandler({
       title: felder.titel,
       description: await createRich(context, felder.beschreibung),
       status: felder.status ? MCP_QUEST_STATUS[felder.status] : undefined,
-      participantIds: await resolveParticipantIds(context.world, felder.beteiligte),
+      participantIds: participants?.characterIds,
       visibility: "owner_only",
     });
     if (!result.ok) throwAuthz(result);

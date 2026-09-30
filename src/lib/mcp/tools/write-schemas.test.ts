@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/db/client", () => ({ db: {} }));
 
 import { fieldsFor, type FieldArt } from "../field-catalog";
+import { normalizeMonsterSheet } from "../write-fields";
 import { createFieldSchemas, createFieldsInput, FIELD_TYPE_KEYS, parseFelder, updateFieldSchemas } from "./write-schemas";
 
 describe("MCP write field schemas", () => {
@@ -46,5 +47,13 @@ describe("MCP write field schemas", () => {
       const catalog = new Set([...fieldsFor("anlegen", art), ...fieldsFor("aendern", art)].map((field) => field.key));
       expect(new Set(keys), art).toEqual(catalog);
     }
+  });
+
+  it("Review 012 CR-004: accepts advertised character-sheet keys and preserves aliases", () => {
+    const input = { charakterblatt: { klasse: "Späher", attribute: { STR: 14 }, fertigkeiten: [{ name: "Heimlichkeit", level: "Geübt", attr: "GES" }] } };
+    const parsed = parseFelder(updateFieldSchemas.monster, input, "monster");
+    expect(normalizeMonsterSheet(parsed.charakterblatt)).toMatchObject({
+      class: "Späher", attributes: { str: 14 }, skills: [{ name: "Heimlichkeit", level: "trained", attr: "dex" }],
+    });
   });
 });

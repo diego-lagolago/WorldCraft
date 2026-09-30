@@ -31,15 +31,19 @@ const BARE_ID = new RegExp(`^${UUID}$`, "i");
  */
 export async function resolveParticipantIds(world: McpWorldContext, values: readonly string[] | undefined) {
   if (values === undefined) return undefined;
-  return Promise.all(values.filter((value) => value.trim() !== MCP_NOT_SET).map(async (value) => {
+  const resolved = await Promise.all(values.filter((value) => value.trim() !== MCP_NOT_SET).map(async (value) => {
     const mention = PARTICIPANT_MENTION.exec(value.trim());
-    if (mention?.[1].toLowerCase() === "teilnahme") return mention[2];
+    if (mention?.[1].toLowerCase() === "teilnahme") return { kind: "snapshot" as const, id: mention[2] };
     const id = mention?.[2] ?? (BARE_ID.test(value.trim()) ? value.trim() : null);
-    if (id && await getWorldCharacter(world.id, id)) return id;
+    if (id && await getWorldCharacter(world.id, id)) return { kind: "character" as const, id };
     throw new McpToolError(
       `Feld „felder.beteiligte“: „${value}“ ist kein in die Welt mitgebrachter Charakter. Erlaubt sind Charakter-IDs oder @[Name](charakter:id).`,
     );
   }));
+  return {
+    characterIds: [...new Set(resolved.filter((entry) => entry.kind === "character").map((entry) => entry.id))],
+    snapshotIds: [...new Set(resolved.filter((entry) => entry.kind === "snapshot").map((entry) => entry.id))],
+  };
 }
 
 export async function visibleArticle(world: McpWorldContext, id: string) {
@@ -142,7 +146,11 @@ export async function resolveHabitat(value: unknown, world: McpWorldContext): Pr
   });
   if (resolved.stubs.length) return { stubTitle: resolved.stubs[0] };
   if (resolved.ref.kind !== "article") throw new McpToolError("Lebensraum muss ein Ort-Artikel sein.");
-  return { habitatArticleId: resolved.ref.id, title: resolved.resolved?.title };
+  const article = await getArticle(world.id, resolved.ref.id, world.role, world.userId);
+  if (!article || article.templateType !== "place") {
+    throw new McpToolError("Feld „felder.lebensraum“ muss auf einen sichtbaren Ort-Artikel zeigen.");
+  }
+  return { habitatArticleId: resolved.ref.id, title: article.title };
 }
 
 export type MaterializedStubs = {

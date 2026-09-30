@@ -1,7 +1,7 @@
 import { getWorldCharacter } from "@/lib/domain/characters";
 import { updateQuest } from "@/lib/domain/quests";
 import { MCP_QUEST_STATUS, MCP_QUEST_STATUS_LABEL } from "../../enums";
-import type { McpWorldContext } from "../../context";
+import { McpToolError, type McpWorldContext } from "../../context";
 import { resolveParticipantIds, visibleQuest } from "../../write-shared";
 import { assertStand, throwAuthz, visibilityLabel } from "../../write-rich";
 import { updateFieldSchemas } from "../write-schemas";
@@ -19,6 +19,15 @@ async function participantLabels(
   return labels.join(", ") || "(keine)";
 }
 
+function validateSnapshots(
+  snapshotIds: readonly string[],
+  participants: readonly { id: string; characterId: string | null; href: boolean }[],
+) {
+  if (snapshotIds.some((id) => !participants.some((entry) => entry.id === id && (!entry.characterId || !entry.href)))) {
+    throw new McpToolError("Feld „felder.beteiligte“ enthält eine unbekannte Teilnahme-ID.");
+  }
+}
+
 export const questUpdate = defineUpdateHandler({
   schema: updateFieldSchemas.quest,
   load: async (world, id, stand) => {
@@ -29,15 +38,24 @@ export const questUpdate = defineUpdateHandler({
   preview: async (row, felder, context) => {
     pushRenamed(context, "titel", row.title, felder.titel);
     if (felder.status !== undefined) pushChange(context, "status", MCP_QUEST_STATUS_LABEL[row.status], felder.status);
-    const participantIds = await resolveParticipantIds(context.world, felder.beteiligte);
-    if (participantIds !== undefined) {
-      const current = row.participants.map((entry) => `${entry.characterName} (${entry.characterId ?? entry.id})`).join(", ");
-      pushChange(context, "beteiligte", current || "(keine)", await participantLabels(context.world, participantIds, row.participants));
+    const participants = await resolveParticipantIds(context.world, felder.beteiligte);
+    if (participants !== undefined) {
+      validateSnapshots(participants.snapshotIds, row.participants);
+      const activeIds = row.participants.filter((entry) => entry.characterId && entry.href).map((entry) => entry.characterId!);
+      const nextIds = participants.characterIds;
+      const unchanged = activeIds.length === nextIds.length && activeIds.every((id) => nextIds.includes(id));
+      if (!unchanged) {
+        const ordered = [...activeIds.filter((id) => nextIds.includes(id)), ...nextIds.filter((id) => !activeIds.includes(id))];
+        const current = await participantLabels(context.world, activeIds, row.participants);
+        pushChange(context, "beteiligte", current, await participantLabels(context.world, ordered, row.participants));
+      }
     }
     await previewRich(context, { label: "beschreibung", oldJson: row.descriptionJson, markdown: felder.beschreibung });
     return { title: felder.titel ?? row.title, visibility: visibilityLabel(row.visibility) };
   },
   execute: async (row, felder, context) => {
+    const participants = await resolveParticipantIds(context.world, felder.beteiligte);
+    if (participants) validateSnapshots(participants.snapshotIds, row.participants);
     const result = await updateQuest({
       membership: context.membership,
       actorId: context.ctx.userId,
@@ -46,7 +64,7 @@ export const questUpdate = defineUpdateHandler({
       title: felder.titel,
       status: felder.status ? MCP_QUEST_STATUS[felder.status] : undefined,
       description: await executeRich(context, row.descriptionJson, felder.beschreibung),
-      participantIds: await resolveParticipantIds(context.world, felder.beteiligte),
+      participantIds: participants?.characterIds,
       expectedUpdatedAt: context.expectedUpdatedAt,
     });
     if (!result.ok) throwAuthz(result);

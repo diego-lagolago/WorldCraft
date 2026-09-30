@@ -1,6 +1,6 @@
 {
   "name": "worldcraft",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Connect ChatGPT to a WorldCraft campaign to read and write the worlds, quests, lore, maps, and monsters you are allowed to access.",
   "author": {
     "name": "WorldCraft"

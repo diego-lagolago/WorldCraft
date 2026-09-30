@@ -1,12 +1,12 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { mcpEnum } from "../validation";
-import { createManualRelation } from "@/lib/domain/relations";
+import { createManualRelation, manualRelationExists } from "@/lib/domain/relations";
 import { requireStaff } from "@/lib/authz";
 import { createMcpConfirmation, registerMcpConfirmationHandler } from "../confirmations";
 import { McpToolError, resolveMcpWorld, type McpWorldContext } from "../context";
 import { MCP_CONTENT_KIND, MCP_CONTENT_KIND_LABEL, MCP_NOT_SET } from "../enums";
-import { contentTitle, RECEIPT_INSTRUCTION } from "../receipt";
+import { contentTitle, formatReceipt } from "../receipt";
 import { formatConfirmationPreview, mcpMembership, throwAuthz } from "../write-rich";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 
@@ -33,6 +33,11 @@ async function checkRelation(world: McpWorldContext, input: Omit<RelationPayload
   if (input.quelle.art === input.ziel.art && input.quelle.id === input.ziel.id) {
     throw new McpToolError("Quelle und Ziel dürfen nicht identisch sein.");
   }
+  if (await manualRelationExists({
+    worldId: world.id,
+    sourceKind: MCP_CONTENT_KIND[input.quelle.art], sourceId: input.quelle.id,
+    targetKind: MCP_CONTENT_KIND[input.ziel.art], targetId: input.ziel.id,
+  })) throw new McpToolError("Diese Verknüpfung gibt es schon.");
   const [sourceTitle, targetTitle] = await Promise.all([
     contentTitle(world, input.quelle.art, input.quelle.id),
     contentTitle(world, input.ziel.art, input.ziel.id),
@@ -58,15 +63,14 @@ async function executeRelation(input: Omit<RelationPayload, "operation"> & { use
   if (!result.ok) throwAuthz(result);
   return {
     worldId: input.world.id,
-    value: [
-      RECEIPT_INSTRUCTION,
-      "Relation angelegt.",
-      `ID: ${result.data.id}`,
-      `Quelle: ${endLine(input.quelle, sourceTitle)}`,
-      `Ziel: ${endLine(input.ziel, targetTitle)}`,
-      `Bezeichnung: ${result.data.label ?? input.bezeichnung}`,
-      `Gegenbezeichnung: ${result.data.counterLabel ?? MCP_NOT_SET}`,
-    ].join("\n"),
+    value: formatReceipt({
+      art: "relation", id: result.data.id, after: { title: `${sourceTitle} → ${targetTitle}` },
+      extraLines: [`Quelle: ${endLine(input.quelle, sourceTitle)}`, `Ziel: ${endLine(input.ziel, targetTitle)}`],
+      changes: [
+        { label: "Bezeichnung", oldValue: MCP_NOT_SET, newValue: result.data.label ?? input.bezeichnung },
+        { label: "Gegenbezeichnung", oldValue: MCP_NOT_SET, newValue: result.data.counterLabel ?? MCP_NOT_SET },
+      ],
+    }),
   };
 }
 
@@ -114,8 +118,10 @@ export function registerRelationCreateTool(server: McpServer, ctx: ToolContext) 
           "Neue Relation:",
           `- Quelle: ${endLine(quelle, sourceTitle)}`,
           `- Ziel: ${endLine(ziel, targetTitle)}`,
-          `- Bezeichnung: ${MCP_NOT_SET} → ${bezeichnung}`,
-          `- Gegenbezeichnung: ${MCP_NOT_SET} → ${gegenbezeichnung ?? MCP_NOT_SET}`,
+        ],
+        changes: [
+          { label: "Bezeichnung", oldValue: MCP_NOT_SET, newValue: bezeichnung },
+          { label: "Gegenbezeichnung", oldValue: MCP_NOT_SET, newValue: gegenbezeichnung ?? MCP_NOT_SET },
         ],
         token: confirmation.token,
         expiresAt: confirmation.expiresAt,

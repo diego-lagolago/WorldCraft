@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ATTRIBUTE_KEYS, ATTRIBUTE_SHORT, SKILL_LEVEL_LABEL } from "@/lib/characters/sheet";
 import { McpToolError } from "../context";
 import { TEMPLATE_TYPES, templateOf } from "@/lib/templates/registry";
 import { MCP_TEMPLATE_TYPE } from "../enums";
@@ -37,7 +38,10 @@ const FIXED_ENUM_KEYS = new Set(["vorlagentyp", "status"]);
 
 function describe(schema: z.ZodType, field: FieldDefinition) {
   const values = field.allowedValues?.map((value) => value.label).join(", ");
-  return schema.describe(`${field.description}${values ? ` Erlaubte Werte: ${values}.` : ""}`);
+  const targets = field.referenceTargets?.map((target) => ({
+    "artikel:place": "Ort-Artikel", "artikel:person": "Person-Artikel", "artikel:organisation": "Organisations-Artikel", charakter: "Charakter", quest: "Quest",
+  })[target] ?? target).join(", ");
+  return schema.describe(`${field.description}${values ? ` Erlaubte Werte: ${values}.` : ""}${targets ? ` Verweis in Erwähnungssyntax, z. B. @[Titel](artikel:id); erlaubte Ziele: ${targets}; null oder „–“ leert den Verweis.` : ""}`);
 }
 
 /** The field catalog is the single source for the public write-schema. */
@@ -108,7 +112,32 @@ function templateFieldsSchema() {
 }
 
 function monsterSheetSchema() {
-  const shape = Object.fromEntries(MCP_SHEET_FIELDS.map((field) => [field.key, z.unknown().describe(`Anzeige: ${field.label}.`).optional()]));
+  const attributeAliases: Record<string, string> = { STR: "STÄ", DEX: "GES", CON: "KON", INT: "INT", WIS: "WEI", CHA: "CHA" };
+  const attributeShape = Object.fromEntries(ATTRIBUTE_KEYS.map((key) => [
+    ATTRIBUTE_SHORT[key], z.number({ error: germanError(`felder.charakterblatt.attribute.${ATTRIBUTE_SHORT[key]}`) }).optional(),
+  ]));
+  const attributes = withAliases(z.object(attributeShape).strict(), (key) => {
+    const upper = key.toUpperCase();
+    return attributeAliases[upper] ?? (ATTRIBUTE_KEYS.find((entry) => ATTRIBUTE_SHORT[entry] === upper) ? upper : undefined);
+  });
+  const skill = withAliases(z.object({
+    name: z.string({ error: germanError("felder.charakterblatt.fertigkeiten") }),
+    stufe: z.string({ error: germanError("felder.charakterblatt.fertigkeiten.stufe") }),
+    attribut: z.string({ error: germanError("felder.charakterblatt.fertigkeiten.attribut") }),
+  }).strict(), (key) => key === "level" ? "stufe" : key === "attr" ? "attribut" : key === "titel" ? "name" : undefined);
+  const ability = withAliases(z.object({
+    text: z.string({ error: germanError("felder.charakterblatt.faehigkeiten") }),
+    attribut: z.string({ error: germanError("felder.charakterblatt.faehigkeiten.attribut") }),
+  }).strict(), (key) => key === "attr" ? "attribut" : undefined);
+  const descriptions = {
+    klasse: "Anzeige: Klasse.", attribute: `Anzeige: Attribute. Erlaubte Schlüssel: ${ATTRIBUTE_KEYS.map((key) => ATTRIBUTE_SHORT[key]).join(", ")}.`,
+    uebungsbonus: "Anzeige: Übungsbonus.", fertigkeiten: `Anzeige: Fertigkeiten. Einträge mit name, stufe und attribut; Stufen: ${Object.values(SKILL_LEVEL_LABEL).join(", ")}.`,
+    faehigkeiten: "Anzeige: Fähigkeiten. Einträge mit text und attribut.",
+  } as const;
+  const shape = Object.fromEntries(MCP_SHEET_FIELDS.map((field) => {
+    const schema = field.key === "attribute" ? attributes : field.key === "fertigkeiten" ? z.array(skill) : field.key === "faehigkeiten" ? z.array(ability) : field.key === "uebungsbonus" ? z.number({ error: germanError("felder.charakterblatt.uebungsbonus") }) : z.string({ error: germanError(`felder.charakterblatt.${field.key}`) });
+    return [field.key, schema.describe(descriptions[field.key as keyof typeof descriptions] ?? `Anzeige: ${field.label}.`).optional()];
+  }));
   const object = z.object(shape).strict();
   return withAliases(object, (key) => {
     const internal = SHEET_KEY_MAP[key.toLocaleLowerCase("de")];

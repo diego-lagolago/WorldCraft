@@ -55,7 +55,7 @@ Plan `011` (MCP: Schreibend) ist auf Produktion (App `0.1.11`, Plugin `0.2.0`). 
 | # | Frage | Entscheidung |
 |---|---|---|
 | E7 | Was ändert `vorlagenfelder` bei `inhalt_aendern`? | Nur die genannten Vorlagenfelder; die übrigen bleiben. `null`, `""`, „–“ oder `false` leert ein Feld. Bei einem Wechsel des Vorlagentyps ersetzen die genannten Felder die alten. Vorher leerte jede Änderung alle nicht genannten Felder, sodass z. B. „Seltenheit setzen“ (E2E-Prüffall 6) Art und Besitzer gelöscht hätte. |
-| E8 | Wie erscheinen Beteiligte gelöschter Charaktere? | Als `@[Name](teilnahme:id)` mit der ID der Teilnahme; so bleibt die Ausgabe von `inhalt_lesen` zurückschreibbar (`002` D18). |
+| E8 | Wie erscheinen Beteiligte gelöschter Charaktere? | Als `@[Name](teilnahme:id)` mit der ID der Teilnahme; so bleibt die Ausgabe von `inhalt_lesen` zurückschreibbar (`002` D18). Snapshots bleiben immer beteiligt und können per MCP nicht entfernt werden. |
 | E9 | Wie werden Ja/Nein-Felder geschrieben? | `true`/`false` wie bisher, zusätzlich „Ja“/„Nein“ wie von `inhalt_lesen` ausgegeben (`002` D18). |
 | E10 | Braucht `relation_anlegen` eine Bestätigung? (Projektinhaber, 2026-09-30, Befund aus E2E-Lauf 2 Prüffall 9) | **Ja.** `relation_anlegen` liefert zuerst eine Vorschau mit Bestätigungs-Token und legt die Relation erst nach `aenderung_bestaetigen` an; der Scope `worlds:write` bleibt Pflicht. Ändert `011` (Relationen waren von der Bestätigung ausgenommen). |
 

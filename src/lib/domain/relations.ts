@@ -699,6 +699,25 @@ export const manualRelationSchema = z.object({
   counterLabel: z.string().trim().max(RELATION_LABEL_MAX).optional(),
 });
 
+/** Lightweight preflight for MCP previews; the database constraint remains the final guard. */
+export async function manualRelationExists(input: {
+  worldId: string;
+  sourceKind: ContentKind;
+  sourceId: string;
+  targetKind: ContentKind;
+  targetId: string;
+}) {
+  const [row] = await db.select({ id: relations.id }).from(relations).where(and(
+    eq(relations.worldId, input.worldId),
+    eq(relations.origin, "manual"),
+    eq(relations.sourceKind, input.sourceKind),
+    eq(relations.sourceId, input.sourceId),
+    eq(relations.targetKind, input.targetKind),
+    eq(relations.targetId, input.targetId),
+  )).limit(1);
+  return Boolean(row);
+}
+
 /**
  * CR-004 / CR-002: both ends must exist in this world and be visible to the
  * actor. Missing, foreign, or invisible IDs are 404 so existence of

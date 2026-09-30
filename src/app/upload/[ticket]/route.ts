@@ -7,7 +7,7 @@ import type { ImageKind } from "@/lib/files/kinds";
 import { consumeMcpUploadRedeem, McpUploadRateLimitError, writeMcpAuditLog } from "@/lib/mcp/audit";
 import { listMcpWorldMemberships } from "@/lib/mcp/context";
 import { consumeMcpUploadTicket, peekMcpUploadTicket } from "@/lib/mcp/upload-tickets";
-import { formatDelta, RECEIPT_INSTRUCTION } from "@/lib/mcp/change-format";
+import { formatRouteReceipt } from "@/lib/mcp/receipt-format";
 import { escapeHtml, uploadPageHtml } from "./page-html";
 import { loadUploadTargetState, ticketOwnerDiscordId } from "./target-state";
 
@@ -54,21 +54,12 @@ async function assertTicketStillAuthorized(ticket: TicketRow): Promise<string | 
 async function uploadReceipt(ticket: TicketRow, replaced: boolean): Promise<string> {
   const label = TARGET_LABEL[ticket.targetKind as keyof typeof TARGET_LABEL];
   const state = await loadUploadTargetState(ticket);
-  return [
-    RECEIPT_INSTRUCTION,
-    "Gespeichert.",
-    `Art: ${ticket.targetKind}`,
-    `ID: ${ticket.targetKind === "welt" ? ticket.worldId : ticket.targetId}`,
-    `Titel: ${state?.title ?? label}`,
-    `Stand: ${state?.stand ?? "–"}`,
-    `Ziel: ${ticket.targetKind}`,
-    `Bildart: ${label}`,
-    `Ersetzt vorhandenes Bild: ${replaced ? "ja" : "nein"}`,
-    ...formatDelta(
-      [{ label, oldValue: replaced ? "bisheriges Bild" : "–", newValue: "neu hochgeladenes Bild" }],
-      "Gespeicherte Änderungen (vorher → nachher):",
-    ),
-  ].join("\n");
+  return formatRouteReceipt({
+    art: ticket.targetKind, id: ticket.targetKind === "welt" ? ticket.worldId : ticket.targetId,
+    title: state?.title ?? label, stand: state?.stand,
+    extraLines: [`Ziel: ${ticket.targetKind}`, `Bildart: ${label}`, `Ersetzt vorhandenes Bild: ${replaced ? "ja" : "nein"}`],
+    changes: [{ label, oldValue: replaced ? "bisheriges Bild" : "–", newValue: "neu hochgeladenes Bild" }],
+  });
 }
 
 async function pageResponse(ticket: TicketRow, status: number, error?: string, success?: boolean, receipt?: string) {

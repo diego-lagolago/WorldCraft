@@ -1,5 +1,5 @@
 import { updateArticle } from "@/lib/domain/articles";
-import { templateFieldsHaveValue } from "@/lib/templates/fields";
+import { keepCompatibleFields, templateFieldsHaveValue } from "@/lib/templates/fields";
 import { isTemplateType, templateOf, type TemplateType } from "@/lib/templates/registry";
 import type { McpWorldContext } from "../../context";
 import { MCP_TEMPLATE_TYPE } from "../../enums";
@@ -35,8 +35,10 @@ async function previewTemplate(
     const oldLabel = isTemplateType(row.templateType) ? templateOf(row.templateType).label : row.templateType;
     pushChange(context, "vorlagentyp", oldLabel, templateOf(nextType).label);
   }
-  if (felder.vorlagenfelder === undefined) return;
-  const prepared = await mergedTemplateFields(row, nextType, felder.vorlagenfelder, context.world);
+  if (felder.vorlagenfelder === undefined && nextType === currentTemplateType(row)) return;
+  const prepared = felder.vorlagenfelder === undefined
+    ? { fields: keepCompatibleFields(nextType, row.templateFields), stubTitles: [] }
+    : await mergedTemplateFields(row, nextType, felder.vorlagenfelder, context.world);
   context.stubs.add(prepared.stubTitles);
   pushEntryChanges(context, {
     prefix: "",

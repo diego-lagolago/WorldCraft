@@ -183,11 +183,12 @@ function richDelta(entry: string, before: string, after: string): FieldChange {
 /** Delta between two stored states; `before` is empty when the content was just created. */
 export function snapshotDelta(before: Snapshot | null, after: Snapshot): FieldChange[] {
   const changes: FieldChange[] = [];
-  const rows = new Map(after.entries);
-  if (after.visibility) rows.set("Sichtbarkeit", after.visibility);
   const previous = new Map(before?.entries ?? []);
   if (before?.visibility) previous.set("Sichtbarkeit", before.visibility);
-  for (const [entry, value] of rows) {
+  const rows = new Set([...previous.keys(), ...after.entries.keys()]);
+  if (after.visibility) rows.add("Sichtbarkeit");
+  for (const entry of rows) {
+    const value = entry === "Sichtbarkeit" ? after.visibility ?? MCP_NOT_SET : after.entries.get(entry) ?? MCP_NOT_SET;
     const old = previous.get(entry) ?? MCP_NOT_SET;
     if (old === value || (!before && value === MCP_NOT_SET)) continue;
     changes.push(after.richLabels.has(entry) && before
@@ -236,10 +237,11 @@ export async function receiptAfterWrite(input: {
 export function formatReceipt(input: {
   art: string;
   id: string;
-  after: Pick<Snapshot, "title" | "stand" | "visibility">;
+  after: Pick<Snapshot, "title" | "visibility"> & { stand?: string };
   /** `null` when the stored state could not be read back after the write. */
   changes: readonly FieldChange[] | null;
   stubs?: readonly { id: string; title: string }[];
+  extraLines?: readonly string[];
   notes?: readonly string[];
 }): string {
   return [
@@ -248,8 +250,9 @@ export function formatReceipt(input: {
     `Art: ${input.art}`,
     `ID: ${input.id}`,
     `Titel: ${input.after.title}`,
-    `Stand: ${input.after.stand}`,
+    ...(input.after.stand ? [`Stand: ${input.after.stand}`] : []),
     ...(input.after.visibility ? [`Sichtbarkeit: ${input.after.visibility}`] : []),
+    ...(input.extraLines ?? []),
     ...(input.changes === null
       ? [RECEIPT_UNAVAILABLE]
       : input.changes.length
