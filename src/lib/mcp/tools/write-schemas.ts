@@ -108,7 +108,7 @@ function templateFieldsSchema() {
 }
 
 function monsterSheetSchema() {
-  const shape = Object.fromEntries(MCP_SHEET_FIELDS.map((field) => [field.key, z.unknown().describe(`Anzeige: ${field.label}.`)]));
+  const shape = Object.fromEntries(MCP_SHEET_FIELDS.map((field) => [field.key, z.unknown().describe(`Anzeige: ${field.label}.`).optional()]));
   const object = z.object(shape).strict();
   return withAliases(object, (key) => {
     const internal = SHEET_KEY_MAP[key.toLocaleLowerCase("de")];

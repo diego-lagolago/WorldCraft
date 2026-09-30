@@ -659,7 +659,7 @@ describe("MCP OAuth and protected resource", () => {
     expect(Buffer.from(image.data, "base64").byteLength).toBeLessThanOrEqual(1024 * 1024);
     expect(imageContent(hiddenImage).mimeType).toBe("image/webp");
     expect(toolText(missingImage)).toContain("Bild nicht gefunden.");
-    expect(toolText(mapImage)).toContain("Ungültige Option");
+    expect(toolText(mapImage)).toContain("Feld „art“ hat den ungültigen Wert „karte“");
     for (const result of [articleImage, hiddenImage, missingImage, mapImage]) {
       expect(toolText(result)).not.toMatch(/data\/uploads|https?:\/\//);
     }
@@ -2372,6 +2372,8 @@ describe("012 T-009: Rundreise-Suite aus dem Feldkatalog", () => {
   /** Value shown for a display label in the content part (before the Schreibschlüssel block). */
   function shown(text: string, label: string): string | undefined {
     const content = text.split("## Schreibschlüssel")[0];
+    // Title and name are the heading of inhalt_lesen, not a „Label: Wert“ line.
+    if (label === "Titel" || label === "Name") return /^# (.*)$/m.exec(content)?.[1];
     const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return new RegExp(`^${escaped}: (.*)$`, "m").exec(content)?.[1];
   }
@@ -2478,11 +2480,11 @@ describe("012 T-009: Rundreise-Suite aus dem Feldkatalog", () => {
         await probeRewrite({ art: "artikel", id, stand: extractStand(current), text: current, label: field.label });
       }
       const final = await read("artikel", id);
-      for (const label of ["Titel", "Text"]) {
-        await probeRewrite({
-          art: "artikel", id, stand: extractStand(final), text: final, label, modus: label === "Text" ? "ersetzen" : undefined,
-        });
-      }
+      await probeRewrite({ art: "artikel", id, stand: extractStand(final), text: final, label: "Titel" });
+      // The body has no label line; written back unchanged in „ersetzen“ mode it is no change either.
+      expect(await call("inhalt_aendern", {
+        welt: "MCP-Testwelt", art: "artikel", id, stand: extractStand(final), felder: { text: "Befüllt." }, modus: "ersetzen",
+      })).toContain(NO_CHANGE);
     });
   }
 
@@ -2577,7 +2579,7 @@ describe("012 T-009: Rundreise-Suite aus dem Feldkatalog", () => {
       welt: "MCP-Testwelt", art: "universum", felder: { name: `Rundreise Universum ${suffix}`, beschreibung: "Befüllt." },
     }));
     const universe = await read("universum", universeId);
-    expect(universe).toContain("Befüllt.");
+    expect(plainMcp(universe)).toContain("Befüllt.");
     await probeRewrite({ art: "universum", id: universeId, stand: extractStand(universe), text: universe, label: "Name" });
 
     const worlds = await call("welten_auflisten", {});

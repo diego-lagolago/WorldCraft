@@ -161,4 +161,13 @@ describe("SDK validation errors (012 T-005)", () => {
     expect(wrongType).toContain("Feld „felder.titel“ muss Text sein.");
     expect(`${missing}${wrongType}`).not.toMatch(/Invalid|expected/);
   });
+
+  it("accepts a partial charakterblatt when creating and changing a monster", async () => {
+    expect(await sdkValidation("inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "monster", felder: { name: "Wolf", charakterblatt: { klasse: "Späher" } },
+    })).toBeNull();
+    expect(await sdkValidation("inhalt_aendern", {
+      ...updateArgs, art: "monster", felder: { charakterblatt: { Klasse: "Wächter" } },
+    })).toBeNull();
+  });
 });
