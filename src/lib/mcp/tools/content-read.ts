@@ -63,8 +63,8 @@ async function readArticle(world: ReadWorld, viewerId: string, id: string) {
     `Stand: ${row.updatedAt.toISOString()}`,
     await renderTemplateFields(row.templateType, row.templateFields, world, viewerId),
     row.titleImageId ? "Bilder: 1 (über bild_lesen)" : "Bilder: keine",
-    tiptapJsonToMcpMarkdown(row.bodyJson),
     renderWriteKeys([{ art: "artikel", heading: "Artikel", vorlagentyp: templateOf(row.templateType).type }]),
+    tiptapJsonToMcpMarkdown(row.bodyJson),
   ].filter(Boolean).join("\n\n");
 }
 
@@ -79,6 +79,11 @@ async function readQuest(world: ReadWorld, viewerId: string, id: string) {
     `Sichtbarkeit: ${CONTENT_VISIBILITY_LABEL[row.visibility]}`,
     `Stand: ${row.updatedAt.toISOString()}`,
     `${label("quest", "beteiligte")}: ${row.participants.map(participantMention).join(", ") || MCP_NOT_SET}`,
+    renderWriteKeys([
+      { art: "quest", heading: "Quest (id = Quest-ID)" },
+      { art: "kapitel", heading: "Kapitel (id = Kapitel-ID)" },
+      ...(note.ok ? [{ art: "notizblock" as const, heading: "Notizblock (id = Quest-ID, Stand des Notizblocks)" }] : []),
+    ]),
     tiptapJsonToMcpMarkdown(row.descriptionJson),
     ...row.chapters.map((chapter) => [
       `## ${chapter.title}`,
@@ -88,11 +93,6 @@ async function readQuest(world: ReadWorld, viewerId: string, id: string) {
       tiptapJsonToMcpMarkdown(chapter.bodyJson),
     ].join("\n")),
     note.ok ? `## Notizblock\nStand: ${note.data.version}\n${tiptapJsonToMcpMarkdown(note.data.bodyJson)}` : "",
-    renderWriteKeys([
-      { art: "quest", heading: "Quest (id = Quest-ID)" },
-      { art: "kapitel", heading: "Kapitel (id = Kapitel-ID)" },
-      ...(note.ok ? [{ art: "notizblock" as const, heading: "Notizblock (id = Quest-ID, Stand des Notizblocks)" }] : []),
-    ]),
   ].filter(Boolean).join("\n\n");
 }
 

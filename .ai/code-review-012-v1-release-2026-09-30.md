@@ -11,14 +11,14 @@
 |----|-----------|-------------|--------|-------------------|
 | CR-001 | Runtime-Risiken | mittel | behoben | Erneutes Lesen nach dem Schreiben liegt in allen Update-Handlern weiter innerhalb der Stub-Kompensation (Rest von Review 1 CR-001) |
 | CR-002 | Aufgaben-Abgleich | mittel | behoben | `@[Name](teilnahme:id)` wird als Charakter-ID an die Domäne gereicht und dort abgelehnt; E8 / D18 für Quests mit gelöschten Beteiligten nicht erfüllt |
-| CR-003 | Runtime-Risiken | mittel | offen | Kürzung auf 20 000 Zeichen schneidet bei langen Texten Bestätigungs-Token, Quittungsende und Schreibschlüssel-Block ab; Ausschnitte zeigen nicht verlässlich die geänderte Stelle |
+| CR-003 | Runtime-Risiken | mittel | behoben | Kürzung auf 20 000 Zeichen schneidet bei langen Texten Bestätigungs-Token, Quittungsende und Schreibschlüssel-Block ab; Ausschnitte zeigen nicht verlässlich die geänderte Stelle |
 | CR-004 | Aufgaben-Abgleich | mittel | behoben | Charakterblatt-Unterfelder sind im Schema `z.unknown()` ohne Form und erlaubte Werte; Verweisziele fehlen in den Feldbeschreibungen (E1/E5) |
 | CR-005 | Fehlerbehandlung & Validierung | niedrig | behoben | Lebensraum ohne Ort-Vorlage und doppelte Relation werden erst nach der Bestätigung abgelehnt |
 | CR-006 | Aufgaben-Abgleich | niedrig | behoben | Bei Vorlagentyp-Wechsel entfallende Vorlagenfelder fehlen in Vorschau (ohne `vorlagenfelder`) und in der Quittung |
-| CR-007 | Aufgaben-Abgleich | niedrig | offen | Vorschau von `inhalt_anlegen` mit Stubs zeigt kein Delta der anzulegenden Felder |
+| CR-007 | Aufgaben-Abgleich | niedrig | behoben | Vorschau von `inhalt_anlegen` mit Stubs zeigt kein Delta der anzulegenden Felder |
 | CR-008 | Lesbarkeit & Wartbarkeit | niedrig | behoben | Delta entsteht durch Zurückparsen gerenderter „Label: Wert“-Texte; mehrzeilige Werte und Leerzeilen erzeugen falsche Einträge |
 | CR-009 | Testabdeckung | niedrig | behoben | Vollständigkeitstest des Feldkatalogs ist für die echte Registry tautologisch; `FIELD_CATALOG_COMPLETE` und `allowedValuesFor` ungenutzt |
-| CR-010 | Duplizierung & Modularisierung | niedrig | offen | Quittungen von `relation_anlegen` und Upload-Link sind von Hand gebaut statt über `formatReceipt` |
+| CR-010 | Duplizierung & Modularisierung | niedrig | behoben | Quittungen von `relation_anlegen` und Upload-Link sind von Hand gebaut statt über `formatReceipt` |
 | CR-011 | Runtime-Risiken | niedrig | behoben | `unionError` ruft `reduce` ohne Startwert auf einer möglicherweise leeren Liste auf |
 | CR-012 | Fehlerbehandlung & Validierung | niedrig | behoben | `beteiligte` in anderer Reihenfolge gilt als Änderung statt „Keine Änderung“ |
 | CR-013 | Performance | niedrig | behoben | Jeder bestätigte Schreibvorgang liest das Ziel vier- bis fünfmal, inklusive doppelt gerenderter Vorlagen-Verweise |
@@ -59,6 +59,7 @@
   5. **`inhalt_lesen`:** Der Block „Schreibschlüssel“ steht vor dem Fließtext (nach den Kopfzeilen und Feldern); wird gekürzt, dann der Fließtext am Ende mit dem Hinweis „(gekürzt; <n> Zeichen nicht dargestellt)“.
   6. Jede Kürzung ist im Text als solche gekennzeichnet und nennt die Zahl der ausgelassenen Zeichen. T-007 („vollständiger anzuhängender/neuer Text“) gilt damit bis zum Budget; das wird in `.ai/architecture/mcp.md` und in Plan `012` bei T-007 als Nachtrag vermerkt.
 - **Abnahmekriterium:** Unit-Tests: (1) Bestehender Text mit 30 000 Zeichen, `anhaengen` einer Notiz von 100 Zeichen → die Vorschau enthält die Notiz vollständig, die letzten 500 Zeichen des bisherigen Texts, „Bestätigungs-Token: …“ und „Gültig bis: …“, und bleibt unter 20 000 Zeichen; die Quittung nach dem Schreiben enthält die Notiz vollständig. (2) Bestehender Text mit 30 000 Zeichen, `ersetzen` mit einem Text, der sich nur in einem Satz ab Zeichen 25 000 unterscheidet → Vorschau und Quittung enthalten den alten und den neuen Satz, die Angabe der unveränderten Zeichen davor, und nicht die ersten 500 Zeichen des Texts. (3) `anhaengen` von 30 000 Zeichen → Vorschau enthält Anfang und Ende des angehängten Texts, die Auslassungszeile mit Zeichenzahl, das Token und bleibt unter 20 000 Zeichen. (4) Eine Quittung zu (3) enthält weiterhin die Stub-Liste. (5) `inhalt_lesen` eines Artikels mit 30 000 Zeichen Text enthält den Block „Schreibschlüssel“ vollständig.
+- **Umsetzung (2026-09-30):** Vorschau und Quittung verwenden pro Rich-Text-Wert ein festes Budget. Anhänge zeigen Anfang und Ende mit Anzahl ausgelassener Zeichen; Ersetzungen zeigen den geänderten Bereich mit unverändertem Kontext. Der Schreibschlüssel-Block wird in Leseantworten vor dem Fließtext ausgegeben.
 
 ### CR-004
 - **Fundstelle:** `src/lib/mcp/tools/write-schemas.ts:110–117` (`monsterSheetSchema`), `:38–41` (`describe`), `src/lib/mcp/field-catalog.ts:85–86,116–127` (`lebensraum`, `charakterblatt`, `templateField`)
@@ -98,6 +99,7 @@
 - **Beschreibung:** T-007 verlangt für alle bestätigungspflichtigen Wege, auch `inhalt_anlegen` mit Stubs, „Art, Titel, Sichtbarkeit und das Delta“. Die Vorschau enthält nur Titel, Sichtbarkeit, die Zeile „Folge: …“ und die Stub-Liste; die anzulegenden Felder (Vorlagentyp, Vorlagenfelder, Text, Status, Beteiligte, Monsterwerte) erscheinen nicht. Der Benutzer stimmt einem Inhalt zu, den er im Chat nicht sieht.
 - **Empfehlung:** Die Create-Handler liefern in `collect` zusätzlich die geplanten Felder als `FieldChange[]` („– → Wert“, Labels aus dem Katalog, Verweise mit Titel, Rich-Text vollständig); `previewOrCreate` übergibt sie als `changes`.
 - **Abnahmekriterium:** Integrationstest: `inhalt_anlegen` Gegenstand mit Seltenheit „Selten“ und einer unbekannten Erwähnung im Text → die Vorschau enthält „Seltenheit: – → Selten“, den Text und die Stub-Liste.
+- **Umsetzung (2026-09-30):** Stub-bestätigte Anlegevorgänge erzeugen nun aus den geplanten Feldern ein Delta mit deutschen Labels und dem angegebenen Text.
 
 ### CR-008
 - **Fundstelle:** `src/lib/mcp/change-format.ts:40–47` (`parseEntries`), Nutzer `src/lib/mcp/receipt.ts:56–58,121` und `src/lib/mcp/tools/update/common.ts:89–104`, `update/article.ts:45–50`, `update/monster.ts:89–94`
@@ -127,6 +129,7 @@
 - **Beschreibung:** T-008 verlangt eine gemeinsame Quittungsfunktion. `relation_anlegen` und der Upload-Link setzen ihre Quittung von Hand zusammen („Gespeichert.“/„Relation angelegt.“, `Art`/`ID`/`Titel`/`Stand`-Zeilen, Überschrift „Gespeicherte Änderungen (vorher → nachher):“ als zweite Kopie des Literals aus `formatReceipt`). Die Relations-Vorschau schreibt „- Bezeichnung: – → …“ als freie `lines` statt als `changes`, umgeht also `formatDelta`. Formatänderungen an der Quittung müssen an drei Stellen nachgezogen werden.
 - **Empfehlung (Plan-Review F6: vereinheitlichen):** `formatReceipt` bekommt `stand?` (Zeile entfällt, wenn nicht gesetzt), `extraLines?: string[]` (nach den Kopfzeilen, vor dem Delta) und akzeptiert `art` als freien Text. Beide Stellen rufen `formatReceipt` auf: `relation_anlegen` mit `art: "relation"`, `id` der Relation, `title: "<Quelle> → <Ziel>"`, `extraLines` für „Quelle: …“ und „Ziel: …“ und `changes` für Bezeichnung und Gegenbezeichnung („– → Wert“, aus dem gespeicherten Datensatz); die Upload-Route mit `extraLines` für „Ziel“, „Bildart“, „Ersetzt vorhandenes Bild“ und `changes` für das Bild. Die Relations-Quittung beginnt damit wie alle anderen mit „Gespeichert.“ statt „Relation angelegt.“. Die Relations-Vorschau übergibt Bezeichnung und Gegenbezeichnung als `changes` an `formatConfirmationPreview`; „Quelle“ und „Ziel“ bleiben `lines`.
 - **Abnahmekriterium:** Das Literal „Gespeicherte Änderungen (vorher → nachher):“ steht nur noch in `receipt.ts`; `relation-create.ts` und `src/app/upload/[ticket]/route.ts` bauen ihre Quittung ausschließlich über `formatReceipt`. Die Quittungstests für Relation (beide Titel, gespeicherte Bezeichnung) und Upload (`quittung` mit Ziel, Bildart, „Ersetzt vorhandenes Bild: ja/nein“) sind an die gemeinsame Form angepasst und grün.
+- **Umsetzung (2026-09-30):** Relation und Upload verwenden den gemeinsamen Delta-Formatter; Relationsquittungen folgen dem Standard mit „Gespeichert.“ und benennen beide Endpunkte sowie die gespeicherten Bezeichnungen.
 
 ### CR-011
 - **Fundstelle:** `src/lib/mcp/validation.ts:133–134` (`unionError`)

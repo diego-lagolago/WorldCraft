@@ -32,6 +32,39 @@ export function formatDelta(changes: readonly FieldChange[], heading = "Änderun
 
 /** Rich text in previews and receipts: the existing text is shortened to this many characters. */
 export const RICH_EXCERPT = 500;
+/** Per rich-text value; keeps confirmation metadata below the global transport limit. */
+export const RICH_CHANGE_BUDGET = 6_000;
+
+function abbreviated(value: string, budget = RICH_CHANGE_BUDGET) {
+  if (value.length <= budget) return value;
+  const head = Math.floor(budget / 2);
+  const omitted = value.length - (head * 2);
+  return `${value.slice(0, head)}\n… (${omitted} Zeichen nicht dargestellt; gespeichert wird der vollständige Text) …\n${value.slice(-head)}`;
+}
+
+/** Text for a rich-field delta; never takes an arbitrary head-only excerpt. */
+export function richChangeValues(before: string, after: string, modus: "anhaengen" | "ersetzen") {
+  if (modus === "anhaengen") {
+    return {
+      oldValue: before ? tailExcerpt(before) : "(leer)",
+      oldCaption: before.length > RICH_EXCERPT ? "bisher (letzte 500 Zeichen)" : "bisher",
+      newValue: abbreviated(after), newCaption: "wird angehängt",
+    };
+  }
+  let prefix = 0;
+  while (prefix < before.length && prefix < after.length && before[prefix] === after[prefix]) prefix += 1;
+  let suffix = 0;
+  while (suffix < before.length - prefix && suffix < after.length - prefix
+    && before[before.length - suffix - 1] === after[after.length - suffix - 1]) suffix += 1;
+  const context = 200;
+  const excerpt = (value: string) => {
+    const start = Math.max(0, prefix - context);
+    const end = Math.min(value.length - suffix + context, value.length);
+    const body = abbreviated(value.slice(start, end));
+    return `${start ? `… (${start} Zeichen davor unverändert)\n` : ""}${body}${end < value.length ? `\n(${value.length - end} Zeichen danach unverändert) …` : ""}`;
+  };
+  return { oldValue: excerpt(before), oldCaption: "bisher", newValue: excerpt(after), newCaption: "neu" };
+}
 
 /** The last `RICH_EXCERPT` characters, marked with „…“ when shortened. */
 export function tailExcerpt(value: string) {

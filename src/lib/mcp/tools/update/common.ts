@@ -6,7 +6,7 @@ import { McpToolError, type McpWorldContext } from "../../context";
 import { MCP_NOT_SET } from "../../enums";
 import { fieldFor, type FieldArt } from "../../field-catalog";
 import type { MaterializedStubs, StubPlan } from "../../write-shared";
-import { headExcerpt, RICH_EXCERPT, tailExcerpt } from "../../change-format";
+import { richChangeValues } from "../../change-format";
 import { resolveRichText, type FieldChange } from "../../write-rich";
 import type { ToolContext } from "../shared";
 
@@ -123,23 +123,7 @@ export function isEmptyRichText(json: unknown): boolean {
 function richChange(label: string, oldJson: unknown, markdown: string, modus: RichModus): FieldChange {
   const old = tiptapJsonToMcpMarkdown(oldJson).trim();
   const next = markdown.trim() || "(leer)";
-  const cut = old.length > RICH_EXCERPT;
-  if (modus === "anhaengen") {
-    return {
-      label: `${label} (anhängen)`,
-      oldValue: old ? tailExcerpt(old) : "(leer)",
-      oldCaption: cut ? "bisher (letzte 500 Zeichen)" : "bisher",
-      newValue: next,
-      newCaption: "wird angehängt",
-    };
-  }
-  return {
-    label: `${label} (ersetzen)`,
-    oldValue: old ? headExcerpt(old) : "(leer)",
-    oldCaption: cut ? "bisher (erste 500 Zeichen)" : "bisher",
-    newValue: next,
-    newCaption: "neu",
-  };
+  return { label: `${label} (${modus === "anhaengen" ? "anhängen" : "ersetzen"})`, ...richChangeValues(old, next, modus) };
 }
 
 /** Validates a rich-text field for the preview, plans its stubs and records the change. */

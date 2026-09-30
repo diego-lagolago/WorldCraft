@@ -15,7 +15,7 @@ import {
   visibleUniverse,
   worldStand,
 } from "./write-shared";
-import { RICH_EXCERPT, tailExcerpt } from "./change-format";
+import { richChangeValues } from "./change-format";
 import { formatDelta, RECEIPT_INSTRUCTION, standOf, visibilityLabel, type FieldChange } from "./write-rich";
 
 export { RECEIPT_INSTRUCTION };
@@ -171,13 +171,12 @@ export async function snapshotContent(world: McpWorldContext, art: FieldArt, id:
 
 function richDelta(entry: string, before: string, after: string): FieldChange {
   const old = before === MCP_NOT_SET ? "" : before;
-  const cut = old.length > RICH_EXCERPT;
-  const oldValue = old ? tailExcerpt(old) : MCP_NOT_SET;
-  const oldCaption = cut ? "vorher (letzte 500 Zeichen)" : "vorher";
   if (old && after.startsWith(old)) {
-    return { label: entry, oldValue, oldCaption, newValue: after.slice(old.length).trim(), newCaption: "angehängt" };
+    const change = richChangeValues(old, after.slice(old.length).trim(), "anhaengen");
+    return { label: entry, ...change, oldCaption: change.oldCaption?.replace("bisher", "vorher"), newCaption: "angehängt" };
   }
-  return { label: entry, oldValue, oldCaption, newValue: after, newCaption: "jetzt" };
+  const change = richChangeValues(old, after, "ersetzen");
+  return { label: entry, ...change, oldCaption: "vorher", newCaption: "jetzt" };
 }
 
 /** Delta between two stored states; `before` is empty when the content was just created. */

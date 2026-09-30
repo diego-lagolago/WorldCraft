@@ -6,6 +6,8 @@ import { withMcpStubCompensation } from "../stub-compensation";
 import { createStubPlan, materializeStubs } from "../write-shared";
 import { receiptAfterWrite } from "../receipt";
 import { formatConfirmationPreview, IGNORED_VISIBILITY, mcpMembership } from "../write-rich";
+import { fieldFor, templateFieldsFor } from "../field-catalog";
+import type { FieldChange } from "../change-format";
 import { CREATE_HANDLERS } from "./create";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 import { createArt, createFieldsInput, parseFelder, type CreateArt } from "./write-schemas";
@@ -21,6 +23,24 @@ type CreatePayload = Omit<CreateRequest, "world"> & {
   operation: "inhalt_anlegen";
   stubTitles: string[];
 };
+
+/** Planned field delta for stub confirmations; values are still validated by the handler first. */
+function createChanges(art: CreateArt, felder: Record<string, unknown>): FieldChange[] {
+  const changes: FieldChange[] = [];
+  for (const [key, value] of Object.entries(felder)) {
+    if (key === "sichtbarkeit" || key === "vorlagenfelder") continue;
+    const label = fieldFor(art, key)?.label ?? key;
+    changes.push({ label, oldValue: "–", newValue: typeof value === "string" ? value : JSON.stringify(value) });
+  }
+  if (art === "artikel" && felder.vorlagenfelder && typeof felder.vorlagenfelder === "object") {
+    const type = String(felder.vorlagentyp ?? "ohne");
+    for (const [key, value] of Object.entries(felder.vorlagenfelder as Record<string, unknown>)) {
+      const label = templateFieldsFor(type as Parameters<typeof templateFieldsFor>[0]).find((field) => field.key === key)?.label ?? key;
+      changes.push({ label, oldValue: "–", newValue: typeof value === "string" ? value : JSON.stringify(value) });
+    }
+  }
+  return changes;
+}
 
 /** Checks the target (a), creates confirmed stubs (b), then writes (c) with stub compensation. */
 async function executeCreate(input: CreateRequest & { ctx: ToolContext; stubTitles: string[] }) {
@@ -85,6 +105,7 @@ async function previewOrCreate(ctx: ToolContext, request: CreateRequest) {
       art: request.art,
       title: handler.titleOf(request.felder),
       visibility: request.art === "universum" ? "nur Spielleitung" : "nur ich",
+      changes: createChanges(request.art, request.felder),
       lines: ["Folge: Der Inhalt und die geplanten Stub-Artikel werden angelegt."],
       stubTitles,
       token: confirmation.token,

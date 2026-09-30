@@ -1177,7 +1177,8 @@ describe("MCP write tools", () => {
       },
     }));
     expect(preview).toContain("Bestätigungs-Token:");
-    expect(preview.match(new RegExp(stubTitle, "g"))?.length).toBe(1);
+    // CR-007 shows the planned field delta as well as the dedicated stub list.
+    expect(preview.match(new RegExp(stubTitle, "g"))?.length).toBe(2);
 
     await callTool(gm.accessToken, "aenderung_bestaetigen", { token: extractToken(preview) });
     const sql = testSql();
@@ -1728,7 +1729,7 @@ describe("MCP write tools", () => {
     const relation = firstToolText(await callTool(gm.accessToken, "aenderung_bestaetigen", {
       token: extractToken(relationPreview),
     }));
-    expect(relation).toContain("Relation angelegt.");
+    expect(relation).toContain("Gespeichert.");
     const fromArticle = firstToolText(await callTool(gm.accessToken, "relationen_abrufen", {
       welt: "MCP-Testwelt", art: "artikel", id: sourceId,
     }));
