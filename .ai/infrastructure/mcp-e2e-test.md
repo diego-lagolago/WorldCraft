@@ -38,7 +38,7 @@ Die Verbindung funktioniert in beiden Clients. Die Gesamtbewertung lautet: **bes
 
 ## Schreiben
 
-**Status: E2E-Lauf 1 in claude.ai am 2026-09-29 durchgeführt; Claude Code ausstehend** (Plan `011` T-011, Nacharbeit in Plan `012`).
+**Status: E2E-Lauf 2 am 2026-09-30 in claude.ai und Claude Code bestanden** (Plan `012` T-013, Version `1.0.0`; siehe „Lauf 2“ unten). Die Tabellen direkt darunter dokumentieren Lauf 1 vom 2026-09-29.
 Protokollvorlage für beide Clients; Ergebnisse und Notizen nach dem Prod-Lauf eintragen.
 
 ### claude.ai
@@ -67,3 +67,25 @@ Protokollvorlage für beide Clients; Ergebnisse und Notizen nach dem Prod-Lauf e
 ### Gesamtbewertung (Schreiben)
 
 **Lauf 1 (claude.ai, 2026-09-29): 4 bestanden, 1 teilweise; Nacharbeit in Plan `012`.** Claude Code ist weiterhin ausstehend.
+
+### Lauf 2 (2026-09-30, Version `1.0.0`, claude.ai und Claude Code)
+
+Durchgeführt vom Projektinhaber auf Produktion mit der Demowelt, in beiden Clients mit demselben Ergebnis. Prüffälle 1–5 aus `011` T-011, 6–9 aus `012` T-013.
+
+| # | Prüffall | Ergebnis | Notiz |
+|---|---|---|---|
+| 0 | Deploy live: Version `1.0.0`, Client kennt `vorlagenfelder` mit „Seltenheit“ und Werten aus dem Schema | bestanden | Belegt zugleich, dass beide Clients die `anyOf`-Union von `felder` verarbeiten (offener Punkt aus `012` T-004). |
+| 1 | Inhalt anlegen | bestanden | Gegenstand mit Seltenheit angelegt; die gewünschte Sichtbarkeit wurde danach über Vorschau und Bestätigung gesetzt, Quittung mit Delta vorher → nachher. |
+| 2 | Notizblock der Quest ergänzen | bestanden | |
+| 3 | Veröffentlichen nur nach Bestätigung | bestanden | |
+| 4 | Löschen wird abgelehnt | bestanden | |
+| 5 | Bild über Upload-Link | bestanden | |
+| 6 | „Setz die Seltenheit von <Gegenstand> auf Selten.“ | bestanden | Feldname ohne Ausprobieren, Vorschau mit Delta, Ausführung nach Zustimmung, Quittung. |
+| 7 | Notizblock: erster Aufruf mit `text`, Vorschau mit bisherigem und neuem Text | bestanden | |
+| 8 | Monster ändern (Gefahrenstufe, Lebensraum) | bestanden | Vorschau mit Labels und Ort-Titeln. |
+| 9 | Relation anlegen → Quittung mit beiden Titeln | bestanden, mit Befund | Quittung kam, aber ohne vorherige Bestätigung. Entscheidung des Projektinhabers (`012` E10): Relationen brauchen eine Bestätigung. Umgesetzt in Version `1.0.1` (Commits `e0e794e`, `4af38f6`), lokal mit `npm run test:mcp` grün; **noch nicht ausgeliefert**, Nachprüfung von Prüffall 9 nach dem nächsten Deploy. |
+
+In keinem Prüffall bestätigte Claude eine Änderung, bevor die Vorschau im Chat stand.
+
+**Gesamtbewertung Lauf 2: bestanden in beiden Clients.** Ein Befund (Prüffall 9) mit Folgeänderung in `1.0.1`.
+
