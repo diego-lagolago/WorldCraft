@@ -9,7 +9,7 @@
 | ID | Kategorie | Schweregrad | Status | Kurzbeschreibung |
 |----|-----------|-------------|--------|-------------------|
 | CR-001 | Runtime-Risiken | mittel | behoben | Quittungs-Snapshot läuft innerhalb der Stub-Kompensation; ein Lesefehler nach erfolgreichem Schreiben löscht referenzierte Stubs und meldet einen Fehler |
-| CR-002 | Testabdeckung | mittel | offen | Die Abnahmetests von T-004–T-009 in `npm run test:mcp` wurden nie ausgeführt |
+| CR-002 | Testabdeckung | mittel | behoben | Die Abnahmetests von T-004–T-009 in `npm run test:mcp` wurden nie ausgeführt |
 | CR-003 | Bad Practices | mittel | behoben | `validation.ts` erkennt eigene Meldungen und fehlende Werte an englischen Zod-Standardtexten |
 | CR-004 | Duplizierung & Modularisierung | niedrig | behoben | „Label: Wert“-Parser, Rich-Text-Kürzung und `RICH_EXCERPT` doppelt in Vorschau (`update/common.ts`) und Quittung (`receipt.ts`) |
 | CR-005 | Duplizierung & Modularisierung | niedrig | behoben | Handtypen `ArticleFields` … `WorldFields` in `write-schemas.ts` spiegeln den Feldkatalog per `as unknown as` |
@@ -108,7 +108,7 @@
 | ID | Umsetzung | Nachweis |
 |---|---|---|
 | CR-001 | `receiptAfterWrite` (`src/lib/mcp/receipt.ts`) läuft nach `withMcpStubCompensation`; scheitert das erneute Lesen, meldet die Quittung „gespeichert“ ohne Delta und protokolliert `mcp_receipt_error` | `receipt-fallback.test.ts` |
-| CR-002 | **offen** – `npm run test:mcp` / `test:rechte` brauchen lokale Datenbank und Dev-Server; auf Wunsch des Projektinhabers nicht ausgeführt | – |
+| CR-002 | `npm run test:mcp` (51 Tests) und `npm run test:rechte` am 2026-09-30 lokal durch den Projektinhaber ausgeführt, grün. Der Lauf deckte zwei Codefehler auf, beide behoben: Charakterblatt-Unterfelder waren Pflicht (`d170ab6`), „Keine Änderung“ erkannte unveränderten Text mit Markdown-Escapes nicht (`db7f415`) | Testlauf 2026-09-30 |
 | CR-003 | `germanError(path)` als Zod-`error` an jedem Katalogfeld; eigene Meldungen an festen deutschen Präfixen erkannt; keine Abfrage englischer Zod-Texte mehr | Test „Review 012 CR-003“ in `tool-schemas.test.ts` |
 | CR-004 | `parseEntries`, `RICH_EXCERPT`, `headExcerpt`/`tailExcerpt` in `src/lib/mcp/change-format.ts`, genutzt von Vorschau und Quittung | Vorschau- und Quittungstests grün |
 | CR-005 | `FIELD_TYPE_KEYS` mit Compile-Zeit-Prüfung gegen die Handtypen, Test gegen `fieldsFor` | Test „Review 012 CR-005“ |
@@ -116,4 +116,4 @@
 | CR-007 | `contentTitle` statt `snapshotContent` in `relation_anlegen` | – |
 | CR-008 | `createManualRelation` liefert gespeicherte `label`/`counterLabel`; die Quittung nutzt sie | – |
 
-Review-Check: CR-001, CR-003–CR-008 am Code behoben, keine Drift. CR-002 bleibt offen bis zum lokalen Lauf der Integrationssuiten.
+Review-Check (2026-09-30): Alle acht Findings behoben, keine Drift.

@@ -96,4 +96,4 @@
 | CR-004 | Konstante `UNIVERSE_NOT_OWNER_ONLY` | Text einmal im Code |
 | CR-005 | `isToolCall` zählt JSON-Batches mit `tools/call` | Test „011 Review 2 CR-005“ in `src/app/mcp/route.test.ts` |
 
-Review-Check: Alle fünf Findings sind am Code behoben; keine Drift. MCP-Integrationssuite (`npm run test:mcp`) auf Wunsch des Projektinhabers nicht ausgeführt.
+Review-Check: Alle fünf Findings sind am Code behoben; keine Drift. `npm run test:mcp` und `npm run test:rechte` am 2026-09-30 lokal grün.
