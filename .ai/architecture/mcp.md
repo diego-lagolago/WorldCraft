@@ -86,6 +86,8 @@ sequenceDiagram
 - **Vorlagenfelder beim Ändern (T-007):** Nur die genannten Vorlagenfelder werden geändert, die übrigen bleiben; `null`, `""`, „–“ oder `false` leert ein Feld. Wechselt der Vorlagentyp, ersetzen die genannten Felder die alten. Ja/Nein-Felder nehmen zusätzlich „Ja“/„Nein“ an, damit die Ausgabe von `inhalt_lesen` unverändert zurückschreibbar ist (T-009, `002` D18).
 - **Leseausgabe (T-006):** `inhalt_lesen` zeigt alle Vorlagenfelder (nicht gesetzte als „–“), Lebensraum und Beteiligte in Erwähnungssyntax und hängt den Block „Schreibschlüssel“ (Anzeige-Label → `felder`-Schlüssel) an.
 - **Keine Änderung:** Ergibt eine Änderung gegenüber dem gelesenen Stand kein Delta, antwortet `inhalt_aendern` mit „Keine Änderung: Die übergebenen Werte entsprechen dem aktuellen Stand.“ und erzeugt kein Bestätigungs-Token.
+- **Rich-Text-Begrenzung (Review 012 CR-003):** Vorschau und Quittung begrenzen jeden Rich-Text-Wert separat auf 6 000 Zeichen, nie pauschal am Textanfang. Anhänge zeigen bei Bedarf Anfang und Ende samt ausgelassener Zeichenzahl; Ersetzungen zeigen den geänderten Bereich mit bis zu 200 Zeichen Kontext. Bestätigungs-Token, Ablaufzeit, Stub-Liste und Schreibschlüssel bleiben dadurch erhalten.
+- **Charakterblatt (Review 012 CR-004):** `charakterblatt` enthält strikte Unterobjekte: Attribute mit den sechs Kürzeln, Fertigkeiten (`name`, `stufe`, `attribut`) und Fähigkeiten (`text`, `attribut`). Die Schema-Beschreibungen nennen die erlaubten Stufen und Attributkürzel; bekannte englische Aliase bleiben eingabekompatibel.
 - Alle `inputSchema` aller Werkzeuge sind strikt, auch verschachtelte Objekte (`quelle`, `ziel`) und `welten_auflisten` (leeres striktes Objekt).
 
 ## Neues MCP-Werkzeug hinzufügen
