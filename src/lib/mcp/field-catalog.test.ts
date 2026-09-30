@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  assertFieldCatalogComplete,
   fieldsFor,
   labelFor,
   templateFieldsFor,
@@ -8,6 +7,8 @@ import {
   writeKeyTable,
 } from "./field-catalog";
 import { TEMPLATES } from "@/lib/templates/registry";
+import { MCP_QUEST_STATUS } from "./enums";
+import { MCP_SHEET_FIELDS, SHEET_KEY_MAP } from "./write-fields";
 
 describe("MCP field catalog", () => {
   it("derives item template fields and their labels from the registry", () => {
@@ -35,9 +36,16 @@ describe("MCP field catalog", () => {
     expect(labelFor(rarity!, "common")).toBe("Gewöhnlich");
   });
 
-  it("rejects a simulated registry field that lacks a catalog entry", () => {
-    const templates = structuredClone(TEMPLATES);
-    templates.item.fields = [...templates.item.fields, { key: "new", label: "Neu", type: "text" }];
-    expect(() => assertFieldCatalogComplete(templates)).toThrow("Feldkatalog fehlt Vorlagenfeld: Neu");
+  it("keeps the sheet, quest status and template registry mappings in sync", () => {
+    const expectedSheet = {
+      klasse: "class", attribute: "attributes", uebungsbonus: "proficiencyBonus", fertigkeiten: "skills",
+      faehigkeiten: "abilities", persoenlichkeit: "personality", ideale: "ideals", bindungen: "bonds", schwaechen: "flaws",
+    };
+    for (const entry of MCP_SHEET_FIELDS) expect(SHEET_KEY_MAP[entry.key]).toBe(expectedSheet[entry.key]);
+    expect(Object.keys(MCP_QUEST_STATUS)).toHaveLength(4);
+    for (const definition of Object.values(TEMPLATES)) {
+      expect(templateFieldsFor(definition.type).map((field) => field.label))
+        .toEqual(definition.fields.map((field) => field.type === "boolean" && field.key === "quest" ? "Quest-Gegenstand" : field.label));
+    }
   });
 });

@@ -1,4 +1,3 @@
-import { ATTRIBUTE_KEYS, SKILL_LEVELS } from "@/lib/characters/sheet";
 import { MCP_QUEST_STATUS, MCP_TEMPLATE_TYPE } from "@/lib/mcp/enums";
 import {
   MONSTER_DANGER_LABEL,
@@ -10,7 +9,7 @@ import {
   MONSTER_SIZE_LABEL,
   MONSTER_SIZES,
 } from "@/lib/monsters/labels";
-import { TEMPLATE_TYPES, TEMPLATES, templateOf, type TemplateDefinition, type TemplateField, type TemplateType } from "@/lib/templates/registry";
+import { TEMPLATE_TYPES, templateOf, type TemplateField, type TemplateType } from "@/lib/templates/registry";
 import { MCP_SHEET_FIELDS } from "./write-fields";
 
 export type FieldOperation = "anlegen" | "aendern";
@@ -40,9 +39,6 @@ const monsterKinds = values(MONSTER_KINDS, MONSTER_KIND_LABEL);
 const monsterRarities = values(MONSTER_RARITIES, MONSTER_RARITY_LABEL);
 const monsterDangers = values(MONSTER_DANGERS, MONSTER_DANGER_LABEL);
 const monsterSizes = values(MONSTER_SIZES, MONSTER_SIZE_LABEL);
-const catalogTemplateFieldLabels = Object.fromEntries(
-  Object.values(TEMPLATES).map((definition) => [definition.type, definition.fields.map((entry) => entry.label)]),
-) as unknown as Record<TemplateType, readonly string[]>;
 
 const field = (
   key: string,
@@ -138,10 +134,6 @@ export function templateFieldsFor(vorlagentyp: TemplateType): readonly FieldDefi
   ));
 }
 
-export function allowedValuesFor(fieldDefinition: Pick<FieldDefinition, "allowedValues">): readonly AllowedValue[] {
-  return fieldDefinition.allowedValues ?? [];
-}
-
 export function labelFor(fieldDefinition: Pick<FieldDefinition, "allowedValues">, internalValue: unknown): string {
   return fieldDefinition.allowedValues?.find((value) => value.value === internalValue)?.label ?? String(internalValue);
 }
@@ -182,22 +174,3 @@ export function writeKeyHints(key: string, arts: readonly FieldArt[]): WriteKeyH
   }
   return hints;
 }
-
-/** Guard used by tests so a registry or enum extension cannot bypass the catalog. */
-export function assertFieldCatalogComplete(templates: Record<TemplateType, TemplateDefinition> = TEMPLATES) {
-  for (const definition of Object.values(templates)) {
-    const catalog = catalogTemplateFieldLabels[definition.type];
-    for (const templateField of definition.fields) {
-      if (!catalog.includes(templateField.label)) throw new Error("Feldkatalog fehlt Vorlagenfeld: " + templateField.label);
-    }
-  }
-  const expected = [monsterKinds, monsterRarities, monsterDangers, monsterSizes, questStatuses];
-  if (expected.some((group) => group.length === 0)
-    || Array.from(MCP_SHEET_FIELDS).length === 0
-    || Array.from(ATTRIBUTE_KEYS).length === 0
-    || Array.from(SKILL_LEVELS).length === 0) {
-    throw new Error("Feldkatalog ist unvollständig.");
-  }
-}
-
-export const FIELD_CATALOG_COMPLETE = assertFieldCatalogComplete();
