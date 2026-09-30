@@ -33,9 +33,6 @@ export function formatDelta(changes: readonly FieldChange[], heading = "Änderun
 /** Rich text in previews and receipts: the existing text is shortened to this many characters. */
 export const RICH_EXCERPT = 500;
 
-/** Placeholder for empty values, as in inhalt_lesen (002 D18). */
-const EMPTY = "–";
-
 /** The last `RICH_EXCERPT` characters, marked with „…“ when shortened. */
 export function tailExcerpt(value: string) {
   return value.length > RICH_EXCERPT ? `…${value.slice(-RICH_EXCERPT)}` : value;

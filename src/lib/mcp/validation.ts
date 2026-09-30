@@ -130,6 +130,7 @@ export function unionError(base: string, arts: readonly FieldArt[], fallback: st
       const fewest = Math.min(...fitting.map((option) => option.length));
       return issuesMessage(fitting.filter((option) => option.length === fewest).flat(), { base, arts });
     }
+    if (!options.length) return `Die Schlüssel in „${base}“ passen zu keiner einzelnen Variante. ${fallback}`;
     const unknownEverywhere = options.map(rootUnknown)
       .reduce((common, keys) => common.filter((key) => keys.includes(key)));
     const unknown = unknownEverywhere

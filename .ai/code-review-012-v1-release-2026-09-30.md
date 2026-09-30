@@ -19,7 +19,7 @@
 | CR-008 | Lesbarkeit & Wartbarkeit | niedrig | behoben | Delta entsteht durch Zurückparsen gerenderter „Label: Wert“-Texte; mehrzeilige Werte und Leerzeilen erzeugen falsche Einträge |
 | CR-009 | Testabdeckung | niedrig | offen | Vollständigkeitstest des Feldkatalogs ist für die echte Registry tautologisch; `FIELD_CATALOG_COMPLETE` und `allowedValuesFor` ungenutzt |
 | CR-010 | Duplizierung & Modularisierung | niedrig | offen | Quittungen von `relation_anlegen` und Upload-Link sind von Hand gebaut statt über `formatReceipt` |
-| CR-011 | Runtime-Risiken | niedrig | offen | `unionError` ruft `reduce` ohne Startwert auf einer möglicherweise leeren Liste auf |
+| CR-011 | Runtime-Risiken | niedrig | behoben | `unionError` ruft `reduce` ohne Startwert auf einer möglicherweise leeren Liste auf |
 | CR-012 | Fehlerbehandlung & Validierung | niedrig | offen | `beteiligte` in anderer Reihenfolge gilt als Änderung statt „Keine Änderung“ |
 | CR-013 | Performance | niedrig | behoben | Jeder bestätigte Schreibvorgang liest das Ziel vier- bis fünfmal, inklusive doppelt gerenderter Vorlagen-Verweise |
 
@@ -131,6 +131,7 @@
 - **Beschreibung:** `options.map(rootUnknown).reduce(...)` hat keinen Startwert. Ist `errors` am Roh-Issue leer oder nicht vorhanden (`options = []`), ist `fitting` leer und `reduce` wirft `TypeError: Reduce of empty array with no initial value` – innerhalb der Zod-Fehlerfunktion, also als nicht abgefangener Fehler in der SDK-Validierung statt als verständlicher Werkzeugfehler. Ob Zod 4 für `z.union` jemals ein leeres `errors` liefert, wurde in diesem Review nicht per Test geklärt; der Code verlässt sich darauf ohne Absicherung und ohne Test.
 - **Empfehlung:** Bei `options.length === 0` direkt den Fallback-Text zurückgeben.
 - **Abnahmekriterium:** Unit-Test: `unionError("felder", [], "X")({})` und `({ errors: [] })` liefern einen Text, der mit „Die Schlüssel in „felder““ beginnt, und werfen nicht.
+- **Umsetzung (2026-09-30):** Leere Varianten geben unmittelbar den verständlichen Fallback zurück; beide Roh-Issue-Formen sind getestet.
 
 ### CR-012
 - **Fundstelle:** `src/lib/mcp/tools/update/quest.ts:32–36`
