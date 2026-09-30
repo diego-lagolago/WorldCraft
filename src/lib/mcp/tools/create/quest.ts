@@ -10,10 +10,15 @@ import { collectRich, createRich, defineCreateHandler } from "./common";
 export const questCreate = defineCreateHandler({
   schema: createFieldSchemas.quest,
   titleOf: (felder) => felder.titel,
+  check: async (felder, world) => {
+    const participants = await resolveParticipantIds(world, felder.beteiligte);
+    if (participants?.snapshotIds.length) {
+      throw new McpToolError("Feld „felder.beteiligte“: Teilnahme-Erwähnungen sind beim Anlegen nicht erlaubt.");
+    }
+  },
   collect: (felder, context) => collectRich(context, felder.beschreibung),
   execute: async (felder, context) => {
     const participants = await resolveParticipantIds(context.world, felder.beteiligte);
-    if (participants?.snapshotIds.length) throw new McpToolError("Feld „felder.beteiligte“: Teilnahme-Erwähnungen sind beim Anlegen nicht erlaubt.");
     const result = await createQuest({
       membership: context.membership,
       actorId: context.ctx.userId,

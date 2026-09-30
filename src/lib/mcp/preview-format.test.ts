@@ -5,6 +5,7 @@ vi.mock("@/db/client", () => ({ db: {} }));
 import { PREVIEW_INSTRUCTION, formatConfirmationPreview, formatDelta } from "./write-rich";
 import { clearedTemplateFieldKeys } from "./write-fields";
 import { pushEntryChanges, type PreviewContext } from "./tools/update/common";
+import { RICH_CHANGE_BUDGET, richChangeValues } from "./change-format";
 
 function context(): PreviewContext {
   return { art: "monster", world: {} as PreviewContext["world"], modus: "anhaengen", changes: [], stubs: {} as PreviewContext["stubs"] };
@@ -63,5 +64,31 @@ describe("change preview format (012 T-007)", () => {
   it("clears only template fields named with null, empty, „–“ or false", () => {
     expect([...clearedTemplateFieldKeys("item", { Seltenheit: "Selten", Besitzer: "–", Art: null, "Quest-Gegenstand": false })])
       .toEqual(["owner", "kind", "quest"]);
+  });
+
+  it("Review 012 CR-003: keeps the changed rich-text area and reports omitted characters", () => {
+    const before = `${"A".repeat(25_000)}alter Satz${"Z".repeat(5_000)}`;
+    const after = `${"A".repeat(25_000)}neuer Satz${"Z".repeat(5_000)}`;
+    const delta = richChangeValues(before, after, "ersetzen");
+    expect(delta.oldValue).toContain("alter Satz");
+    expect(delta.newValue).toContain("neuer Satz");
+    expect(delta.newValue).toMatch(/Zeichen davor unverändert/);
+
+    const append = richChangeValues("Alt", "B".repeat(RICH_CHANGE_BUDGET + 20), "anhaengen");
+    expect(append.newValue).toContain("20 Zeichen nicht dargestellt");
+    expect(append.newValue).toContain("BBBB");
+  });
+
+  it("Review 012 CR-003: preserves confirmation metadata for very long rich-text previews", () => {
+    const longAppend = richChangeValues("A".repeat(30_000), "Neue Notiz", "anhaengen");
+    const preview = formatConfirmationPreview({
+      art: "artikel", title: "Langtext", visibility: "nur ich",
+      changes: [{ label: "Text (anhängen)", ...longAppend }],
+      token: "token-fuer-langtext", expiresAt: new Date("2026-09-30T12:00:00.000Z"),
+    });
+    expect(preview).toContain("Neue Notiz");
+    expect(preview).toContain("Bestätigungs-Token: token-fuer-langtext");
+    expect(preview).toContain("Gültig bis: 2026-09-30T12:00:00.000Z");
+    expect(preview.length).toBeLessThan(20_000);
   });
 });

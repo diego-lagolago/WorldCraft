@@ -28,6 +28,12 @@ describe("receipt (012 T-008)", () => {
     ]);
   });
 
+  it("Review 012 CR-006: includes a field that existed only before a template type change", () => {
+    const before = snapshot([["Seltenheit", "Selten"]]);
+    const after = snapshot([]);
+    expect(snapshotDelta(before, after)).toEqual([{ label: "Seltenheit", oldValue: "Selten", newValue: "–" }]);
+  });
+
   it("starts with the instruction and names ID, stand, delta and stubs", () => {
     const text = formatReceipt({
       art: "artikel",
@@ -40,5 +46,18 @@ describe("receipt (012 T-008)", () => {
     expect(text).toEqual(expect.arrayContaining([
       "ID: article-1", "Stand: 2026-09-29T10:00:00.000Z", "- Seltenheit: – → Selten", "- Schmiede (stub-1)",
     ]));
+  });
+
+  it("Review 012 CR-003: keeps stubs in a receipt with a long rich-text change", () => {
+    const long = "B".repeat(30_000);
+    const after = snapshot([["Text", long]]);
+    const text = formatReceipt({
+      art: "artikel", id: "article-1", after,
+      changes: snapshotDelta(snapshot([["Text", "Alt"]]), after),
+      stubs: [{ id: "stub-1", title: "Schmiede" }],
+    });
+    expect(text).toContain("Neu angelegte Stub-Artikel:");
+    expect(text).toContain("- Schmiede (stub-1)");
+    expect(text.length).toBeLessThan(20_000);
   });
 });

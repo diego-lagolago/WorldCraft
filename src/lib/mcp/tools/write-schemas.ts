@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ATTRIBUTE_KEYS, ATTRIBUTE_SHORT, SKILL_LEVEL_LABEL } from "@/lib/characters/sheet";
+import { ATTRIBUTE_KEYS, ATTRIBUTE_LONG, ATTRIBUTE_SHORT, SKILL_LEVEL_LABEL } from "@/lib/characters/sheet";
 import { McpToolError } from "../context";
 import { TEMPLATE_TYPES, templateOf } from "@/lib/templates/registry";
 import { MCP_TEMPLATE_TYPE } from "../enums";
@@ -39,7 +39,11 @@ const FIXED_ENUM_KEYS = new Set(["vorlagentyp", "status"]);
 function describe(schema: z.ZodType, field: FieldDefinition) {
   const values = field.allowedValues?.map((value) => value.label).join(", ");
   const targets = field.referenceTargets?.map((target) => ({
-    "artikel:place": "Ort-Artikel", "artikel:person": "Person-Artikel", "artikel:organisation": "Organisations-Artikel", charakter: "Charakter", quest: "Quest",
+    "artikel:ort": "Ort-Artikel", "artikel:place": "Ort-Artikel",
+    "artikel:person": "Person-Artikel",
+    "artikel:organisation": "Organisations-Artikel", "artikel:organization": "Organisations-Artikel",
+    "artikel:rasse": "Rassen-Artikel", "artikel:race": "Rassen-Artikel",
+    charakter: "Charakter", quest: "Quest",
   })[target] ?? target).join(", ");
   return schema.describe(`${field.description}${values ? ` Erlaubte Werte: ${values}.` : ""}${targets ? ` Verweis in Erwähnungssyntax, z. B. @[Titel](artikel:id); erlaubte Ziele: ${targets}; null oder „–“ leert den Verweis.` : ""}`);
 }
@@ -118,7 +122,9 @@ function monsterSheetSchema() {
   ]));
   const attributes = withAliases(z.object(attributeShape).strict(), (key) => {
     const upper = key.toUpperCase();
-    return attributeAliases[upper] ?? (ATTRIBUTE_KEYS.find((entry) => ATTRIBUTE_SHORT[entry] === upper) ? upper : undefined);
+    const long = ATTRIBUTE_KEYS.find((entry) => ATTRIBUTE_LONG[entry].localeCompare(key, "de", { sensitivity: "accent" }) === 0);
+    return attributeAliases[upper] ?? (long ? ATTRIBUTE_SHORT[long] : undefined)
+      ?? (ATTRIBUTE_KEYS.find((entry) => ATTRIBUTE_SHORT[entry] === upper) ? upper : undefined);
   });
   const skill = withAliases(z.object({
     name: z.string({ error: germanError("felder.charakterblatt.fertigkeiten") }),

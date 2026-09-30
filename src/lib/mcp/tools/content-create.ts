@@ -6,8 +6,9 @@ import { withMcpStubCompensation } from "../stub-compensation";
 import { createStubPlan, materializeStubs } from "../write-shared";
 import { receiptAfterWrite } from "../receipt";
 import { formatConfirmationPreview, IGNORED_VISIBILITY, mcpMembership } from "../write-rich";
-import { fieldFor, templateFieldsFor } from "../field-catalog";
-import type { FieldChange } from "../change-format";
+import { fieldFor, labelFor, templateFieldsFor } from "../field-catalog";
+import { richChangeValues, type FieldChange } from "../change-format";
+import { MCP_TEMPLATE_TYPE } from "../enums";
 import { CREATE_HANDLERS } from "./create";
 import { requireMcpWriteScope, type ToolContext, withAudit, worldSchema } from "./shared";
 import { createArt, createFieldsInput, parseFelder, type CreateArt } from "./write-schemas";
@@ -29,14 +30,21 @@ function createChanges(art: CreateArt, felder: Record<string, unknown>): FieldCh
   const changes: FieldChange[] = [];
   for (const [key, value] of Object.entries(felder)) {
     if (key === "sichtbarkeit" || key === "vorlagenfelder") continue;
-    const label = fieldFor(art, key)?.label ?? key;
-    changes.push({ label, oldValue: "–", newValue: typeof value === "string" ? value : JSON.stringify(value) });
+    const definition = fieldFor(art, key);
+    const label = definition?.label ?? key;
+    if (definition?.type === "markdown" && typeof value === "string") {
+      changes.push({ label, ...richChangeValues("", value, "ersetzen"), oldCaption: "vorher", newCaption: "neu" });
+      continue;
+    }
+    const display = definition?.type === "select" ? labelFor(definition, value) : typeof value === "string" ? value : JSON.stringify(value);
+    changes.push({ label, oldValue: "–", newValue: display });
   }
   if (art === "artikel" && felder.vorlagenfelder && typeof felder.vorlagenfelder === "object") {
-    const type = String(felder.vorlagentyp ?? "ohne");
+    const type = MCP_TEMPLATE_TYPE[String(felder.vorlagentyp ?? "ohne") as keyof typeof MCP_TEMPLATE_TYPE] ?? "none";
     for (const [key, value] of Object.entries(felder.vorlagenfelder as Record<string, unknown>)) {
       const label = templateFieldsFor(type as Parameters<typeof templateFieldsFor>[0]).find((field) => field.key === key)?.label ?? key;
-      changes.push({ label, oldValue: "–", newValue: typeof value === "string" ? value : JSON.stringify(value) });
+      const definition = templateFieldsFor(type as Parameters<typeof templateFieldsFor>[0]).find((field) => field.key === key);
+      changes.push({ label, oldValue: "–", newValue: definition?.type === "select" ? labelFor(definition, value) : typeof value === "string" ? value : JSON.stringify(value) });
     }
   }
   return changes;

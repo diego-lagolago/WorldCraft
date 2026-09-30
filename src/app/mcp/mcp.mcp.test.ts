@@ -2300,6 +2300,148 @@ describe("MCP write tools", () => {
     expect(preview).toContain("Bestätigungs-Token:");
   });
 
+  it("Review 012 CR-002 and CR-012: keeps deleted-participant snapshots and ignores participant order", async () => {
+    const client = await registerMcpClient(9911, "MCP Participant Snapshot Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const suffix = Date.now().toString(36);
+    const sql = testSql();
+    let transientCharacterId: string | undefined;
+    try {
+      const characters = await sql.unsafe(
+        "SELECT c.id, c.name FROM world_participations wp JOIN characters c ON c.id = wp.character_id WHERE wp.world_id = $1 ORDER BY c.name LIMIT 2",
+        [data.worldId],
+      );
+      if (characters.length === 1) {
+        const [additional] = await sql.unsafe(
+          "INSERT INTO characters (owner_id, name, created_by, updated_by) SELECT owner_id, $2, owner_id, owner_id FROM characters WHERE id = $1 RETURNING id, name",
+          [characters[0].id, `MCP Zweiter Beteiligter ${suffix}`],
+        );
+        await sql.unsafe(
+          "INSERT INTO world_participations (character_id, world_id, created_by, updated_by) SELECT $1, $2, owner_id, owner_id FROM characters WHERE id = $1",
+          [additional.id, data.worldId],
+        );
+        transientCharacterId = additional.id;
+        characters.push(additional);
+      }
+      expect(characters).toHaveLength(2);
+      const mentions = characters.map((row: { id: string; name: string }) => `@[${row.name}](charakter:${row.id})`);
+      const created = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+        welt: "MCP-Testwelt", art: "quest", felder: { titel: `MCP Snapshot ${suffix}`, beteiligte: mentions },
+      }));
+      const id = extractId(created);
+      await sql.unsafe("UPDATE quest_participants SET character_id = NULL WHERE quest_id = $1 AND character_id = $2", [id, characters[0].id]);
+      const read = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "quest", id }));
+      const snapshot = /@\[[^\]]+\]\(teilnahme:[0-9a-f-]{36}\)/i.exec(read)?.[0];
+      expect(snapshot).toBeTruthy();
+      const stand = extractStand(read);
+
+      const unchanged = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+        welt: "MCP-Testwelt", art: "quest", id, stand, felder: { beteiligte: [mentions[1], snapshot!] },
+      }));
+      expect(unchanged).toContain("Keine Änderung");
+      expect(unchanged).not.toContain("Bestätigungs-Token:");
+
+      const reordered = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+        welt: "MCP-Testwelt", art: "quest", id, stand, felder: { beteiligte: [mentions[1], mentions[1], snapshot!] },
+      }));
+      expect(reordered).toContain("Keine Änderung");
+      expect(reordered).not.toContain("Bestätigungs-Token:");
+
+      const omittedSnapshot = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+        welt: "MCP-Testwelt", art: "quest", id, stand, felder: { beteiligte: [mentions[1]] },
+      }));
+      expect(omittedSnapshot).toContain("Keine Änderung");
+      expect(omittedSnapshot).not.toContain("Bestätigungs-Token:");
+
+      const changed = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+        welt: "MCP-Testwelt", art: "quest", id, stand, felder: { titel: `MCP Snapshot geändert ${suffix}`, beteiligte: [mentions[1], snapshot!] },
+      }));
+      expect(changed).toContain("Bestätigungs-Token:");
+      await callTool(gm.accessToken, "aenderung_bestaetigen", { token: extractToken(changed) });
+      const after = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "quest", id }));
+      expect(after).toContain(snapshot!);
+
+      const foreign = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+        welt: "MCP-Testwelt", art: "quest", id, stand: extractStand(after),
+        felder: { beteiligte: ["@[Fremd](teilnahme:00000000-0000-4000-8000-000000000000)"] },
+      }));
+      expect(foreign).toContain("felder.beteiligte");
+      expect(foreign).not.toContain("Bestätigungs-Token:");
+
+      const createRejected = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+        welt: "MCP-Testwelt", art: "quest", felder: { titel: `MCP Keine Snapshot-Anlage ${suffix}`, beteiligte: [snapshot!] },
+      }));
+      expect(createRejected).toContain("felder.beteiligte");
+      expect(createRejected).not.toContain("Bestätigungs-Token:");
+    } finally {
+      if (transientCharacterId) await sql.unsafe("DELETE FROM characters WHERE id = $1", [transientCharacterId]);
+      await sql.end();
+    }
+  });
+
+  it("Review 012 CR-005: rejects an invalid habitat and an existing relation before a token", async () => {
+    const client = await registerMcpClient(9912, "MCP Early Validation Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const suffix = Date.now().toString(36);
+    const monster = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "monster", felder: { name: `MCP Frühe Prüfung ${suffix}` },
+    }));
+    const monsterId = extractId(monster);
+    const monsterRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "monster", id: monsterId }));
+    const invalidHabitat = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "monster", id: monsterId, stand: extractStand(monsterRead),
+      felder: { lebensraum: `@[Hauptmann Arin](artikel:${data.personId})` },
+    }));
+    expect(invalidHabitat).toContain("felder.lebensraum");
+    expect(invalidHabitat).not.toContain("Bestätigungs-Token:");
+
+    const source = extractId(firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "artikel", felder: { titel: `MCP Relation doppelt ${suffix}` },
+    })));
+    const preview = firstToolText(await callTool(gm.accessToken, "relation_anlegen", {
+      welt: "MCP-Testwelt", quelle: { art: "artikel", id: source }, ziel: { art: "quest", id: data.activeQuestId }, bezeichnung: "kennt",
+    }));
+    await callTool(gm.accessToken, "aenderung_bestaetigen", { token: extractToken(preview) });
+    const duplicate = firstToolText(await callTool(gm.accessToken, "relation_anlegen", {
+      welt: "MCP-Testwelt", quelle: { art: "artikel", id: source }, ziel: { art: "quest", id: data.activeQuestId }, bezeichnung: "kennt",
+    }));
+    expect(duplicate).toContain("Diese Verknüpfung gibt es schon.");
+    expect(duplicate).not.toContain("Bestätigungs-Token:");
+  });
+
+  it("Review 012 CR-006 and CR-007: previews template loss and complete stub-backed creates", async () => {
+    const client = await registerMcpClient(9913, "MCP Template Delta Test");
+    const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);
+    const suffix = Date.now().toString(36);
+    const item = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "artikel",
+      felder: { titel: `MCP Typwechsel ${suffix}`, vorlagentyp: "gegenstand", vorlagenfelder: { Seltenheit: "Selten" } },
+    }));
+    const itemId = extractId(item);
+    const itemRead = firstToolText(await callTool(gm.accessToken, "inhalt_lesen", { welt: "MCP-Testwelt", art: "artikel", id: itemId }));
+    const typePreview = firstToolText(await callTool(gm.accessToken, "inhalt_aendern", {
+      welt: "MCP-Testwelt", art: "artikel", id: itemId, stand: extractStand(itemRead), felder: { vorlagentyp: "person" },
+    }));
+    expect(typePreview).toContain("Seltenheit: Selten → –");
+    const typeReceipt = firstToolText(await callTool(gm.accessToken, "aenderung_bestaetigen", { token: extractToken(typePreview) }));
+    expect(typeReceipt).toContain("Seltenheit: Selten → –");
+
+    const stubTitle = `MCP Vorschau Stub ${suffix}`;
+    const stubPreview = firstToolText(await callTool(gm.accessToken, "inhalt_anlegen", {
+      welt: "MCP-Testwelt", art: "artikel",
+      felder: {
+        titel: `MCP Vollständiges Delta ${suffix}`,
+        vorlagentyp: "gegenstand",
+        vorlagenfelder: { Seltenheit: "Selten" },
+        text: `Ein Text mit @[${stubTitle}].`,
+      },
+    }));
+    expect(stubPreview).toContain("Seltenheit: – → Selten");
+    expect(stubPreview).toContain(`Ein Text mit @[${stubTitle}].`);
+    expect(stubPreview).toContain(`- ${stubTitle}`);
+    expect(stubPreview).toContain("Bestätigungs-Token:");
+  });
+
   it("012 T-007/T-008: readable previews and receipts for note, template, habitat, sheet and relation", async () => {
     const client = await registerMcpClient(9909, "MCP Preview Receipt Test");
     const gm = await authorizeMcpClient("test-gm", client, WRITE_SCOPE);

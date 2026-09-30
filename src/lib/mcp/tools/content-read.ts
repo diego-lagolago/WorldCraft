@@ -42,6 +42,15 @@ type ReadContentInput = {
 
 type ReadWorld = ReadContentInput["world"];
 
+const READ_RICH_TEXT_BUDGET = 16_000;
+
+/** Keep schema guidance visible by shortening only the trailing rich text before transport bounds apply. */
+export function boundedRichText(value: string) {
+  if (value.length <= READ_RICH_TEXT_BUDGET) return value;
+  const omitted = value.length - READ_RICH_TEXT_BUDGET;
+  return `${value.slice(0, READ_RICH_TEXT_BUDGET)}\n\n_(gekürzt; ${omitted} Zeichen nicht dargestellt)_`;
+}
+
 /** Display labels come from the field catalog so they match the Schreibschlüssel table (E6). */
 function label(art: "quest" | "monster", key: string) {
   return fieldFor(art, key)?.label ?? key;
@@ -64,7 +73,7 @@ async function readArticle(world: ReadWorld, viewerId: string, id: string) {
     await renderTemplateFields(row.templateType, row.templateFields, world, viewerId),
     row.titleImageId ? "Bilder: 1 (über bild_lesen)" : "Bilder: keine",
     renderWriteKeys([{ art: "artikel", heading: "Artikel", vorlagentyp: templateOf(row.templateType).type }]),
-    tiptapJsonToMcpMarkdown(row.bodyJson),
+    boundedRichText(tiptapJsonToMcpMarkdown(row.bodyJson)),
   ].filter(Boolean).join("\n\n");
 }
 

@@ -50,10 +50,16 @@ describe("MCP write field schemas", () => {
   });
 
   it("Review 012 CR-004: accepts advertised character-sheet keys and preserves aliases", () => {
-    const input = { charakterblatt: { klasse: "Späher", attribute: { STR: 14 }, fertigkeiten: [{ name: "Heimlichkeit", level: "Geübt", attr: "GES" }] } };
+    const input = { charakterblatt: { klasse: "Späher", attribute: { Stärke: 14 }, fertigkeiten: [{ name: "Heimlichkeit", level: "Geübt", attr: "GES" }] } };
     const parsed = parseFelder(updateFieldSchemas.monster, input, "monster");
     expect(normalizeMonsterSheet(parsed.charakterblatt)).toMatchObject({
       class: "Späher", attributes: { str: 14 }, skills: [{ name: "Heimlichkeit", level: "trained", attr: "dex" }],
     });
+  });
+
+  it("Review 012 CR-004: rejects extras in strict sheet list entries with their field path", () => {
+    expect(() => parseFelder(updateFieldSchemas.monster, {
+      charakterblatt: { fertigkeiten: [{ name: "Heimlichkeit", stufe: "Geübt", attribut: "GES", extra: true }] },
+    }, "monster")).toThrow("felder.charakterblatt.fertigkeiten");
   });
 });

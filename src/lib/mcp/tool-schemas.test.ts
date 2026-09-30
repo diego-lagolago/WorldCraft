@@ -17,6 +17,7 @@ type JsonSchema = {
   additionalProperties?: boolean;
   anyOf?: JsonSchema[];
   enum?: string[];
+  items?: JsonSchema;
 };
 
 function registeredTools() {
@@ -45,6 +46,10 @@ function fieldObject(schema: JsonSchema, art: string): JsonSchema {
   const entry = objectsFor(schema).find((candidate) => candidate.description === `Felder für art = ${art}.`);
   expect(entry, `felder object for ${art}`).toBeDefined();
   return entry!;
+}
+
+function objectVariant(schema: JsonSchema): JsonSchema {
+  return (schema.anyOf ?? [schema]).find((candidate) => candidate.properties !== undefined) ?? schema;
 }
 
 const ID = "00000000-0000-4000-8000-000000000000";
@@ -169,5 +174,21 @@ describe("SDK validation errors (012 T-005)", () => {
     expect(await sdkValidation("inhalt_aendern", {
       ...updateArgs, art: "monster", felder: { charakterblatt: { Klasse: "Wächter" } },
     })).toBeNull();
+  });
+
+  it("Review 012 CR-004: publishes strict character-sheet details and readable reference targets", () => {
+    const monster = fieldObject(publishedSchema("inhalt_aendern").properties!.felder, "monster").properties!;
+    const sheet = objectVariant(monster.charakterblatt).properties!;
+    expect(Object.keys(sheet.attribute.properties!)).toEqual(["STÄ", "GES", "KON", "INT", "WEI", "CHA"]);
+    expect(Object.keys(sheet.fertigkeiten.items.properties!)).toEqual(["name", "stufe", "attribut"]);
+    expect(sheet.fertigkeiten.description).toMatch(/untalentiert.*ungeübt.*geübt.*Expertise/);
+    expect(monster.lebensraum.description).toContain("Ort-Artikel");
+    expect(monster.lebensraum.description).toContain("@\[Titel\]\(artikel:id\)");
+
+    const article = fieldObject(publishedSchema("inhalt_aendern").properties!.felder, "artikel").properties!;
+    const templates = objectsFor(article.vorlagenfelder);
+    const item = templates.find((entry) => entry.description === "Vorlagenfelder für vorlagentyp = gegenstand.")!;
+    expect(item.properties!.Besitzer.description).toContain("Person-Artikel");
+    expect(item.properties!.Besitzer.description).toContain("Charakter");
   });
 });

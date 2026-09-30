@@ -16,9 +16,12 @@ import {
   worldStand,
 } from "./write-shared";
 import { richChangeValues } from "./change-format";
-import { formatDelta, RECEIPT_INSTRUCTION, standOf, visibilityLabel, type FieldChange } from "./write-rich";
+import { RECEIPT_INSTRUCTION } from "./change-format";
+import { standOf, visibilityLabel, type FieldChange } from "./write-rich";
+import { formatReceipt } from "./receipt-format";
 
 export { RECEIPT_INSTRUCTION };
+export { formatReceipt } from "./receipt-format";
 
 /** Stored state of one content item as display label → value, read back after a write (012 T-008). */
 export type Snapshot = {
@@ -197,8 +200,6 @@ export function snapshotDelta(before: Snapshot | null, after: Snapshot): FieldCh
   return changes;
 }
 
-const RECEIPT_UNAVAILABLE = "Die Änderungsübersicht konnte nach dem Speichern nicht geladen werden; die Änderung ist gespeichert.";
-
 /**
  * Receipt after a successful write. Runs outside the stub compensation: a failed re-read must
  * never report the saved write as failed or remove referenced stubs (Review 012 CR-001).
@@ -230,34 +231,4 @@ export async function receiptAfterWrite(input: {
       notes: [...(input.notes ?? []), "Bitte vor der nächsten Änderung neu lesen."],
     });
   }
-}
-
-/** Receipt after an executed write (Begriffe „Quittung“, E2). */
-export function formatReceipt(input: {
-  art: string;
-  id: string;
-  after: Pick<Snapshot, "title" | "visibility"> & { stand?: string };
-  /** `null` when the stored state could not be read back after the write. */
-  changes: readonly FieldChange[] | null;
-  stubs?: readonly { id: string; title: string }[];
-  extraLines?: readonly string[];
-  notes?: readonly string[];
-}): string {
-  return [
-    RECEIPT_INSTRUCTION,
-    "Gespeichert.",
-    `Art: ${input.art}`,
-    `ID: ${input.id}`,
-    `Titel: ${input.after.title}`,
-    ...(input.after.stand ? [`Stand: ${input.after.stand}`] : []),
-    ...(input.after.visibility ? [`Sichtbarkeit: ${input.after.visibility}`] : []),
-    ...(input.extraLines ?? []),
-    ...(input.changes === null
-      ? [RECEIPT_UNAVAILABLE]
-      : input.changes.length
-        ? formatDelta(input.changes, "Gespeicherte Änderungen (vorher → nachher):")
-        : ["Keine Feldänderung gespeichert."]),
-    ...(input.stubs?.length ? ["Neu angelegte Stub-Artikel:", ...input.stubs.map((stub) => `- ${stub.title} (${stub.id})`)] : []),
-    ...(input.notes ?? []),
-  ].join("\n");
 }

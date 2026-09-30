@@ -10,17 +10,17 @@
 | ID | Kategorie | Schweregrad | Status | Kurzbeschreibung |
 |----|-----------|-------------|--------|-------------------|
 | CR-001 | Runtime-Risiken | mittel | behoben | Erneutes Lesen nach dem Schreiben liegt in allen Update-Handlern weiter innerhalb der Stub-Kompensation (Rest von Review 1 CR-001) |
-| CR-002 | Aufgaben-Abgleich | mittel | behoben | `@[Name](teilnahme:id)` wird als Charakter-ID an die Domäne gereicht und dort abgelehnt; E8 / D18 für Quests mit gelöschten Beteiligten nicht erfüllt |
-| CR-003 | Runtime-Risiken | mittel | behoben | Kürzung auf 20 000 Zeichen schneidet bei langen Texten Bestätigungs-Token, Quittungsende und Schreibschlüssel-Block ab; Ausschnitte zeigen nicht verlässlich die geänderte Stelle |
-| CR-004 | Aufgaben-Abgleich | mittel | behoben | Charakterblatt-Unterfelder sind im Schema `z.unknown()` ohne Form und erlaubte Werte; Verweisziele fehlen in den Feldbeschreibungen (E1/E5) |
-| CR-005 | Fehlerbehandlung & Validierung | niedrig | behoben | Lebensraum ohne Ort-Vorlage und doppelte Relation werden erst nach der Bestätigung abgelehnt |
-| CR-006 | Aufgaben-Abgleich | niedrig | behoben | Bei Vorlagentyp-Wechsel entfallende Vorlagenfelder fehlen in Vorschau (ohne `vorlagenfelder`) und in der Quittung |
-| CR-007 | Aufgaben-Abgleich | niedrig | behoben | Vorschau von `inhalt_anlegen` mit Stubs zeigt kein Delta der anzulegenden Felder |
+| CR-002 | Aufgaben-Abgleich | mittel | behoben | Teilnahme-Snapshots bleiben beim Rückschreiben erhalten und werden vor der Bestätigung geprüft |
+| CR-003 | Runtime-Risiken | mittel | behoben | Rich-Text wird gezielt begrenzt, sodass Bestätigungsmetadaten und Schreibschlüssel erhalten bleiben |
+| CR-004 | Aufgaben-Abgleich | mittel | behoben | Charakterblatt-Schema akzeptiert alle bisherigen Aliase und beschreibt Werte und Verweisziele korrekt |
+| CR-005 | Fehlerbehandlung & Validierung | niedrig | behoben | Ungültige Lebensräume und doppelte Relationen werden vor der Bestätigung abgelehnt |
+| CR-006 | Aufgaben-Abgleich | niedrig | behoben | Entfallende Vorlagenfelder erscheinen in Vorschau und Quittung |
+| CR-007 | Aufgaben-Abgleich | niedrig | behoben | Stub-bestätigte Anlegevorgänge zeigen ein begrenztes, beschriftetes Feld-Delta |
 | CR-008 | Lesbarkeit & Wartbarkeit | niedrig | behoben | Delta entsteht durch Zurückparsen gerenderter „Label: Wert“-Texte; mehrzeilige Werte und Leerzeilen erzeugen falsche Einträge |
 | CR-009 | Testabdeckung | niedrig | behoben | Vollständigkeitstest des Feldkatalogs ist für die echte Registry tautologisch; `FIELD_CATALOG_COMPLETE` und `allowedValuesFor` ungenutzt |
-| CR-010 | Duplizierung & Modularisierung | niedrig | behoben | Quittungen von `relation_anlegen` und Upload-Link sind von Hand gebaut statt über `formatReceipt` |
+| CR-010 | Duplizierung & Modularisierung | niedrig | behoben | Relation und Upload-Link verwenden denselben datenbankfreien Quittungsformatierer |
 | CR-011 | Runtime-Risiken | niedrig | behoben | `unionError` ruft `reduce` ohne Startwert auf einer möglicherweise leeren Liste auf |
-| CR-012 | Fehlerbehandlung & Validierung | niedrig | behoben | `beteiligte` in anderer Reihenfolge gilt als Änderung statt „Keine Änderung“ |
+| CR-012 | Fehlerbehandlung & Validierung | niedrig | behoben | Beteiligte werden dedupliziert und als Menge verglichen |
 | CR-013 | Performance | niedrig | behoben | Jeder bestätigte Schreibvorgang liest das Ziel vier- bis fünfmal, inklusive doppelt gerenderter Vorlagen-Verweise |
 
 ---
@@ -34,6 +34,7 @@
 - **Empfehlung (Plan-Review F5: Handler liefern nur die ID):** `UpdateResult` wird `{ id: string; stand?: string }`. Jedes `execute` unter `src/lib/mcp/tools/update/` gibt nach dem Domänenaufruf nur `{ id }` zurück, ohne erneutes Lesen; nur der Notizblock setzt `stand` aus `saved.data.version`. `executeUpdate` übergibt an `receiptAfterWrite` als `result` den Titel und die Sichtbarkeit aus dem `before`-Snapshot sowie das optionale `stand` des Handlers. Titel, Stand und Sichtbarkeit der Quittung kommen im Normalfall aus dem Nachher-Snapshot (`receiptAfterWrite` muss dafür `title` und `visibility` aus `after` statt aus `result` verwenden, wie heute schon). Scheitert der Snapshot, nennt die Fallback-Quittung den Titel von vorher, „Stand: –“ und den bestehenden Hinweis, dass die Änderungsübersicht nicht geladen werden konnte, ergänzt um „Bitte vor der nächsten Änderung neu lesen.“ Die Create-Handler sind nicht betroffen (sie lesen nicht nach).
 - **Abnahmekriterium:** In keinem `execute` unter `src/lib/mcp/tools/update/` steht nach dem Domänenaufruf ein weiterer Loader-Aufruf (`visible*`, `findVisibleChapter`, `getWorldDetails`, `worldStand`). Unit-Test: Ein nach erfolgreichem `updateArticle` werfender `visibleArticle` führt nicht zu `compensateMcpStubArticles` und liefert eine Quittung mit „Gespeichert.“, dem Titel von vorher und „Stand: –“. `npm run test:mcp` bleibt grün (Quittungen nennen weiter den neuen Stand).
 - **Umsetzung (2026-09-30):** Alle Update-Handler geben nach dem Domänenaufruf nur noch die ID zurück (der Notizblock zusätzlich seine gespeicherte Version). Der Quittungs-Snapshot wird außerhalb der Stub-Kompensation geladen; bei dessen Fehler nutzt die Quittung Titel und Sichtbarkeit aus dem Vorher-Snapshot, `Stand: –` sowie den Hinweis zum erneuten Lesen. Unit-, Lint- und Typprüfung sind grün.
+- **Review-Check (2026-09-30, `4ffe9e2`):** bestätigt `behoben`. Kein `execute` unter `tools/update/` liest nach dem Domänenaufruf; `UpdateResult` ist `{ id, stand? }`. Der Unit-Test prüft den Fallback von `receiptAfterWrite` (Titel von vorher, „Stand: –“, Hinweis); den im Abnahmekriterium genannten Test „keine Kompensation nach werfendem Nach-Lesen“ gibt es nicht, er ist durch den Wegfall des Nach-Lesens aber strukturell gegenstandslos.
 
 ### CR-002
 - **Fundstelle:** `src/lib/mcp/write-shared.ts:32–43` (`resolveParticipantIds`), Aufrufer `src/lib/mcp/tools/update/quest.ts:32,49` und `create/quest.ts:22`; Domäne `src/lib/domain/quests.ts:138–167` (`resolveParticipants`)
@@ -44,6 +45,8 @@
 - **Empfehlung (Plan-Review F2: „Snapshots bleiben immer“):** `resolveParticipantIds` liefert getrennt `{ characterIds, snapshotIds }`. Nur `characterIds` gehen als `participantIds` an die Domäne. `snapshotIds` werden bei `inhalt_aendern` gegen die Teilnahme-Zeilen der Quest geprüft (`row.participants`, Einträge ohne aktiven Charakter); eine unbekannte ID ist ein Werkzeugfehler mit `felder.beteiligte`. Snapshots werden per MCP **nie entfernt**, auch wenn sie in der Liste fehlen (`removeParticipantIds` wird nicht verwendet); Entfernen geht nur in der App. Vorschau und „Keine Änderung“ vergleichen deshalb nur die aktiven Charaktere. Bei `inhalt_anlegen` ist `teilnahme:` ein Werkzeugfehler. Die Katalogbeschreibung von `beteiligte` (`field-catalog.ts`) ersetzt „bleiben beteiligt, solange sie mitgeschickt werden“ durch „bleiben immer beteiligt und können per MCP nicht entfernt werden“; E8 im Plan `012` erhält denselben Nachsatz.
 - **Abnahmekriterium:** Integrationstest in `npm run test:mcp`: Quest mit einem Beteiligten, dessen Charakter gelöscht wurde → `inhalt_lesen` → `beteiligte` unverändert zurückschreiben ergibt „Keine Änderung“; zusammen mit einer Titeländerung wird die Änderung nach Bestätigung gespeichert und der Snapshot bleibt; `beteiligte` **ohne** den `teilnahme:`-Eintrag lässt den Snapshot ebenfalls bestehen (allein geschickt: „Keine Änderung“); eine fremde UUID hinter `teilnahme:` ergibt schon in der Vorschau einen Fehler mit `felder.beteiligte`; `inhalt_anlegen` Quest mit `teilnahme:` ergibt einen Fehler. Die Feldbeschreibung von `beteiligte` und E8 enthalten den neuen Wortlaut.
 - **Umsetzung (2026-09-30):** Teilnahme-Snapshots und aktive Charaktere werden getrennt aufgelöst. Snapshots werden vor der Vorschau gegen die gelesenen Quest-Zeilen geprüft, nie an die Domäne übergeben und bleiben bei MCP-Änderungen erhalten; beim Anlegen sind sie ungültig.
+- **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. Code nach F2 umgesetzt (`resolveParticipantIds` trennt `characterIds`/`snapshotIds`, `validateSnapshots`, Mengenvergleich; E8 und Feldbeschreibung nachgezogen). Der im Abnahmekriterium verlangte Integrationstest fehlt: `teilnahme` kommt in keiner Testdatei vor. Nach „Rahmen für `/plan-run`“ bleibt ein Finding ohne geschriebenen Test offen. Außerdem wird `teilnahme:` beim Anlegen erst in `execute` abgelehnt (`create/quest.ts`), also bei Stub-Anlage erst nach der Bestätigung; besser in `check`.
+- **Plan-Run (2026-09-30): behoben.** Der Integrationstest deckt Rückschreiben, Weglassen und unbekannte Teilnahme-Snapshots sowie eine Titeländerung ab. `questCreate.check` lehnt `teilnahme:` nun vor Stub-Planung und Bestätigungs-Token ab.
 
 ### CR-003
 - **Fundstelle:** `src/lib/mcp/tools/shared.ts:56–59` (`text`), betroffen `src/lib/mcp/write-rich.ts:130–152` (`formatConfirmationPreview`), `src/lib/mcp/receipt.ts:221–246` (`formatReceipt`), `src/lib/mcp/tools/content-read.ts` (Block „Schreibschlüssel“ am Ende)
@@ -60,6 +63,8 @@
   6. Jede Kürzung ist im Text als solche gekennzeichnet und nennt die Zahl der ausgelassenen Zeichen. T-007 („vollständiger anzuhängender/neuer Text“) gilt damit bis zum Budget; das wird in `.ai/architecture/mcp.md` und in Plan `012` bei T-007 als Nachtrag vermerkt.
 - **Abnahmekriterium:** Unit-Tests: (1) Bestehender Text mit 30 000 Zeichen, `anhaengen` einer Notiz von 100 Zeichen → die Vorschau enthält die Notiz vollständig, die letzten 500 Zeichen des bisherigen Texts, „Bestätigungs-Token: …“ und „Gültig bis: …“, und bleibt unter 20 000 Zeichen; die Quittung nach dem Schreiben enthält die Notiz vollständig. (2) Bestehender Text mit 30 000 Zeichen, `ersetzen` mit einem Text, der sich nur in einem Satz ab Zeichen 25 000 unterscheidet → Vorschau und Quittung enthalten den alten und den neuen Satz, die Angabe der unveränderten Zeichen davor, und nicht die ersten 500 Zeichen des Texts. (3) `anhaengen` von 30 000 Zeichen → Vorschau enthält Anfang und Ende des angehängten Texts, die Auslassungszeile mit Zeichenzahl, das Token und bleibt unter 20 000 Zeichen. (4) Eine Quittung zu (3) enthält weiterhin die Stub-Liste. (5) `inhalt_lesen` eines Artikels mit 30 000 Zeichen Text enthält den Block „Schreibschlüssel“ vollständig.
 - **Umsetzung (2026-09-30):** Vorschau und Quittung verwenden pro Rich-Text-Wert ein festes Budget. Anhänge zeigen Anfang und Ende mit Anzahl ausgelassener Zeichen; Ersetzungen zeigen den geänderten Bereich mit unverändertem Kontext. Der Schreibschlüssel-Block wird in Leseantworten vor dem Fließtext ausgegeben.
+- **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. Umgesetzt: `richChangeValues` mit `RICH_CHANGE_BUDGET = 6000` für Vorschau (`update/common.ts`) und Quittung (`richDelta`), geänderter Bereich mit Kontext beim Ersetzen, Schreibschlüssel vor dem Fließtext in `inhalt_lesen`, Nachtrag in `.ai/architecture/mcp.md`. Offen: (a) Keiner der fünf Abnahmetests existiert (`richChangeValues`/`RICH_CHANGE_BUDGET` kommen in keiner Testdatei vor). (b) Die neue Vorschau von `inhalt_anlegen` mit Stubs (`createChanges` in `content-create.ts`, CR-007) gibt Text-Felder ungekürzt aus; ein langer Text schneidet dort weiter das Token ab. (c) Der Nachtrag zu T-007 in Plan `012` fehlt. (d) Die Kürzung des Fließtexts in `inhalt_lesen` nennt keine Zeichenzahl (Regel 5/6), es greift weiter nur `text()`.
+- **Plan-Run (2026-09-30): behoben.** Langtext-Unit-Tests prüfen Ausschnitt und Auslassungszahl; Stub-Anlege-Deltas verwenden dieselbe Rich-Text-Begrenzung. Die Leseausgabe kürzt nur ihren abschließenden Fließtext und nennt die Zahl ausgelassener Zeichen.
 
 ### CR-004
 - **Fundstelle:** `src/lib/mcp/tools/write-schemas.ts:110–117` (`monsterSheetSchema`), `:38–41` (`describe`), `src/lib/mcp/field-catalog.ts:85–86,116–127` (`lebensraum`, `charakterblatt`, `templateField`)
@@ -70,6 +75,8 @@
 - **Empfehlung (Plan-Review F4: echte Unterschemas, Aliase bleiben):** `MCP_SHEET_FIELDS` bekommt je Unterfeld Typ und Beschreibung; `monsterSheetSchema` baut daraus echte Schemas: `klasse`, `persoenlichkeit`, `ideale`, `bindungen`, `schwaechen` als Text; `uebungsbonus` als Zahl; `attribute` als striktes Objekt mit den sechs Attributkürzeln (`STR`, `DEX`, `CON`, `INT`, `WIS`, `CHA`, je optionale Zahl); `fertigkeiten` als Liste strikter Objekte `{ name, stufe, attribut }`; `faehigkeiten` als Liste strikter Objekte `{ text, attribut }`. Erlaubte Werte für `stufe` (Labels aus `SKILL_LEVEL_LABEL`) und `attribut` (Kürzel aus `ATTRIBUTE_SHORT`) stehen in der Beschreibung; nach E5 kein `z.enum`, die Prüfung bleibt in `normalizeMonsterSheet`. Die heute akzeptierten Alternativschreibweisen (`level`, `attr`, `titel`, lange Attributnamen, englische Blattschlüssel) werden wie bei `vorlagenfelder` per `withAliases` vor dem strikten Objekt auf die beworbenen Schlüssel abgebildet, sodass bestehende Aufrufe weiter funktionieren und das veröffentlichte Schema nur die deutschen Schlüssel nennt. Alle Unterschemas tragen `germanError(path)`. Zusätzlich hängt `describe` bei `type === "reference"` an: „Verweis in Erwähnungssyntax, z. B. @[Titel](artikel:id); erlaubte Ziele: <aus referenceTargets, deutsch: Ort-Artikel, Person-Artikel, Charakter …>; null oder „–“ leert den Verweis.“
 - **Abnahmekriterium:** Test in `tool-schemas.test.ts`: Das JSON-Schema von `inhalt_aendern` für `art = monster` nennt unter `charakterblatt.fertigkeiten` die Schlüssel `name`, `stufe`, `attribut` und in der Beschreibung alle Stufen-Labels; unter `charakterblatt.attribute` alle sechs Attributkürzel; die Beschreibung von `lebensraum` enthält „Ort“ und die Erwähnungssyntax; die von `vorlagenfelder.Besitzer` die Ziele Person-Artikel und Charakter. Ein Aufruf mit `fertigkeiten: [{ name, level, attr }]` (englische Aliase) wird weiter angenommen; `fertigkeiten: [{ name, stufe, attribut, extra }]` ergibt einen Fehler mit dem Pfad `felder.charakterblatt.fertigkeiten`. Die Rundreise-Suite (T-009) bleibt grün.
 - **Umsetzung (2026-09-30):** Das Charakterblatt nutzt jetzt strikte Unterobjekte bzw. Listen mit deutschen Schlüsselbeschreibungen und Stufenangaben. Bestehende englische Aliase sowie STR/DEX-Attribute werden vor der strikten Prüfung auf die beworbenen Schlüssel abgebildet; Plugin-Manifestversionen auf `0.3.1` erhöht.
+- **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. Umgesetzt: echte Unterschemas für Attribute, Fertigkeiten, Fähigkeiten, Beschreibungen mit Kürzeln und Stufen, Verweisziele in `describe`, Plugin `0.3.1`. Offen: (a) **Regression gegenüber F4 („Aliase bleiben gültig“):** Lange Attributnamen (`{ "Stärke": 16 }`), die `normalizeMonsterSheet` weiter akzeptiert (`write-fields.test.ts`), werden vom Alias-Mapping in `monsterSheetSchema` nicht abgebildet und jetzt vom strikten Objekt abgelehnt. (b) Die Zielnamen in `describe` passen nicht zum Katalog: Der Katalog liefert `artikel:ort` (Lebensraum), `artikel:organization` und `artikel:race`, die Tabelle kennt `artikel:place` und `artikel:organisation`; diese Ziele erscheinen roh, die Beschreibung von `lebensraum` enthält kein „Ort“. (c) Der Schema-Test aus dem Abnahmekriterium (JSON-Schema nennt Schlüssel und Stufen; Fehler bei Extraschlüssel) fehlt; es gibt nur einen Parse-Test mit Aliasen.
+- **Plan-Run (2026-09-30): behoben.** Lange Attributnamen werden vor dem strikten Schema auf ihre Kürzel abgebildet; die kanonischen und historischen Verweisziel-Schlüssel erhalten deutsche Namen. Schema-Tests prüfen Unterfeldschlüssel, Stufen, Ziele, Aliase und Extraschlüssel.
 
 ### CR-005
 - **Fundstelle:** `src/lib/mcp/write-shared.ts:133–146` (`resolveHabitat`), `src/lib/mcp/tools/update/monster.ts:82–86`, `src/lib/mcp/tools/relation-create.ts:30–41` (`checkRelation`)
@@ -80,6 +87,8 @@
 - **Empfehlung:** (a) In `resolveHabitat` den aufgelösten Artikel laden und `templateType === "place"` prüfen; Fehler mit Pfad `felder.lebensraum`. (b) In `checkRelation` eine vorhandene manuelle Relation gleicher Richtung abfragen (kleine Domänenfunktion `manualRelationExists`) und vor dem Token ablehnen.
 - **Abnahmekriterium:** Integrationstests: `inhalt_aendern` Monster mit `lebensraum` auf einen Person-Artikel liefert sofort einen Werkzeugfehler mit `felder.lebensraum` und kein Token; `relation_anlegen` für eine bestehende Verknüpfung liefert sofort „Diese Verknüpfung gibt es schon.“ und kein Token.
 - **Umsetzung (2026-09-30):** Lebensräume werden bereits vor der Vorschau auf einen sichtbaren Ort-Artikel geprüft; manuelle Relationen prüfen eine identische Richtung vor dem Erzeugen eines Tokens.
+- **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. Code umgesetzt (`resolveHabitat` prüft sichtbaren Ort-Artikel, `manualRelationExists` in `checkRelation`). Die beiden Integrationstests aus dem Abnahmekriterium fehlen.
+- **Plan-Run (2026-09-30): behoben.** Der MCP-Integrationstest belegt beide Werkzeugfehler vor Token-Erzeugung.
 
 ### CR-006
 - **Fundstelle:** `src/lib/mcp/tools/update/article.ts:28–51` (`previewTemplate`, früher Rücksprung in Zeile 38), `src/lib/mcp/receipt.ts:178–192` (`snapshotDelta`)
@@ -90,6 +99,8 @@
 - **Empfehlung:** `previewTemplate` rendert bei jedem Typwechsel alten und neuen Feldsatz (neu = kompatibel behaltene bzw. übergebene Felder, dieselbe Regel wie die Domäne) und lässt `pushEntryChanges` die entfallenden Felder als „Wert → –“ ausgeben. `snapshotDelta` iteriert über die Vereinigung der Labels von vorher und nachher.
 - **Abnahmekriterium:** Tests: Gegenstand mit „Seltenheit: Selten“ auf `vorlagentyp: person` ändern → Vorschau enthält „Seltenheit: Selten → –“; die Quittung nach Bestätigung ebenfalls. Unit-Test für `snapshotDelta` mit einem nur im `before` vorhandenen Eintrag.
 - **Umsetzung (2026-09-30):** Bei jedem Vorlagentypwechsel bildet die Vorschau den kompatibel erhaltenen Feldsatz; die Quittungsdifferenz iteriert über die Vereinigung von Vorher- und Nachher-Feldern.
+- **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. Code umgesetzt (`previewTemplate` rechnet bei jedem Typwechsel mit `keepCompatibleFields`, `snapshotDelta` iteriert über die Vereinigung). Die Tests aus dem Abnahmekriterium fehlen (`receipt.test.ts` unverändert, kein Vorschau-Test für Typwechsel).
+- **Plan-Run (2026-09-30): behoben.** Integrationstest prüft Vorschau und Quittung beim Wechsel eines Gegenstands mit Seltenheit auf Person; Unit-Test deckt einen nur im Vorher-Snapshot vorhandenen Eintrag ab.
 
 ### CR-007
 - **Fundstelle:** `src/lib/mcp/tools/content-create.ts:82–94` (`previewOrCreate`)
@@ -100,6 +111,8 @@
 - **Empfehlung:** Die Create-Handler liefern in `collect` zusätzlich die geplanten Felder als `FieldChange[]` („– → Wert“, Labels aus dem Katalog, Verweise mit Titel, Rich-Text vollständig); `previewOrCreate` übergibt sie als `changes`.
 - **Abnahmekriterium:** Integrationstest: `inhalt_anlegen` Gegenstand mit Seltenheit „Selten“ und einer unbekannten Erwähnung im Text → die Vorschau enthält „Seltenheit: – → Selten“, den Text und die Stub-Liste.
 - **Umsetzung (2026-09-30):** Stub-bestätigte Anlegevorgänge erzeugen nun aus den geplanten Feldern ein Delta mit deutschen Labels und dem angegebenen Text.
+- **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. `createChanges` liefert ein Delta, der Integrationstest prüft aber nur, dass der Stub-Titel zweimal vorkommt, nicht „Seltenheit: – → Selten“ und den Text. Zudem: `createChanges` gibt Werte roh aus (Vorlagentyp als Schlüssel `gegenstand` statt Label, Listen und Charakterblatt als JSON, Beteiligte als IDs), sucht Vorlagenfeld-Labels mit dem MCP-Schlüssel (`templateFieldsFor("gegenstand")` fällt auf „ohne“ zurück; wirkungslos, weil die Schlüssel schon Labels sind) und kürzt Rich-Text nicht (siehe CR-003 b).
+- **Plan-Run (2026-09-30): behoben.** Der Typ wird vor dem Katalog-Lookup aufgelöst, Auswahlwerte erscheinen als Labels, Rich-Text ist begrenzt. Der Integrationstest fordert Seltenheit, Text, Stub-Liste und Token in einer Vorschau.
 
 ### CR-008
 - **Fundstelle:** `src/lib/mcp/change-format.ts:40–47` (`parseEntries`), Nutzer `src/lib/mcp/receipt.ts:56–58,121` und `src/lib/mcp/tools/update/common.ts:89–104`, `update/article.ts:45–50`, `update/monster.ts:89–94`
@@ -110,6 +123,7 @@
 - **Empfehlung:** `renderTemplateFields` und `renderSheet` auf eine strukturierte Zwischenform umstellen (`templateFieldEntries(...)`/`sheetEntries(...)`: `[label, value][]`), aus der sowohl der Lesetext als auch Vorschau und Quittung gebildet werden; `parseEntries` entfällt.
 - **Abnahmekriterium:** `parseEntries` existiert nicht mehr; Unit-Test: Eine Änderung von „Persönlichkeitsmerkmale“ auf einen zweiabsätzigen Text mit Doppelpunkt im zweiten Absatz ergibt genau einen Delta-Eintrag mit dem vollständigen Text.
 - **Umsetzung (2026-09-30):** Vorlagenfelder und Charakterblatt liefern strukturierte Label/Wert-Einträge. Leseausgabe, Vorschau und Quittung verwenden diese gemeinsame Zwischenform; `parseEntries` wurde entfernt. Der Unit-Test deckt einen zweizeiligen Persönlichkeitswert mit Doppelpunkt ab.
+- **Review-Check (2026-09-30, `4ffe9e2`):** bestätigt `behoben`. `parseEntries` entfernt, `templateFieldEntries`/`sheetEntries` als Zwischenform, Unit-Test mit zweiabsätzigem Wert vorhanden.
 
 ### CR-009
 - **Fundstelle:** `src/lib/mcp/field-catalog.ts:43–45,141–143,187–203` (`catalogTemplateFieldLabels`, `allowedValuesFor`, `assertFieldCatalogComplete`, `FIELD_CATALOG_COMPLETE`), `src/lib/mcp/field-catalog.test.ts:38–42`
@@ -120,6 +134,7 @@
 - **Empfehlung:** `assertFieldCatalogComplete`, `catalogTemplateFieldLabels` und `FIELD_CATALOG_COMPLETE` entfernen. Stattdessen Tests auf die echten Drift-Stellen: jeder Wert von `SHEET_KEY_MAP` hat genau einen Eintrag in `MCP_SHEET_FIELDS` und umgekehrt; jeder Domänen-Quest-Status hat ein Label in `MCP_QUEST_STATUS`; `templateFieldsFor(type)` hat für jeden Typ dieselbe Länge und Reihenfolge wie `definition.fields`. `allowedValuesFor` entfernen (Plan-Review F6; `012` T-003 nannte die Funktion als Hilfsfunktion, sie wurde nie gebraucht – die Abweichung wird in Plan `012` bei T-003 als Nachtrag vermerkt).
 - **Abnahmekriterium:** `assertFieldCatalogComplete`, `catalogTemplateFieldLabels`, `FIELD_CATALOG_COMPLETE` und `allowedValuesFor` existieren nicht mehr; die drei genannten Drift-Tests existieren und sind grün; ein im Test zu `SHEET_KEY_MAP` hinzugefügter Zielschlüssel ohne Eintrag in `MCP_SHEET_FIELDS` lässt einen Test fehlschlagen.
 - **Umsetzung (2026-09-30):** Tautologische Laufzeitprüfungen und der ungenutzte Export wurden entfernt; Tests prüfen die tatsächlichen Registry-, Queststatus- und Charakterblatt-Kopplungen.
+- **Review-Check (2026-09-30, `4ffe9e2`):** bestätigt `behoben`. Exporte entfernt, Drift-Test für Charakterblatt, Quest-Status und Registry-Reihenfolge vorhanden. Der Nachtrag bei T-003 in Plan `012` (Wegfall von `allowedValuesFor`) fehlt noch.
 
 ### CR-010
 - **Fundstelle:** `src/lib/mcp/tools/relation-create.ts:59–70,110–119`, `src/app/upload/[ticket]/route.ts:54–72` (`uploadReceipt`)
@@ -130,6 +145,8 @@
 - **Empfehlung (Plan-Review F6: vereinheitlichen):** `formatReceipt` bekommt `stand?` (Zeile entfällt, wenn nicht gesetzt), `extraLines?: string[]` (nach den Kopfzeilen, vor dem Delta) und akzeptiert `art` als freien Text. Beide Stellen rufen `formatReceipt` auf: `relation_anlegen` mit `art: "relation"`, `id` der Relation, `title: "<Quelle> → <Ziel>"`, `extraLines` für „Quelle: …“ und „Ziel: …“ und `changes` für Bezeichnung und Gegenbezeichnung („– → Wert“, aus dem gespeicherten Datensatz); die Upload-Route mit `extraLines` für „Ziel“, „Bildart“, „Ersetzt vorhandenes Bild“ und `changes` für das Bild. Die Relations-Quittung beginnt damit wie alle anderen mit „Gespeichert.“ statt „Relation angelegt.“. Die Relations-Vorschau übergibt Bezeichnung und Gegenbezeichnung als `changes` an `formatConfirmationPreview`; „Quelle“ und „Ziel“ bleiben `lines`.
 - **Abnahmekriterium:** Das Literal „Gespeicherte Änderungen (vorher → nachher):“ steht nur noch in `receipt.ts`; `relation-create.ts` und `src/app/upload/[ticket]/route.ts` bauen ihre Quittung ausschließlich über `formatReceipt`. Die Quittungstests für Relation (beide Titel, gespeicherte Bezeichnung) und Upload (`quittung` mit Ziel, Bildart, „Ersetzt vorhandenes Bild: ja/nein“) sind an die gemeinsame Form angepasst und grün.
 - **Umsetzung (2026-09-30):** Relation und Upload verwenden den gemeinsamen Delta-Formatter; Relationsquittungen folgen dem Standard mit „Gespeichert.“ und benennen beide Endpunkte sowie die gespeicherten Bezeichnungen.
+- **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. Relation nutzt `formatReceipt` mit `extraLines` und `changes`. Die Upload-Route nutzt aber einen zweiten Formatierer `formatRouteReceipt` (`src/lib/mcp/receipt-format.ts`), der Kopfzeilen und das Literal „Gespeicherte Änderungen (vorher → nachher):“ erneut enthält – Abnahmekriterium („Literal nur noch in `receipt.ts`“) nicht erfüllt. Begründung im Code: Die Route soll keine datenbankgestützten Leser importieren. Lösung: `formatReceipt` selbst in das datenbankfreie Modul verschieben und aus `receipt.ts` re-exportieren.
+- **Plan-Run (2026-09-30): behoben.** `formatReceipt` liegt nun im datenbankfreien Modul und wird aus `receipt.ts` re-exportiert; Relation und Upload-Route verwenden exakt diese Funktion. Die Upload-Quittungstests bleiben grün.
 
 ### CR-011
 - **Fundstelle:** `src/lib/mcp/validation.ts:133–134` (`unionError`)
@@ -140,6 +157,7 @@
 - **Empfehlung:** Bei `options.length === 0` direkt den Fallback-Text zurückgeben.
 - **Abnahmekriterium:** Unit-Test: `unionError("felder", [], "X")({})` und `({ errors: [] })` liefern einen Text, der mit „Die Schlüssel in „felder““ beginnt, und werfen nicht.
 - **Umsetzung (2026-09-30):** Leere Varianten geben unmittelbar den verständlichen Fallback zurück; beide Roh-Issue-Formen sind getestet.
+- **Review-Check (2026-09-30, `4ffe9e2`):** bestätigt `behoben`. Früher Rücksprung bei leerer Liste, Test in `enums.test.ts` für `{}` und `{ errors: [] }`.
 
 ### CR-012
 - **Fundstelle:** `src/lib/mcp/tools/update/quest.ts:32–36`
@@ -150,6 +168,8 @@
 - **Empfehlung:** IDs vor dem Vergleich deduplizieren und als Menge vergleichen; die Anzeige in der gespeicherten Reihenfolge ausgeben.
 - **Abnahmekriterium:** Integrationstest: `inhalt_aendern` Quest nur mit `beteiligte` in umgekehrter Reihenfolge → „Keine Änderung: …“, kein Token.
 - **Umsetzung (2026-09-30):** Aktive Beteiligten-IDs werden dedupliziert und als Menge verglichen; die Delta-Anzeige behält bei echten Änderungen die gespeicherte Reihenfolge.
+- **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. Code umgesetzt (Deduplizierung, Mengenvergleich der aktiven IDs). Der Integrationstest aus dem Abnahmekriterium fehlt.
+- **Plan-Run (2026-09-30): behoben.** Der Integrationstest deckt umgekehrte und doppelte aktive Beteiligte ab und erwartet „Keine Änderung“ ohne Token.
 
 ### CR-013
 - **Fundstelle:** `src/lib/mcp/tools/content-update.ts:53–84` (`executeUpdate`), `src/lib/mcp/receipt.ts:49–60` (`articleSnapshot`), `src/lib/mcp/tools/renderers.ts:69–89`
@@ -160,6 +180,7 @@
 - **Empfehlung:** Zusammen mit CR-001 den Nach-Lese-Schritt der Handler streichen; `snapshotContent` kann die in `load` bereits geladene Zeile übernehmen (Snapshot-Funktionen nehmen optional die Zeile entgegen); Verweise in `renderTemplateFields` mit `Promise.all` auflösen.
 - **Abnahmekriterium:** `executeUpdate` lädt das Ziel vor dem Schreiben genau einmal und danach genau einmal (im Quittungs-Snapshot); `renderTemplateFields` enthält kein `await` in einer Schleife.
 - **Umsetzung (2026-09-30):** Der Vorher-Snapshot verwendet jetzt die bereits sichtbar und standgeprüft geladene Handler-Zeile; nur die Quittung lädt nach dem Speichern erneut. Verweisauflösungen der Vorlagenfelder laufen parallel über `Promise.all`.
+- **Review-Check (2026-09-30, `4ffe9e2`):** bestätigt `behoben`. Vorher-Snapshot nutzt `target.source`, kein Nach-Lesen im Handler (CR-001), Verweise in `templateFieldEntries` per `Promise.all`.
 
 ---
 
@@ -200,3 +221,24 @@
 - **Commits:** ein Commit je Finding mit der ID im Betreff (z. B. `fix(mcp): 012 Review 2 CR-001 …`).
 
 **Stand nach dem Review:** `HEAD` ist seit dem Review von `4af38f6` auf `934ba66` gewandert (nur Dokumente: T-012 und T-013 abgehakt, E2E-Lauf 2 protokolliert). Der Code unter `src/` ist gegenüber der Baseline unverändert; die Fundstellen gelten weiter. Plan `012` ist abgeschlossen; das Abnahmekriterium von T-011 bezog sich auf das Review vom 2026-09-29 und bleibt dort erfüllt.
+
+---
+
+## Review-Check 2026-09-30
+
+**Geprüfter Stand:** Commit `4ffe9e2` (`main`, Working Tree sauber), verglichen mit der Baseline `4af38f6`. Dazwischen: `934ba66` (nur Dokumente) und die Umsetzungscommits `69d46d9`, `3bd8f6d`, `b8c6a6a`, `af9ca1b`, `9b4c21c`, `c48d61f`, `6512321`, `4ffe9e2`. Geprüft durch Lesen des Diffs und des aktuellen Codes; Tests wurden in diesem Check nicht ausgeführt.
+
+**Zusammenfassung:** Alle 13 Findings waren vor dem Check als `behoben` markiert.
+- **5 bestätigt `behoben`:** CR-001, CR-008, CR-009, CR-011, CR-013.
+- **8 zurück auf `offen`:** CR-002, CR-003, CR-004, CR-005, CR-006, CR-007, CR-010, CR-012. Nach der vereinbarten Regel („Rahmen für `/plan-run`“: ohne geschriebenen Test bleibt ein Finding offen) fehlen bei allen acht die im Abnahmekriterium genannten Tests. Bei CR-002, CR-005, CR-006 und CR-012 ist der Code vollständig umgesetzt und nur der Test fehlt. Bei CR-003, CR-004, CR-007 und CR-010 ist auch die Umsetzung unvollständig (Details im jeweiligen Vermerk).
+- **1 Regression im neuen Code:** CR-004 (a) – lange Attributnamen im Charakterblatt werden seit dem neuen Schema abgelehnt, obwohl F4 die bisherigen Aliase ausdrücklich erhält.
+- **Drift:** keine; alle Fundstellen sind eindeutig zuordenbar.
+
+**Nicht abgedeckte Änderungen** (keinem Finding direkt zugeordnet, ohne neue ID):
+1. `src/lib/mcp/tools/content-create.ts` `createChanges` (neu, aus CR-007): Rohwerte statt Labels, Lookup der Vorlagenfelder mit dem MCP-Schlüssel statt `TemplateType`, keine Rich-Text-Begrenzung. Teilweise in den Vermerken zu CR-003 und CR-007 festgehalten.
+2. `src/lib/mcp/receipt-format.ts` (neu): zweiter Quittungsformatierer, im Vermerk zu CR-010 festgehalten.
+3. `src/lib/domain/relations.ts` `manualRelationExists` (neu, aus CR-005): prüft nur die Richtung Quelle → Ziel; ob die Unique-Bedingung der Datenbank auch die Gegenrichtung ausschließt, ist nicht geprüft. Die Datenbank bleibt die letzte Sperre, im schlimmsten Fall tritt der Fehler wie vorher erst nach der Bestätigung auf.
+4. `src/lib/mcp/receipt.ts` Snapshot-Funktionen nehmen die geladene Zeile als `source?: unknown` und casten sie ungeprüft; ein falscher Aufrufer würde erst zur Laufzeit auffallen. Typisierung über `UpdateHandler` wäre sicherer.
+5. Plugin-Version `0.3.1` in beiden Manifesten (`plugins/worldcraft/`), passend zu den geänderten Schemas (CR-004); keine Beanstandung.
+
+**Empfehlung:** Kein erneuter vollständiger `/code-review`. Die Änderungen liegen innerhalb der geprüften Dateien, und die offenen Punkte sind durch die Vermerke abgedeckt. Nächster Schritt: `/plan-run` für die acht offenen Findings (vor allem die fehlenden Tests und die Regression bei CR-004), danach `npm run test:mcp` lokal und erneut `/review-check`. Der Push von `1.0.1` sollte erst danach erfolgen (F1).
