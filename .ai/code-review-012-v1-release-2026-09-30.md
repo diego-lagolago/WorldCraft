@@ -47,6 +47,7 @@
 - **Umsetzung (2026-09-30):** Teilnahme-Snapshots und aktive Charaktere werden getrennt aufgelöst. Snapshots werden vor der Vorschau gegen die gelesenen Quest-Zeilen geprüft, nie an die Domäne übergeben und bleiben bei MCP-Änderungen erhalten; beim Anlegen sind sie ungültig.
 - **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. Code nach F2 umgesetzt (`resolveParticipantIds` trennt `characterIds`/`snapshotIds`, `validateSnapshots`, Mengenvergleich; E8 und Feldbeschreibung nachgezogen). Der im Abnahmekriterium verlangte Integrationstest fehlt: `teilnahme` kommt in keiner Testdatei vor. Nach „Rahmen für `/plan-run`“ bleibt ein Finding ohne geschriebenen Test offen. Außerdem wird `teilnahme:` beim Anlegen erst in `execute` abgelehnt (`create/quest.ts`), also bei Stub-Anlage erst nach der Bestätigung; besser in `check`.
 - **Plan-Run (2026-09-30): behoben.** Der Integrationstest deckt Rückschreiben, Weglassen und unbekannte Teilnahme-Snapshots sowie eine Titeländerung ab. `questCreate.check` lehnt `teilnahme:` nun vor Stub-Planung und Bestätigungs-Token ab.
+- **Review-Check 2 (2026-09-30, `330f839`):** bestätigt `behoben`. Integrationstest „Review 012 CR-002 and CR-012“ deckt Rückschreiben, Weglassen und fremde Teilnahme-ID ab; `questCreate.check` lehnt `teilnahme:` vor Stub-Planung ab. `npm run test:mcp` auf `330f839` laut Projektinhaber lokal grün; `npm test` (355 Tests) im Check grün.
 
 ### CR-003
 - **Fundstelle:** `src/lib/mcp/tools/shared.ts:56–59` (`text`), betroffen `src/lib/mcp/write-rich.ts:130–152` (`formatConfirmationPreview`), `src/lib/mcp/receipt.ts:221–246` (`formatReceipt`), `src/lib/mcp/tools/content-read.ts` (Block „Schreibschlüssel“ am Ende)
@@ -65,6 +66,7 @@
 - **Umsetzung (2026-09-30):** Vorschau und Quittung verwenden pro Rich-Text-Wert ein festes Budget. Anhänge zeigen Anfang und Ende mit Anzahl ausgelassener Zeichen; Ersetzungen zeigen den geänderten Bereich mit unverändertem Kontext. Der Schreibschlüssel-Block wird in Leseantworten vor dem Fließtext ausgegeben.
 - **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. Umgesetzt: `richChangeValues` mit `RICH_CHANGE_BUDGET = 6000` für Vorschau (`update/common.ts`) und Quittung (`richDelta`), geänderter Bereich mit Kontext beim Ersetzen, Schreibschlüssel vor dem Fließtext in `inhalt_lesen`, Nachtrag in `.ai/architecture/mcp.md`. Offen: (a) Keiner der fünf Abnahmetests existiert (`richChangeValues`/`RICH_CHANGE_BUDGET` kommen in keiner Testdatei vor). (b) Die neue Vorschau von `inhalt_anlegen` mit Stubs (`createChanges` in `content-create.ts`, CR-007) gibt Text-Felder ungekürzt aus; ein langer Text schneidet dort weiter das Token ab. (c) Der Nachtrag zu T-007 in Plan `012` fehlt. (d) Die Kürzung des Fließtexts in `inhalt_lesen` nennt keine Zeichenzahl (Regel 5/6), es greift weiter nur `text()`.
 - **Plan-Run (2026-09-30): behoben.** Langtext-Unit-Tests prüfen Ausschnitt und Auslassungszahl; Stub-Anlege-Deltas verwenden dieselbe Rich-Text-Begrenzung. Die Leseausgabe kürzt nur ihren abschließenden Fließtext und nennt die Zahl ausgelassener Zeichen.
+- **Review-Check 2 (2026-09-30, `330f839`):** bestätigt `behoben`. Unit-Tests für geänderten Bereich, Auslassungszahl, Token bei langem Anhang und Stub-Liste in langer Quittung; `createChanges` nutzt `richChangeValues`; `boundedRichText` kürzt den Artikeltext mit Zeichenzahl; Nachtrag bei T-007 vorhanden. Rest siehe „Nicht abgedeckte Änderungen“ (Monster, Universum). `npm run test:mcp` auf `330f839` laut Projektinhaber lokal grün; `npm test` (355 Tests) im Check grün.
 
 ### CR-004
 - **Fundstelle:** `src/lib/mcp/tools/write-schemas.ts:110–117` (`monsterSheetSchema`), `:38–41` (`describe`), `src/lib/mcp/field-catalog.ts:85–86,116–127` (`lebensraum`, `charakterblatt`, `templateField`)
@@ -77,6 +79,7 @@
 - **Umsetzung (2026-09-30):** Das Charakterblatt nutzt jetzt strikte Unterobjekte bzw. Listen mit deutschen Schlüsselbeschreibungen und Stufenangaben. Bestehende englische Aliase sowie STR/DEX-Attribute werden vor der strikten Prüfung auf die beworbenen Schlüssel abgebildet; Plugin-Manifestversionen auf `0.3.1` erhöht.
 - **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. Umgesetzt: echte Unterschemas für Attribute, Fertigkeiten, Fähigkeiten, Beschreibungen mit Kürzeln und Stufen, Verweisziele in `describe`, Plugin `0.3.1`. Offen: (a) **Regression gegenüber F4 („Aliase bleiben gültig“):** Lange Attributnamen (`{ "Stärke": 16 }`), die `normalizeMonsterSheet` weiter akzeptiert (`write-fields.test.ts`), werden vom Alias-Mapping in `monsterSheetSchema` nicht abgebildet und jetzt vom strikten Objekt abgelehnt. (b) Die Zielnamen in `describe` passen nicht zum Katalog: Der Katalog liefert `artikel:ort` (Lebensraum), `artikel:organization` und `artikel:race`, die Tabelle kennt `artikel:place` und `artikel:organisation`; diese Ziele erscheinen roh, die Beschreibung von `lebensraum` enthält kein „Ort“. (c) Der Schema-Test aus dem Abnahmekriterium (JSON-Schema nennt Schlüssel und Stufen; Fehler bei Extraschlüssel) fehlt; es gibt nur einen Parse-Test mit Aliasen.
 - **Plan-Run (2026-09-30): behoben.** Lange Attributnamen werden vor dem strikten Schema auf ihre Kürzel abgebildet; die kanonischen und historischen Verweisziel-Schlüssel erhalten deutsche Namen. Schema-Tests prüfen Unterfeldschlüssel, Stufen, Ziele, Aliase und Extraschlüssel.
+- **Review-Check 2 (2026-09-30, `330f839`):** bestätigt `behoben`, Regression aus Review-Check 1 behoben: lange Attributnamen werden über `ATTRIBUTE_LONG` abgebildet (Test mit „Stärke“); Zieltabelle kennt `artikel:ort`, `artikel:organization`, `artikel:race`; Schema-Test prüft Attributkürzel, Fertigkeitsschlüssel, Stufen, Lebensraum- und Besitzer-Ziele; Extraschlüssel ergibt Fehler mit Pfad.
 
 ### CR-005
 - **Fundstelle:** `src/lib/mcp/write-shared.ts:133–146` (`resolveHabitat`), `src/lib/mcp/tools/update/monster.ts:82–86`, `src/lib/mcp/tools/relation-create.ts:30–41` (`checkRelation`)
@@ -89,6 +92,7 @@
 - **Umsetzung (2026-09-30):** Lebensräume werden bereits vor der Vorschau auf einen sichtbaren Ort-Artikel geprüft; manuelle Relationen prüfen eine identische Richtung vor dem Erzeugen eines Tokens.
 - **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. Code umgesetzt (`resolveHabitat` prüft sichtbaren Ort-Artikel, `manualRelationExists` in `checkRelation`). Die beiden Integrationstests aus dem Abnahmekriterium fehlen.
 - **Plan-Run (2026-09-30): behoben.** Der MCP-Integrationstest belegt beide Werkzeugfehler vor Token-Erzeugung.
+- **Review-Check 2 (2026-09-30, `330f839`):** bestätigt `behoben`. Integrationstest „Review 012 CR-005“ prüft beide Fehler vor dem Token. `npm run test:mcp` auf `330f839` laut Projektinhaber lokal grün; `npm test` (355 Tests) im Check grün.
 
 ### CR-006
 - **Fundstelle:** `src/lib/mcp/tools/update/article.ts:28–51` (`previewTemplate`, früher Rücksprung in Zeile 38), `src/lib/mcp/receipt.ts:178–192` (`snapshotDelta`)
@@ -101,6 +105,7 @@
 - **Umsetzung (2026-09-30):** Bei jedem Vorlagentypwechsel bildet die Vorschau den kompatibel erhaltenen Feldsatz; die Quittungsdifferenz iteriert über die Vereinigung von Vorher- und Nachher-Feldern.
 - **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. Code umgesetzt (`previewTemplate` rechnet bei jedem Typwechsel mit `keepCompatibleFields`, `snapshotDelta` iteriert über die Vereinigung). Die Tests aus dem Abnahmekriterium fehlen (`receipt.test.ts` unverändert, kein Vorschau-Test für Typwechsel).
 - **Plan-Run (2026-09-30): behoben.** Integrationstest prüft Vorschau und Quittung beim Wechsel eines Gegenstands mit Seltenheit auf Person; Unit-Test deckt einen nur im Vorher-Snapshot vorhandenen Eintrag ab.
+- **Review-Check 2 (2026-09-30, `330f839`):** bestätigt `behoben`. Unit-Test für nur vorher vorhandenen Eintrag in `receipt.test.ts`; Integrationstest prüft „Seltenheit: Selten → –“ in Vorschau und Quittung. `npm run test:mcp` auf `330f839` laut Projektinhaber lokal grün; `npm test` (355 Tests) im Check grün.
 
 ### CR-007
 - **Fundstelle:** `src/lib/mcp/tools/content-create.ts:82–94` (`previewOrCreate`)
@@ -113,6 +118,7 @@
 - **Umsetzung (2026-09-30):** Stub-bestätigte Anlegevorgänge erzeugen nun aus den geplanten Feldern ein Delta mit deutschen Labels und dem angegebenen Text.
 - **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. `createChanges` liefert ein Delta, der Integrationstest prüft aber nur, dass der Stub-Titel zweimal vorkommt, nicht „Seltenheit: – → Selten“ und den Text. Zudem: `createChanges` gibt Werte roh aus (Vorlagentyp als Schlüssel `gegenstand` statt Label, Listen und Charakterblatt als JSON, Beteiligte als IDs), sucht Vorlagenfeld-Labels mit dem MCP-Schlüssel (`templateFieldsFor("gegenstand")` fällt auf „ohne“ zurück; wirkungslos, weil die Schlüssel schon Labels sind) und kürzt Rich-Text nicht (siehe CR-003 b).
 - **Plan-Run (2026-09-30): behoben.** Der Typ wird vor dem Katalog-Lookup aufgelöst, Auswahlwerte erscheinen als Labels, Rich-Text ist begrenzt. Der Integrationstest fordert Seltenheit, Text, Stub-Liste und Token in einer Vorschau.
+- **Review-Check 2 (2026-09-30, `330f839`):** bestätigt `behoben`. `createChanges` löst den Vorlagentyp auf, zeigt Auswahlwerte als Labels und begrenzt Rich-Text; Integrationstest fordert „Seltenheit: – → Selten“, Text, Stub-Liste und Token. Listen und Charakterblatt erscheinen weiter als JSON (siehe „Nicht abgedeckte Änderungen“). `npm run test:mcp` auf `330f839` laut Projektinhaber lokal grün; `npm test` (355 Tests) im Check grün.
 
 ### CR-008
 - **Fundstelle:** `src/lib/mcp/change-format.ts:40–47` (`parseEntries`), Nutzer `src/lib/mcp/receipt.ts:56–58,121` und `src/lib/mcp/tools/update/common.ts:89–104`, `update/article.ts:45–50`, `update/monster.ts:89–94`
@@ -147,6 +153,7 @@
 - **Umsetzung (2026-09-30):** Relation und Upload verwenden den gemeinsamen Delta-Formatter; Relationsquittungen folgen dem Standard mit „Gespeichert.“ und benennen beide Endpunkte sowie die gespeicherten Bezeichnungen.
 - **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. Relation nutzt `formatReceipt` mit `extraLines` und `changes`. Die Upload-Route nutzt aber einen zweiten Formatierer `formatRouteReceipt` (`src/lib/mcp/receipt-format.ts`), der Kopfzeilen und das Literal „Gespeicherte Änderungen (vorher → nachher):“ erneut enthält – Abnahmekriterium („Literal nur noch in `receipt.ts`“) nicht erfüllt. Begründung im Code: Die Route soll keine datenbankgestützten Leser importieren. Lösung: `formatReceipt` selbst in das datenbankfreie Modul verschieben und aus `receipt.ts` re-exportieren.
 - **Plan-Run (2026-09-30): behoben.** `formatReceipt` liegt nun im datenbankfreien Modul und wird aus `receipt.ts` re-exportiert; Relation und Upload-Route verwenden exakt diese Funktion. Die Upload-Quittungstests bleiben grün.
+- **Review-Check 2 (2026-09-30, `330f839`):** bestätigt `behoben`. `formatReceipt` liegt einmal in `receipt-format.ts`, `receipt.ts` re-exportiert; Relation und Upload-Route nutzen dieselbe Funktion; `formatRouteReceipt` entfernt; das Literal steht nur noch dort.
 
 ### CR-011
 - **Fundstelle:** `src/lib/mcp/validation.ts:133–134` (`unionError`)
@@ -170,6 +177,7 @@
 - **Umsetzung (2026-09-30):** Aktive Beteiligten-IDs werden dedupliziert und als Menge verglichen; die Delta-Anzeige behält bei echten Änderungen die gespeicherte Reihenfolge.
 - **Review-Check (2026-09-30, `4ffe9e2`):** Status zurück auf `offen`. Code umgesetzt (Deduplizierung, Mengenvergleich der aktiven IDs). Der Integrationstest aus dem Abnahmekriterium fehlt.
 - **Plan-Run (2026-09-30): behoben.** Der Integrationstest deckt umgekehrte und doppelte aktive Beteiligte ab und erwartet „Keine Änderung“ ohne Token.
+- **Review-Check 2 (2026-09-30, `330f839`):** bestätigt `behoben`. Integrationstest deckt umgekehrte und doppelte Beteiligte ab („Keine Änderung“, kein Token). `npm run test:mcp` auf `330f839` laut Projektinhaber lokal grün; `npm test` (355 Tests) im Check grün.
 
 ### CR-013
 - **Fundstelle:** `src/lib/mcp/tools/content-update.ts:53–84` (`executeUpdate`), `src/lib/mcp/receipt.ts:49–60` (`articleSnapshot`), `src/lib/mcp/tools/renderers.ts:69–89`
@@ -242,3 +250,23 @@
 5. Plugin-Version `0.3.1` in beiden Manifesten (`plugins/worldcraft/`), passend zu den geänderten Schemas (CR-004); keine Beanstandung.
 
 **Empfehlung:** Kein erneuter vollständiger `/code-review`. Die Änderungen liegen innerhalb der geprüften Dateien, und die offenen Punkte sind durch die Vermerke abgedeckt. Nächster Schritt: `/plan-run` für die acht offenen Findings (vor allem die fehlenden Tests und die Regression bei CR-004), danach `npm run test:mcp` lokal und erneut `/review-check`. Der Push von `1.0.1` sollte erst danach erfolgen (F1).
+
+---
+
+## Review-Check 2 (2026-09-30)
+
+**Geprüfter Stand:** Commit `330f839` („012 Review 2 offene Findings abschließen“), verglichen mit dem Stand des ersten Review-Checks `4ffe9e2` und der Baseline `4af38f6`. Im Hauptverzeichnis liegt nur der ungetrackte Ordner `generated-assets/`, der nicht zum geprüften Code gehört. `npm test` im Check grün (76 Dateien, 355 Tests); `npm run test:mcp` auf `330f839` laut Projektinhaber lokal grün (im Check nicht selbst ausgeführt, kein Dev-Server aktiv).
+
+**Zusammenfassung:**
+- **8 von `offen` auf `behoben`:** CR-002, CR-003, CR-004, CR-005, CR-006, CR-007, CR-010, CR-012.
+- **5 weiterhin `behoben`:** CR-001, CR-008, CR-009, CR-011, CR-013; ihre Fundstellen sind seit Review-Check 1 unverändert.
+- **Regression aus Review-Check 1 (CR-004, lange Attributnamen) behoben.** Keine neue Regression erkannt.
+- **Drift:** keine.
+- Alle 13 Findings sind damit `behoben`.
+
+**Nicht abgedeckte Änderungen bzw. Reste** (ohne neue ID):
+1. `src/lib/mcp/tools/content-read.ts`: Die Kürzung mit Zeichenzahl (`boundedRichText`) gilt nur für Artikel. Bei Monster und Universum steht der Block „Schreibschlüssel“ weiterhin **nach** dem Fließtext (Bio bzw. Beschreibung); bei sehr langem Text schneidet die pauschale Grenze in `text()` ihn ab. Quests sind nicht betroffen (Block vor der Beschreibung). Klein, aber Regel 5 von CR-003 ist dort nicht erfüllt.
+2. `src/lib/mcp/tools/content-create.ts` `createChanges`: Listen und Objekte (`beteiligte` als IDs, `charakterblatt`) erscheinen als JSON und ohne Budget; Verweise in `vorlagenfelder` als Erwähnungstext. Für die Vorschau lesbar genug, aber nicht auf dem Niveau der Änderungsvorschau.
+3. Weiterhin aus Review-Check 1: `manualRelationExists` prüft nur die Richtung Quelle → Ziel; die Snapshot-Funktionen in `receipt.ts` casten `source?: unknown` ungeprüft.
+
+**Empfehlung:** Kein erneuter `/code-review`. Die drei Reste sind klein und können in einem späteren Aufräumschritt oder als Backlog-Eintrag (`.ai/backlog.md`) erledigt werden. Nach Freigabe steht dem Push von `1.0.1` aus Sicht dieses Reviews nichts entgegen; danach E2E-Prüffall 9 nachprüfen (F1).
