@@ -6,7 +6,7 @@ import { McpToolError, type McpWorldContext } from "../../context";
 import { MCP_NOT_SET } from "../../enums";
 import { fieldFor, type FieldArt } from "../../field-catalog";
 import type { MaterializedStubs, StubPlan } from "../../write-shared";
-import { headExcerpt, parseEntries, RICH_EXCERPT, tailExcerpt } from "../../change-format";
+import { headExcerpt, RICH_EXCERPT, tailExcerpt } from "../../change-format";
 import { resolveRichText, type FieldChange } from "../../write-rich";
 import type { ToolContext } from "../shared";
 
@@ -92,13 +92,12 @@ export function pushChange(context: PreviewContext, key: string, oldValue: strin
 /** Pushes one delta row per changed rendered entry (template fields, sheet sub-fields). */
 export function pushEntryChanges(context: PreviewContext, input: {
   prefix: string;
-  oldText: string;
-  newText: string;
-  separator: string;
+  before: readonly (readonly [string, string])[];
+  after: readonly (readonly [string, string])[];
   skip?: readonly string[];
 }) {
-  const before = parseEntries(input.oldText, input.separator);
-  const after = parseEntries(input.newText, input.separator);
+  const before = new Map(input.before);
+  const after = new Map(input.after);
   for (const label of new Set([...after.keys(), ...before.keys()])) {
     if (input.skip?.includes(label)) continue;
     const oldValue = before.get(label) ?? MCP_NOT_SET;

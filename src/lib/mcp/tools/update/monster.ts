@@ -19,7 +19,7 @@ import {
 } from "../../write-fields";
 import { resolveHabitat, visibleMonster, type ResolvedHabitat } from "../../write-shared";
 import { assertStand, throwAuthz, visibilityLabel } from "../../write-rich";
-import { renderSheet } from "../renderers";
+import { sheetEntries } from "../renderers";
 import { updateFieldSchemas, type UpdateFields } from "../write-schemas";
 import {
   defineUpdateHandler,
@@ -69,8 +69,8 @@ function nextHabitatLabel(habitat: ResolvedHabitat): string {
 }
 
 /** Renders the sheet without bio; the domain merges attributes per key and replaces other given keys. */
-function sheetText(row: MonsterRow, sheet: NormalizedMonsterSheet = {}): string {
-  return renderSheet({
+function sheetEntriesFor(row: MonsterRow, sheet: NormalizedMonsterSheet = {}) {
+  return sheetEntries({
     ...row,
     ...sheet,
     attributes: { ...row.attributes, ...sheet.attributes },
@@ -87,10 +87,9 @@ async function previewDetails(row: MonsterRow, felder: MonsterFields, context: P
   if (felder.charakterblatt !== undefined) {
     const sheet = normalizeMonsterSheet(felder.charakterblatt);
     pushEntryChanges(context, {
-      prefix: "Charakterblatt – ",
-      oldText: sheetText(row),
-      newText: sheetText(row, sheet),
-      separator: "\n\n",
+    prefix: "Charakterblatt – ",
+      before: sheetEntriesFor(row),
+      after: sheetEntriesFor(row, sheet),
     });
   }
 }

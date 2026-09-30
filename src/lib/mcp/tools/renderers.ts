@@ -36,6 +36,8 @@ type CharacterSheetRendererInput = {
   bioJson: unknown;
 };
 
+export type DisplayEntry = readonly [label: string, value: string];
+
 /** Renders a template reference; hidden or missing targets appear as „–“ without title or ID. */
 async function renderReference(raw: unknown, world: VisibleWorld, viewerId: string): Promise<string> {
   if (isPendingStubRef(raw)) return `@[${raw.__stubTitle}] (neuer Stub)`;
@@ -56,6 +58,34 @@ async function renderReference(raw: unknown, world: VisibleWorld, viewerId: stri
  * Lists every field of the template in registry order, unset ones as „–“ (T-006), so clients
  * learn all fields and can write the output back unchanged (002 D18). Labels come from the catalog.
  */
+export async function templateFieldEntries(
+  templateType: string,
+  fields: Record<string, unknown>,
+  world: VisibleWorld,
+  viewerId: string,
+) : Promise<DisplayEntry[]> {
+  const definition = templateOf(templateType);
+  const catalog = templateFieldsFor(definition.type);
+  const lines = await Promise.all(definition.fields.map(async (field, index): Promise<DisplayEntry> => {
+    const entry = catalog[index];
+    const raw = fields[field.key];
+    if (field.type === "boolean") {
+      return [entry.label, raw === true ? "Ja" : "Nein"];
+    }
+    if (raw === undefined || raw === null || raw === "") {
+      return [entry.label, MCP_NOT_SET];
+    }
+    if (field.type === "select") {
+      return [entry.label, labelFor(entry, raw)];
+    }
+    if (field.type === "ref") {
+      return [entry.label, await renderReference(raw, world, viewerId)];
+    }
+    return [entry.label, String(raw)];
+  }));
+  return lines;
+}
+
 export async function renderTemplateFields(
   templateType: string,
   fields: Record<string, unknown>,
@@ -63,25 +93,8 @@ export async function renderTemplateFields(
   viewerId: string,
 ) {
   const definition = templateOf(templateType);
-  const catalog = templateFieldsFor(definition.type);
-  const lines = await Promise.all(definition.fields.map(async (field, index) => {
-    const entry = catalog[index];
-    const raw = fields[field.key];
-    if (field.type === "boolean") {
-      return `${entry.label}: ${raw === true ? "Ja" : "Nein"}`;
-    }
-    if (raw === undefined || raw === null || raw === "") {
-      return `${entry.label}: ${MCP_NOT_SET}`;
-    }
-    if (field.type === "select") {
-      return `${entry.label}: ${labelFor(entry, raw)}`;
-    }
-    if (field.type === "ref") {
-      return `${entry.label}: ${await renderReference(raw, world, viewerId)}`;
-    }
-    return `${entry.label}: ${String(raw)}`;
-  }));
-  return [`Vorlagentyp: ${definition.label}`, ...lines].join("\n");
+  const entries = await templateFieldEntries(templateType, fields, world, viewerId);
+  return [`Vorlagentyp: ${definition.label}`, ...entries.map(([label, value]) => `${label}: ${value}`)].join("\n");
 }
 
 export type WriteKeySection = { art: FieldArt; heading: string; vorlagentyp?: TemplateType };
@@ -95,7 +108,7 @@ export function renderWriteKeys(sections: readonly WriteKeySection[]) {
   return ["## Schreibschlüssel", "Anzeige-Label → Schlüssel in felder für inhalt_aendern:", ...blocks].join("\n\n");
 }
 
-export function renderSheet(subject: CharacterSheetRendererInput) {
+export function sheetEntries(subject: CharacterSheetRendererInput): DisplayEntry[] {
   const attributes = Object.entries(subject.attributes)
     .map(([name, value]) => `${name.toUpperCase()}: ${value ?? "–"}`)
     .join(", ");
@@ -113,15 +126,21 @@ export function renderSheet(subject: CharacterSheetRendererInput) {
     .join("\n");
 
   return [
-    `Klasse: ${subject.class ?? "–"}`,
-    `Attribute: ${attributes}`,
-    `Übungsbonus: +${subject.proficiencyBonus}`,
-    skills ? `Fertigkeiten:\n${skills}` : "",
-    abilities ? `Fähigkeiten:\n${abilities}` : "",
-    subject.personality ? `Persönlichkeitsmerkmale: ${subject.personality}` : "",
-    subject.ideals ? `Ideale: ${subject.ideals}` : "",
-    subject.bonds ? `Bindungen: ${subject.bonds}` : "",
-    subject.flaws ? `Makel: ${subject.flaws}` : "",
+    ["Klasse", subject.class ?? "–"],
+    ["Attribute", attributes],
+    ["Übungsbonus", `+${subject.proficiencyBonus}`],
+    ...(skills ? [["Fertigkeiten", skills] as DisplayEntry] : []),
+    ...(abilities ? [["Fähigkeiten", abilities] as DisplayEntry] : []),
+    ...(subject.personality ? [["Persönlichkeitsmerkmale", subject.personality] as DisplayEntry] : []),
+    ...(subject.ideals ? [["Ideale", subject.ideals] as DisplayEntry] : []),
+    ...(subject.bonds ? [["Bindungen", subject.bonds] as DisplayEntry] : []),
+    ...(subject.flaws ? [["Makel", subject.flaws] as DisplayEntry] : []),
+  ];
+}
+
+export function renderSheet(subject: CharacterSheetRendererInput) {
+  return [
+    ...sheetEntries(subject).map(([label, value]) => `${label}: ${value}`),
     tiptapJsonToMcpMarkdown(subject.bioJson),
   ].filter(Boolean).join("\n\n");
 }

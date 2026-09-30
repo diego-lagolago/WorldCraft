@@ -6,7 +6,7 @@ import { templateOf } from "@/lib/templates/registry";
 import { McpToolError, type McpWorldContext } from "./context";
 import { MCP_NOT_SET, MCP_QUEST_STATUS_LABEL } from "./enums";
 import { fieldFor, labelFor, type FieldArt } from "./field-catalog";
-import { renderSheet, renderTemplateFields } from "./tools/renderers";
+import { sheetEntries, templateFieldEntries } from "./tools/renderers";
 import {
   findVisibleChapter,
   visibleArticle,
@@ -15,7 +15,7 @@ import {
   visibleUniverse,
   worldStand,
 } from "./write-shared";
-import { parseEntries, RICH_EXCERPT, tailExcerpt } from "./change-format";
+import { RICH_EXCERPT, tailExcerpt } from "./change-format";
 import { formatDelta, RECEIPT_INSTRUCTION, standOf, visibilityLabel, type FieldChange } from "./write-rich";
 
 export { RECEIPT_INSTRUCTION };
@@ -38,8 +38,8 @@ function markdown(json: unknown) {
   return tiptapJsonToMcpMarkdown(json).trim() || MCP_NOT_SET;
 }
 
-function addEntries(entries: Map<string, string>, text: string, separator: string, prefix = "") {
-  for (const [label, value] of parseEntries(text, separator, prefix)) entries.set(label, value);
+function addEntries(entries: Map<string, string>, rows: readonly (readonly [string, string])[], prefix = "") {
+  for (const [label, value] of rows) entries.set(`${prefix}${label}`, value);
 }
 
 function snapshot(input: Omit<Snapshot, "entries" | "richLabels">, rows: [string, string][], rich: string[]): Snapshot {
@@ -53,8 +53,7 @@ async function articleSnapshot(world: McpWorldContext, id: string, source?: unkn
     [[label("artikel", "titel"), row.title], [label("artikel", "vorlagentyp"), templateOf(row.templateType).label]],
     [label("artikel", "text")],
   );
-  const fields = await renderTemplateFields(row.templateType, row.templateFields, world, world.userId);
-  addEntries(result.entries, fields.split("\n").slice(1).join("\n"), "\n");
+  addEntries(result.entries, await templateFieldEntries(row.templateType, row.templateFields, world, world.userId));
   result.entries.set(label("artikel", "text"), markdown(row.bodyJson));
   return result;
 }
@@ -125,7 +124,7 @@ async function monsterSnapshot(world: McpWorldContext, id: string, source?: unkn
     ],
     [label("monster", "bio")],
   );
-  addEntries(result.entries, renderSheet({ ...row, bioJson: null }), "\n\n", "Charakterblatt – ");
+  addEntries(result.entries, sheetEntries({ ...row, bioJson: null }), "Charakterblatt – ");
   result.entries.set(label("monster", "bio"), markdown(row.bioJson));
   return result;
 }

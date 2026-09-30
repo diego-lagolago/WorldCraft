@@ -6,7 +6,7 @@ import { MCP_TEMPLATE_TYPE } from "../../enums";
 import { clearedTemplateFieldKeys } from "../../write-fields";
 import { prepareTemplateFields, visibleArticle } from "../../write-shared";
 import { assertStand, throwAuthz, visibilityLabel } from "../../write-rich";
-import { renderTemplateFields } from "../renderers";
+import { templateFieldEntries } from "../renderers";
 import { updateFieldSchemas } from "../write-schemas";
 import {
   defineUpdateHandler,
@@ -38,15 +38,10 @@ async function previewTemplate(
   if (felder.vorlagenfelder === undefined) return;
   const prepared = await mergedTemplateFields(row, nextType, felder.vorlagenfelder, context.world);
   context.stubs.add(prepared.stubTitles);
-  const render = (type: string, fields: Record<string, unknown>) => (
-    renderTemplateFields(type, fields, context.world, context.world.userId)
-  );
   pushEntryChanges(context, {
     prefix: "",
-    oldText: await render(row.templateType, row.templateFields),
-    newText: await render(nextType, prepared.fields),
-    separator: "\n",
-    skip: ["Vorlagentyp"],
+    before: await templateFieldEntries(row.templateType, row.templateFields, context.world, context.world.userId),
+    after: await templateFieldEntries(nextType, prepared.fields, context.world, context.world.userId),
   });
 }
 

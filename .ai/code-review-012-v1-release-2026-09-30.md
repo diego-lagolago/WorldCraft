@@ -16,7 +16,7 @@
 | CR-005 | Fehlerbehandlung & Validierung | niedrig | offen | Lebensraum ohne Ort-Vorlage und doppelte Relation werden erst nach der Bestätigung abgelehnt |
 | CR-006 | Aufgaben-Abgleich | niedrig | offen | Bei Vorlagentyp-Wechsel entfallende Vorlagenfelder fehlen in Vorschau (ohne `vorlagenfelder`) und in der Quittung |
 | CR-007 | Aufgaben-Abgleich | niedrig | offen | Vorschau von `inhalt_anlegen` mit Stubs zeigt kein Delta der anzulegenden Felder |
-| CR-008 | Lesbarkeit & Wartbarkeit | niedrig | offen | Delta entsteht durch Zurückparsen gerenderter „Label: Wert“-Texte; mehrzeilige Werte und Leerzeilen erzeugen falsche Einträge |
+| CR-008 | Lesbarkeit & Wartbarkeit | niedrig | behoben | Delta entsteht durch Zurückparsen gerenderter „Label: Wert“-Texte; mehrzeilige Werte und Leerzeilen erzeugen falsche Einträge |
 | CR-009 | Testabdeckung | niedrig | offen | Vollständigkeitstest des Feldkatalogs ist für die echte Registry tautologisch; `FIELD_CATALOG_COMPLETE` und `allowedValuesFor` ungenutzt |
 | CR-010 | Duplizierung & Modularisierung | niedrig | offen | Quittungen von `relation_anlegen` und Upload-Link sind von Hand gebaut statt über `formatReceipt` |
 | CR-011 | Runtime-Risiken | niedrig | offen | `unionError` ruft `reduce` ohne Startwert auf einer möglicherweise leeren Liste auf |
@@ -103,6 +103,7 @@
 - **Beschreibung:** Das Delta für Vorlagenfelder und Charakterblatt entsteht, indem der für `inhalt_lesen` gerenderte Text wieder an Zeilenumbrüchen und dem ersten Doppelpunkt zerlegt wird. Das koppelt Vorschau und Quittung an das Textformat der Leseausgabe: Ein Vorlagen-Textfeld mit Zeilenumbruch erzeugt eine abgeschnittene bzw. eine Zeile ohne Doppelpunkt, die stillschweigend entfällt; ein Charakterblatt-Text (Persönlichkeit, Ideale …) mit Leerzeile wird am Trenner `\n\n` zerteilt, der zweite Absatz entfällt oder erscheint bei enthaltenem Doppelpunkt als eigenes Pseudofeld. In der Artikel-Quittung wird zudem die erste Zeile per `split("\n").slice(1)` verworfen, im Update über `skip: ["Vorlagentyp"]` – zwei verschiedene Mittel für dasselbe.
 - **Empfehlung:** `renderTemplateFields` und `renderSheet` auf eine strukturierte Zwischenform umstellen (`templateFieldEntries(...)`/`sheetEntries(...)`: `[label, value][]`), aus der sowohl der Lesetext als auch Vorschau und Quittung gebildet werden; `parseEntries` entfällt.
 - **Abnahmekriterium:** `parseEntries` existiert nicht mehr; Unit-Test: Eine Änderung von „Persönlichkeitsmerkmale“ auf einen zweiabsätzigen Text mit Doppelpunkt im zweiten Absatz ergibt genau einen Delta-Eintrag mit dem vollständigen Text.
+- **Umsetzung (2026-09-30):** Vorlagenfelder und Charakterblatt liefern strukturierte Label/Wert-Einträge. Leseausgabe, Vorschau und Quittung verwenden diese gemeinsame Zwischenform; `parseEntries` wurde entfernt. Der Unit-Test deckt einen zweizeiligen Persönlichkeitswert mit Doppelpunkt ab.
 
 ### CR-009
 - **Fundstelle:** `src/lib/mcp/field-catalog.ts:43–45,141–143,187–203` (`catalogTemplateFieldLabels`, `allowedValuesFor`, `assertFieldCatalogComplete`, `FIELD_CATALOG_COMPLETE`), `src/lib/mcp/field-catalog.test.ts:38–42`

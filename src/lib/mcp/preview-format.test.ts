@@ -37,14 +37,27 @@ describe("change preview format (012 T-007)", () => {
     const ctx = context();
     pushEntryChanges(ctx, {
       prefix: "Charakterblatt – ",
-      oldText: "Klasse: Späher\n\nÜbungsbonus: +2",
-      newText: "Klasse: Wächter\n\nÜbungsbonus: +2\n\nMakel: Gierig",
-      separator: "\n\n",
+      before: [["Klasse", "Späher"], ["Übungsbonus", "+2"]],
+      after: [["Klasse", "Wächter"], ["Übungsbonus", "+2"], ["Makel", "Gierig"]],
     });
     expect(ctx.changes).toEqual([
       { label: "Charakterblatt – Klasse", oldValue: "Späher", newValue: "Wächter" },
       { label: "Charakterblatt – Makel", oldValue: "–", newValue: "Gierig" },
     ]);
+  });
+
+  it("keeps a multi-paragraph sheet value as one delta entry", () => {
+    const ctx = context();
+    pushEntryChanges(ctx, {
+      prefix: "Charakterblatt – ",
+      before: [["Persönlichkeitsmerkmale", "Ruhig"]],
+      after: [["Persönlichkeitsmerkmale", "Ruhig\n\nZweiter Absatz: bleibt Teil des Felds."]],
+    });
+    expect(ctx.changes).toEqual([{
+      label: "Charakterblatt – Persönlichkeitsmerkmale",
+      oldValue: "Ruhig",
+      newValue: "Ruhig\n\nZweiter Absatz: bleibt Teil des Felds.",
+    }]);
   });
 
   it("clears only template fields named with null, empty, „–“ or false", () => {
